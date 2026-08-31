@@ -1,6 +1,7 @@
 import Dexie, { type EntityTable } from "dexie";
 
 import type { Activity, Expense, ExpenseShare, Trip, TripMember } from "@/features/domain/entities";
+import type { OutboxMutation } from "@/lib/sync/types";
 
 /**
  * The local IndexedDB database — the single source of truth for domain data
@@ -14,6 +15,8 @@ export class ViatikDatabase extends Dexie {
   activities!: EntityTable<Activity, "id">;
   expenses!: EntityTable<Expense, "id">;
   expenseShares!: EntityTable<ExpenseShare, "id">;
+  /** FIFO queue of not-yet-synced mutations, drained by `SyncEngine`. */
+  outboxMutations!: EntityTable<OutboxMutation, "id">;
 
   constructor() {
     super("viatik");
@@ -24,6 +27,10 @@ export class ViatikDatabase extends Dexie {
       activities: "id, tripId, [tripId+dayDate], [tripId+dayDate+position], updatedAt, deletedAt",
       expenses: "id, tripId, activityId, updatedAt, deletedAt",
       expenseShares: "id, expenseId, userId, [expenseId+userId]",
+    });
+
+    this.version(2).stores({
+      outboxMutations: "id, tripId, entityType, createdAt",
     });
   }
 }

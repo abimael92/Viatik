@@ -3,6 +3,7 @@ import { liveQuery } from "dexie";
 import { db } from "@/lib/db/dexie";
 import type { Trip } from "@/features/domain/entities";
 import type { NewTrip, TripRepository } from "@/features/domain/repositories/trip-repository";
+import { enqueueMutation } from "@/lib/sync/outbox";
 
 /** Dexie-backed implementation of `TripRepository` — reads/writes IndexedDB only. */
 export class DexieTripRepository implements TripRepository {
@@ -47,6 +48,14 @@ export class DexieTripRepository implements TripRepository {
       deletedAt: null,
     };
     await db.trips.add(trip);
+    await enqueueMutation({
+      entityType: "trip",
+      entityId: trip.id,
+      tripId: trip.id,
+      operation: "insert",
+      payload: trip as unknown as Record<string, unknown>,
+      mutatedAt: trip.updatedAt,
+    });
     return trip;
   }
 
@@ -55,11 +64,28 @@ export class DexieTripRepository implements TripRepository {
     await db.trips.update(id, { ...patch, updatedAt });
     const trip = await db.trips.get(id);
     if (!trip) throw new Error(`Trip ${id} not found after update`);
+    await enqueueMutation({
+      entityType: "trip",
+      entityId: trip.id,
+      tripId: trip.id,
+      operation: "update",
+      payload: trip as unknown as Record<string, unknown>,
+      mutatedAt: trip.updatedAt,
+    });
     return trip;
   }
 
   async remove(id: string): Promise<void> {
-    await db.trips.update(id, { deletedAt: new Date().toISOString() });
+    const deletedAt = new Date().toISOString();
+    await db.trips.update(id, { deletedAt, updatedAt: deletedAt });
+    await enqueueMutation({
+      entityType: "trip",
+      entityId: id,
+      tripId: id,
+      operation: "delete",
+      payload: null,
+      mutatedAt: deletedAt,
+    });
   }
 }
 

@@ -6,6 +6,7 @@ import type {
   ActivityRepository,
   NewActivity,
 } from "@/features/domain/repositories/activity-repository";
+import { enqueueMutation } from "@/lib/sync/outbox";
 
 /** Dexie-backed implementation of `ActivityRepository` — reads/writes IndexedDB only. */
 export class DexieActivityRepository implements ActivityRepository {
@@ -47,6 +48,14 @@ export class DexieActivityRepository implements ActivityRepository {
       deletedAt: null,
     };
     await db.activities.add(activity);
+    await enqueueMutation({
+      entityType: "activity",
+      entityId: activity.id,
+      tripId: activity.tripId,
+      operation: "insert",
+      payload: activity as unknown as Record<string, unknown>,
+      mutatedAt: activity.updatedAt,
+    });
     return activity;
   }
 
@@ -58,6 +67,14 @@ export class DexieActivityRepository implements ActivityRepository {
     await db.activities.update(id, { ...patch, updatedAt });
     const activity = await db.activities.get(id);
     if (!activity) throw new Error(`Activity ${id} not found after update`);
+    await enqueueMutation({
+      entityType: "activity",
+      entityId: activity.id,
+      tripId: activity.tripId,
+      operation: "update",
+      payload: activity as unknown as Record<string, unknown>,
+      mutatedAt: activity.updatedAt,
+    });
     return activity;
   }
 
@@ -66,7 +83,17 @@ export class DexieActivityRepository implements ActivityRepository {
   }
 
   async remove(id: string): Promise<void> {
-    await db.activities.update(id, { deletedAt: new Date().toISOString() });
+    const activity = await db.activities.get(id);
+    const deletedAt = new Date().toISOString();
+    await db.activities.update(id, { deletedAt, updatedAt: deletedAt });
+    await enqueueMutation({
+      entityType: "activity",
+      entityId: id,
+      tripId: activity?.tripId ?? "",
+      operation: "delete",
+      payload: null,
+      mutatedAt: deletedAt,
+    });
   }
 }
 
