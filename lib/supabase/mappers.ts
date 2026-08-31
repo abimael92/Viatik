@@ -1,4 +1,4 @@
-import type { Activity, Trip } from "@/features/domain/entities";
+import type { Activity, Expense, ExpenseShare, Trip } from "@/features/domain/entities";
 
 /**
  * Bidirectional mapping between camelCase domain entities and snake_case
@@ -76,5 +76,63 @@ export function rowToActivity(row: Record<string, unknown>): Activity {
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
     deletedAt: row.deleted_at == null ? null : String(row.deleted_at),
+  };
+}
+
+export function expenseToRow(expense: Expense): Record<string, unknown> {
+  return {
+    id: expense.id,
+    trip_id: expense.tripId,
+    activity_id: expense.activityId,
+    description: expense.description,
+    amount: expense.amount,
+    currency: expense.currency,
+    paid_by: expense.paidBy,
+    split_type: expense.splitType,
+    created_by: expense.createdBy,
+    created_at: expense.createdAt,
+    updated_at: expense.updatedAt,
+    deleted_at: expense.deletedAt,
+  };
+}
+
+export function rowToExpense(row: Record<string, unknown>): Expense {
+  return {
+    id: String(row.id),
+    tripId: String(row.trip_id),
+    activityId: row.activity_id == null ? null : String(row.activity_id),
+    description: String(row.description),
+    amount: typeof row.amount === "number" ? row.amount : Number(row.amount),
+    currency: String(row.currency),
+    paidBy: String(row.paid_by),
+    splitType: (row.split_type == null ? "equal" : String(row.split_type)) as Expense["splitType"],
+    createdBy: String(row.created_by),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+    deletedAt: row.deleted_at == null ? null : String(row.deleted_at),
+  };
+}
+
+export function expenseShareToRow(share: ExpenseShare): Record<string, unknown> {
+  return {
+    id: share.id,
+    expense_id: share.expenseId,
+    user_id: share.userId,
+    share_amount: share.shareAmount,
+    share_percentage: share.sharePercentage,
+    created_at: share.createdAt,
+    updated_at: share.updatedAt,
+  };
+}
+
+export function rowToExpenseShare(row: Record<string, unknown>): ExpenseShare {
+  return {
+    id: String(row.id),
+    expenseId: String(row.expense_id),
+    userId: String(row.user_id),
+    shareAmount: typeof row.share_amount === "number" ? row.share_amount : Number(row.share_amount),
+    sharePercentage: row.share_percentage == null ? null : Number(row.share_percentage),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
   };
 }

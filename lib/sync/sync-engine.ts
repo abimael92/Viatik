@@ -6,7 +6,16 @@ import {
   removeMutation,
 } from "@/lib/sync/outbox";
 import type { OutboxMutation } from "@/lib/sync/types";
-import { activityToRow, tripToRow, rowToActivity, rowToTrip } from "@/lib/supabase/mappers";
+import {
+  activityToRow,
+  tripToRow,
+  expenseToRow,
+  expenseShareToRow,
+  rowToActivity,
+  rowToExpense,
+  rowToExpenseShare,
+  rowToTrip,
+} from "@/lib/supabase/mappers";
 
 export type SyncStatus = "idle" | "syncing" | "offline" | "error";
 
@@ -76,6 +85,32 @@ async function upsertActivity(mutation: OutboxMutation) {
   }
 }
 
+async function upsertExpense(mutation: OutboxMutation) {
+  if (!mutation.payload) return;
+  const payload = mutation.payload as Record<string, unknown>;
+  const client = getSupabaseBrowserClient();
+
+  const { data: existing } = await client
+    .from("expenses")
+    .select("updated_at")
+    .eq("id", mutation.entityId)
+    .single();
+
+  if (localWins(mutation.mutatedAt, existing?.updated_at ?? null)) {
+    const row = expenseToRow(rowToExpense(payload));
+    await client.from("expenses").upsert(row, { onConflict: "id" });
+  }
+}
+
+async function upsertExpenseShare(mutation: OutboxMutation) {
+  if (!mutation.payload) return;
+  const payload = mutation.payload as Record<string, unknown>;
+  const row = expenseShareToRow(rowToExpenseShare(payload));
+  await getSupabaseBrowserClient()
+    .from("expense_shares")
+    .upsert(row, { onConflict: "id" });
+}
+
 async function deleteRemote(entityType: OutboxMutation["entityType"], id: string) {
   const table =
     entityType === "expenseShare" ? "expense_shares" : `${entityType}s`;
@@ -95,8 +130,13 @@ async function replayOne(mutation: OutboxMutation) {
     case "activity":
       await upsertActivity(mutation);
       break;
+    case "expense":
+      await upsertExpense(mutation);
+      break;
+    case "expenseShare":
+      await upsertExpenseShare(mutation);
+      break;
     default:
-      // Expense and expenseShare support is added in a later phase.
       throw new Error(`Unhandled entity type: ${mutation.entityType}`);
   }
 }

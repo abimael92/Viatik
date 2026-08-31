@@ -1,6 +1,7 @@
 import Dexie, { type EntityTable } from "dexie";
 
 import type { Activity, Expense, ExpenseShare, Trip, TripMember } from "@/features/domain/entities";
+import type { TripMedia } from "@/features/domain/entities-media";
 import type { OutboxMutation } from "@/lib/sync/types";
 
 /**
@@ -17,6 +18,8 @@ export class ViatikDatabase extends Dexie {
   expenseShares!: EntityTable<ExpenseShare, "id">;
   /** FIFO queue of not-yet-synced mutations, drained by `SyncEngine`. */
   outboxMutations!: EntityTable<OutboxMutation, "id">;
+  /** Offline gallery media (compressed images and their upload state). */
+  tripMedia!: EntityTable<TripMedia, "id">;
 
   constructor() {
     super("viatik");
@@ -31,6 +34,10 @@ export class ViatikDatabase extends Dexie {
 
     this.version(2).stores({
       outboxMutations: "id, tripId, entityType, createdAt",
+    });
+
+    this.version(3).stores({
+      tripMedia: "id, tripId, activityId, updatedAt, deletedAt",
     });
   }
 }
