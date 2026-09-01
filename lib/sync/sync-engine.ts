@@ -51,20 +51,26 @@ function localWins(localMutatedAt: string, remoteUpdatedAt: string | null): bool
   return localMutatedAt >= remoteUpdatedAt;
 }
 
+function assertSupabaseSuccess(error: { message: string } | null): void {
+  if (error) throw new Error(error.message);
+}
+
 async function upsertTrip(mutation: OutboxMutation) {
   if (!mutation.payload) return;
   const payload = mutation.payload as Record<string, unknown>;
   const client = getSupabaseBrowserClient();
 
-  const { data: existing } = await client
+  const { data: existing, error: readError } = await client
     .from("trips")
     .select("updated_at")
     .eq("id", mutation.entityId)
-    .single();
+    .maybeSingle();
+  assertSupabaseSuccess(readError);
 
   if (localWins(mutation.mutatedAt, existing?.updated_at ?? null)) {
     const row = tripToRow(rowToTrip(payload));
-    await client.from("trips").upsert(row, { onConflict: "id" });
+    const { error } = await client.from("trips").upsert(row, { onConflict: "id" });
+    assertSupabaseSuccess(error);
   }
 }
 
@@ -73,15 +79,17 @@ async function upsertActivity(mutation: OutboxMutation) {
   const payload = mutation.payload as Record<string, unknown>;
   const client = getSupabaseBrowserClient();
 
-  const { data: existing } = await client
+  const { data: existing, error: readError } = await client
     .from("activities")
     .select("updated_at")
     .eq("id", mutation.entityId)
-    .single();
+    .maybeSingle();
+  assertSupabaseSuccess(readError);
 
   if (localWins(mutation.mutatedAt, existing?.updated_at ?? null)) {
     const row = activityToRow(rowToActivity(payload));
-    await client.from("activities").upsert(row, { onConflict: "id" });
+    const { error } = await client.from("activities").upsert(row, { onConflict: "id" });
+    assertSupabaseSuccess(error);
   }
 }
 
@@ -90,15 +98,17 @@ async function upsertExpense(mutation: OutboxMutation) {
   const payload = mutation.payload as Record<string, unknown>;
   const client = getSupabaseBrowserClient();
 
-  const { data: existing } = await client
+  const { data: existing, error: readError } = await client
     .from("expenses")
     .select("updated_at")
     .eq("id", mutation.entityId)
-    .single();
+    .maybeSingle();
+  assertSupabaseSuccess(readError);
 
   if (localWins(mutation.mutatedAt, existing?.updated_at ?? null)) {
     const row = expenseToRow(rowToExpense(payload));
-    await client.from("expenses").upsert(row, { onConflict: "id" });
+    const { error } = await client.from("expenses").upsert(row, { onConflict: "id" });
+    assertSupabaseSuccess(error);
   }
 }
 
