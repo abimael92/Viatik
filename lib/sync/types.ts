@@ -11,6 +11,14 @@ export interface SyncMetadata {
   value: string;
 }
 
+export interface SyncLease {
+  key: string;
+  ownerToken: string;
+  acquiredAt: number;
+  heartbeatAt: number;
+  expiresAt: number;
+}
+
 export interface SyncConflict {
   id: string;
   entityType: OutboxEntityType;

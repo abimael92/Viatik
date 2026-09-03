@@ -58,6 +58,7 @@ async function resetDatabase(): Promise<void> {
     db.contacts,
     db.outboxMutations,
     db.syncMetadata,
+    db.syncLeases,
     db.syncConflicts,
   ];
   for (const table of tables) {
