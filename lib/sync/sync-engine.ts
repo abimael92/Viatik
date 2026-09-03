@@ -27,6 +27,7 @@ import {
 import { logger } from "@/lib/observability/logger";
 import { deleteRemoteMedia, processPendingMedia, pullRemoteChanges, startRealtimeSync } from "@/lib/sync/cloud-sync";
 import { getSyncUser } from "@/lib/sync/sync-context";
+import { createBrowserSyncCoordinator, SyncCoordinationInterruptedError, type BrowserSyncCoordinator, type SyncExecutionContext, type SyncScope } from "@/lib/sync/sync-coordinator";
 
 function getDb(): ViatikDatabase {
   const db = getCurrentDatabase();
@@ -168,7 +169,44 @@ async function replayOne(mutation: OutboxMutation) {
   }
 }
 
-async function syncOnce(): Promise<void> {
+let coordinator: BrowserSyncCoordinator | null = null;
+let coordinatorDatabase: ViatikDatabase | null = null;
+let stopCoordinatorSubscription: (() => void) | null = null;
+
+function getCoordinator(db: ViatikDatabase, scope: SyncScope): BrowserSyncCoordinator {
+  if (coordinator && coordinatorDatabase === db) return coordinator;
+  stopCoordinatorSubscription?.();
+  coordinator?.close();
+  coordinator = createBrowserSyncCoordinator(db);
+  coordinatorDatabase = db;
+  stopCoordinatorSubscription = coordinator.subscribe(scope, (event) => {
+    if (event.type === "requested") void runSync().catch(() => setStatus("error"));
+    if (event.type === "completed") void refreshPending();
+  });
+  return coordinator;
+}
+
+async function runCoordinatedSync(): Promise<void> {
+  const syncUser = getSyncUser();
+  if (!syncUser) {
+    setStatus("idle");
+    return;
+  }
+  const db = getDb();
+  const scope = { databaseName: db.name, userId: syncUser };
+  const activeCoordinator = getCoordinator(db, scope);
+  try {
+    const result = await activeCoordinator.runExclusive(scope, syncOnce);
+    if (!result.acquired) await refreshPending();
+  } catch (error) {
+    if (!(error instanceof SyncCoordinationInterruptedError)) throw error;
+    await refreshPending();
+    setStatus(typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "idle");
+  }
+}
+
+async function syncOnce(context?: SyncExecutionContext): Promise<void> {
+  context?.signal.throwIfAborted();
   const startTime = Date.now();
   syncDiagnostics.totalSyncAttempts++;
 
@@ -187,6 +225,7 @@ async function syncOnce(): Promise<void> {
     return;
   }
   const pending = await listPendingMutations(syncUser);
+  context?.signal.throwIfAborted();
 
   logger.info("Processing pending mutations", { count: pending.length });
 
@@ -195,6 +234,7 @@ async function syncOnce(): Promise<void> {
   let skippedCount = 0;
 
   for (const mutation of pending) {
+    context?.signal.throwIfAborted();
     // Check if mutation should be retried
     if (!shouldRetryMutation(mutation)) {
       logger.warn("Skipping mutation that exceeded max retries", {
@@ -215,6 +255,7 @@ async function syncOnce(): Promise<void> {
         delay,
       });
       await new Promise((resolve) => setTimeout(resolve, delay));
+      context?.signal.throwIfAborted();
     }
 
     try {
@@ -233,8 +274,11 @@ async function syncOnce(): Promise<void> {
     }
   }
 
+  context?.signal.throwIfAborted();
   await processPendingMedia();
+  context?.signal.throwIfAborted();
   await pullRemoteChanges(lastSyncAt === null);
+  context?.signal.throwIfAborted();
 
   const duration = Date.now() - startTime;
   syncDurations.push(duration);
@@ -254,7 +298,7 @@ async function syncOnce(): Promise<void> {
 
   await refreshPending();
 
-  const newStatus = navigator.onLine ? (countPending > 0 ? "error" : "idle") : "offline";
+  const newStatus = typeof navigator === "undefined" || navigator.onLine ? (countPending > 0 ? "error" : "idle") : "offline";
   setStatus(newStatus);
   lastSyncAt = new Date().toISOString();
 
@@ -284,7 +328,7 @@ function runSync(): Promise<void> {
     syncRequested = true;
     return activeSync;
   }
-  activeSync = syncOnce().finally(() => {
+  activeSync = runCoordinatedSync().finally(() => {
     activeSync = null;
     if (syncRequested) {
       syncRequested = false;
@@ -294,14 +338,23 @@ function runSync(): Promise<void> {
   return activeSync;
 }
 
+function requestPeerSync(): void {
+  const syncUser = getSyncUser();
+  if (!syncUser) return;
+  const db = getDb();
+  const scope = { databaseName: db.name, userId: syncUser };
+  getCoordinator(db, scope).requestSync(scope);
+}
+
 function schedule() {
   if (typeof window === "undefined") return;
+  requestPeerSync();
   runSync().catch(() => setStatus("error"));
 }
 
 function handleOnline() {
   setStatus("idle");
-  runSync().catch(() => setStatus("error"));
+  schedule();
 }
 
 function handleOffline() {
@@ -336,12 +389,18 @@ export function startSyncEngine() {
     window.removeEventListener("viatik:sync-request", schedule);
     clearInterval(interval);
     stopRealtime();
+    stopCoordinatorSubscription?.();
+    stopCoordinatorSubscription = null;
+    coordinator?.close();
+    coordinator = null;
+    coordinatorDatabase = null;
     stopEngine = null;
   };
   return stopEngine;
 }
 
 export function syncNow(): Promise<void> {
+  requestPeerSync();
   return runSync();
 }
 
@@ -371,6 +430,7 @@ export function subscribeToSync(
 // Exposed for testing.
 export const __syncEngineInternals = {
   syncOnce,
+  runCoordinatedSync,
   refreshPending,
   replayCasMutation,
   resetDiagnostics: () => {
