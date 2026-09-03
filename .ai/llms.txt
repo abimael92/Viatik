@@ -9,12 +9,13 @@ Read these files in order before planning or changing anything:
 1. [`constitution.md`](./constitution.md) — non-negotiable engineering, security, specification, and verification rules.
 2. [`AGENTS.md`](./AGENTS.md) — Main, Architect, Implementation, QA, and Security Agent responsibilities.
 3. [`QUICKSTART.md`](./QUICKSTART.md) for the practical workflow and copy-paste prompts.
-4. The applicable specification, report, or skill:
+4. [`ROADMAP.md`](./ROADMAP.md) for MVP must-haves, deferred V2 good-to-haves, and known architecture risks.
+5. The applicable specification, report, or skill:
    - [`templates/feature-spec.md`](./templates/feature-spec.md) for new features.
    - [`templates/bug-report.md`](./templates/bug-report.md) for bugs.
    - [`specs/bug-ledger.md`](./specs/bug-ledger.md) for historical invariants and bug-derived rules.
    - [`skills/bug-backprop.md`](./skills/bug-backprop.md) for the bug-fixing protocol.
-5. Repository-level rules such as `AGENTS.md`, `CLAUDE.md`, `README.md`, package scripts, and framework documentation.
+6. Repository-level rules such as `AGENTS.md`, `CLAUDE.md`, `README.md`, package scripts, and framework documentation.
 
 Agents must not begin implementation until the applicable specification or bug report exists and is sufficiently complete.
 
@@ -112,6 +113,7 @@ The framework is project-neutral, but [PROJECT_NAME] should document its actual 
 │   ├── AGENTS.md
 │   ├── llms.txt
 │   ├── QUICKSTART.md
+│   ├── ROADMAP.md
 │   ├── specs/
 │   │   └── bug-ledger.md
 │   ├── skills/
@@ -145,6 +147,7 @@ For the current [PROJECT_NAME] implementation, agents must additionally inspect:
 | [`constitution.md`](./constitution.md) | Non-negotiable engineering rules | Agents, templates, bug ledger |
 | [`AGENTS.md`](./AGENTS.md) | Agent roles and handoffs | Constitution, templates, bug ledger |
 | [`QUICKSTART.md`](./QUICKSTART.md) | Practical workflows and prompts | Constitution, agents, templates, bug-backprop |
+| [`ROADMAP.md`](./ROADMAP.md) | MVP must-haves, V2 good-to-haves, risks | Constitution, agents, feature template |
 | [`specs/bug-ledger.md`](./specs/bug-ledger.md) | Bug-derived invariants | Constitution, bug report template, entry point |
 | [`templates/feature-spec.md`](./templates/feature-spec.md) | New feature specification | Constitution, agents, entry point |
 | [`templates/bug-report.md`](./templates/bug-report.md) | Bug investigation and resolution | Constitution, agents, bug ledger, entry point |
