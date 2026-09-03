@@ -9,18 +9,18 @@ test.describe("offline outbox", () => {
     await page.getByRole("button", { name: "Create trip" }).click();
     await expect(page.getByTestId("trip-id")).not.toHaveText("none", { timeout: 5000 });
 
-    // Verify the trip creation produced an outbox entry.
-    await expect(page.getByTestId("outbox-count")).toHaveText("Outbox: 1", { timeout: 5000 });
+    // Verify the trip and owner membership were queued together.
+    await expect(page.getByTestId("outbox-count")).toHaveText("Outbox: 2", { timeout: 5000 });
 
     // Create an activity while still offline.
     await page.getByRole("button", { name: "Create activity" }).click();
 
-    // The outbox should now contain both the trip and the activity mutations.
-    await expect(page.getByTestId("outbox-count")).toHaveText("Outbox: 2", { timeout: 5000 });
+    // The outbox should now contain the trip, owner membership, and activity mutations.
+    await expect(page.getByTestId("outbox-count")).toHaveText("Outbox: 3", { timeout: 5000 });
 
     // IndexedDB keeps both mutations durable while the browser is offline.
     const count = await page.evaluate(async () => {
-      const request = indexedDB.open("viatik");
+      const request = indexedDB.open("viatik_e2e-user");
       const database = await new Promise<IDBDatabase>((resolve, reject) => {
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
@@ -32,7 +32,7 @@ test.describe("offline outbox", () => {
         countRequest.onerror = () => reject(countRequest.error);
       });
     });
-    expect(count).toBe(2);
+    expect(count).toBe(3);
     await context.setOffline(false);
   });
 });

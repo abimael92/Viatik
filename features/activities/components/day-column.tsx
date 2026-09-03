@@ -11,12 +11,27 @@ import { useUiStore } from "@/lib/store/ui-store";
 interface DayColumnProps {
   dayDate: string;
   activities: Activity[];
+  category?: string;
   onSelect?: (activity: Activity) => void;
+  draggable?: boolean;
 }
 
-export function DayColumn({ dayDate, activities, onSelect }: DayColumnProps) {
+export function DayColumn({ dayDate, activities, category = "all", onSelect, draggable = true }: DayColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: dayDate, data: { dayDate } });
   const setDragOverDay = useUiStore((s) => s.setDragOverDay);
+
+  const emptyText =
+    activities.length === 0
+      ? category !== "all"
+        ? "No activities match this category"
+        : "No activities for this day"
+      : null;
+
+  const dayLabel = new Date(dayDate).toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
 
   return (
     <div
@@ -39,11 +54,21 @@ export function DayColumn({ dayDate, activities, onSelect }: DayColumnProps) {
         items={activities.map((a) => a.id)}
         strategy={verticalListSortingStrategy}
       >
-        <div className="flex flex-col gap-2">
+        <ul className="flex flex-col gap-2" role="list" aria-label={`Activities for ${dayLabel}`}>
           {activities.map((activity) => (
-            <ActivityCard key={activity.id} activity={activity} onSelect={onSelect} />
+            <ActivityCard
+              key={activity.id}
+              activity={activity}
+              onSelect={onSelect}
+              draggable={draggable}
+            />
           ))}
-        </div>
+          {emptyText && (
+            <li className="rounded-md border border-dashed p-3 text-center text-sm text-muted-foreground">
+              {emptyText}
+            </li>
+          )}
+        </ul>
       </SortableContext>
     </div>
   );

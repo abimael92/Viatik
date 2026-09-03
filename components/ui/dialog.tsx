@@ -3,7 +3,7 @@
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion } from "motion/react";
 
 import { cn } from "@/lib/utils";
 
@@ -32,8 +32,7 @@ function DialogContent({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content>) {
   return (
-    <DialogPortal forceMount>
-      <AnimatePresence>
+    <DialogPortal>
         <DialogOverlay />
         <DialogPrimitive.Content asChild {...props}>
           <motion.div
@@ -54,7 +53,6 @@ function DialogContent({
             </DialogPrimitive.Close>
           </motion.div>
         </DialogPrimitive.Content>
-      </AnimatePresence>
     </DialogPortal>
   );
 }

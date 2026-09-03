@@ -11,9 +11,10 @@ import { cn } from "@/lib/utils";
 interface ActivityCardProps {
   activity: Activity;
   onSelect?: (activity: Activity) => void;
+  draggable?: boolean;
 }
 
-export function ActivityCard({ activity, onSelect }: ActivityCardProps) {
+export function ActivityCard({ activity, onSelect, draggable = true }: ActivityCardProps) {
   const {
     attributes,
     listeners,
@@ -21,7 +22,7 @@ export function ActivityCard({ activity, onSelect }: ActivityCardProps) {
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: activity.id, data: activity });
+  } = useSortable({ id: activity.id, data: activity, disabled: !draggable });
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -29,29 +30,40 @@ export function ActivityCard({ activity, onSelect }: ActivityCardProps) {
   };
 
   return (
-    <motion.div
+    <motion.li
       ref={setNodeRef}
       style={style}
       className={cn(
         "rounded-lg border border-border bg-card p-3 shadow-sm transition-shadow",
-        "hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring",
+        "hover:shadow-md focus-within:ring-2 focus-within:ring-ring",
         isDragging && "z-50 rotate-2 scale-105 opacity-90 shadow-lg"
       )}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      onClick={() => onSelect?.(activity)}
+      role="listitem"
     >
-      <div className="flex items-start gap-2">
-        <button
-          {...attributes}
-          {...listeners}
-          className="mt-0.5 cursor-grab text-muted-foreground active:cursor-grabbing"
-          aria-label="Drag to reorder"
-        >
-          <GripVertical className="size-4" />
-        </button>
+      <article className="flex items-start gap-2">
+        {draggable ? (
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            className="mt-0.5 cursor-grab rounded-sm text-muted-foreground active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label={`Move ${activity.title}`}
+          >
+            <GripVertical className="size-4" />
+          </button>
+        ) : null}
         <div className="flex-1 min-w-0">
-          <h4 className="font-medium text-card-foreground truncate">{activity.title}</h4>
+          <button
+            type="button"
+            onClick={() => onSelect?.(activity)}
+            className="block w-full rounded-sm text-left font-medium text-card-foreground truncate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label={`Open details for ${activity.title}`}
+            data-activity-id={activity.id}
+          >
+            {activity.title}
+          </button>
           <p className="text-sm text-muted-foreground line-clamp-2">
             {activity.description || activity.location || activity.category}
           </p>
@@ -73,7 +85,7 @@ export function ActivityCard({ activity, onSelect }: ActivityCardProps) {
             )}
           </div>
         </div>
-      </div>
-    </motion.div>
+      </article>
+    </motion.li>
   );
 }

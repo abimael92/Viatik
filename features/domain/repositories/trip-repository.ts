@@ -29,5 +29,7 @@ export interface NewTrip {
   startDate?: string | null;
   endDate?: string | null;
   coverImageUrl?: string | null;
+  adultCount?: number;
+  childCount?: number;
   baseCurrency?: string;
 }

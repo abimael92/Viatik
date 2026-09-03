@@ -1,15 +1,24 @@
 import { liveQuery } from "dexie";
 
-import { db } from "@/lib/db/dexie";
+import { getCurrentDatabase, type ViatikDatabase } from "@/lib/db/dexie";
+import { TransactionContext } from "@/lib/db/transaction-context";
 import type { Expense, ExpenseShare } from "@/features/domain/entities";
 import type {
   ExpenseRepository,
   NewExpense,
 } from "@/features/domain/repositories/expense-repository";
-import { enqueueMutation } from "@/lib/sync/outbox";
+import { append } from "@/lib/sync/outbox-transactional";
+import { logger } from "@/lib/observability/logger";
+
+function getDb(): ViatikDatabase {
+  const db = getCurrentDatabase();
+  if (!db) throw new Error("No database is open. Wrap calls in DatabaseProvider.");
+  return db;
+}
 
 export class DexieExpenseRepository implements ExpenseRepository {
   async listByTrip(tripId: string): Promise<Expense[]> {
+    const db = getDb();
     return db.expenses
       .where("tripId")
       .equals(tripId)
@@ -18,6 +27,7 @@ export class DexieExpenseRepository implements ExpenseRepository {
   }
 
   async listSharesByExpense(expenseId: string): Promise<ExpenseShare[]> {
+    const db = getDb();
     return db.expenseShares.where("expenseId").equals(expenseId).toArray();
   }
 
@@ -27,87 +37,116 @@ export class DexieExpenseRepository implements ExpenseRepository {
   }
 
   async create(input: NewExpense): Promise<Expense> {
-    const now = new Date().toISOString();
-    const expense: Expense = {
-      id: input.id,
-      tripId: input.tripId,
-      activityId: input.activityId ?? null,
-      description: input.description,
-      amount: input.amount,
-      currency: input.currency,
-      paidBy: input.paidBy,
-      splitType: input.splitType,
-      createdBy: input.createdBy,
-      createdAt: now,
-      updatedAt: now,
-      deletedAt: null,
-    };
+    const db = getDb();
+    return TransactionContext.runInTransaction([db.expenses, db.expenseShares], async (ctx) => {
+      const now = new Date().toISOString();
+      const expense: Expense = {
+        id: input.id,
+        tripId: input.tripId,
+        activityId: input.activityId ?? null,
+        description: input.description,
+        amount: input.amount,
+        currency: input.currency,
+        paidBy: input.paidBy,
+        splitType: input.splitType,
+        createdBy: input.createdBy,
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: null,
+      };
 
-    await db.expenses.add(expense);
-    await enqueueMutation({
-      entityType: "expense",
-      entityId: expense.id,
-      tripId: expense.tripId,
-      operation: "insert",
-      payload: expense as unknown as Record<string, unknown>,
-      mutatedAt: expense.updatedAt,
+      await ctx.table<Expense>("expenses").add(expense);
+      await append("expense", "insert", expense, { tx: ctx, baseUpdatedAt: null });
+
+      const shares: ExpenseShare[] = input.shares.map((share) => ({
+        id: crypto.randomUUID(),
+        expenseId: expense.id,
+        userId: share.userId,
+        shareAmount: share.shareAmount,
+        sharePercentage: share.sharePercentage,
+        createdAt: now,
+        updatedAt: now,
+      }));
+
+      await ctx.table<ExpenseShare>("expenseShares").bulkAdd(shares);
+      for (const share of shares) {
+        await append("expenseShare", "insert", { ...share, tripId: expense.tripId }, { tx: ctx, baseUpdatedAt: null });
+      }
+
+      logger.debug("Expense created locally", { expenseId: expense.id });
+      return expense;
     });
-
-    const shares: ExpenseShare[] = input.shares.map((share) => ({
-      id: crypto.randomUUID(),
-      expenseId: expense.id,
-      userId: share.userId,
-      shareAmount: share.shareAmount,
-      sharePercentage: share.sharePercentage,
-      createdAt: now,
-      updatedAt: now,
-    }));
-
-    await db.expenseShares.bulkAdd(shares);
-    for (const share of shares) {
-      await enqueueMutation({
-        entityType: "expenseShare",
-        entityId: share.id,
-        tripId: expense.tripId,
-        operation: "insert",
-        payload: share as unknown as Record<string, unknown>,
-        mutatedAt: share.updatedAt,
-      });
-    }
-
-    return expense;
   }
 
   async update(
     id: string,
     patch: Partial<Omit<Expense, "id" | "tripId">>
   ): Promise<Expense> {
-    const updatedAt = new Date().toISOString();
-    await db.expenses.update(id, { ...patch, updatedAt });
-    const expense = await db.expenses.get(id);
-    if (!expense) throw new Error(`Expense ${id} not found after update`);
-    await enqueueMutation({
-      entityType: "expense",
-      entityId: expense.id,
-      tripId: expense.tripId,
-      operation: "update",
-      payload: expense as unknown as Record<string, unknown>,
-      mutatedAt: expense.updatedAt,
+    const db = getDb();
+    return TransactionContext.runInTransaction([db.expenses], async (ctx) => {
+      const previous = await ctx.table<Expense>("expenses").get(id);
+      if (!previous) throw new Error(`Expense ${id} not found before update`);
+      const updatedAt = new Date().toISOString();
+      await ctx.table<Expense>("expenses").update(id, { ...patch, updatedAt });
+      const expense = await ctx.table<Expense>("expenses").get(id);
+      if (!expense) throw new Error(`Expense ${id} not found after update`);
+      await append("expense", "update", expense, { tx: ctx, baseUpdatedAt: previous.updatedAt });
+      logger.debug("Expense updated locally", { expenseId: expense.id });
+      return expense;
     });
-    return expense;
+  }
+
+  async replaceShares(expenseId: string, shares: NewExpense["shares"]): Promise<void> {
+    const db = getDb();
+    return TransactionContext.runInTransaction([db.expenses, db.expenseShares], async (ctx) => {
+      const expense = await ctx.table<Expense>("expenses").get(expenseId);
+      if (!expense) throw new Error("Expense not found");
+      const existing = await ctx.table<ExpenseShare>("expenseShares").where("expenseId").equals(expenseId).toArray();
+      const now = new Date().toISOString();
+      const nextUsers = new Set(shares.map((share) => share.userId));
+      const removed = existing.filter((share) => !nextUsers.has(share.userId));
+
+      await ctx.table<ExpenseShare>("expenseShares").bulkDelete(removed.map((share) => share.id));
+      for (const share of removed) {
+        await append("expenseShare", "delete", { ...share, tripId: expense.tripId, mutatedAt: now }, { tx: ctx, baseUpdatedAt: share.updatedAt });
+      }
+
+      const existingByUser = new Map(existing.map((share) => [share.userId, share]));
+      const replacements: ExpenseShare[] = shares.map((share) => {
+        const previous = existingByUser.get(share.userId);
+        return {
+          id: previous?.id ?? crypto.randomUUID(),
+          expenseId,
+          userId: share.userId,
+          shareAmount: share.shareAmount,
+          sharePercentage: share.sharePercentage,
+          createdAt: previous?.createdAt ?? now,
+          updatedAt: now,
+        };
+      });
+
+      await ctx.table<ExpenseShare>("expenseShares").bulkPut(replacements);
+      for (const share of replacements) {
+        await append(
+          "expenseShare",
+          existingByUser.has(share.userId) ? "update" : "insert",
+          { ...share, tripId: expense.tripId },
+          { tx: ctx, baseUpdatedAt: existingByUser.get(share.userId)?.updatedAt ?? null }
+        );
+      }
+    });
   }
 
   async remove(id: string): Promise<void> {
-    const expense = await db.expenses.get(id);
-    const deletedAt = new Date().toISOString();
-    await db.expenses.update(id, { deletedAt, updatedAt: deletedAt });
-    await enqueueMutation({
-      entityType: "expense",
-      entityId: id,
-      tripId: expense?.tripId ?? "",
-      operation: "delete",
-      payload: null,
-      mutatedAt: deletedAt,
+    const db = getDb();
+    return TransactionContext.runInTransaction([db.expenses], async (ctx) => {
+      const expense = await ctx.table<Expense>("expenses").get(id);
+      if (!expense) return;
+      const deletedAt = new Date().toISOString();
+      const updated = { ...expense, deletedAt, updatedAt: deletedAt };
+      await ctx.table<Expense>("expenses").put(updated);
+      await append("expense", "update", updated, { tx: ctx, baseUpdatedAt: expense.updatedAt });
+      logger.debug("Expense deleted locally", { expenseId: id });
     });
   }
 }

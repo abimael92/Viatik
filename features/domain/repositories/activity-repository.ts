@@ -15,6 +15,8 @@ export interface ActivityRepository {
   move(id: string, dayDate: string, position: number): Promise<Activity>;
   /** Soft delete — sets `deletedAt`, does not remove the row. */
   remove(id: string): Promise<void>;
+  /** Restore a soft-deleted activity by clearing `deletedAt`. */
+  restore(id: string): Promise<Activity>;
 }
 
 export interface NewActivity {

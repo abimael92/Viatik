@@ -22,6 +22,73 @@ create trigger set_trip_members_updated_at
 
 alter table public.trip_members enable row level security;
 
+-- Returns true if the current authenticated user is a member of the given trip.
+create or replace function public.is_trip_member(p_trip_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1 from public.trip_members tm
+    where tm.trip_id = p_trip_id and tm.user_id = auth.uid()
+  );
+$$;
+
+-- Returns true if the current authenticated user can edit the given trip.
+create or replace function public.is_trip_editor(p_trip_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1 from public.trip_members tm
+    where tm.trip_id = p_trip_id
+      and tm.user_id = auth.uid()
+      and tm.role in ('owner', 'editor')
+  );
+$$;
+
+-- Returns true if the current authenticated user owns the given trip.
+create or replace function public.is_trip_owner(p_trip_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1 from public.trip_members tm
+    where tm.trip_id = p_trip_id
+      and tm.user_id = auth.uid()
+      and tm.role = 'owner'
+  );
+$$;
+
+create policy "trips_select_members"
+  on public.trips for select
+  to authenticated
+  using (public.is_trip_member(id));
+
+create policy "trips_insert_self_as_owner"
+  on public.trips for insert
+  to authenticated
+  with check (owner_id = auth.uid());
+
+create policy "trips_update_editors"
+  on public.trips for update
+  to authenticated
+  using (public.is_trip_editor(id))
+  with check (public.is_trip_editor(id));
+
+create policy "trips_delete_owner"
+  on public.trips for delete
+  to authenticated
+  using (public.is_trip_owner(id));
+
 create policy "trip_members_select_members"
   on public.trip_members for select
   to authenticated

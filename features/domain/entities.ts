@@ -9,6 +9,27 @@
 export type TripMemberRole = "owner" | "editor" | "viewer";
 
 export type ExpenseSplitType = "equal" | "exact" | "percentage";
+export type InvitationStatus = "pending" | "accepted" | "rejected" | "revoked";
+
+export interface TripInvitation {
+  id: string;
+  tripId: string;
+  email: string;
+  role: TripMemberRole;
+  status: InvitationStatus;
+  invitedBy: string;
+  invitedUserId: string | null;
+  expiresAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProfileSummary {
+  id: string;
+  fullName: string | null;
+  avatarUrl: string | null;
+  email: string | null;
+}
 
 export interface Trip {
   id: string;
@@ -19,6 +40,8 @@ export interface Trip {
   startDate: string | null; // ISO date (yyyy-mm-dd)
   endDate: string | null; // ISO date (yyyy-mm-dd)
   coverImageUrl: string | null;
+  adultCount: number;
+  childCount: number;
   baseCurrency: string;
   createdAt: string; // ISO datetime
   updatedAt: string; // ISO datetime
@@ -77,4 +100,47 @@ export interface ExpenseShare {
   sharePercentage: number | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ExpenseSettlement {
+  id: string;
+  tripId: string;
+  fromUserId: string;
+  toUserId: string;
+  amount: number;
+  currency: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+export interface Contact {
+  id: string;
+  ownerId: string;
+  fullName: string;
+  email: string | null;
+  phone: string | null;
+  relationship: "family" | "friend" | "coworker" | "other";
+  travelerType: TravelerType;
+  birthDate: string | null;
+  notes: string | null;
+  linkedProfileId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+export type TravelerType = "adult" | "child";
+
+export interface TripTraveler {
+  id: string;
+  tripId: string;
+  contactId: string;
+  displayName: string;
+  travelerType: TravelerType;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
 }

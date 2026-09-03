@@ -24,24 +24,3 @@ create trigger set_trips_updated_at
   execute function public.set_updated_at();
 
 alter table public.trips enable row level security;
-
-create policy "trips_select_members"
-  on public.trips for select
-  to authenticated
-  using (public.is_trip_member(id));
-
-create policy "trips_insert_self_as_owner"
-  on public.trips for insert
-  to authenticated
-  with check (owner_id = auth.uid());
-
-create policy "trips_update_editors"
-  on public.trips for update
-  to authenticated
-  using (public.is_trip_editor(id))
-  with check (public.is_trip_editor(id));
-
-create policy "trips_delete_owner"
-  on public.trips for delete
-  to authenticated
-  using (public.is_trip_owner(id));
