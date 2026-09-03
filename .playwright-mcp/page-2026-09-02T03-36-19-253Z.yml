@@ -1,0 +1,31 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - link "Skip to content" [ref=e3] [cursor=pointer]:
+      - /url: "#main-content"
+    - status [ref=e4]: You are offline. Changes are saved on this device and will sync when you reconnect.
+    - complementary [ref=e5]:
+      - link "V Viatik" [ref=e6] [cursor=pointer]:
+        - /url: /trips
+        - generic [ref=e7]: V
+        - text: Viatik
+      - navigation "Main navigation" [ref=e9]:
+        - link "Trips" [ref=e10] [cursor=pointer]:
+          - /url: /trips
+        - link "Contacts" [ref=e13] [cursor=pointer]:
+          - /url: /contacts
+        - link "Settings" [ref=e18] [cursor=pointer]:
+          - /url: /settings
+      - generic "Offline" [ref=e22]
+      - generic [ref=e28]: Aby Garcia
+    - main [ref=e34]:
+      - generic [ref=e35]:
+        - generic [ref=e36]:
+          - generic [ref=e37]:
+            - paragraph [ref=e38]: Your journeys
+            - heading "Where are you going next?" [level=1] [ref=e39]
+            - paragraph [ref=e40]: Keep plans, costs, and memories together—even offline.
+          - button "Create trip" [ref=e41]
+        - textbox "Search trips" [ref=e43]:
+          - /placeholder: Search by trip or destination
+        - generic "Loading trips" [ref=e44]
+  - button "Open Next.js Dev Tools" [ref=e53] [cursor=pointer]

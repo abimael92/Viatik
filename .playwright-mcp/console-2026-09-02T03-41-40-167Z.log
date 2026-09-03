@@ -1,0 +1,12 @@
+[     444ms] [LOG] %c Console Ninja extension is connected to Next.js browser, background: rgb(30,30,30); color: rgb(255,213,92) see https://tinyurl.com/2vt8jxzw for more info. @ :0
+[     447ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[     455ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[     487ms] [INFO] [2026-09-02T03:41:40.653Z] INFO: Starting sync engine @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[     490ms] [INFO] [2026-09-02T03:41:40.657Z] INFO: Stopping sync engine @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[     491ms] [INFO] [2026-09-02T03:41:40.657Z] INFO: Starting sync engine @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[     521ms] [INFO] [2026-09-02T03:41:40.687Z] INFO: Processing pending mutations {"count":1} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   15894ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://spcpdbxripukvqrnsuim.supabase.co/rest/v1/trip_members:0
+[   15901ms] [ERROR] [2026-09-02T03:41:56.063Z] ERROR: Supabase operation failed {"context":"insert tripMember"} Error: new row violates row-level security policy for table "trip_members" @ :0
+[   15901ms] [ERROR] [2026-09-02T03:41:56.068Z] ERROR: Failed to replay mutation {"mutationId":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","entityType":"tripMember","operation":"insert","entityId":"f47f4c89-417a-4139-9944-35be23ef7f8a","attempt":2} Error: new row violates row-level security policy for table "trip_members" @ :0
+[   15902ms] [ERROR] [2026-09-02T03:41:56.068Z] ERROR: Mutation failed, marking as failed {"mutationId":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","entityType":"tripMember","attempts":3} Error: new row violates row-level security policy for table "trip_members" @ :0
+[   17130ms] [INFO] [2026-09-02T03:41:57.297Z] INFO: Sync completed {"duration":16642,"successCount":0,"failureCount":1,"skippedCount":0,"remainingPending":5,"status":"error","diagnostics":{"totalAttempts":1,"successfulSyncs":0,"failedSyncs":1,"averageDuration":16642}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
