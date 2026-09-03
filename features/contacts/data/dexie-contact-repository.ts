@@ -12,6 +12,10 @@ function getDb(): ViatikDatabase {
   return db;
 }
 
+function normalizeTags(values?: string[]): string[] {
+  return [...new Set((values ?? []).map((value) => value.trim().toLowerCase()).filter(Boolean))];
+}
+
 export class DexieContactRepository implements ContactRepository {
   list(ownerId: string): Promise<Contact[]> {
     const db = getDb();
@@ -38,6 +42,17 @@ export class DexieContactRepository implements ContactRepository {
         birthDate: input.birthDate ?? null,
         notes: input.notes?.trim() || null,
         linkedProfileId: input.linkedProfileId ?? null,
+        linkedAvatarUrl: input.linkedAvatarUrl?.trim() || null,
+        linkedHandle: input.linkedHandle?.trim() || null,
+        emergencyContactName: input.emergencyContactName?.trim() || null,
+        emergencyContactRelationship: input.emergencyContactRelationship?.trim() || null,
+        emergencyContactPhone: input.emergencyContactPhone?.trim() || null,
+        dietaryRestrictions: normalizeTags(input.dietaryRestrictions),
+        allergies: normalizeTags(input.allergies),
+        passportIssuingCountry: input.passportIssuingCountry?.trim().toUpperCase() || null,
+        passportExpiresOn: input.passportExpiresOn || null,
+        preferredCurrency: input.preferredCurrency?.trim().toUpperCase() || null,
+        preferredLanguage: input.preferredLanguage?.trim() || null,
         createdAt: now,
         updatedAt: now,
         deletedAt: null,
@@ -73,6 +88,17 @@ export class DexieContactRepository implements ContactRepository {
         phone: values.phone?.trim() || null,
         notes: values.notes?.trim() || null,
         birthDate: values.birthDate || null,
+        linkedAvatarUrl: values.linkedAvatarUrl?.trim() || contact.linkedAvatarUrl,
+        linkedHandle: values.linkedHandle?.trim() || contact.linkedHandle,
+        emergencyContactName: values.emergencyContactName === undefined ? contact.emergencyContactName : values.emergencyContactName?.trim() || null,
+        emergencyContactRelationship: values.emergencyContactRelationship === undefined ? contact.emergencyContactRelationship : values.emergencyContactRelationship?.trim() || null,
+        emergencyContactPhone: values.emergencyContactPhone === undefined ? contact.emergencyContactPhone : values.emergencyContactPhone?.trim() || null,
+        dietaryRestrictions: values.dietaryRestrictions === undefined ? contact.dietaryRestrictions : normalizeTags(values.dietaryRestrictions),
+        allergies: values.allergies === undefined ? contact.allergies : normalizeTags(values.allergies),
+        passportIssuingCountry: values.passportIssuingCountry === undefined ? contact.passportIssuingCountry : values.passportIssuingCountry?.trim().toUpperCase() || null,
+        passportExpiresOn: values.passportExpiresOn === undefined ? contact.passportExpiresOn : values.passportExpiresOn || null,
+        preferredCurrency: values.preferredCurrency === undefined ? contact.preferredCurrency : values.preferredCurrency?.trim().toUpperCase() || null,
+        preferredLanguage: values.preferredLanguage === undefined ? contact.preferredLanguage : values.preferredLanguage?.trim() || null,
         updatedAt: now,
       };
       await ctx.table<Contact>("contacts").put(updated);
