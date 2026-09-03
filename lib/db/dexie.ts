@@ -111,6 +111,24 @@ export class ViatikDatabase extends Dexie {
         }
       });
     });
+
+    this.version(10).stores({
+      contacts: "id, ownerId, linkedProfileId, updatedAt, deletedAt",
+    }).upgrade(async (transaction) => {
+      await transaction.table("contacts").toCollection().modify((contact) => {
+        contact.linkedAvatarUrl ??= null;
+        contact.linkedHandle ??= null;
+        contact.emergencyContactName ??= null;
+        contact.emergencyContactRelationship ??= null;
+        contact.emergencyContactPhone ??= null;
+        contact.dietaryRestrictions ??= [];
+        contact.allergies ??= [];
+        contact.passportIssuingCountry ??= null;
+        contact.passportExpiresOn ??= null;
+        contact.preferredCurrency ??= null;
+        contact.preferredLanguage ??= null;
+      });
+    });
   }
 }
 

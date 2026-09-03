@@ -124,7 +124,9 @@ async function replayCasMutation(mutation: OutboxMutation): Promise<boolean> {
   const client = getSupabaseBrowserClient();
   const response = mutation.operation === "delete"
     ? await client.rpc("sync_cas_delete", { p_entity: mutation.entityType, p_id: mutation.entityId, p_base_updated_at: mutation.baseUpdatedAt })
-    : await client.rpc("sync_cas_upsert", { p_entity: mutation.entityType, p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt });
+    : mutation.entityType === "contact"
+      ? await client.rpc("sync_contact_cas_upsert", { p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt })
+      : await client.rpc("sync_cas_upsert", { p_entity: mutation.entityType, p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt });
   if (response.error) throw new Error(response.error.message);
   const result = response.data as CasResult;
   if (result.status === "conflict" || (result.status === "not_found" && mutation.operation !== "delete")) {

@@ -266,6 +266,38 @@ describe("transactional writes", () => {
     expect(await db.outboxMutations.where("entityType").equals("tripTraveler").count()).toBe(1);
   });
 
+  it("stores linked contact logistics and queues the complete payload", async () => {
+    const contact = await contactRepository.create({
+      id: "linked-contact",
+      ownerId: TEST_USER,
+      fullName: "Jordan Rivera",
+      relationship: "roommate",
+      linkedProfileId: "profile-1",
+      linkedAvatarUrl: "https://example.com/avatar.png",
+      linkedHandle: "jordan",
+      emergencyContactName: "Taylor Rivera",
+      emergencyContactRelationship: "Sibling",
+      emergencyContactPhone: "+15550123456",
+      dietaryRestrictions: [" Vegetarian ", "vegetarian", "Gluten-Free"],
+      allergies: ["Nuts"],
+      passportIssuingCountry: "us",
+      passportExpiresOn: "2030-01-01",
+      preferredCurrency: "eur",
+      preferredLanguage: "es",
+    });
+
+    expect(contact).toEqual(expect.objectContaining({
+      relationship: "roommate",
+      dietaryRestrictions: ["vegetarian", "gluten-free"],
+      allergies: ["nuts"],
+      passportIssuingCountry: "US",
+      preferredCurrency: "EUR",
+    }));
+    expect(await db.outboxMutations.where("entityType").equals("contact").first()).toEqual(
+      expect.objectContaining({ payload: expect.objectContaining({ linkedProfileId: "profile-1", emergencyContactName: "Taylor Rivera" }) })
+    );
+  });
+
   it("rejects contact mutations by a different owner", async () => {
     const contact = await contactRepository.create({ id: "private-contact", ownerId: TEST_USER, fullName: "Private" });
     await expect(contactRepository.update(contact.id, "another-user", { fullName: "Changed" })).rejects.toThrow("Contact not found.");

@@ -115,17 +115,40 @@ export interface ExpenseSettlement {
   deletedAt: string | null;
 }
 
+export type ContactRelationship = "family" | "friend" | "coworker" | "roommate" | "other";
+
+export interface ViatikProfileLookup {
+  profileId: string;
+  viatikId: string;
+  fullName: string;
+  avatarUrl: string | null;
+  publicHandle: string | null;
+  preferredCurrency: string | null;
+  preferredLanguage: string | null;
+}
+
 export interface Contact {
   id: string;
   ownerId: string;
   fullName: string;
   email: string | null;
   phone: string | null;
-  relationship: "family" | "friend" | "coworker" | "other";
+  relationship: ContactRelationship;
   travelerType: TravelerType;
   birthDate: string | null;
   notes: string | null;
   linkedProfileId: string | null;
+  linkedAvatarUrl: string | null;
+  linkedHandle: string | null;
+  emergencyContactName: string | null;
+  emergencyContactRelationship: string | null;
+  emergencyContactPhone: string | null;
+  dietaryRestrictions: string[];
+  allergies: string[];
+  passportIssuingCountry: string | null;
+  passportExpiresOn: string | null;
+  preferredCurrency: string | null;
+  preferredLanguage: string | null;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
