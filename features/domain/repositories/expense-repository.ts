@@ -1,4 +1,5 @@
 import type { Expense, ExpenseShare } from "@/features/domain/entities";
+import type { CurrencyCode, MinorUnits } from "@/features/domain/money";
 
 /** Storage-agnostic contract for reading/writing expenses and their shares. */
 export interface ExpenseRepository {
@@ -19,14 +20,14 @@ export interface NewExpense {
   tripId: string;
   activityId?: string | null;
   description: string;
-  amount: number; // in smallest currency unit (cents)
-  currency: string;
+  amountMinor: MinorUnits;
+  currency: CurrencyCode;
   paidBy: string;
   splitType: "equal" | "exact" | "percentage";
   createdBy: string;
   shares: Array<{
     userId: string;
-    shareAmount: number;
+    shareAmountMinor: MinorUnits;
     sharePercentage: number | null;
   }>;
 }

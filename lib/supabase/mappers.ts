@@ -1,5 +1,19 @@
 import type { Activity, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler } from "@/features/domain/entities";
 import type { TripMedia } from "@/features/domain/entities-media";
+import { MAX_MINOR_UNITS, type MinorUnits } from "@/features/domain/money";
+
+function minorUnitsToRemote(value: MinorUnits, field: string): string {
+  if (value < 0n || value > MAX_MINOR_UNITS) throw new Error(`Invalid remote ${field}`);
+  return value.toString();
+}
+
+function minorUnitsFromRemote(value: unknown, field: string): MinorUnits {
+  const normalized = String(value);
+  if (!/^\d+$/.test(normalized)) throw new Error(`Invalid remote ${field}`);
+  const amount = BigInt(normalized);
+  if (amount > MAX_MINOR_UNITS) throw new Error(`Invalid remote ${field}`);
+  return amount;
+}
 
 /**
  * Bidirectional mapping between camelCase domain entities and snake_case
@@ -90,7 +104,7 @@ export function expenseToRow(expense: Expense): Record<string, unknown> {
     trip_id: expense.tripId,
     activity_id: expense.activityId,
     description: expense.description,
-    amount: expense.amount,
+    amount: minorUnitsToRemote(expense.amountMinor, "amount"),
     currency: expense.currency,
     paid_by: expense.paidBy,
     split_type: expense.splitType,
@@ -107,7 +121,7 @@ export function rowToExpense(row: Record<string, unknown>): Expense {
     tripId: String(row.trip_id),
     activityId: row.activity_id == null ? null : String(row.activity_id),
     description: String(row.description),
-    amount: typeof row.amount === "number" ? row.amount : Number(row.amount),
+    amountMinor: minorUnitsFromRemote(row.amount, "amount"),
     currency: String(row.currency),
     paidBy: String(row.paid_by),
     splitType: (row.split_type == null ? "equal" : String(row.split_type)) as Expense["splitType"],
@@ -123,7 +137,7 @@ export function expenseShareToRow(share: ExpenseShare): Record<string, unknown> 
     id: share.id,
     expense_id: share.expenseId,
     user_id: share.userId,
-    share_amount: share.shareAmount,
+    share_amount: minorUnitsToRemote(share.shareAmountMinor, "share_amount"),
     share_percentage: share.sharePercentage,
     created_at: share.createdAt,
     updated_at: share.updatedAt,
@@ -135,7 +149,7 @@ export function rowToExpenseShare(row: Record<string, unknown>): ExpenseShare {
     id: String(row.id),
     expenseId: String(row.expense_id),
     userId: String(row.user_id),
-    shareAmount: typeof row.share_amount === "number" ? row.share_amount : Number(row.share_amount),
+    shareAmountMinor: minorUnitsFromRemote(row.share_amount, "share_amount"),
     sharePercentage: row.share_percentage == null ? null : Number(row.share_percentage),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
@@ -161,10 +175,10 @@ export function rowToMedia(row: Record<string, unknown>): TripMedia {
   return { id: String(row.id), tripId: String(row.trip_id), activityId: row.activity_id == null ? null : String(row.activity_id), caption: row.caption == null ? null : String(row.caption), blob: null, storagePath: String(row.storage_path), uploadedUrl: null, signedUrlExpiresAt: null, contentType: String(row.content_type), byteSize: Number(row.byte_size), createdBy: String(row.created_by), uploadStatus: "uploaded", uploadProgress: 100, uploadError: null, uploadAttempts: 0, nextUploadAt: null, createdAt: String(row.created_at), updatedAt: String(row.updated_at), deletedAt: row.deleted_at == null ? null : String(row.deleted_at) };
 }
 export function settlementToRow(settlement: ExpenseSettlement): Record<string, unknown> {
-  return { id: settlement.id, trip_id: settlement.tripId, from_user_id: settlement.fromUserId, to_user_id: settlement.toUserId, amount: settlement.amount, currency: settlement.currency, created_by: settlement.createdBy, created_at: settlement.createdAt, updated_at: settlement.updatedAt, deleted_at: settlement.deletedAt };
+  return { id: settlement.id, trip_id: settlement.tripId, from_user_id: settlement.fromUserId, to_user_id: settlement.toUserId, amount: minorUnitsToRemote(settlement.amountMinor, "amount"), currency: settlement.currency, created_by: settlement.createdBy, created_at: settlement.createdAt, updated_at: settlement.updatedAt, deleted_at: settlement.deletedAt };
 }
 export function rowToSettlement(row: Record<string, unknown>): ExpenseSettlement {
-  return { id: String(row.id), tripId: String(row.trip_id), fromUserId: String(row.from_user_id), toUserId: String(row.to_user_id), amount: Number(row.amount), currency: String(row.currency), createdBy: String(row.created_by), createdAt: String(row.created_at), updatedAt: String(row.updated_at), deletedAt: row.deleted_at == null ? null : String(row.deleted_at) };
+  return { id: String(row.id), tripId: String(row.trip_id), fromUserId: String(row.from_user_id), toUserId: String(row.to_user_id), amountMinor: minorUnitsFromRemote(row.amount, "amount"), currency: String(row.currency), createdBy: String(row.created_by), createdAt: String(row.created_at), updatedAt: String(row.updated_at), deletedAt: row.deleted_at == null ? null : String(row.deleted_at) };
 }
 export function contactToRow(contact: Contact): Record<string, unknown> {
   return { id: contact.id, owner_id: contact.ownerId, full_name: contact.fullName, email: contact.email, phone: contact.phone, relationship: contact.relationship, traveler_type: contact.travelerType, birth_date: contact.birthDate, notes: contact.notes, linked_profile_id: contact.linkedProfileId, linked_avatar_url: contact.linkedAvatarUrl, linked_handle: contact.linkedHandle, emergency_contact_name: contact.emergencyContactName, emergency_contact_relationship: contact.emergencyContactRelationship, emergency_contact_phone: contact.emergencyContactPhone, dietary_restrictions: contact.dietaryRestrictions, allergies: contact.allergies, passport_issuing_country: contact.passportIssuingCountry, passport_expires_on: contact.passportExpiresOn, preferred_currency: contact.preferredCurrency, preferred_language: contact.preferredLanguage, created_at: contact.createdAt, updated_at: contact.updatedAt, deleted_at: contact.deletedAt };

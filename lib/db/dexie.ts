@@ -2,7 +2,21 @@ import Dexie, { type EntityTable } from "dexie";
 
 import type { Activity, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler } from "@/features/domain/entities";
 import type { TripMedia } from "@/features/domain/entities-media";
+import { MAX_MINOR_UNITS } from "@/features/domain/money";
 import type { OutboxMutation, SyncConflict, SyncLease, SyncMetadata } from "@/lib/sync/types";
+
+function migrateMinorUnits(record: Record<string, unknown>, legacyField: string, minorField: string): void {
+  const existing = record[minorField];
+  if (existing !== undefined) {
+    if (typeof existing !== "bigint" || existing < 0n || existing > MAX_MINOR_UNITS) throw new Error(`Cannot migrate invalid ${minorField} value`);
+    return;
+  }
+  const value = record[legacyField];
+  if (value === undefined) return;
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0 || value > Number(MAX_MINOR_UNITS)) throw new Error(`Cannot migrate invalid ${legacyField} value`);
+  record[minorField] = BigInt(value);
+  delete record[legacyField];
+}
 
 /**
  * The local IndexedDB database — the single source of truth for domain data
@@ -133,6 +147,17 @@ export class ViatikDatabase extends Dexie {
 
     this.version(11).stores({
       syncLeases: "key, expiresAt",
+    });
+
+    this.version(12).stores({}).upgrade(async (transaction) => {
+      await transaction.table("expenses").toCollection().modify((expense) => migrateMinorUnits(expense, "amount", "amountMinor"));
+      await transaction.table("expenseShares").toCollection().modify((share) => migrateMinorUnits(share, "shareAmount", "shareAmountMinor"));
+      await transaction.table("expenseSettlements").toCollection().modify((settlement) => migrateMinorUnits(settlement, "amount", "amountMinor"));
+      await transaction.table("outboxMutations").toCollection().modify((mutation) => {
+        if (!mutation.payload) return;
+        if (mutation.entityType === "expense" || mutation.entityType === "settlement") migrateMinorUnits(mutation.payload, "amount", "amountMinor");
+        if (mutation.entityType === "expenseShare") migrateMinorUnits(mutation.payload, "shareAmount", "shareAmountMinor");
+      });
     });
   }
 }
