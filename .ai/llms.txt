@@ -1,0 +1,156 @@
+# [PROJECT_NAME] AI Development Framework
+
+This file is the entry point for every AI agent working in the repository. For a concise human and agent workflow, see [`QUICKSTART.md`](./QUICKSTART.md).
+
+## Required Reading Order
+
+Read these files in order before planning or changing anything:
+
+1. [`constitution.md`](./constitution.md) — non-negotiable engineering, security, specification, and verification rules.
+2. [`AGENTS.md`](./AGENTS.md) — Main, Architect, Implementation, QA, and Security Agent responsibilities.
+3. [`QUICKSTART.md`](./QUICKSTART.md) for the practical workflow and copy-paste prompts.
+4. The applicable specification, report, or skill:
+   - [`templates/feature-spec.md`](./templates/feature-spec.md) for new features.
+   - [`templates/bug-report.md`](./templates/bug-report.md) for bugs.
+   - [`specs/bug-ledger.md`](./specs/bug-ledger.md) for historical invariants and bug-derived rules.
+   - [`skills/bug-backprop.md`](./skills/bug-backprop.md) for the bug-fixing protocol.
+5. Repository-level rules such as `AGENTS.md`, `CLAUDE.md`, `README.md`, package scripts, and framework documentation.
+
+Agents must not begin implementation until the applicable specification or bug report exists and is sufficiently complete.
+
+## Standard Workflow
+
+```text
+Read → Specify → Architect → Test (Red) → Implement → Refactor → QA → Security → Report
+```
+
+- The **Main Agent** orchestrates and never codes.
+- The **Architect Agent** defines boundaries and SOLID-compliant design.
+- The **Implementation Agent** uses Red-Green-Refactor.
+- The **QA Agent** verifies behavior and targets ≥90% coverage for changed and critical code.
+- The **Security Agent** reviews security-sensitive work.
+- The **Main Agent** closes the work only after evidence is available.
+
+Every bug fix must update the bug ledger's invariant decision and the related spec when necessary.
+
+## What to Do
+
+### New Features
+
+1. Copy [`templates/feature-spec.md`](./templates/feature-spec.md) to the repository's approved specs location and replace every `[PLACEHOLDER]`.
+2. Define What & Why, In Scope, Out of Scope, acceptance criteria, security requirements, and success metrics.
+3. Ask the Architect Agent to review architecture, interfaces, data ownership, migrations, and risks.
+4. Ask the Implementation Agent to write a failing test first, then implement the feature.
+5. Ask the QA Agent to verify acceptance criteria, regression behavior, accessibility, and coverage.
+6. Ask the Security Agent to review any authentication, authorization, input, data, upload, dependency, or infrastructure changes.
+7. Record verification and follow-up work before completion.
+
+### Bug Fixes
+
+1. Copy [`templates/bug-report.md`](./templates/bug-report.md).
+2. Reproduce the issue and document the observed and expected behavior.
+3. Identify the root cause before changing code.
+4. Add a regression test before the fix where practical.
+5. Implement the smallest correct fix using the approved architecture.
+6. Decide whether a durable invariant is required and update [`specs/bug-ledger.md`](./specs/bug-ledger.md).
+7. Run QA and Security review as applicable.
+8. Update the bug report with evidence and the fix commit/PR.
+
+### Security Reviews
+
+1. Read [`constitution.md`](./constitution.md) and [`AGENTS.md`](./AGENTS.md).
+2. Define the review scope and threat boundaries.
+3. Inspect authentication, authorization, input validation, output encoding, secrets, logs, dependencies, uploads, data access, and failure handling.
+4. Verify server-side enforcement and relevant negative tests.
+5. Report findings with severity, evidence, remediation, and residual risk.
+6. Do not expose secrets or sensitive user data in the review.
+7. Do not approve unresolved critical or high-severity findings.
+
+## Quick Commands
+
+Use the package manager and commands defined by the repository. Examples for a TypeScript/Next.js project:
+
+```bash
+# Install dependencies
+pnpm install
+
+# Run the development server
+pnpm dev
+
+# Run unit/integration tests
+pnpm test
+
+# Run tests with coverage, if configured
+pnpm test -- --coverage
+
+# Lint and typecheck
+pnpm lint
+pnpm typecheck
+
+# Build production output
+pnpm build
+
+# Run browser tests, if configured
+pnpm test:e2e
+
+# Check whitespace and inspect changes
+git diff --check
+git status --short
+git diff
+```
+
+Never report a command as passing unless it was actually run. Do not place secrets in command history, logs, specs, or agent output.
+
+## Project Structure Overview
+
+The framework is project-neutral, but [PROJECT_NAME] should document its actual structure here:
+
+```text
+[REPOSITORY_ROOT]/
+├── .ai/
+│   ├── constitution.md
+│   ├── AGENTS.md
+│   ├── llms.txt
+│   ├── QUICKSTART.md
+│   ├── specs/
+│   │   └── bug-ledger.md
+│   ├── skills/
+│   │   └── bug-backprop.md
+│   └── templates/
+│       ├── feature-spec.md
+│       └── bug-report.md
+├── app/                 # [App routes and server/client boundaries]
+├── components/          # [Shared UI components]
+├── features/            # [Feature modules and domain code]
+├── lib/                 # [Infrastructure, services, utilities]
+├── public/              # [Static assets]
+├── supabase/            # [Database migrations and policies, if applicable]
+├── tests/               # [Test suites, if applicable]
+├── package.json         # [Scripts and dependencies]
+└── README.md            # [Human project documentation]
+```
+
+For the current [PROJECT_NAME] implementation, agents must additionally inspect:
+
+- `AGENTS.md` and `CLAUDE.md` for repository rules.
+- `package.json` for authoritative scripts and dependencies.
+- Framework documentation under the installed framework package before using unfamiliar or breaking APIs.
+- Environment examples without copying secrets.
+- Existing tests and neighboring components before adding new code.
+
+## Cross-Reference Map
+
+| File | Purpose | References |
+|---|---|---|
+| [`constitution.md`](./constitution.md) | Non-negotiable engineering rules | Agents, templates, bug ledger |
+| [`AGENTS.md`](./AGENTS.md) | Agent roles and handoffs | Constitution, templates, bug ledger |
+| [`QUICKSTART.md`](./QUICKSTART.md) | Practical workflows and prompts | Constitution, agents, templates, bug-backprop |
+| [`specs/bug-ledger.md`](./specs/bug-ledger.md) | Bug-derived invariants | Constitution, bug report template, entry point |
+| [`templates/feature-spec.md`](./templates/feature-spec.md) | New feature specification | Constitution, agents, entry point |
+| [`templates/bug-report.md`](./templates/bug-report.md) | Bug investigation and resolution | Constitution, agents, bug ledger, entry point |
+| [`skills/bug-backprop.md`](./skills/bug-backprop.md) | Bug-fixing protocol | Constitution, agents, bug report, bug ledger |
+| [`llms.txt`](./llms.txt) | Framework entry point and workflow | All framework files |
+
+## Placeholder Policy
+
+Replace placeholders such as `[PROJECT_NAME]`, `[OWNER]`, `[PROJECT_OWNER_OR_TEAM]`, `[FEATURE_NAME]`, and `[REPOSITORY_ROOT]` when customizing this framework. Do not replace placeholders with secrets or private credentials. If a value is intentionally unknown, state that explicitly rather than guessing.
