@@ -1,26 +1,162 @@
 @import "tailwindcss";
 
+/*
+ * Design tokens — OKLCH color space.
+ * Light values live on :root, dark overrides live on [data-theme="dark"]
+ * (and are mirrored for prefers-color-scheme for users who haven't picked
+ * an explicit theme yet). Everything downstream reads through @theme so
+ * Tailwind utilities (bg-background, text-primary, rounded-lg, ...) stay
+ * in sync automatically — there is no tailwind.config.ts.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: oklch(0.99 0.002 247);
+  --foreground: oklch(0.18 0.02 264);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.02 264);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.02 264);
+
+  --primary: oklch(0.62 0.19 253);
+  --primary-foreground: oklch(0.98 0.01 253);
+
+  --secondary: oklch(0.7 0.14 180);
+  --secondary-foreground: oklch(0.15 0.03 180);
+
+  --muted: oklch(0.96 0.005 264);
+  --muted-foreground: oklch(0.5 0.02 264);
+
+  --accent: oklch(0.85 0.13 90);
+  --accent-foreground: oklch(0.2 0.05 90);
+
+  --destructive: oklch(0.58 0.22 27);
+  --destructive-foreground: oklch(0.98 0.01 27);
+
+  --success: oklch(0.65 0.16 150);
+  --success-foreground: oklch(0.15 0.04 150);
+
+  --border: oklch(0.9 0.005 264);
+  --input: oklch(0.9 0.005 264);
+  --ring: oklch(0.62 0.19 253);
+
+  --radius: 0.75rem;
+}
+
+[data-theme="dark"] {
+  --background: oklch(0.16 0.015 264);
+  --foreground: oklch(0.95 0.005 264);
+
+  --card: oklch(0.2 0.015 264);
+  --card-foreground: oklch(0.95 0.005 264);
+
+  --popover: oklch(0.2 0.015 264);
+  --popover-foreground: oklch(0.95 0.005 264);
+
+  --primary: oklch(0.72 0.17 253);
+  --primary-foreground: oklch(0.16 0.03 253);
+
+  --secondary: oklch(0.6 0.12 180);
+  --secondary-foreground: oklch(0.95 0.02 180);
+
+  --muted: oklch(0.26 0.015 264);
+  --muted-foreground: oklch(0.68 0.015 264);
+
+  --accent: oklch(0.55 0.11 90);
+  --accent-foreground: oklch(0.96 0.03 90);
+
+  --destructive: oklch(0.55 0.2 27);
+  --destructive-foreground: oklch(0.97 0.01 27);
+
+  --success: oklch(0.58 0.15 150);
+  --success-foreground: oklch(0.95 0.03 150);
+
+  --border: oklch(0.32 0.015 264);
+  --input: oklch(0.32 0.015 264);
+  --ring: oklch(0.72 0.17 253);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) - 0.5rem);
+  --radius-md: calc(var(--radius) - 0.25rem);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 0.25rem);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  :root:not([data-theme="light"]) {
+    --background: oklch(0.16 0.015 264);
+    --foreground: oklch(0.95 0.005 264);
+    --card: oklch(0.2 0.015 264);
+    --card-foreground: oklch(0.95 0.005 264);
+    --popover: oklch(0.2 0.015 264);
+    --popover-foreground: oklch(0.95 0.005 264);
+    --primary: oklch(0.72 0.17 253);
+    --primary-foreground: oklch(0.16 0.03 253);
+    --secondary: oklch(0.6 0.12 180);
+    --secondary-foreground: oklch(0.95 0.02 180);
+    --muted: oklch(0.26 0.015 264);
+    --muted-foreground: oklch(0.68 0.015 264);
+    --accent: oklch(0.55 0.11 90);
+    --accent-foreground: oklch(0.96 0.03 90);
+    --destructive: oklch(0.55 0.2 27);
+    --destructive-foreground: oklch(0.97 0.01 27);
+    --success: oklch(0.58 0.15 150);
+    --success-foreground: oklch(0.95 0.03 150);
+    --border: oklch(0.32 0.015 264);
+    --input: oklch(0.32 0.015 264);
+    --ring: oklch(0.72 0.17 253);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    border-color: var(--color-border);
+    outline-color: var(--color-ring);
+  }
+
+  body {
+    background: var(--color-background);
+    color: var(--color-foreground);
+  }
+}
+
+/* Container queries so cards/layouts can respond to their own container
+   (e.g. <ItineraryBoard />/<DayColumn />) instead of only the viewport. */
+.cq {
+  container-type: inline-size;
 }
