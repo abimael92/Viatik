@@ -1,0 +1,41 @@
+- generic [active] [ref=f4e1]:
+  - generic [ref=f4e2]:
+    - link "Skip to content" [ref=f4e3] [cursor=pointer]:
+      - /url: "#main-content"
+    - complementary [ref=f4e4]:
+      - link "V Viatik" [ref=f4e5] [cursor=pointer]:
+        - /url: /trips
+        - generic [ref=f4e6]: V
+        - text: Viatik
+      - navigation "Main navigation" [ref=f4e8]:
+        - link "Trips" [ref=f4e9] [cursor=pointer]:
+          - /url: /trips
+        - link "Contacts" [ref=f4e12] [cursor=pointer]:
+          - /url: /contacts
+        - link "Settings" [ref=f4e17] [cursor=pointer]:
+          - /url: /settings
+      - generic "4 local changes waiting to sync" [ref=f4e21]:
+        - generic [ref=f4e24]: 4 pending
+        - generic [ref=f4e25]: "4"
+      - generic [ref=f4e26]: Aby Garcia
+    - main [ref=f4e32]:
+      - generic [ref=f4e33]:
+        - generic [ref=f4e34]:
+          - generic [ref=f4e35]:
+            - paragraph [ref=f4e36]: Your journeys
+            - heading "Where are you going next?" [level=1] [ref=f4e37]
+            - paragraph [ref=f4e38]: Keep plans, costs, and memories together—even offline.
+          - button "Create trip" [ref=f4e39]
+        - textbox "Search trips" [ref=f4e41]:
+          - /placeholder: Search by trip or destination
+        - region [ref=f4e42]:
+          - heading "Upcoming trips" [level=2] [ref=f4e43]
+          - link [ref=f4e45] [cursor=pointer]:
+            - /url: /trips/0338e510-ede8-4493-8978-5fca638f2106
+            - generic [ref=f4e47]:
+              - heading "test" [level=3] [ref=f4e48]
+              - generic [ref=f4e49]:
+                - paragraph [ref=f4e50]: az
+                - paragraph [ref=f4e54]: Sep 9, 2026 – Sep 24, 2026
+  - button "Open Next.js Dev Tools" [ref=f4e62] [cursor=pointer]
+  - alert [ref=f4e66]

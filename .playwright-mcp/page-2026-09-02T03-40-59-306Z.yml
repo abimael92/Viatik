@@ -1,0 +1,51 @@
+- generic [active] [ref=f1e1]:
+  - generic [ref=f1e2]:
+    - link "Skip to content" [ref=f1e3] [cursor=pointer]:
+      - /url: "#main-content"
+    - complementary [ref=f1e4]:
+      - link "V Viatik" [ref=f1e5] [cursor=pointer]:
+        - /url: /trips
+        - generic [ref=f1e6]: V
+        - text: Viatik
+      - navigation "Main navigation" [ref=f1e8]:
+        - link "Trips" [ref=f1e9] [cursor=pointer]:
+          - /url: /trips
+        - link "Contacts" [ref=f1e12] [cursor=pointer]:
+          - /url: /contacts
+        - link "Settings" [ref=f1e17] [cursor=pointer]:
+          - /url: /settings
+      - generic "5 local changes waiting to sync" [ref=f1e21]:
+        - generic [ref=f1e24]: 5 pending
+        - generic [ref=f1e25]: "5"
+      - generic [ref=f1e26]: Aby Garcia
+    - main [ref=f1e32]:
+      - generic [ref=f1e33]:
+        - generic [ref=f1e34]:
+          - generic [ref=f1e35]:
+            - paragraph [ref=f1e36]: Your journeys
+            - heading "Where are you going next?" [level=1] [ref=f1e37]
+            - paragraph [ref=f1e38]: Keep plans, costs, and memories together—even offline.
+          - button "Create trip" [ref=f1e39]
+        - textbox "Search trips" [ref=f1e41]:
+          - /placeholder: Search by trip or destination
+        - region [ref=f1e42]:
+          - heading "Upcoming trips" [level=2] [ref=f1e43]
+          - link [ref=f1e45] [cursor=pointer]:
+            - /url: /trips/0338e510-ede8-4493-8978-5fca638f2106
+            - generic [ref=f1e47]:
+              - heading "test" [level=3] [ref=f1e48]
+              - generic [ref=f1e49]:
+                - paragraph [ref=f1e50]: az
+                - paragraph [ref=f1e54]: Sep 9, 2026 – Sep 24, 2026
+  - generic [ref=f1e61] [cursor=pointer]:
+    - button "Open Next.js Dev Tools" [ref=f1e62]
+    - generic [ref=f1e66]:
+      - button "Open issues overlay" [ref=f1e67]:
+        - generic [ref=f1e68]:
+          - generic [aria-hidden] [ref=f1e69]: "2"
+          - generic [ref=f1e70]: "3"
+        - generic [ref=f1e71]:
+          - text: Issue
+          - generic [aria-hidden] [ref=f1e72]: s
+      - button "Collapse issues badge" [ref=f1e73]
+  - alert [ref=f1e76]

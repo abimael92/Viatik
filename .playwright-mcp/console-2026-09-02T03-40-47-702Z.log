@@ -1,0 +1,60 @@
+[     172ms] [LOG] [Fast Refresh] done in 12ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[     246ms] [LOG] [Fast Refresh] done in 12ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[     295ms] [LOG] [Fast Refresh] done in 12ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[     334ms] [LOG] [Fast Refresh] done in 12ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[     385ms] [LOG] [Fast Refresh] done in 12ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[     440ms] [LOG] %c Console Ninja extension is connected to Next.js browser, background: rgb(30,30,30); color: rgb(255,213,92) see https://tinyurl.com/2vt8jxzw for more info. @ :0
+[     443ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[     449ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[     482ms] [INFO] [2026-09-02T03:40:48.183Z] INFO: Starting sync engine @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[     486ms] [INFO] [2026-09-02T03:40:48.187Z] INFO: Stopping sync engine @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[     486ms] [INFO] [2026-09-02T03:40:48.188Z] INFO: Starting sync engine @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[     514ms] [INFO] [2026-09-02T03:40:48.216Z] INFO: Processing pending mutations {"count":2} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[    1239ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://spcpdbxripukvqrnsuim.supabase.co/rest/v1/trip_members?on_conflict=id:0
+[    1242ms] [ERROR] [2026-09-02T03:40:48.941Z] ERROR: Supabase operation failed {"context":"upsert tripMember"} Error: new row violates row-level security policy for table "trip_members" @ :0
+[    1243ms] [ERROR] [2026-09-02T03:40:48.944Z] ERROR: Failed to replay mutation {"mutationId":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","entityType":"tripMember","operation":"insert","entityId":"f47f4c89-417a-4139-9944-35be23ef7f8a","attempt":0} Error: new row violates row-level security policy for table "trip_members" @ :0
+[    1243ms] [ERROR] [2026-09-02T03:40:48.944Z] ERROR: Mutation failed, marking as failed {"mutationId":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","entityType":"tripMember","attempts":1} Error: new row violates row-level security policy for table "trip_members" @ :0
+[    2442ms] [INFO] [2026-09-02T03:40:50.143Z] INFO: Sync completed {"duration":1958,"successCount":1,"failureCount":1,"skippedCount":0,"remainingPending":5,"status":"error","diagnostics":{"totalAttempts":1,"successfulSyncs":0,"failedSyncs":1,"averageDuration":1958}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   25661ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   25717ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   25755ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   25803ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   25866ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   25913ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   25960ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   26018ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   26065ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   26113ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   26176ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   26223ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   26274ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   26327ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   26380ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   26431ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   26493ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   26543ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   26628ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   26678ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   26735ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   26786ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   26863ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   26912ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   26959ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   27038ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   27095ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   27146ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   27222ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   27277ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   27325ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   27413ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   27463ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   27513ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   27592ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   27688ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   27736ms] [LOG] [Fast Refresh] done in 4ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   30495ms] [INFO] [2026-09-02T03:41:18.197Z] INFO: Processing pending mutations {"count":1} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   35776ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://spcpdbxripukvqrnsuim.supabase.co/rest/v1/trip_members?on_conflict=id:0
+[   35777ms] [ERROR] [2026-09-02T03:41:23.478Z] ERROR: Supabase operation failed {"context":"upsert tripMember"} Error: new row violates row-level security policy for table "trip_members" @ :0
+[   35778ms] [ERROR] [2026-09-02T03:41:23.479Z] ERROR: Failed to replay mutation {"mutationId":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","entityType":"tripMember","operation":"insert","entityId":"f47f4c89-417a-4139-9944-35be23ef7f8a","attempt":1} Error: new row violates row-level security policy for table "trip_members" @ :0
+[   35778ms] [ERROR] [2026-09-02T03:41:23.479Z] ERROR: Mutation failed, marking as failed {"mutationId":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","entityType":"tripMember","attempts":2} Error: new row violates row-level security policy for table "trip_members" @ :0
+[   37529ms] [INFO] [2026-09-02T03:41:25.230Z] INFO: Sync completed {"duration":7040,"successCount":0,"failureCount":1,"skippedCount":0,"remainingPending":1,"status":"error","diagnostics":{"totalAttempts":3,"successfulSyncs":0,"failedSyncs":2,"averageDuration":4499}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782

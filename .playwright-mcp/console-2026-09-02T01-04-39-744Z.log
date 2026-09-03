@@ -1,0 +1,1332 @@
+[     105ms] [LOG] %c Console Ninja extension is connected to Next.js browser, background: rgb(30,30,30); color: rgb(255,213,92) see https://tinyurl.com/2vt8jxzw for more info. @ :0
+[     118ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[     143ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  141098ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  141140ms] [LOG] [Fast Refresh] done in 6ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  141342ms] [LOG] [Fast Refresh] done in 6ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  141507ms] [LOG] [Fast Refresh] done in 6ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  141718ms] [LOG] [Fast Refresh] done in 6ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  145494ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  145541ms] [LOG] [Fast Refresh] done in 12ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  145697ms] [LOG] [Fast Refresh] done in 12ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  145845ms] [LOG] [Fast Refresh] done in 12ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  145988ms] [LOG] [Fast Refresh] done in 12ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  155891ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  155975ms] [LOG] [Fast Refresh] done in 41ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  156188ms] [LOG] [Fast Refresh] done in 41ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  156259ms] [LOG] [Fast Refresh] done in 41ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  156326ms] [LOG] [Fast Refresh] done in 41ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  156468ms] [LOG] [Fast Refresh] done in 41ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  160762ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  160807ms] [LOG] [Fast Refresh] done in 9ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  160938ms] [LOG] [Fast Refresh] done in 9ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  161095ms] [LOG] [Fast Refresh] done in 9ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  161266ms] [LOG] [Fast Refresh] done in 9ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  167827ms] [LOG] [Fast Refresh] done in 7027ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  168093ms] [LOG] [Fast Refresh] done in 7027ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  168231ms] [LOG] [Fast Refresh] done in 7027ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  168369ms] [LOG] [Fast Refresh] done in 7027ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  172535ms] [LOG] [Fast Refresh] done in 11737ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  172693ms] [LOG] [Fast Refresh] done in 11737ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  172852ms] [LOG] [Fast Refresh] done in 11737ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  173002ms] [LOG] [Fast Refresh] done in 11737ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  178069ms] [LOG] [Fast Refresh] done in 17270ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  178286ms] [LOG] [Fast Refresh] done in 17270ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  178442ms] [LOG] [Fast Refresh] done in 17270ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  178583ms] [LOG] [Fast Refresh] done in 17270ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  244893ms] [LOG] [Fast Refresh] done in 17270ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  249292ms] [LOG] [Fast Refresh] done in 17270ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  313807ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  313865ms] [LOG] [Fast Refresh] done in 17ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  314191ms] [LOG] [Fast Refresh] done in 17ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  314360ms] [LOG] [Fast Refresh] done in 17ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  314508ms] [LOG] [Fast Refresh] done in 17ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  317165ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  317221ms] [LOG] [Fast Refresh] done in 17ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  317429ms] [LOG] [Fast Refresh] done in 17ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  317609ms] [LOG] [Fast Refresh] done in 17ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  317751ms] [LOG] [Fast Refresh] done in 17ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  325647ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  325704ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  325948ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  326088ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  326226ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  329918ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  329955ms] [LOG] [Fast Refresh] done in 6ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  330133ms] [LOG] [Fast Refresh] done in 6ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  330281ms] [LOG] [Fast Refresh] done in 6ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  330424ms] [LOG] [Fast Refresh] done in 6ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  338497ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  338540ms] [LOG] [Fast Refresh] done in 9ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  338718ms] [LOG] [Fast Refresh] done in 9ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  338864ms] [LOG] [Fast Refresh] done in 9ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  339011ms] [LOG] [Fast Refresh] done in 9ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  346651ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  346695ms] [LOG] [Fast Refresh] done in 9ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  346873ms] [LOG] [Fast Refresh] done in 9ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  347014ms] [LOG] [Fast Refresh] done in 9ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  347179ms] [LOG] [Fast Refresh] done in 9ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  440947ms] [LOG] [Fast Refresh] done in 9ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  448129ms] [LOG] [Fast Refresh] done in 9ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  449406ms] [LOG] [Fast Refresh] done in 9ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  450272ms] [LOG] [Fast Refresh] done in 9ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  450439ms] [LOG] [Fast Refresh] done in 9ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  450582ms] [LOG] [Fast Refresh] done in 9ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  474694ms] [LOG] [Fast Refresh] done in 9ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  475281ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  475674ms] [LOG] [Fast Refresh] done in 494ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  476055ms] [INFO] [2026-09-02T01:12:35.798Z] INFO: Starting sync engine @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  476063ms] [INFO] [2026-09-02T01:12:35.806Z] INFO: Stopping sync engine @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  476063ms] [INFO] [2026-09-02T01:12:35.807Z] INFO: Starting sync engine @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  476085ms] [INFO] [2026-09-02T01:12:35.828Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  477754ms] [INFO] [2026-09-02T01:12:37.497Z] INFO: Sync completed {"duration":1696,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":1,"successfulSyncs":1,"failedSyncs":0,"averageDuration":1696}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  698197ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  698272ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  698668ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  698829ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  698968ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  714105ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  716069ms] [INFO] [2026-09-02T01:16:35.813Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  716373ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  716802ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  716938ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  717196ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  717350ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  717487ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  717639ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  717780ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  717858ms] [INFO] [2026-09-02T01:16:37.601Z] INFO: Sync completed {"duration":1791,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":10,"successfulSyncs":2,"failedSyncs":0,"averageDuration":1743.5}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  717920ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  720313ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  746069ms] [INFO] [2026-09-02T01:17:05.813Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  746279ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  746450ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  746690ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  746832ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  746973ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  747114ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  747244ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  747377ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  747462ms] [INFO] [2026-09-02T01:17:07.205Z] INFO: Sync completed {"duration":1394,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":11,"successfulSyncs":3,"failedSyncs":0,"averageDuration":1627}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  747529ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  776071ms] [INFO] [2026-09-02T01:17:35.814Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  776328ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  776482ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  776625ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  776765ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  776908ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  777050ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  777196ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  777351ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  777426ms] [INFO] [2026-09-02T01:17:37.169Z] INFO: Sync completed {"duration":1358,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":12,"successfulSyncs":4,"failedSyncs":0,"averageDuration":1559.75}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  777492ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  806074ms] [INFO] [2026-09-02T01:18:05.817Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  806315ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  806475ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  806648ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  806794ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  806942ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  807087ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  807223ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  807411ms] [LOG] [Fast Refresh] done in 27ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  807458ms] [INFO] [2026-09-02T01:18:07.201Z] INFO: Sync completed {"duration":1391,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":13,"successfulSyncs":5,"failedSyncs":0,"averageDuration":1526}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  807740ms] [LOG] %c Console Ninja extension is connected to Next.js browser, background: rgb(30,30,30); color: rgb(255,213,92) see https://tinyurl.com/2vt8jxzw for more info. @ :0
+[  807744ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  807758ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  807796ms] Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>
+      <LoadingBoundary name="/" loading={null}>
+        <HTTPAccessFallbackBoundary notFound={{...}} forbidden={undefined} unauthorized={undefined}>
+          <HTTPAccessFallbackErrorBoundary pathname="/trips" notFound={{...}} forbidden={undefined} ...>
+            <RedirectBoundary>
+              <RedirectErrorBoundary router={{...}}>
+                <InnerLayoutRouter url="/trips" tree={[...]} params={{}} cacheNode={{rsc:{...}, ...}} segmentPath={[...]} ...>
+                  <SegmentViewNode type="layout" pagePath="(app)/layo...">
+                    <SegmentTrieNode>
+                    <script>
+                    <script>
+                    <script>
+                    <script>
+                    <script>
+                    <script>
+                    <script>
+                    <script>
+                    <AuthenticatedLayout>
+                      <SyncProvider userId="94ff7e22-1...">
+                        <AppShell userLabel="Aby Garcia">
+                          <div className="min-h-dvh ...">
+                            <a>
++                           <aside
++                             className="fixed inset-y-0 left-0 hidden w-64 border-r bg-card p-5 lg:flex lg:flex-col"
++                           >
+-                           <div
+-                             role="status"
+-                             className="bg-accent px-4 py-2 text-center text-sm text-accent-foreground"
+-                           >
+                            ...
+                ...
+    ...
+
+    at throwOnHydrationMismatch (http://localhost:3000/_next/static/chunks/112__next_dist_compiled_react-dom_0fo5_73._.js:3120:56)
+    at beginWork (http://localhost:3000/_next/static/chunks/112__next_dist_compiled_react-dom_0fo5_73._.js:6585:918)
+    at runWithFiberInDEV (http://localhost:3000/_next/static/chunks/112__next_dist_compiled_react-dom_0fo5_73._.js:761:74)
+    at performUnitOfWork (http://localhost:3000/_next/static/chunks/112__next_dist_compiled_react-dom_0fo5_73._.js:9385:97)
+    at workLoopConcurrentByScheduler (http://localhost:3000/_next/static/chunks/112__next_dist_compiled_react-dom_0fo5_73._.js:9381:58)
+    at renderRootConcurrent (http://localhost:3000/_next/static/chunks/112__next_dist_compiled_react-dom_0fo5_73._.js:9364:71)
+    at performWorkOnRoot (http://localhost:3000/_next/static/chunks/112__next_dist_compiled_react-dom_0fo5_73._.js:8891:150)
+    at performWorkOnRootViaSchedulerTask (http://localhost:3000/_next/static/chunks/112__next_dist_compiled_react-dom_0fo5_73._.js:10085:9)
+    at MessagePort.performWorkUntilDeadline (http://localhost:3000/_next/static/chunks/112__next_dist_compiled_008ppkl._.js:2647:64)
+[  807796ms] [INFO] [2026-09-02T01:18:07.539Z] INFO: Starting sync engine @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  807802ms] [INFO] [2026-09-02T01:18:07.545Z] INFO: Stopping sync engine @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  807802ms] [INFO] [2026-09-02T01:18:07.546Z] INFO: Starting sync engine @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  807820ms] [INFO] [2026-09-02T01:18:07.564Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  808769ms] [INFO] [2026-09-02T01:18:08.513Z] INFO: Sync completed {"duration":972,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":1,"successfulSyncs":1,"failedSyncs":0,"averageDuration":972}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  861843ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  861887ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  862045ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  862078ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  862242ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  862382ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  865977ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  866028ms] [LOG] [Fast Refresh] done in 17ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  866194ms] [LOG] [Fast Refresh] done in 17ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  866351ms] [LOG] [Fast Refresh] done in 17ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  866511ms] [LOG] [Fast Refresh] done in 17ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  867809ms] [INFO] [2026-09-02T01:19:07.553Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  868064ms] [LOG] [Fast Refresh] done in 17ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  868551ms] [LOG] [Fast Refresh] done in 17ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  868756ms] [LOG] [Fast Refresh] done in 17ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  868953ms] [LOG] [Fast Refresh] done in 17ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  869149ms] [LOG] [Fast Refresh] done in 17ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  869345ms] [LOG] [Fast Refresh] done in 17ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  869535ms] [LOG] [Fast Refresh] done in 17ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  869734ms] [LOG] [Fast Refresh] done in 17ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  869865ms] [INFO] [2026-09-02T01:19:09.608Z] INFO: Sync completed {"duration":2060,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":4,"successfulSyncs":2,"failedSyncs":0,"averageDuration":1516}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  869930ms] [LOG] [Fast Refresh] done in 17ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  870512ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  870551ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  870691ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  870801ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  870950ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  871091ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  877323ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  877359ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  877493ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  877726ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  877867ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  878012ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  883896ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  883943ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  884109ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  884257ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  884401ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  895886ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  895933ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  896105ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  896246ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  896383ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  897806ms] [INFO] [2026-09-02T01:19:37.550Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  898056ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  898268ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  898466ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  898685ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  898875ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  899181ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  899418ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  899612ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  899768ms] [INFO] [2026-09-02T01:19:39.512Z] INFO: Sync completed {"duration":1963,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":5,"successfulSyncs":3,"failedSyncs":0,"averageDuration":1665}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  899836ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  902170ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  902216ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  902406ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  902441ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  902519ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  902675ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  927807ms] [INFO] [2026-09-02T01:20:07.551Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  928132ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  928356ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  928567ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  928756ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  928959ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  929178ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  929399ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  929597ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  929743ms] [INFO] [2026-09-02T01:20:09.486Z] INFO: Sync completed {"duration":1937,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":6,"successfulSyncs":4,"failedSyncs":0,"averageDuration":1733}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  929810ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  934237ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  957820ms] [INFO] [2026-09-02T01:20:37.563Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  958101ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  958343ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  958501ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  958748ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  958939ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  959161ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  959357ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  959552ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  959694ms] [INFO] [2026-09-02T01:20:39.438Z] INFO: Sync completed {"duration":1877,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":7,"successfulSyncs":5,"failedSyncs":0,"averageDuration":1761.8}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  959761ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  987844ms] [INFO] [2026-09-02T01:21:07.587Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  988222ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  988452ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  988661ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  988928ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  989131ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  989364ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  989556ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  989748ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  989867ms] [INFO] [2026-09-02T01:21:09.610Z] INFO: Sync completed {"duration":2030,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":8,"successfulSyncs":6,"failedSyncs":0,"averageDuration":1806.5}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  989932ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1017842ms] [INFO] [2026-09-02T01:21:37.586Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1018106ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1018302ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1018629ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1018828ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1019062ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1019281ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1019477ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1019668ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1019795ms] [INFO] [2026-09-02T01:21:39.538Z] INFO: Sync completed {"duration":1955,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":9,"successfulSyncs":7,"failedSyncs":0,"averageDuration":1827.7142857142858}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1019861ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1047847ms] [INFO] [2026-09-02T01:22:07.590Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1048102ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1048320ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1048511ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1048713ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1048909ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1049122ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1049284ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1049461ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1049598ms] [INFO] [2026-09-02T01:22:09.342Z] INFO: Sync completed {"duration":1757,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":10,"successfulSyncs":8,"failedSyncs":0,"averageDuration":1818.875}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1049665ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1077842ms] [INFO] [2026-09-02T01:22:37.586Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1078079ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1078282ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1078476ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1078671ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1078864ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1079059ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1079281ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1079476ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1079625ms] [INFO] [2026-09-02T01:22:39.369Z] INFO: Sync completed {"duration":1785,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":11,"successfulSyncs":9,"failedSyncs":0,"averageDuration":1815.111111111111}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1079668ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1107847ms] [INFO] [2026-09-02T01:23:07.590Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1108104ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1108288ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1108479ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1108692ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1108884ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1109128ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1109321ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1109522ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1109647ms] [INFO] [2026-09-02T01:23:09.391Z] INFO: Sync completed {"duration":1806,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":12,"successfulSyncs":10,"failedSyncs":0,"averageDuration":1814.2}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1109714ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1137844ms] [INFO] [2026-09-02T01:23:37.587Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1138233ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1138446ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1138642ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1138845ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1139043ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1139241ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1139435ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1139623ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1139742ms] [INFO] [2026-09-02T01:23:39.485Z] INFO: Sync completed {"duration":1900,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":13,"successfulSyncs":11,"failedSyncs":0,"averageDuration":1822}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1139806ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1167850ms] [INFO] [2026-09-02T01:24:07.593Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1168109ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1168305ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1168525ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1168725ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1169025ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1169218ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1169413ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1169615ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1169752ms] [INFO] [2026-09-02T01:24:09.495Z] INFO: Sync completed {"duration":1909,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":14,"successfulSyncs":12,"failedSyncs":0,"averageDuration":1829.25}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1169817ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1197846ms] [INFO] [2026-09-02T01:24:37.589Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1198096ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1198293ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1198507ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1198701ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1198901ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1199096ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1199298ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1199507ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1199636ms] [INFO] [2026-09-02T01:24:39.379Z] INFO: Sync completed {"duration":1792,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":15,"successfulSyncs":13,"failedSyncs":0,"averageDuration":1826.3846153846155}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1199703ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1227849ms] [INFO] [2026-09-02T01:25:07.592Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1228105ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1228323ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1228515ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1228714ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1228913ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1229137ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1229332ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1229534ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1229679ms] [INFO] [2026-09-02T01:25:09.423Z] INFO: Sync completed {"duration":1835,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":16,"successfulSyncs":14,"failedSyncs":0,"averageDuration":1827}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1229743ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1257846ms] [INFO] [2026-09-02T01:25:37.590Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1258099ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1258296ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1258496ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1258709ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1258907ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1259127ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1259348ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1259548ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1259678ms] [INFO] [2026-09-02T01:25:39.422Z] INFO: Sync completed {"duration":1834,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":17,"successfulSyncs":15,"failedSyncs":0,"averageDuration":1827.4666666666667}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1259744ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1287851ms] [INFO] [2026-09-02T01:26:07.594Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1288099ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1288287ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1288472ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1288686ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1288851ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1289041ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1289245ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1289438ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1289574ms] [INFO] [2026-09-02T01:26:09.317Z] INFO: Sync completed {"duration":1729,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":18,"successfulSyncs":16,"failedSyncs":0,"averageDuration":1821.3125}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1289644ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1317846ms] [INFO] [2026-09-02T01:26:37.590Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1318094ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1318285ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1318487ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1318686ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1318881ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1319077ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1319278ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1319460ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1319598ms] [INFO] [2026-09-02T01:26:39.341Z] INFO: Sync completed {"duration":1753,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":19,"successfulSyncs":17,"failedSyncs":0,"averageDuration":1817.2941176470588}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1319647ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1347851ms] [INFO] [2026-09-02T01:27:07.594Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1348100ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1348296ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1348638ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1348830ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1349021ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1349229ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1349436ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1349632ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1349792ms] [INFO] [2026-09-02T01:27:09.535Z] INFO: Sync completed {"duration":1946,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":20,"successfulSyncs":18,"failedSyncs":0,"averageDuration":1824.4444444444443}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1349858ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1377847ms] [INFO] [2026-09-02T01:27:37.591Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1378091ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1378295ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1378475ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1378668ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1378861ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1379058ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1379254ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1379443ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1379559ms] [INFO] [2026-09-02T01:27:39.303Z] INFO: Sync completed {"duration":1714,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":21,"successfulSyncs":19,"failedSyncs":0,"averageDuration":1818.6315789473683}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1379625ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1407852ms] [INFO] [2026-09-02T01:28:07.595Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1408098ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1408295ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1408509ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1408693ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1408894ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1409056ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1409262ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1409481ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1409606ms] [INFO] [2026-09-02T01:28:09.349Z] INFO: Sync completed {"duration":1760,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":22,"successfulSyncs":20,"failedSyncs":0,"averageDuration":1815.7}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1409670ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1437849ms] [INFO] [2026-09-02T01:28:37.592Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1438053ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1438256ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1438432ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1438648ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1438842ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1439041ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1439279ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1439475ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1439606ms] [INFO] [2026-09-02T01:28:39.350Z] INFO: Sync completed {"duration":1759,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":23,"successfulSyncs":21,"failedSyncs":0,"averageDuration":1813}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1439673ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1467852ms] [INFO] [2026-09-02T01:29:07.596Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1468102ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1468345ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1468550ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1468744ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1468947ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1469142ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1469328ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1469534ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1469671ms] [INFO] [2026-09-02T01:29:09.414Z] INFO: Sync completed {"duration":1823,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":24,"successfulSyncs":22,"failedSyncs":0,"averageDuration":1813.4545454545455}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1469735ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1479711ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1479752ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1479947ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1480075ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1480213ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1497850ms] [INFO] [2026-09-02T01:29:37.594Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1498112ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1498301ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1498517ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1498720ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1498938ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1499132ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1499340ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1499537ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1499667ms] [INFO] [2026-09-02T01:29:39.411Z] INFO: Sync completed {"duration":1819,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":25,"successfulSyncs":23,"failedSyncs":0,"averageDuration":1813.695652173913}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1499735ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1527850ms] [INFO] [2026-09-02T01:30:07.594Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1528089ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1528378ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1528592ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1528787ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1528995ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1529192ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1529401ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1529590ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1529687ms] [INFO] [2026-09-02T01:30:09.431Z] INFO: Sync completed {"duration":1839,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":26,"successfulSyncs":24,"failedSyncs":0,"averageDuration":1814.75}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1529753ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1557851ms] [INFO] [2026-09-02T01:30:37.595Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1558108ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1558307ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1558509ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1558696ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1558895ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1559094ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1559306ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1559504ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1559635ms] [INFO] [2026-09-02T01:30:39.378Z] INFO: Sync completed {"duration":1787,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":27,"successfulSyncs":25,"failedSyncs":0,"averageDuration":1813.64}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1559699ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1587328ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1587851ms] [INFO] [2026-09-02T01:31:07.594Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1588091ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1588488ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1588684ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1588882ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1589051ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1589255ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1589499ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1589696ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1589821ms] [INFO] [2026-09-02T01:31:09.564Z] INFO: Sync completed {"duration":1972,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":28,"successfulSyncs":26,"failedSyncs":0,"averageDuration":1819.7307692307693}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1589887ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1594261ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1602765ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1602808ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1602990ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1603122ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1603269ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1606990ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1607031ms] [LOG] [Fast Refresh] done in 6ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1607181ms] [LOG] [Fast Refresh] done in 6ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1607341ms] [LOG] [Fast Refresh] done in 6ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1607492ms] [LOG] [Fast Refresh] done in 6ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1612564ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1612607ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1612769ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1612891ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1613055ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1617851ms] [INFO] [2026-09-02T01:31:37.594Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1618027ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1618099ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1618226ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1618306ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1618351ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1618504ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1618734ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1618960ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1619160ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1619356ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1619544ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1619707ms] [INFO] [2026-09-02T01:31:39.451Z] INFO: Sync completed {"duration":1858,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":29,"successfulSyncs":27,"failedSyncs":0,"averageDuration":1821.148148148148}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1619772ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1626812ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1626854ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1626999ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1627141ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1627286ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1632482ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1632532ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1632682ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1632814ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1632953ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1638777ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1638823ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1638970ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1639120ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1639261ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1647851ms] [INFO] [2026-09-02T01:32:07.594Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1648104ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1648317ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1648523ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1648735ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1648892ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1649092ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1649372ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1649566ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1649716ms] [INFO] [2026-09-02T01:32:09.459Z] INFO: Sync completed {"duration":1867,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":30,"successfulSyncs":28,"failedSyncs":0,"averageDuration":1822.7857142857142}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1649779ms] [LOG] [Fast Refresh] done in 7ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1652168ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1652171ms] [WARNING] Warning: Failed to re-render. We will retry on the next Fast Refresh event.
+Error: ❌ Attempted to access a server-side environment variable on the client @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1652245ms] [LOG] [Fast Refresh] done in 14ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1652285ms] [LOG] [Fast Refresh] done in 14ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1652450ms] [LOG] [Fast Refresh] done in 14ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1652553ms] [INFO] [2026-09-02T01:32:12.297Z] INFO: Stopping sync engine @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1652555ms] [INFO] [2026-09-02T01:32:12.298Z] INFO: Starting sync engine @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1652557ms] [INFO] [2026-09-02T01:32:12.300Z] INFO: Stopping sync engine @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1652557ms] [INFO] [2026-09-02T01:32:12.301Z] INFO: Starting sync engine @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1652604ms] [LOG] [Fast Refresh] done in 14ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1652750ms] [LOG] [Fast Refresh] done in 14ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1657615ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1657616ms] [WARNING] Warning: Failed to re-render. We will retry on the next Fast Refresh event.
+Error: ❌ Attempted to access a server-side environment variable on the client @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1657678ms] [LOG] [Fast Refresh] done in 19ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1657714ms] [LOG] [Fast Refresh] done in 19ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1657869ms] [INFO] [2026-09-02T01:32:17.613Z] INFO: Stopping sync engine @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1657870ms] [INFO] [2026-09-02T01:32:17.614Z] INFO: Starting sync engine @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1657871ms] [INFO] [2026-09-02T01:32:17.615Z] INFO: Stopping sync engine @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1657872ms] [INFO] [2026-09-02T01:32:17.615Z] INFO: Starting sync engine @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1657881ms] [LOG] [Fast Refresh] done in 19ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1658026ms] [LOG] [Fast Refresh] done in 19ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1658176ms] [LOG] [Fast Refresh] done in 19ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1737468ms] [LOG] [Fast Refresh] done in 19ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1742354ms] [LOG] [Fast Refresh] done in 19ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1748632ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1748673ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1748959ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1749105ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1749255ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1754866ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1754906ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1755063ms] [INFO] [2026-09-02T01:33:54.806Z] INFO: Stopping sync engine @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1755064ms] [INFO] [2026-09-02T01:33:54.807Z] INFO: Starting sync engine @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1755065ms] [INFO] [2026-09-02T01:33:54.809Z] INFO: Stopping sync engine @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1755066ms] [INFO] [2026-09-02T01:33:54.809Z] INFO: Starting sync engine @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1755073ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1755218ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1755370ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1759949ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1759986ms] [LOG] [Fast Refresh] done in 1ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1760129ms] [LOG] [Fast Refresh] done in 1ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1760244ms] [LOG] [Fast Refresh] done in 1ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1760405ms] [LOG] [Fast Refresh] done in 1ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1760548ms] [LOG] [Fast Refresh] done in 1ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1764748ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1764790ms] [LOG] [Fast Refresh] done in 2ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1765118ms] [LOG] [Fast Refresh] done in 2ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1765153ms] [LOG] [Fast Refresh] done in 2ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1765301ms] [LOG] [Fast Refresh] done in 2ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1765447ms] [LOG] [Fast Refresh] done in 2ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1769145ms] [LOG] [Fast Refresh] done in 2ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1776261ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1776306ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1776448ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1776594ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1776739ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1782301ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1782344ms] [LOG] [Fast Refresh] done in 6ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1782488ms] [LOG] [Fast Refresh] done in 6ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1782656ms] [LOG] [Fast Refresh] done in 6ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1782797ms] [LOG] [Fast Refresh] done in 6ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1785070ms] [INFO] [2026-09-02T01:34:24.813Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1785417ms] [LOG] [Fast Refresh] done in 6ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1785621ms] [LOG] [Fast Refresh] done in 6ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1785813ms] [LOG] [Fast Refresh] done in 6ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1785908ms] [LOG] [Fast Refresh] done in 6ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1785998ms] [LOG] [Fast Refresh] done in 6ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1786093ms] [LOG] [Fast Refresh] done in 6ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1786196ms] [LOG] [Fast Refresh] done in 6ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1786279ms] [LOG] [Fast Refresh] done in 6ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1786310ms] [INFO] [2026-09-02T01:34:26.053Z] INFO: Sync completed {"duration":1242,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":3,"successfulSyncs":1,"failedSyncs":0,"averageDuration":1242}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1786374ms] [LOG] [Fast Refresh] done in 6ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1788103ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1788136ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1788290ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1788449ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1788590ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1796761ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1796805ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1796958ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1797113ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1797264ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1815076ms] [INFO] [2026-09-02T01:34:54.819Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1815526ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1815699ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1815935ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1816110ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1816240ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1816373ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1816499ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1816631ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1816695ms] [INFO] [2026-09-02T01:34:56.439Z] INFO: Sync completed {"duration":1626,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":4,"successfulSyncs":2,"failedSyncs":0,"averageDuration":1434}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1816758ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1845077ms] [INFO] [2026-09-02T01:35:24.820Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1845367ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1845609ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1845747ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1845897ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1846032ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1846172ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1846315ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1846454ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1846527ms] [INFO] [2026-09-02T01:35:26.270Z] INFO: Sync completed {"duration":1458,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":5,"successfulSyncs":3,"failedSyncs":0,"averageDuration":1442}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1846597ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1875075ms] [INFO] [2026-09-02T01:35:54.819Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1875355ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1875497ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1875626ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1875750ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1875892ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1876021ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1876154ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1876279ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1876343ms] [INFO] [2026-09-02T01:35:56.086Z] INFO: Sync completed {"duration":1273,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":6,"successfulSyncs":4,"failedSyncs":0,"averageDuration":1399.75}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1876412ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1905074ms] [INFO] [2026-09-02T01:36:24.817Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1905286ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1905423ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1905544ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1905680ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1905808ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1906036ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1906211ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1906342ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1906402ms] [INFO] [2026-09-02T01:36:26.145Z] INFO: Sync completed {"duration":1332,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":7,"successfulSyncs":5,"failedSyncs":0,"averageDuration":1386.2}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1906469ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1934682ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1935071ms] [INFO] [2026-09-02T01:36:54.815Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1935286ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1935424ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1935549ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1935673ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1935804ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1935943ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1936147ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1936339ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1936402ms] [INFO] [2026-09-02T01:36:56.146Z] INFO: Sync completed {"duration":1333,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":8,"successfulSyncs":6,"failedSyncs":0,"averageDuration":1377.3333333333333}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1936467ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1950234ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1950372ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1950428ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1964883ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1965047ms] [INFO] [2026-09-02T01:37:24.791Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1965285ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1965422ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1965556ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1965693ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1965824ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1965945ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1966075ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1966201ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1966275ms] [INFO] [2026-09-02T01:37:26.019Z] INFO: Sync completed {"duration":1230,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":9,"successfulSyncs":7,"failedSyncs":0,"averageDuration":1356.2857142857142}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1966342ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1978445ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1978490ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1978581ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1978593ms] [WARNING] Another connection wants to upgrade database 'viatik'. Closing db now to resume the upgrade. @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1978658ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1978701ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1978747ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1978819ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1978884ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1979027ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1979169ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1979311ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1979456ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1991503ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1991646ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1991720ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1991760ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1991969ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1992114ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1992259ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1995041ms] [INFO] [2026-09-02T01:37:54.785Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1995245ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1995372ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1995505ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1995638ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1995768ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1995894ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1996023ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1996228ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1996296ms] [INFO] [2026-09-02T01:37:56.040Z] INFO: Sync completed {"duration":1256,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":10,"successfulSyncs":8,"failedSyncs":0,"averageDuration":1343.75}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 1996355ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2002208ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2002325ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2002404ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2002443ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2002504ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2002540ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2002594ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2002764ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2002912ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2003055ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2003196ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2003344ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2013909ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2013954ms] [LOG] [Fast Refresh] done in 1ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2014123ms] [LOG] [Fast Refresh] done in 1ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2014265ms] [LOG] [Fast Refresh] done in 1ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2014415ms] [LOG] [Fast Refresh] done in 1ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2020369ms] [LOG] [Fast Refresh] done in 1ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2020499ms] [LOG] [Fast Refresh] done in 1ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2020591ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2020632ms] [LOG] [Fast Refresh] done in 2ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2020704ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2020782ms] [LOG] [Fast Refresh] done in 2ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2020839ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2020879ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2020961ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2021110ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2021273ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2021421ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2021559ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2021726ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2021869ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2022039ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2025041ms] [INFO] [2026-09-02T01:38:24.784Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2025239ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2025372ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2025496ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2025629ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2025756ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2025880ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2026007ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2026146ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2026265ms] [INFO] [2026-09-02T01:38:26.009Z] INFO: Sync completed {"duration":1225,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":11,"successfulSyncs":9,"failedSyncs":0,"averageDuration":1330.5555555555557}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2026333ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2030445ms] [LOG] [Fast Refresh] done in 5ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2041879ms] [LOG] [Fast Refresh] done in 20978ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2041948ms] [LOG] [Fast Refresh] done in 20978ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2041979ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2041981ms] [LOG] [Fast Refresh] done in 31ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2042145ms] [LOG] [Fast Refresh] done in 31ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2042402ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2042418ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2055041ms] [INFO] [2026-09-02T01:38:54.785Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2056350ms] [INFO] [2026-09-02T01:38:56.093Z] INFO: Sync completed {"duration":1309,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":12,"successfulSyncs":10,"failedSyncs":0,"averageDuration":1328.4}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2085044ms] [INFO] [2026-09-02T01:39:24.788Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2086292ms] [INFO] [2026-09-02T01:39:26.036Z] INFO: Sync completed {"duration":1251,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":13,"successfulSyncs":11,"failedSyncs":0,"averageDuration":1321.3636363636363}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2115042ms] [INFO] [2026-09-02T01:39:54.786Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2116178ms] [INFO] [2026-09-02T01:39:55.921Z] INFO: Sync completed {"duration":1136,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":14,"successfulSyncs":12,"failedSyncs":0,"averageDuration":1305.9166666666667}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2145042ms] [INFO] [2026-09-02T01:40:24.785Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2146326ms] [INFO] [2026-09-02T01:40:26.069Z] INFO: Sync completed {"duration":1285,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":15,"successfulSyncs":13,"failedSyncs":0,"averageDuration":1304.3076923076924}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2175043ms] [INFO] [2026-09-02T01:40:54.786Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2176248ms] [INFO] [2026-09-02T01:40:55.991Z] INFO: Sync completed {"duration":1205,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":16,"successfulSyncs":14,"failedSyncs":0,"averageDuration":1297.2142857142858}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2205043ms] [INFO] [2026-09-02T01:41:24.787Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2206299ms] [INFO] [2026-09-02T01:41:26.042Z] INFO: Sync completed {"duration":1256,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":17,"successfulSyncs":15,"failedSyncs":0,"averageDuration":1294.4666666666667}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2235042ms] [INFO] [2026-09-02T01:41:54.786Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2236238ms] [INFO] [2026-09-02T01:41:55.981Z] INFO: Sync completed {"duration":1196,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":18,"successfulSyncs":16,"failedSyncs":0,"averageDuration":1288.3125}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2239508ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2239552ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2250190ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2255584ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2255624ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2255779ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2255867ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2255903ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2256039ms] [LOG] [Fast Refresh] done in 8ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2260376ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2260449ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2260602ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2260761ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2260908ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2265042ms] [INFO] [2026-09-02T01:42:24.786Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2265265ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2265388ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2265529ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2265652ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2265772ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2265902ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2266034ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2266181ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2266257ms] [INFO] [2026-09-02T01:42:26.000Z] INFO: Sync completed {"duration":1215,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":19,"successfulSyncs":17,"failedSyncs":0,"averageDuration":1284}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2266323ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2295045ms] [INFO] [2026-09-02T01:42:54.788Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2295254ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2295397ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2295529ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2295664ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2295797ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2295920ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2296062ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2296186ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2296252ms] [INFO] [2026-09-02T01:42:55.995Z] INFO: Sync completed {"duration":1208,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":20,"successfulSyncs":18,"failedSyncs":0,"averageDuration":1279.7777777777778}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2296318ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2325044ms] [INFO] [2026-09-02T01:43:24.787Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2325267ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2325400ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2325533ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2325675ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2325808ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2325961ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2326086ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2326223ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2326280ms] [INFO] [2026-09-02T01:43:26.023Z] INFO: Sync completed {"duration":1237,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":21,"successfulSyncs":19,"failedSyncs":0,"averageDuration":1277.5263157894738}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2326345ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2355046ms] [INFO] [2026-09-02T01:43:54.790Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2355268ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2355421ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2355546ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2355677ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2355809ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2355944ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2356083ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2356217ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2356277ms] [INFO] [2026-09-02T01:43:56.020Z] INFO: Sync completed {"duration":1233,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":22,"successfulSyncs":20,"failedSyncs":0,"averageDuration":1275.3}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2356345ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2385044ms] [INFO] [2026-09-02T01:44:24.787Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2385262ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2385391ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2385524ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2385662ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2385786ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2385912ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2386040ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2386169ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2386227ms] [INFO] [2026-09-02T01:44:25.971Z] INFO: Sync completed {"duration":1184,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":23,"successfulSyncs":21,"failedSyncs":0,"averageDuration":1270.952380952381}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2386295ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2415045ms] [INFO] [2026-09-02T01:44:54.788Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2415407ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2415576ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2415709ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2415843ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2415970ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2416109ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2416239ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2416370ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2416436ms] [INFO] [2026-09-02T01:44:56.179Z] INFO: Sync completed {"duration":1392,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":0,"status":"idle","diagnostics":{"totalAttempts":24,"successfulSyncs":22,"failedSyncs":0,"averageDuration":1276.4545454545455}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2416503ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2429581ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2430146ms] [INFO] [2026-09-02T01:45:09.890Z] INFO: Processing pending mutations {"count":1} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2430381ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2430505ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://spcpdbxripukvqrnsuim.supabase.co/rest/v1/trips?on_conflict=id:0
+[ 2430508ms] [ERROR] [2026-09-02T01:45:10.249Z] ERROR: Supabase operation failed {"context":"upsert trip"} Error: new row violates row-level security policy for table "trips" @ :0
+[ 2430509ms] [ERROR] [2026-09-02T01:45:10.252Z] ERROR: Failed to replay mutation {"mutationId":"aa1fa5af-c59c-48d4-bdf0-8d0d6b30d542","entityType":"trip","operation":"insert","entityId":"8a96eb26-286c-4ee2-84e0-ba36b2cd983f","attempt":0} Error: new row violates row-level security policy for table "trips" @ :0
+[ 2430509ms] [ERROR] [2026-09-02T01:45:10.252Z] ERROR: Mutation failed, marking as failed {"mutationId":"aa1fa5af-c59c-48d4-bdf0-8d0d6b30d542","entityType":"trip","attempts":1} Error: new row violates row-level security policy for table "trips" @ :0
+[ 2430584ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2430739ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2430888ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2431017ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2431145ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2431282ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2431402ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2431522ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2431646ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2431725ms] [INFO] [2026-09-02T01:45:11.468Z] INFO: Sync completed {"duration":1580,"successCount":0,"failureCount":1,"skippedCount":0,"remainingPending":2,"status":"error","diagnostics":{"totalAttempts":25,"successfulSyncs":22,"failedSyncs":1,"averageDuration":1289.6521739130435}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2431725ms] [INFO] [2026-09-02T01:45:11.469Z] INFO: Processing pending mutations {"count":2} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2431784ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2436896ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2436924ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://spcpdbxripukvqrnsuim.supabase.co/rest/v1/trips?on_conflict=id:0
+[ 2436925ms] [ERROR] [2026-09-02T01:45:16.668Z] ERROR: Supabase operation failed {"context":"upsert trip"} Error: new row violates row-level security policy for table "trips" @ :0
+[ 2436925ms] [ERROR] [2026-09-02T01:45:16.668Z] ERROR: Failed to replay mutation {"mutationId":"aa1fa5af-c59c-48d4-bdf0-8d0d6b30d542","entityType":"trip","operation":"insert","entityId":"8a96eb26-286c-4ee2-84e0-ba36b2cd983f","attempt":1} Error: new row violates row-level security policy for table "trips" @ :0
+[ 2436925ms] [ERROR] [2026-09-02T01:45:16.669Z] ERROR: Mutation failed, marking as failed {"mutationId":"aa1fa5af-c59c-48d4-bdf0-8d0d6b30d542","entityType":"trip","attempts":2} Error: new row violates row-level security policy for table "trips" @ :0
+[ 2436986ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2437120ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2437211ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://spcpdbxripukvqrnsuim.supabase.co/rest/v1/trip_members?on_conflict=id:0
+[ 2437211ms] [ERROR] [2026-09-02T01:45:16.955Z] ERROR: Supabase operation failed {"context":"upsert tripMember"} Error: new row violates row-level security policy for table "trip_members" @ :0
+[ 2437212ms] [ERROR] [2026-09-02T01:45:16.955Z] ERROR: Failed to replay mutation {"mutationId":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","entityType":"tripMember","operation":"insert","entityId":"f47f4c89-417a-4139-9944-35be23ef7f8a","attempt":0} Error: new row violates row-level security policy for table "trip_members" @ :0
+[ 2437212ms] [ERROR] [2026-09-02T01:45:16.955Z] ERROR: Mutation failed, marking as failed {"mutationId":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","entityType":"tripMember","attempts":1} Error: new row violates row-level security policy for table "trip_members" @ :0
+[ 2437273ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2437415ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2437551ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2437683ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2437814ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2437944ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2438067ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2438201ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2438328ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2438390ms] [INFO] [2026-09-02T01:45:18.134Z] INFO: Sync completed {"duration":6665,"successCount":0,"failureCount":2,"skippedCount":0,"remainingPending":2,"status":"error","diagnostics":{"totalAttempts":26,"successfulSyncs":22,"failedSyncs":2,"averageDuration":1513.625}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2438457ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2445045ms] [INFO] [2026-09-02T01:45:24.788Z] INFO: Processing pending mutations {"count":2} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2460227ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2460256ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://spcpdbxripukvqrnsuim.supabase.co/rest/v1/trips?on_conflict=id:0
+[ 2460258ms] [ERROR] [2026-09-02T01:45:40.001Z] ERROR: Supabase operation failed {"context":"upsert trip"} Error: new row violates row-level security policy for table "trips" @ :0
+[ 2460258ms] [ERROR] [2026-09-02T01:45:40.002Z] ERROR: Failed to replay mutation {"mutationId":"aa1fa5af-c59c-48d4-bdf0-8d0d6b30d542","entityType":"trip","operation":"insert","entityId":"8a96eb26-286c-4ee2-84e0-ba36b2cd983f","attempt":2} Error: new row violates row-level security policy for table "trips" @ :0
+[ 2460259ms] [ERROR] [2026-09-02T01:45:40.002Z] ERROR: Mutation failed, marking as failed {"mutationId":"aa1fa5af-c59c-48d4-bdf0-8d0d6b30d542","entityType":"trip","attempts":3} Error: new row violates row-level security policy for table "trips" @ :0
+[ 2460326ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2465448ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2465472ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://spcpdbxripukvqrnsuim.supabase.co/rest/v1/trip_members?on_conflict=id:0
+[ 2465475ms] [ERROR] [2026-09-02T01:45:45.218Z] ERROR: Supabase operation failed {"context":"upsert tripMember"} Error: new row violates row-level security policy for table "trip_members" @ :0
+[ 2465475ms] [ERROR] [2026-09-02T01:45:45.219Z] ERROR: Failed to replay mutation {"mutationId":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","entityType":"tripMember","operation":"insert","entityId":"f47f4c89-417a-4139-9944-35be23ef7f8a","attempt":1} Error: new row violates row-level security policy for table "trip_members" @ :0
+[ 2465476ms] [ERROR] [2026-09-02T01:45:45.219Z] ERROR: Mutation failed, marking as failed {"mutationId":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","entityType":"tripMember","attempts":2} Error: new row violates row-level security policy for table "trip_members" @ :0
+[ 2465538ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2465673ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2465806ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2465932ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2466061ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2466186ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2466304ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2466425ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2466563ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2466626ms] [INFO] [2026-09-02T01:45:46.369Z] INFO: Sync completed {"duration":21581,"successCount":0,"failureCount":2,"skippedCount":0,"remainingPending":2,"status":"error","diagnostics":{"totalAttempts":27,"successfulSyncs":22,"failedSyncs":3,"averageDuration":2316.32}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2466694ms] [LOG] [Fast Refresh] done in 135ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2475049ms] [INFO] [2026-09-02T01:45:54.792Z] INFO: Processing pending mutations {"count":2} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2504232ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2504502ms] [LOG] [Fast Refresh] done in 372ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2505499ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://spcpdbxripukvqrnsuim.supabase.co/rest/v1/trips?on_conflict=id:0
+[ 2505499ms] [ERROR] [2026-09-02T01:46:25.243Z] ERROR: Supabase operation failed {"context":"upsert trip"} Error: new row violates row-level security policy for table "trips" @ :0
+[ 2505499ms] [ERROR] [2026-09-02T01:46:25.243Z] ERROR: Failed to replay mutation {"mutationId":"aa1fa5af-c59c-48d4-bdf0-8d0d6b30d542","entityType":"trip","operation":"insert","entityId":"8a96eb26-286c-4ee2-84e0-ba36b2cd983f","attempt":3} Error: new row violates row-level security policy for table "trips" @ :0
+[ 2505500ms] [ERROR] [2026-09-02T01:46:25.243Z] ERROR: Mutation failed, marking as failed {"mutationId":"aa1fa5af-c59c-48d4-bdf0-8d0d6b30d542","entityType":"trip","attempts":4} Error: new row violates row-level security policy for table "trips" @ :0
+[ 2520719ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://spcpdbxripukvqrnsuim.supabase.co/rest/v1/trip_members?on_conflict=id:0
+[ 2520720ms] [ERROR] [2026-09-02T01:46:40.463Z] ERROR: Supabase operation failed {"context":"upsert tripMember"} Error: new row violates row-level security policy for table "trip_members" @ :0
+[ 2520720ms] [ERROR] [2026-09-02T01:46:40.464Z] ERROR: Failed to replay mutation {"mutationId":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","entityType":"tripMember","operation":"insert","entityId":"f47f4c89-417a-4139-9944-35be23ef7f8a","attempt":2} Error: new row violates row-level security policy for table "trip_members" @ :0
+[ 2520721ms] [ERROR] [2026-09-02T01:46:40.464Z] ERROR: Mutation failed, marking as failed {"mutationId":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","entityType":"tripMember","attempts":3} Error: new row violates row-level security policy for table "trip_members" @ :0
+[ 2521935ms] [INFO] [2026-09-02T01:46:41.679Z] INFO: Sync completed {"duration":46891,"successCount":0,"failureCount":2,"skippedCount":0,"remainingPending":2,"status":"error","diagnostics":{"totalAttempts":28,"successfulSyncs":22,"failedSyncs":4,"averageDuration":4030.730769230769}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2521936ms] [INFO] [2026-09-02T01:46:41.680Z] INFO: Processing pending mutations {"count":2} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2582533ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://spcpdbxripukvqrnsuim.supabase.co/rest/v1/trips?on_conflict=id:0
+[ 2582534ms] [ERROR] [2026-09-02T01:47:42.277Z] ERROR: Supabase operation failed {"context":"upsert trip"} Error: new row violates row-level security policy for table "trips" @ :0
+[ 2582534ms] [ERROR] [2026-09-02T01:47:42.278Z] ERROR: Failed to replay mutation {"mutationId":"aa1fa5af-c59c-48d4-bdf0-8d0d6b30d542","entityType":"trip","operation":"insert","entityId":"8a96eb26-286c-4ee2-84e0-ba36b2cd983f","attempt":4} Error: new row violates row-level security policy for table "trips" @ :0
+[ 2582535ms] [ERROR] [2026-09-02T01:47:42.278Z] ERROR: Mutation failed, marking as failed {"mutationId":"aa1fa5af-c59c-48d4-bdf0-8d0d6b30d542","entityType":"trip","attempts":5} Error: new row violates row-level security policy for table "trips" @ :0
+[ 2613013ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://spcpdbxripukvqrnsuim.supabase.co/rest/v1/trip_members?on_conflict=id:0
+[ 2613014ms] [ERROR] [2026-09-02T01:48:12.757Z] ERROR: Supabase operation failed {"context":"upsert tripMember"} Error: new row violates row-level security policy for table "trip_members" @ :0
+[ 2613014ms] [ERROR] [2026-09-02T01:48:12.758Z] ERROR: Failed to replay mutation {"mutationId":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","entityType":"tripMember","operation":"insert","entityId":"f47f4c89-417a-4139-9944-35be23ef7f8a","attempt":3} Error: new row violates row-level security policy for table "trip_members" @ :0
+[ 2613015ms] [ERROR] [2026-09-02T01:48:12.758Z] ERROR: Mutation failed, marking as failed {"mutationId":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","entityType":"tripMember","attempts":4} Error: new row violates row-level security policy for table "trip_members" @ :0
+[ 2614282ms] [INFO] [2026-09-02T01:48:14.025Z] INFO: Sync completed {"duration":92346,"successCount":0,"failureCount":2,"skippedCount":0,"remainingPending":2,"status":"error","diagnostics":{"totalAttempts":29,"successfulSyncs":22,"failedSyncs":5,"averageDuration":7301.666666666667}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2614283ms] [INFO] [2026-09-02T01:48:14.026Z] INFO: Processing pending mutations {"count":2} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2614283ms] [WARNING] [2026-09-02T01:48:14.026Z] WARN: Mutation exceeded max retry attempts {"id":"aa1fa5af-c59c-48d4-bdf0-8d0d6b30d542","attempts":5,"entityType":"trip","lastError":"new row violates row-level security policy for table \"trips\""} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2614283ms] [WARNING] [2026-09-02T01:48:14.026Z] WARN: Skipping mutation that exceeded max retries {"id":"aa1fa5af-c59c-48d4-bdf0-8d0d6b30d542","attempts":5,"entityType":"trip"} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2674864ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://spcpdbxripukvqrnsuim.supabase.co/rest/v1/trip_members?on_conflict=id:0
+[ 2674865ms] [ERROR] [2026-09-02T01:49:14.608Z] ERROR: Supabase operation failed {"context":"upsert tripMember"} Error: new row violates row-level security policy for table "trip_members" @ :0
+[ 2674865ms] [ERROR] [2026-09-02T01:49:14.608Z] ERROR: Failed to replay mutation {"mutationId":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","entityType":"tripMember","operation":"insert","entityId":"f47f4c89-417a-4139-9944-35be23ef7f8a","attempt":4} Error: new row violates row-level security policy for table "trip_members" @ :0
+[ 2674865ms] [ERROR] [2026-09-02T01:49:14.609Z] ERROR: Mutation failed, marking as failed {"mutationId":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","entityType":"tripMember","attempts":5} Error: new row violates row-level security policy for table "trip_members" @ :0
+[ 2676375ms] [INFO] [2026-09-02T01:49:16.119Z] INFO: Sync completed {"duration":62094,"successCount":0,"failureCount":1,"skippedCount":1,"remainingPending":2,"status":"error","diagnostics":{"totalAttempts":30,"successfulSyncs":22,"failedSyncs":6,"averageDuration":9258.535714285714}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2676376ms] [INFO] [2026-09-02T01:49:16.119Z] INFO: Processing pending mutations {"count":2} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2676376ms] [WARNING] [2026-09-02T01:49:16.120Z] WARN: Mutation exceeded max retry attempts {"id":"aa1fa5af-c59c-48d4-bdf0-8d0d6b30d542","attempts":5,"entityType":"trip","lastError":"new row violates row-level security policy for table \"trips\""} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2676376ms] [WARNING] [2026-09-02T01:49:16.120Z] WARN: Skipping mutation that exceeded max retries {"id":"aa1fa5af-c59c-48d4-bdf0-8d0d6b30d542","attempts":5,"entityType":"trip"} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2676376ms] [WARNING] [2026-09-02T01:49:16.120Z] WARN: Mutation exceeded max retry attempts {"id":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","attempts":5,"entityType":"tripMember","lastError":"new row violates row-level security policy for table \"trip_members\""} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2676376ms] [WARNING] [2026-09-02T01:49:16.120Z] WARN: Skipping mutation that exceeded max retries {"id":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","attempts":5,"entityType":"tripMember"} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2677707ms] [INFO] [2026-09-02T01:49:17.450Z] INFO: Sync completed {"duration":1330,"successCount":0,"failureCount":0,"skippedCount":2,"remainingPending":2,"status":"error","diagnostics":{"totalAttempts":31,"successfulSyncs":23,"failedSyncs":6,"averageDuration":8985.137931034482}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2685051ms] [INFO] [2026-09-02T01:49:24.795Z] INFO: Processing pending mutations {"count":2} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2685051ms] [WARNING] [2026-09-02T01:49:24.795Z] WARN: Mutation exceeded max retry attempts {"id":"aa1fa5af-c59c-48d4-bdf0-8d0d6b30d542","attempts":5,"entityType":"trip","lastError":"new row violates row-level security policy for table \"trips\""} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2685052ms] [WARNING] [2026-09-02T01:49:24.795Z] WARN: Skipping mutation that exceeded max retries {"id":"aa1fa5af-c59c-48d4-bdf0-8d0d6b30d542","attempts":5,"entityType":"trip"} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2685052ms] [WARNING] [2026-09-02T01:49:24.795Z] WARN: Mutation exceeded max retry attempts {"id":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","attempts":5,"entityType":"tripMember","lastError":"new row violates row-level security policy for table \"trip_members\""} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2685052ms] [WARNING] [2026-09-02T01:49:24.795Z] WARN: Skipping mutation that exceeded max retries {"id":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","attempts":5,"entityType":"tripMember"} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2686442ms] [INFO] [2026-09-02T01:49:26.185Z] INFO: Sync completed {"duration":1396,"successCount":0,"failureCount":0,"skippedCount":2,"remainingPending":2,"status":"error","diagnostics":{"totalAttempts":32,"successfulSyncs":24,"failedSyncs":6,"averageDuration":8732.166666666666}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2715049ms] [INFO] [2026-09-02T01:49:54.792Z] INFO: Processing pending mutations {"count":2} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2715049ms] [WARNING] [2026-09-02T01:49:54.792Z] WARN: Mutation exceeded max retry attempts {"id":"aa1fa5af-c59c-48d4-bdf0-8d0d6b30d542","attempts":5,"entityType":"trip","lastError":"new row violates row-level security policy for table \"trips\""} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2715049ms] [WARNING] [2026-09-02T01:49:54.792Z] WARN: Skipping mutation that exceeded max retries {"id":"aa1fa5af-c59c-48d4-bdf0-8d0d6b30d542","attempts":5,"entityType":"trip"} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2715049ms] [WARNING] [2026-09-02T01:49:54.792Z] WARN: Mutation exceeded max retry attempts {"id":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","attempts":5,"entityType":"tripMember","lastError":"new row violates row-level security policy for table \"trip_members\""} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2715049ms] [WARNING] [2026-09-02T01:49:54.792Z] WARN: Skipping mutation that exceeded max retries {"id":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","attempts":5,"entityType":"tripMember"} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2716534ms] [INFO] [2026-09-02T01:49:56.278Z] INFO: Sync completed {"duration":1486,"successCount":0,"failureCount":0,"skippedCount":2,"remainingPending":2,"status":"error","diagnostics":{"totalAttempts":33,"successfulSyncs":25,"failedSyncs":6,"averageDuration":8498.41935483871}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2739479ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2739545ms] [LOG] [Fast Refresh] done in 30ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2739697ms] [LOG] [Fast Refresh] done in 30ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2739926ms] [LOG] [Fast Refresh] done in 30ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2740222ms] [LOG] [Fast Refresh] done in 30ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2740482ms] [LOG] [Fast Refresh] done in 30ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2740539ms] [LOG] [Fast Refresh] done in 30ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2740766ms] [LOG] [Fast Refresh] done in 30ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2740920ms] [LOG] [Fast Refresh] done in 30ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2741072ms] [LOG] [Fast Refresh] done in 30ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2741221ms] [LOG] [Fast Refresh] done in 30ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2741397ms] [LOG] [Fast Refresh] done in 30ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2741542ms] [LOG] [Fast Refresh] done in 30ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2741678ms] [LOG] [Fast Refresh] done in 30ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2741779ms] [LOG] [Fast Refresh] done in 30ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2741846ms] [LOG] [Fast Refresh] done in 30ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2741936ms] [LOG] [Fast Refresh] done in 30ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2742058ms] [LOG] [Fast Refresh] done in 30ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2742101ms] [LOG] [Fast Refresh] done in 30ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2742198ms] [LOG] [Fast Refresh] done in 30ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2742310ms] [LOG] [Fast Refresh] done in 30ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2742405ms] [LOG] [Fast Refresh] done in 30ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2742463ms] [LOG] [Fast Refresh] done in 30ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2742597ms] [LOG] [Fast Refresh] done in 30ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2742687ms] [LOG] [Fast Refresh] done in 30ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2742783ms] [LOG] [Fast Refresh] done in 30ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2742885ms] [LOG] [Fast Refresh] done in 30ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2742986ms] [LOG] [Fast Refresh] done in 30ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2743064ms] [LOG] [Fast Refresh] done in 30ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2743167ms] [LOG] [Fast Refresh] done in 30ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2745048ms] [INFO] [2026-09-02T01:50:24.791Z] INFO: Processing pending mutations {"count":2} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2745048ms] [WARNING] [2026-09-02T01:50:24.791Z] WARN: Mutation exceeded max retry attempts {"id":"aa1fa5af-c59c-48d4-bdf0-8d0d6b30d542","attempts":5,"entityType":"trip","lastError":"new row violates row-level security policy for table \"trips\""} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2745048ms] [WARNING] [2026-09-02T01:50:24.791Z] WARN: Skipping mutation that exceeded max retries {"id":"aa1fa5af-c59c-48d4-bdf0-8d0d6b30d542","attempts":5,"entityType":"trip"} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2745048ms] [WARNING] [2026-09-02T01:50:24.791Z] WARN: Mutation exceeded max retry attempts {"id":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","attempts":5,"entityType":"tripMember","lastError":"new row violates row-level security policy for table \"trip_members\""} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2745048ms] [WARNING] [2026-09-02T01:50:24.791Z] WARN: Skipping mutation that exceeded max retries {"id":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","attempts":5,"entityType":"tripMember"} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2745262ms] [LOG] [Fast Refresh] done in 30ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2745417ms] [LOG] [Fast Refresh] done in 30ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2745571ms] [LOG] [Fast Refresh] done in 30ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2745723ms] [LOG] [Fast Refresh] done in 30ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2745799ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2745876ms] [LOG] [Fast Refresh] done in 11ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2746006ms] [LOG] [Fast Refresh] done in 11ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2746053ms] [LOG] [Fast Refresh] done in 11ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2746188ms] [LOG] [Fast Refresh] done in 11ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2746329ms] [LOG] [Fast Refresh] done in 11ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2746414ms] [INFO] [2026-09-02T01:50:26.157Z] INFO: Sync completed {"duration":1367,"successCount":0,"failureCount":0,"skippedCount":2,"remainingPending":2,"status":"error","diagnostics":{"totalAttempts":34,"successfulSyncs":26,"failedSyncs":6,"averageDuration":8275.5625}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2746474ms] [LOG] [Fast Refresh] done in 11ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2752598ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2752640ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2752811ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2752935ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2753078ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2761841ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2771967ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2772109ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2772237ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2772340ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2772379ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2772507ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2772569ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2772696ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2772830ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2772871ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2772942ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2773042ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2773101ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2773194ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2773240ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2773283ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2773340ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2773379ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2773467ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2773568ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2775048ms] [INFO] [2026-09-02T01:50:54.792Z] INFO: Processing pending mutations {"count":2} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2775048ms] [WARNING] [2026-09-02T01:50:54.792Z] WARN: Mutation exceeded max retry attempts {"id":"aa1fa5af-c59c-48d4-bdf0-8d0d6b30d542","attempts":5,"entityType":"trip","lastError":"new row violates row-level security policy for table \"trips\""} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2775048ms] [WARNING] [2026-09-02T01:50:54.792Z] WARN: Skipping mutation that exceeded max retries {"id":"aa1fa5af-c59c-48d4-bdf0-8d0d6b30d542","attempts":5,"entityType":"trip"} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2775048ms] [WARNING] [2026-09-02T01:50:54.792Z] WARN: Mutation exceeded max retry attempts {"id":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","attempts":5,"entityType":"tripMember","lastError":"new row violates row-level security policy for table \"trip_members\""} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2775048ms] [WARNING] [2026-09-02T01:50:54.792Z] WARN: Skipping mutation that exceeded max retries {"id":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","attempts":5,"entityType":"tripMember"} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2775283ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2775458ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2775627ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2775811ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2775956ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2776103ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2776248ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2776414ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2776510ms] [INFO] [2026-09-02T01:50:56.254Z] INFO: Sync completed {"duration":1463,"successCount":0,"failureCount":0,"skippedCount":2,"remainingPending":2,"status":"error","diagnostics":{"totalAttempts":35,"successfulSyncs":27,"failedSyncs":6,"averageDuration":8069.121212121212}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2776571ms] [LOG] [Fast Refresh] done in 10ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2787770ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2787800ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2796309ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2801327ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2801995ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2802143ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2802275ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2802370ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2802409ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2802486ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2802536ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2802635ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2802685ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2802736ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2802775ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2802816ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2802904ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2802948ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2802997ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2803039ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2803085ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2803131ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2803176ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2803231ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2803282ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2803328ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2803370ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2803460ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2803559ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2805048ms] [INFO] [2026-09-02T01:51:24.791Z] INFO: Processing pending mutations {"count":2} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2805048ms] [WARNING] [2026-09-02T01:51:24.791Z] WARN: Mutation exceeded max retry attempts {"id":"aa1fa5af-c59c-48d4-bdf0-8d0d6b30d542","attempts":5,"entityType":"trip","lastError":"new row violates row-level security policy for table \"trips\""} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2805048ms] [WARNING] [2026-09-02T01:51:24.792Z] WARN: Skipping mutation that exceeded max retries {"id":"aa1fa5af-c59c-48d4-bdf0-8d0d6b30d542","attempts":5,"entityType":"trip"} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2805048ms] [WARNING] [2026-09-02T01:51:24.792Z] WARN: Mutation exceeded max retry attempts {"id":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","attempts":5,"entityType":"tripMember","lastError":"new row violates row-level security policy for table \"trip_members\""} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2805048ms] [WARNING] [2026-09-02T01:51:24.792Z] WARN: Skipping mutation that exceeded max retries {"id":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","attempts":5,"entityType":"tripMember"} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2805264ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2805416ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2805566ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2805788ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2805940ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2806082ms] [LOG] [Fast Refresh] done in 3ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2806138ms] [LOG] [Fast Refresh] done in 18330ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2806234ms] [LOG] [Fast Refresh] done in 18330ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2806280ms] [LOG] [Fast Refresh] done in 18330ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2806317ms] [LOG] [Fast Refresh] done in 18330ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2806389ms] [LOG] [Fast Refresh] done in 18330ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2806472ms] [LOG] [Fast Refresh] done in 18330ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2806489ms] [INFO] [2026-09-02T01:51:26.232Z] INFO: Sync completed {"duration":1442,"successCount":0,"failureCount":0,"skippedCount":2,"remainingPending":2,"status":"error","diagnostics":{"totalAttempts":36,"successfulSyncs":28,"failedSyncs":6,"averageDuration":7874.205882352941}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2806548ms] [LOG] [Fast Refresh] done in 18330ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2806616ms] [LOG] [Fast Refresh] done in 18330ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2811696ms] [LOG] [Fast Refresh] done in 23891ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2811843ms] [LOG] [Fast Refresh] done in 23891ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2811948ms] [LOG] [Fast Refresh] done in 23891ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2812087ms] [LOG] [Fast Refresh] done in 23891ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2812228ms] [LOG] [Fast Refresh] done in 23891ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2820241ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2820323ms] [LOG] [Fast Refresh] done in 40ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2820457ms] [LOG] [Fast Refresh] done in 40ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2820495ms] [LOG] [Fast Refresh] done in 40ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2820626ms] [LOG] [Fast Refresh] done in 40ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2820769ms] [LOG] [Fast Refresh] done in 40ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2826551ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2826732ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2826867ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2827009ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2831942ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2832086ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2832228ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2832352ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2832392ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2832452ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2832511ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2832598ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2832815ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2832899ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2832941ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2833012ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2833076ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2833129ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2833168ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2833209ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2833272ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2833348ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2833390ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2833439ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2833482ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2833529ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2833588ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2833686ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2835050ms] [INFO] [2026-09-02T01:51:54.793Z] INFO: Processing pending mutations {"count":2} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2835050ms] [WARNING] [2026-09-02T01:51:54.793Z] WARN: Mutation exceeded max retry attempts {"id":"aa1fa5af-c59c-48d4-bdf0-8d0d6b30d542","attempts":5,"entityType":"trip","lastError":"new row violates row-level security policy for table \"trips\""} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2835050ms] [WARNING] [2026-09-02T01:51:54.794Z] WARN: Skipping mutation that exceeded max retries {"id":"aa1fa5af-c59c-48d4-bdf0-8d0d6b30d542","attempts":5,"entityType":"trip"} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2835050ms] [WARNING] [2026-09-02T01:51:54.794Z] WARN: Mutation exceeded max retry attempts {"id":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","attempts":5,"entityType":"tripMember","lastError":"new row violates row-level security policy for table \"trip_members\""} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2835050ms] [WARNING] [2026-09-02T01:51:54.794Z] WARN: Skipping mutation that exceeded max retries {"id":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","attempts":5,"entityType":"tripMember"} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2835260ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2835420ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2835579ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2835727ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2835889ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2836041ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2836196ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2836347ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2836429ms] [INFO] [2026-09-02T01:51:56.172Z] INFO: Sync completed {"duration":1381,"successCount":0,"failureCount":0,"skippedCount":2,"remainingPending":2,"status":"error","diagnostics":{"totalAttempts":37,"successfulSyncs":29,"failedSyncs":6,"averageDuration":7688.685714285714}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2836488ms] [LOG] [Fast Refresh] done in 6272ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2853370ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2853431ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2853686ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2853812ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2853963ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2861950ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2862091ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2862229ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2862309ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2862363ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2862460ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2862523ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2862611ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2862655ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2862729ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2862782ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2862875ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2862916ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2862976ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2863016ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2863059ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2863104ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2863152ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2863193ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2863279ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2863327ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2863376ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2863427ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2863523ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2864170ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2865048ms] [INFO] [2026-09-02T01:52:24.791Z] INFO: Processing pending mutations {"count":2} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2865048ms] [WARNING] [2026-09-02T01:52:24.791Z] WARN: Mutation exceeded max retry attempts {"id":"aa1fa5af-c59c-48d4-bdf0-8d0d6b30d542","attempts":5,"entityType":"trip","lastError":"new row violates row-level security policy for table \"trips\""} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2865048ms] [WARNING] [2026-09-02T01:52:24.791Z] WARN: Skipping mutation that exceeded max retries {"id":"aa1fa5af-c59c-48d4-bdf0-8d0d6b30d542","attempts":5,"entityType":"trip"} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2865048ms] [WARNING] [2026-09-02T01:52:24.791Z] WARN: Mutation exceeded max retry attempts {"id":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","attempts":5,"entityType":"tripMember","lastError":"new row violates row-level security policy for table \"trip_members\""} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2865048ms] [WARNING] [2026-09-02T01:52:24.791Z] WARN: Skipping mutation that exceeded max retries {"id":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","attempts":5,"entityType":"tripMember"} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2865269ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2865439ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2865587ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2865755ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2865912ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2866061ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2866210ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2866366ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2866458ms] [INFO] [2026-09-02T01:52:26.201Z] INFO: Sync completed {"duration":1411,"successCount":0,"failureCount":0,"skippedCount":2,"remainingPending":2,"status":"error","diagnostics":{"totalAttempts":38,"successfulSyncs":30,"failedSyncs":6,"averageDuration":7514.305555555556}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2866513ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2868623ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2870794ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2891952ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2892094ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2892214ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2892255ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2892356ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2892413ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2892463ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2892511ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2892598ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2892663ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2892705ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2892759ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2892816ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2892916ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2892982ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2893037ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2893099ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2893193ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2893260ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2893311ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2893386ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2893443ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2893496ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2893595ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2895048ms] [INFO] [2026-09-02T01:52:54.792Z] INFO: Processing pending mutations {"count":2} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2895048ms] [WARNING] [2026-09-02T01:52:54.792Z] WARN: Mutation exceeded max retry attempts {"id":"aa1fa5af-c59c-48d4-bdf0-8d0d6b30d542","attempts":5,"entityType":"trip","lastError":"new row violates row-level security policy for table \"trips\""} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2895048ms] [WARNING] [2026-09-02T01:52:54.792Z] WARN: Skipping mutation that exceeded max retries {"id":"aa1fa5af-c59c-48d4-bdf0-8d0d6b30d542","attempts":5,"entityType":"trip"} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2895048ms] [WARNING] [2026-09-02T01:52:54.792Z] WARN: Mutation exceeded max retry attempts {"id":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","attempts":5,"entityType":"tripMember","lastError":"new row violates row-level security policy for table \"trip_members\""} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2895048ms] [WARNING] [2026-09-02T01:52:54.792Z] WARN: Skipping mutation that exceeded max retries {"id":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","attempts":5,"entityType":"tripMember"} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2895263ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2895405ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2895554ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2895693ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2895850ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2895996ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2896140ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2896286ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2896367ms] [INFO] [2026-09-02T01:52:56.111Z] INFO: Sync completed {"duration":1319,"successCount":0,"failureCount":0,"skippedCount":2,"remainingPending":2,"status":"error","diagnostics":{"totalAttempts":39,"successfulSyncs":31,"failedSyncs":6,"averageDuration":7346.864864864865}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2896426ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2922135ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2922260ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2922336ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2922427ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2922522ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2922589ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2922634ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2922709ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2922793ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2922868ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2922921ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2923012ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2923051ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2923146ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2923184ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2923281ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2923318ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2923413ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2923460ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2923533ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2923579ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2923652ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2923775ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2925033ms] [INFO] [2026-09-02T01:53:24.777Z] INFO: Processing pending mutations {"count":2} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2925034ms] [WARNING] [2026-09-02T01:53:24.777Z] WARN: Mutation exceeded max retry attempts {"id":"aa1fa5af-c59c-48d4-bdf0-8d0d6b30d542","attempts":5,"entityType":"trip","lastError":"new row violates row-level security policy for table \"trips\""} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2925034ms] [WARNING] [2026-09-02T01:53:24.777Z] WARN: Skipping mutation that exceeded max retries {"id":"aa1fa5af-c59c-48d4-bdf0-8d0d6b30d542","attempts":5,"entityType":"trip"} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2925034ms] [WARNING] [2026-09-02T01:53:24.777Z] WARN: Mutation exceeded max retry attempts {"id":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","attempts":5,"entityType":"tripMember","lastError":"new row violates row-level security policy for table \"trip_members\""} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2925034ms] [WARNING] [2026-09-02T01:53:24.777Z] WARN: Skipping mutation that exceeded max retries {"id":"bf7070d8-0bd1-4b7a-9e6c-8666ab0ddcb8","attempts":5,"entityType":"tripMember"} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2925256ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2925417ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2925580ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2925735ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2925886ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2926037ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2926175ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2926322ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2926410ms] [INFO] [2026-09-02T01:53:26.154Z] INFO: Sync completed {"duration":1378,"successCount":0,"failureCount":0,"skippedCount":2,"remainingPending":2,"status":"error","diagnostics":{"totalAttempts":40,"successfulSyncs":32,"failedSyncs":6,"averageDuration":7189.789473684211}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2926473ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[ 2926638ms] [LOG] [Fast Refresh] done in 13ms @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782

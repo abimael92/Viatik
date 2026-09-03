@@ -1,0 +1,10 @@
+[    4088ms] [LOG] %c Console Ninja extension is connected to Next.js browser, background: rgb(30,30,30); color: rgb(255,213,92) see https://tinyurl.com/2vt8jxzw for more info. @ :0
+[    4103ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[    4135ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[    9091ms] [INFO] [2026-09-02T04:08:08.431Z] INFO: Starting sync engine @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[    9096ms] [INFO] [2026-09-02T04:08:08.437Z] INFO: Stopping sync engine @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[    9097ms] [INFO] [2026-09-02T04:08:08.437Z] INFO: Starting sync engine @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[    9131ms] [INFO] [2026-09-02T04:08:08.471Z] INFO: Processing pending mutations {"count":0} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[   10634ms] [INFO] [2026-09-02T04:08:09.975Z] INFO: Sync completed {"duration":1542,"successCount":0,"failureCount":0,"skippedCount":0,"remainingPending":4,"status":"error","diagnostics":{"totalAttempts":1,"successfulSyncs":1,"failedSyncs":0,"averageDuration":1542}} @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782
+[  189104ms] [ERROR] WebSocket is already in CLOSING or CLOSED state. @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:1565
+[  190086ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/112__next_dist_1a10hyl._.js:782

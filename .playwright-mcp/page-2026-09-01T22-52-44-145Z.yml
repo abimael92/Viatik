@@ -1,0 +1,18 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - region [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]: V
+        - heading "Welcome to Viatik" [level=1] [ref=e6]
+        - paragraph [ref=e7]: Plan every detail together, with or without a connection.
+      - generic [ref=e8]:
+        - generic [ref=e9]:
+          - button "Email" [ref=e10]
+          - button "Phone" [ref=e11]
+        - generic [ref=e12]:
+          - generic [ref=e13]:
+            - text: Email address
+            - textbox "Email address" [ref=e14]:
+              - /placeholder: you@example.com
+          - button "Send verification code" [ref=e15]
+  - alert [ref=e16]
