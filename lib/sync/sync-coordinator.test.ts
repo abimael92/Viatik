@@ -146,6 +146,19 @@ describe("WebLockSyncCoordinator", () => {
     expect(operation).toHaveBeenCalledOnce();
     expect(grantedManager.request).toHaveBeenCalledWith("viatik:sync:viatik_user-1:user-1", { mode: "exclusive", ifAvailable: true }, expect.any(Function));
   });
+
+  it("aborts Web Lock work when its tab closes", async () => {
+    const coordinator = new WebLockSyncCoordinator(lockManager(true));
+    const operation = coordinator.runExclusive(scope, async ({ signal }) => {
+      await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve(), { once: true }));
+      signal.throwIfAborted();
+    });
+    await Promise.resolve();
+
+    coordinator.close();
+
+    await expect(operation).rejects.toThrow("coordinator closed");
+  });
 });
 
 describe("BrowserSyncCoordinator", () => {

@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => {
     limit: vi.fn(),
     gt: vi.fn(),
     or: vi.fn(),
+    abortSignal: vi.fn(),
     then: (resolve: (value: unknown) => void) => resolve(queryResponses.shift() ?? { data: [], error: null }),
   };
   query.lte.mockReturnValue(query);
@@ -24,6 +25,7 @@ const mocks = vi.hoisted(() => {
   query.limit.mockReturnValue(query);
   query.gt.mockReturnValue(query);
   query.or.mockReturnValue(query);
+  query.abortSignal.mockReturnValue(query);
   const upsert = vi.fn();
   const rpc = vi.fn();
   const from = vi.fn(() => ({ select: vi.fn(() => query), upsert }));
@@ -89,6 +91,7 @@ describe("cloud synchronization", () => {
     mocks.query.limit.mockReturnValue(mocks.query);
     mocks.query.gt.mockReturnValue(mocks.query);
     mocks.query.or.mockReturnValue(mocks.query);
+    mocks.query.abortSignal.mockReturnValue(mocks.query);
     mocks.channel.on.mockReturnValue(mocks.channel);
     mocks.channel.subscribe.mockReturnValue(mocks.channel);
     mocks.client.auth.getUser.mockResolvedValue({ data: { user: { id: "user-1" } } });
@@ -112,6 +115,24 @@ describe("cloud synchronization", () => {
     await pullRemoteChanges();
     expect(mocks.query.gt).toHaveBeenCalledTimes(10);
     expect(mocks.query.gt).toHaveBeenCalledWith("updated_at", "2026-01-01T00:00:00.000Z");
+  });
+
+  it("propagates ownership cancellation to every PostgREST page request", async () => {
+    const controller = new AbortController();
+
+    await pullRemoteChanges(false, controller.signal);
+
+    expect(mocks.query.abortSignal).toHaveBeenCalledTimes(10);
+    expect(mocks.query.abortSignal).toHaveBeenCalledWith(controller.signal);
+  });
+
+  it("stops before remote requests when ownership is already lost", async () => {
+    const controller = new AbortController();
+    controller.abort(new Error("lease expired"));
+
+    await expect(pullRemoteChanges(false, controller.signal)).rejects.toThrow("lease expired");
+
+    expect(mocks.from).not.toHaveBeenCalled();
   });
 
   it("assembles multiple pages with a composite cursor for equal timestamps", async () => {
