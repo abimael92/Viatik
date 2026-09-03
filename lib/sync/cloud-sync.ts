@@ -36,29 +36,38 @@ const tableDefinitions = [
 
 type RemoteEntity = Trip | TripMember | TripInvitation | Activity | Expense | ExpenseShare | TripMedia | ExpenseSettlement | Contact | TripTraveler;
 
-async function signedMediaUrl(client: SupabaseClient, entity: RemoteEntity): Promise<RemoteEntity> {
+async function signedMediaUrl(client: SupabaseClient, entity: RemoteEntity, signal?: AbortSignal): Promise<RemoteEntity> {
+  signal?.throwIfAborted();
   if (!("storagePath" in entity) || entity.deletedAt) return entity;
   const { data } = await client.storage.from("trip-media").createSignedUrl(entity.storagePath, 3600);
+  signal?.throwIfAborted();
   return { ...entity, uploadedUrl: data?.signedUrl ?? null, signedUrlExpiresAt: new Date(Date.now() + 3600000).toISOString() };
 }
 
-async function applyRemote(entityType: OutboxEntityType, store: typeof tableDefinitions[number]["store"], entity: RemoteEntity, client: SupabaseClient): Promise<void> {
+async function applyRemote(entityType: OutboxEntityType, store: typeof tableDefinitions[number]["store"], entity: RemoteEntity, client: SupabaseClient, signal?: AbortSignal): Promise<void> {
+  signal?.throwIfAborted();
   const pending = await getDb().outboxMutations.where("entityType").equals(entityType).and((mutation) => mutation.entityId === entity.id).last();
+  signal?.throwIfAborted();
   const remoteUpdatedAt = "updatedAt" in entity ? entity.updatedAt : new Date().toISOString();
   if (pending && pending.mutatedAt >= remoteUpdatedAt) return;
   if (pending) {
+    signal?.throwIfAborted();
     await getDb().syncConflicts.add({ id: crypto.randomUUID(), entityType, entityId: entity.id, tripId: "tripId" in entity ? entity.tripId : pending.tripId, localUpdatedAt: pending.mutatedAt, remoteUpdatedAt, resolvedAt: new Date().toISOString(), resolution: "remote" });
+    signal?.throwIfAborted();
     await getDb().outboxMutations.delete(pending.id);
+    signal?.throwIfAborted();
   }
-  const hydrated = await signedMediaUrl(client, entity);
+  const hydrated = await signedMediaUrl(client, entity, signal);
+  signal?.throwIfAborted();
   await getDb().table(store).put(hydrated);
+  signal?.throwIfAborted();
 }
 
 async function deleteLocal(store: typeof tableDefinitions[number]["store"], id: string): Promise<void> {
   await getDb().table(store).delete(id);
 }
 
-async function fetchTablePages(client: SupabaseClient, table: string, since: string | null, through: string): Promise<Record<string, unknown>[]> {
+async function fetchTablePages(client: SupabaseClient, table: string, since: string | null, through: string, signal?: AbortSignal): Promise<Record<string, unknown>[]> {
   const rows: Record<string, unknown>[] = [];
   let cursor: { updatedAt: string; id: string } | null = null;
 
@@ -66,6 +75,7 @@ async function fetchTablePages(client: SupabaseClient, table: string, since: str
     let query = client.from(table).select("*").lte("updated_at", through).order("updated_at", { ascending: true }).order("id", { ascending: true }).limit(PULL_PAGE_SIZE);
     if (since) query = query.gt("updated_at", since);
     if (cursor) query = query.or(`updated_at.gt.${cursor.updatedAt},and(updated_at.eq.${cursor.updatedAt},id.gt.${cursor.id})`);
+    if (signal) query = query.abortSignal(signal);
     const { data, error } = await query;
     if (error) throw new Error(`Pull ${table}: ${error.message}`);
     const page = (data ?? []) as Record<string, unknown>[];
@@ -76,7 +86,8 @@ async function fetchTablePages(client: SupabaseClient, table: string, since: str
   }
 }
 
-export async function pullRemoteChanges(full = false): Promise<void> {
+export async function pullRemoteChanges(full = false, signal?: AbortSignal): Promise<void> {
+  signal?.throwIfAborted();
   if (typeof navigator !== "undefined" && !navigator.onLine) return;
   const client = getSupabaseBrowserClient();
   const { data: auth } = await client.auth.getUser();
@@ -90,16 +101,21 @@ export async function pullRemoteChanges(full = false): Promise<void> {
   const staged: Array<{ definition: typeof tableDefinitions[number]; rows: Record<string, unknown>[] }> = [];
 
   for (const definition of tableDefinitions) {
-    staged.push({ definition, rows: await fetchTablePages(client, definition.table, since, startedAt) });
+    signal?.throwIfAborted();
+    staged.push({ definition, rows: await fetchTablePages(client, definition.table, since, startedAt, signal) });
   }
 
   const remoteTripIds = new Set(staged.find(({ definition }) => definition.table === "trips")?.rows.map((row) => String(row.id)) ?? []);
   for (const { definition, rows } of staged) {
-    for (const row of rows) await applyRemote(definition.entityType, definition.store, definition.map(row), client);
+    for (const row of rows) {
+      signal?.throwIfAborted();
+      await applyRemote(definition.entityType, definition.store, definition.map(row), client, signal);
+    }
   }
   if (full) {
     const localTrips = await getDb().trips.toArray();
     for (const trip of localTrips) {
+      signal?.throwIfAborted();
       if (remoteTripIds.has(trip.id)) continue;
       const pending = await getDb().outboxMutations.where("tripId").equals(trip.id).count();
       if (pending > 0) continue;
@@ -110,6 +126,7 @@ export async function pullRemoteChanges(full = false): Promise<void> {
       });
     }
   }
+  signal?.throwIfAborted();
   await getDb().syncMetadata.bulkPut([{ key: cursorKey, value: startedAt }, { key: ACTIVE_USER_KEY, value: auth.user.id }]);
 }
 
@@ -138,27 +155,39 @@ async function handleRealtimePayload(definition: typeof tableDefinitions[number]
   await applyRemote(definition.entityType, definition.store, definition.map(payload.new), client);
 }
 
-export async function processPendingMedia(): Promise<void> {
+export async function processPendingMedia(signal?: AbortSignal): Promise<void> {
+  signal?.throwIfAborted();
   if (typeof navigator !== "undefined" && !navigator.onLine) return;
   const client = getSupabaseBrowserClient();
-  const pending = await getDb().tripMedia.where("uploadStatus").anyOf("pending", "failed").filter((media) => media.deletedAt === null && media.blob !== null && media.createdBy === getSyncUser() && media.uploadAttempts < 5 && (!media.nextUploadAt || media.nextUploadAt <= new Date().toISOString())).toArray();
+  const pending = await getDb().tripMedia.where("uploadStatus").anyOf("pending", "failed", "uploading").filter((media) => media.deletedAt === null && media.blob !== null && media.createdBy === getSyncUser() && media.uploadAttempts < 5 && (!media.nextUploadAt || media.nextUploadAt <= new Date().toISOString())).toArray();
   for (const media of pending) {
+    signal?.throwIfAborted();
     try {
       await getDb().tripMedia.update(media.id, { uploadStatus: "uploading", uploadProgress: 20, uploadError: null });
+      signal?.throwIfAborted();
       const { error: uploadError } = await client.storage.from("trip-media").upload(media.storagePath, media.blob!, { contentType: media.contentType, upsert: true });
+      signal?.throwIfAborted();
       if (uploadError) throw new Error(uploadError.message);
       await getDb().tripMedia.update(media.id, { uploadProgress: 75 });
-      const { data: metadata, error: metadataError } = await client.rpc("sync_cas_upsert", { p_entity: "media", p_payload: mediaToRow(media), p_base_updated_at: null });
+      signal?.throwIfAborted();
+      const metadataRequest = client.rpc("sync_cas_upsert", { p_entity: "media", p_payload: mediaToRow(media), p_base_updated_at: null });
+      const { data: metadata, error: metadataError } = signal ? await metadataRequest.abortSignal(signal) : await metadataRequest;
       if (metadataError) throw new Error(metadataError.message);
       const result = metadata as { status?: string; server_updated_at?: string } | null;
       if (result?.status !== "applied" || !result.server_updated_at) throw new Error("Media metadata conflict");
+      signal?.throwIfAborted();
       const { data } = await client.storage.from("trip-media").createSignedUrl(media.storagePath, 3600);
+      signal?.throwIfAborted();
       await getDb().tripMedia.update(media.id, { uploadStatus: "uploaded", uploadProgress: 100, uploadError: null, uploadAttempts: media.uploadAttempts, nextUploadAt: null, uploadedUrl: data?.signedUrl ?? null, signedUrlExpiresAt: new Date(Date.now() + 3600000).toISOString(), updatedAt: result.server_updated_at });
+      signal?.throwIfAborted();
       await getDb().outboxMutations.where("entityType").equals("media").and((mutation) => mutation.entityId === media.id).delete();
+      signal?.throwIfAborted();
     } catch (error) {
+      signal?.throwIfAborted();
       const uploadAttempts = media.uploadAttempts + 1;
       const nextUploadAt = new Date(Date.now() + Math.min(60000, 1000 * 2 ** uploadAttempts)).toISOString();
       await getDb().tripMedia.update(media.id, { uploadStatus: "failed", uploadProgress: 0, uploadError: error instanceof Error ? error.message : String(error), uploadAttempts, nextUploadAt });
+      signal?.throwIfAborted();
     }
   }
   const refreshBefore = new Date(Date.now() + 300000).toISOString();
@@ -166,13 +195,18 @@ export async function processPendingMedia(): Promise<void> {
   const accessibleTrips = new Set(memberships.map((membership) => membership.tripId));
   const expiring = await getDb().tripMedia.where("uploadStatus").equals("uploaded").filter((media) => accessibleTrips.has(media.tripId) && media.deletedAt === null && (!media.signedUrlExpiresAt || media.signedUrlExpiresAt < refreshBefore)).toArray();
   for (const media of expiring) {
+    signal?.throwIfAborted();
     const { data } = await client.storage.from("trip-media").createSignedUrl(media.storagePath, 3600);
+    signal?.throwIfAborted();
     if (data?.signedUrl) await getDb().tripMedia.update(media.id, { uploadedUrl: data.signedUrl, signedUrlExpiresAt: new Date(Date.now() + 3600000).toISOString() });
+    signal?.throwIfAborted();
   }
 }
 
-export async function deleteRemoteMedia(storagePath: string): Promise<void> {
+export async function deleteRemoteMedia(storagePath: string, signal?: AbortSignal): Promise<void> {
+  signal?.throwIfAborted();
   const { error } = await getSupabaseBrowserClient().storage.from("trip-media").remove([storagePath]);
+  signal?.throwIfAborted();
   if (error) throw new Error(error.message);
 }
 
