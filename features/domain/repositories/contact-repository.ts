@@ -1,6 +1,26 @@
 import type { Contact, TravelerType, Trip, TripTraveler } from "@/features/domain/entities";
 
-export type ContactValues = { fullName: string; email?: string | null; phone?: string | null; relationship?: Contact["relationship"]; travelerType?: TravelerType; birthDate?: string | null; notes?: string | null; linkedProfileId?: string | null };
+export type ContactValues = {
+  fullName: string;
+  email?: string | null;
+  phone?: string | null;
+  relationship?: Contact["relationship"];
+  travelerType?: TravelerType;
+  birthDate?: string | null;
+  notes?: string | null;
+  linkedProfileId?: string | null;
+  linkedAvatarUrl?: string | null;
+  linkedHandle?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactRelationship?: string | null;
+  emergencyContactPhone?: string | null;
+  dietaryRestrictions?: string[];
+  allergies?: string[];
+  passportIssuingCountry?: string | null;
+  passportExpiresOn?: string | null;
+  preferredCurrency?: string | null;
+  preferredLanguage?: string | null;
+};
 
 export interface ContactRepository {
   list(ownerId: string): Promise<Contact[]>;

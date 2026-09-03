@@ -2,7 +2,7 @@ import Dexie, { type EntityTable } from "dexie";
 
 import type { Activity, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler } from "@/features/domain/entities";
 import type { TripMedia } from "@/features/domain/entities-media";
-import type { OutboxMutation, SyncConflict, SyncMetadata } from "@/lib/sync/types";
+import type { OutboxMutation, SyncConflict, SyncLease, SyncMetadata } from "@/lib/sync/types";
 
 /**
  * The local IndexedDB database — the single source of truth for domain data
@@ -25,6 +25,7 @@ export class ViatikDatabase extends Dexie {
   tripInvitations!: EntityTable<TripInvitation, "id">;
   expenseSettlements!: EntityTable<ExpenseSettlement, "id">;
   syncMetadata!: EntityTable<SyncMetadata, "key">;
+  syncLeases!: EntityTable<SyncLease, "key">;
   syncConflicts!: EntityTable<SyncConflict, "id">;
   contacts!: EntityTable<Contact, "id">;
   tripTravelers!: EntityTable<TripTraveler, "id">;
@@ -110,6 +111,28 @@ export class ViatikDatabase extends Dexie {
           mutation.lastError = null;
         }
       });
+    });
+
+    this.version(10).stores({
+      contacts: "id, ownerId, linkedProfileId, updatedAt, deletedAt",
+    }).upgrade(async (transaction) => {
+      await transaction.table("contacts").toCollection().modify((contact) => {
+        contact.linkedAvatarUrl ??= null;
+        contact.linkedHandle ??= null;
+        contact.emergencyContactName ??= null;
+        contact.emergencyContactRelationship ??= null;
+        contact.emergencyContactPhone ??= null;
+        contact.dietaryRestrictions ??= [];
+        contact.allergies ??= [];
+        contact.passportIssuingCountry ??= null;
+        contact.passportExpiresOn ??= null;
+        contact.preferredCurrency ??= null;
+        contact.preferredLanguage ??= null;
+      });
+    });
+
+    this.version(11).stores({
+      syncLeases: "key, expiresAt",
     });
   }
 }

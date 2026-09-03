@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Trash2, UserPlus, Users } from "lucide-react";
+import { Link2, Trash2, UserPlus, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ContactEditorDialog } from "@/features/contacts/components/contact-editor-dialog";
+import { ViatikContactImportDialog } from "@/features/contacts/components/viatik-contact-import-dialog";
 import {
   contactRepository,
   tripTravelerRepository,
@@ -25,6 +26,7 @@ export function TravelerPanel({
   const [travelers, setTravelers] = useState<TripTraveler[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [linking, setLinking] = useState(false);
   useEffect(() => contactRepository.watch(userId, setContacts), [userId]);
   useEffect(() => tripTravelerRepository.watch(tripId, setTravelers), [tripId]);
   const available = useMemo(
@@ -121,9 +123,14 @@ export function TravelerPanel({
             <p className="mt-1 text-sm text-muted-foreground">
               Their contact is saved privately for future trips.
             </p>
-            <Button className="mt-4" onClick={() => setCreating(true)}>
-              Add new contact
-            </Button>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button onClick={() => setCreating(true)}>
+                Add new contact
+              </Button>
+              <Button variant="outline" onClick={() => setLinking(true)}>
+                <Link2 className="size-4" /> Link Viatik account
+              </Button>
+            </div>
           </div>
           <form onSubmit={attach} className="rounded-2xl border bg-card p-5">
             <h3 className="font-semibold">Add an existing contact</h3>
@@ -164,6 +171,12 @@ export function TravelerPanel({
         attachToTrip
         onOpenChange={setCreating}
         onSaved={attachCreated}
+      />
+      <ViatikContactImportDialog
+        open={linking}
+        userId={userId}
+        onOpenChange={setLinking}
+        onLinked={attachCreated}
       />
     </section>
   );

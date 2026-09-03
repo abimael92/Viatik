@@ -7,11 +7,21 @@ const mocks = vi.hoisted(() => ({
   conflictAdd: vi.fn(),
   mutationDelete: vi.fn(),
   pullRemoteChanges: vi.fn(),
+  listPendingMutations: vi.fn(),
+  countPendingMutations: vi.fn(),
+  coordinatorRunExclusive: vi.fn(),
+  coordinatorRequestSync: vi.fn(),
+  CoordinationInterruptedError: class extends Error {},
 }));
 
 vi.mock("@/lib/supabase/browser-client", () => ({ getSupabaseBrowserClient: () => ({ rpc: mocks.rpc }) }));
 vi.mock("@/lib/db/dexie", () => ({
-  getCurrentDatabase: () => ({ syncConflicts: { add: mocks.conflictAdd }, outboxMutations: { delete: mocks.mutationDelete } }),
+  getCurrentDatabase: () => ({
+    name: "viatik_user-1",
+    syncConflicts: { add: mocks.conflictAdd },
+    outboxMutations: { delete: mocks.mutationDelete },
+    tripMedia: { where: () => ({ anyOf: () => ({ filter: () => ({ count: vi.fn().mockResolvedValue(0) }) }) }) },
+  }),
   ViatikDatabase: class {},
 }));
 vi.mock("@/lib/sync/cloud-sync", () => ({
@@ -22,15 +32,25 @@ vi.mock("@/lib/sync/cloud-sync", () => ({
 }));
 vi.mock("@/lib/sync/outbox", () => ({
   acknowledgeMutation: mocks.mutationDelete,
-  countPendingMutations: vi.fn(),
-  listPendingMutations: vi.fn(),
+  countPendingMutations: mocks.countPendingMutations,
+  listPendingMutations: mocks.listPendingMutations,
   markMutationFailed: vi.fn(),
   removeMutation: mocks.mutationDelete,
   shouldRetryMutation: vi.fn(),
   getRetryDelay: vi.fn(),
 }));
+vi.mock("@/lib/sync/sync-coordinator", () => ({
+  SyncCoordinationInterruptedError: mocks.CoordinationInterruptedError,
+  createBrowserSyncCoordinator: () => ({
+    runExclusive: mocks.coordinatorRunExclusive,
+    requestSync: mocks.coordinatorRequestSync,
+    subscribe: vi.fn(() => vi.fn()),
+    close: vi.fn(),
+  }),
+}));
 
 import { __syncEngineInternals } from "@/lib/sync/sync-engine";
+import { configureSyncUser } from "@/lib/sync/sync-context";
 
 function tripMutation(overrides: Partial<OutboxMutation> = {}): OutboxMutation {
   return {
@@ -71,6 +91,36 @@ describe("CAS mutation replay", () => {
     mocks.mutationDelete.mockResolvedValue(undefined);
     mocks.conflictAdd.mockResolvedValue(undefined);
     mocks.pullRemoteChanges.mockResolvedValue(undefined);
+    mocks.listPendingMutations.mockResolvedValue([]);
+    mocks.countPendingMutations.mockResolvedValue(0);
+    configureSyncUser("user-1");
+  });
+
+  it("reads pending mutations only after coordination ownership is granted", async () => {
+    mocks.coordinatorRunExclusive.mockImplementation(async (_scope, operation) => ({ acquired: true, value: await operation() }));
+
+    await __syncEngineInternals.runCoordinatedSync();
+
+    expect(mocks.coordinatorRunExclusive).toHaveBeenCalledWith({ databaseName: "viatik_user-1", userId: "user-1" }, expect.any(Function));
+    expect(mocks.listPendingMutations).toHaveBeenCalledWith("user-1");
+  });
+
+  it("lets follower tabs yield without reading or replaying the outbox", async () => {
+    mocks.coordinatorRunExclusive.mockResolvedValue({ acquired: false });
+
+    await __syncEngineInternals.runCoordinatedSync();
+
+    expect(mocks.listPendingMutations).not.toHaveBeenCalled();
+    expect(mocks.coordinatorRequestSync).not.toHaveBeenCalled();
+  });
+
+  it("treats lost coordination as a graceful yield", async () => {
+    mocks.coordinatorRunExclusive.mockRejectedValue(new mocks.CoordinationInterruptedError("lease lost"));
+
+    await expect(__syncEngineInternals.runCoordinatedSync()).resolves.toBeUndefined();
+
+    expect(mocks.listPendingMutations).not.toHaveBeenCalled();
+    expect(mocks.countPendingMutations).toHaveBeenCalledWith("user-1");
   });
 
   it("sends the server-derived base version to the upsert RPC", async () => {
