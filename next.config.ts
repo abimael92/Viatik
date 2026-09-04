@@ -19,6 +19,11 @@ const nextConfig: NextConfig = {
 
   // Compress output
   compress: true,
+
+  // Development only: allow the browser preview proxy (127.0.0.1) and
+  // localhost to load Next.js dev resources (JS chunks / HMR). Next blocks
+  // cross-origin dev requests by default for safety.
+  allowedDevOrigins: ["127.0.0.1", "localhost"],
 };
 
 export default nextConfig;

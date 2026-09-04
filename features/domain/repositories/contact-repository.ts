@@ -2,6 +2,8 @@ import type { Contact, TravelerType, Trip, TripTraveler } from "@/features/domai
 
 export type ContactValues = {
   fullName: string;
+  avatarUrl?: string | null;
+  avatarSeed?: string | null;
   email?: string | null;
   phone?: string | null;
   relationship?: Contact["relationship"];

@@ -12,6 +12,11 @@ vi.mock("@/features/collaboration/data/dexie-collaboration-repository", () => ({
 }));
 
 vi.mock("next/link", () => ({ default: ({ children, href, ...props }: React.ComponentProps<"a">) => <a href={href} {...props}>{children}</a> }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() }) }));
+
+vi.mock("@/lib/sync/use-sync-status", () => ({
+  useSyncStatus: () => ({ status: "idle", pending: 0, lastSyncAt: null, isOnline: true, conflicts: 0 }),
+}));
 
 describe("TripDashboard", () => {
   beforeEach(() => vi.clearAllMocks());

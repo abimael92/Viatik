@@ -71,6 +71,34 @@ export function markMutationFailed(id: string, error: string): Promise<void> {
     .then(() => undefined);
 }
 
+/**
+ * True when a mutation failed only because PostgREST had not yet picked up a
+ * migration (e.g. a freshly created table or function). Such errors are
+ * inherently transient — they resolve once migrations are applied/reloaded —
+ * so a mutation should never be permanently dropped because of them.
+ */
+export function isTransientSchemaCacheError(message: string | null | undefined): boolean {
+  if (!message) return false;
+  return (
+    message.includes("in the schema cache") ||
+    message.includes("Could not find the function") ||
+    message.includes("Could not find the table") ||
+    message.includes("Could not find the relation")
+  );
+}
+
+/** Clear the failure state so a mutation is retried on the next sync pass. */
+export function resetMutationAttempts(id: string): Promise<void> {
+  return getDb()
+    .outboxMutations.where("id")
+    .equals(id)
+    .modify((mutation) => {
+      mutation.attempts = 0;
+      mutation.lastError = null;
+    })
+    .then(() => undefined);
+}
+
 export function shouldRetryMutation(mutation: OutboxMutation): boolean {
   if (mutation.attempts >= MAX_RETRY_ATTEMPTS) {
     logger.warn("Mutation exceeded max retry attempts", {
