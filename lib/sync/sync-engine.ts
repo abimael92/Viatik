@@ -2,6 +2,8 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import { getCurrentDatabase, type ViatikDatabase } from "@/lib/db/dexie";
 import type { Activity, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler } from "@/features/domain/entities";
 import type { TripMedia } from "@/features/domain/entities-media";
+import type { VaultEntry, VaultKeyset } from "@/features/vault/domain/vault-types";
+import type { TripWeatherForecast } from "@/features/weather/domain/weather-types";
 import {
   acknowledgeMutation,
   countPendingMutations,
@@ -23,6 +25,9 @@ import {
   mediaToRow,
   contactToRow,
   tripTravelerToRow,
+  vaultEntryToRow,
+  vaultKeysetToRow,
+  tripWeatherForecastToRow,
 } from "@/lib/supabase/mappers";
 import { logger } from "@/lib/observability/logger";
 import { deleteRemoteMedia, processPendingMedia, pullRemoteChanges, startRealtimeSync } from "@/lib/sync/cloud-sync";
@@ -105,6 +110,9 @@ function mutationPayloadToRow(mutation: OutboxMutation): Record<string, unknown>
     case "media": return mediaToRow(mutation.payload as unknown as TripMedia);
     case "contact": return contactToRow(mutation.payload as unknown as Contact);
     case "tripTraveler": return tripTravelerToRow(mutation.payload as unknown as TripTraveler);
+    case "vaultKeyset": return vaultKeysetToRow(mutation.payload as unknown as VaultKeyset);
+    case "vaultEntry": return vaultEntryToRow(mutation.payload as unknown as VaultEntry);
+    case "tripWeatherForecast": return tripWeatherForecastToRow(mutation.payload as unknown as TripWeatherForecast);
   }
 }
 
@@ -116,6 +124,16 @@ async function resolveCasConflict(mutation: OutboxMutation, result: CasResult, s
   await pullRemoteChanges(true, signal);
 }
 
+function resolveDeleteRequest(client: ReturnType<typeof getSupabaseBrowserClient>, mutation: OutboxMutation) {
+  if (mutation.entityType === "vaultKeyset") {
+    return client.rpc("sync_vault_keyset_cas_delete", { p_id: mutation.entityId, p_base_updated_at: mutation.baseUpdatedAt });
+  }
+  if (mutation.entityType === "vaultEntry") {
+    return client.rpc("sync_vault_entry_cas_delete", { p_id: mutation.entityId, p_base_updated_at: mutation.baseUpdatedAt });
+  }
+  return client.rpc("sync_cas_delete", { p_entity: mutation.entityType, p_id: mutation.entityId, p_base_updated_at: mutation.baseUpdatedAt });
+}
+
 async function replayCasMutation(mutation: OutboxMutation, signal?: AbortSignal): Promise<boolean> {
   if (mutation.baseUpdatedAt === undefined || (mutation.operation !== "insert" && mutation.baseUpdatedAt === null)) {
     await resolveCasConflict(mutation, { status: "conflict" }, signal);
@@ -124,10 +142,16 @@ async function replayCasMutation(mutation: OutboxMutation, signal?: AbortSignal)
 
   const client = getSupabaseBrowserClient();
   const request = mutation.operation === "delete"
-    ? client.rpc("sync_cas_delete", { p_entity: mutation.entityType, p_id: mutation.entityId, p_base_updated_at: mutation.baseUpdatedAt })
+    ? resolveDeleteRequest(client, mutation)
     : mutation.entityType === "contact"
       ? client.rpc("sync_contact_cas_upsert", { p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt })
-      : client.rpc("sync_cas_upsert", { p_entity: mutation.entityType, p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt });
+      : mutation.entityType === "vaultKeyset"
+        ? client.rpc("sync_vault_keyset_cas_upsert", { p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt })
+        : mutation.entityType === "vaultEntry"
+          ? client.rpc("sync_vault_entry_cas_upsert", { p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt })
+          : mutation.entityType === "tripWeatherForecast"
+            ? client.rpc("sync_trip_weather_forecast_cas_upsert", { p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt })
+            : client.rpc("sync_cas_upsert", { p_entity: mutation.entityType, p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt });
   const response = signal ? await request.abortSignal(signal) : await request;
   if (response.error) throw new Error(response.error.message);
   const result = response.data as CasResult;
