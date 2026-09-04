@@ -8,6 +8,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { SyncStatusPill } from "@/components/app-shell/sync-status-pill";
+import { ThemeToggle } from "@/components/app-shell/theme-toggle";
 import { syncNow } from "@/lib/sync/sync-engine";
 import { useSyncStatus } from "@/lib/sync/use-sync-status";
 import { cn } from "@/lib/utils";
@@ -87,9 +88,12 @@ export function AppShell({ children, userLabel }: { children: React.ReactNode; u
         </Link>
         <div className="flex-1">{navigation}</div>
         <SyncStatusPill />
-        <div className="mt-4 flex items-center gap-3 border-t border-border/40 pt-4 text-sm">
-          <CircleUserRound className="size-8 text-muted-foreground" aria-hidden />
-          <span className="min-w-0 truncate">{userLabel}</span>
+        <div className="mt-4 flex items-center justify-between gap-3 border-t border-border/40 pt-4 text-sm">
+          <div className="flex min-w-0 items-center gap-3">
+            <CircleUserRound className="size-8 shrink-0 text-muted-foreground" aria-hidden />
+            <span className="min-w-0 truncate">{userLabel}</span>
+          </div>
+          <ThemeToggle />
         </div>
       </aside>
 
@@ -99,8 +103,9 @@ export function AppShell({ children, userLabel }: { children: React.ReactNode; u
           <Image src="/viatik-logo.png" alt="" width={36} height={36} priority className="size-9 object-contain" />
           Viatik
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <SyncStatusPill compact />
+          <ThemeToggle />
           <Button
             variant="ghost"
             size="icon"
