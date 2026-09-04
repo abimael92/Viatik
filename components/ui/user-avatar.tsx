@@ -34,6 +34,12 @@ export function randomAvatarSeed(style: AvatarStyle = DEFAULT_AVATAR_STYLE): str
   return `${style}|${random}`;
 }
 
+/** Render a DiceBear avatar for a seed as a data URI (used by the picker grid). */
+export function avatarDataUri(seed: string): string {
+  const { style, seed: parsed } = parseAvatarSeed(seed);
+  return createAvatar(STYLES[style], { seed: parsed, size: 96 }).toDataUri();
+}
+
 const SIZES = {
   sm: "size-8 text-xs",
   md: "size-11 text-base",
