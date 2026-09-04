@@ -160,6 +160,21 @@ function ContactForm({
     setStep((current) => current + 1);
   }
 
+  /** Direct step navigation from the clickable progress header. */
+  function handleStepNavigate(target: number) {
+    if (target === step) return;
+    if (target > step) {
+      const errors = validateStep(step);
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+        focusFirstError(errors);
+        return;
+      }
+    }
+    setFieldErrors({});
+    setStep(target);
+  }
+
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const fullName = values.fullName.trim();
@@ -247,7 +262,7 @@ function ContactForm({
         </div>
       </DialogHeader>
       <form onSubmit={submit} className="space-y-6 px-6 pb-6 pt-6">
-        <StepHeader step={step} />
+        <StepHeader step={step} onNavigate={handleStepNavigate} />
 
         {step === 1 && (
           <div className="space-y-6">
@@ -565,7 +580,13 @@ function ContactForm({
   );
 }
 
-function StepHeader({ step }: { step: number }) {
+function StepHeader({
+  step,
+  onNavigate,
+}: {
+  step: number;
+  onNavigate: (step: number) => void;
+}) {
   return (
     <nav aria-label="Contact setup progress" className="mb-2">
       <ol className="flex gap-3 sm:gap-4">
@@ -574,25 +595,29 @@ function StepHeader({ step }: { step: number }) {
           const active = step === number;
           const completed = step > number;
           return (
-            <li
-              key={title}
-              className="flex flex-1 flex-col gap-2"
-              aria-current={active ? "step" : undefined}
-            >
-              <div
-                className={cn(
-                  "h-1.5 rounded-full transition-colors",
-                  active ? "bg-primary" : completed ? "bg-primary/40" : "bg-muted"
-                )}
-              />
-              <span
-                className={cn(
-                  "text-xs sm:text-sm font-medium",
-                  active ? "text-primary" : completed ? "text-foreground" : "text-muted-foreground"
-                )}
+            <li key={title} className="flex flex-1 flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => onNavigate(number)}
+                aria-current={active ? "step" : undefined}
+                aria-label={`Go to step: ${title}`}
+                className="group flex min-h-11 flex-col gap-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                {title}
-              </span>
+                <div
+                  className={cn(
+                    "h-1.5 rounded-full transition-colors",
+                    active ? "bg-primary" : completed ? "bg-primary/40" : "bg-muted group-hover:bg-primary/20"
+                  )}
+                />
+                <span
+                  className={cn(
+                    "text-xs sm:text-sm font-medium",
+                    active ? "text-primary" : completed ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
+                  )}
+                >
+                  {title}
+                </span>
+              </button>
             </li>
           );
         })}
