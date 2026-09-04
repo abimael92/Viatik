@@ -1,19 +1,32 @@
 "use client";
 
-import { KeyRound, LogOut, Smartphone, UserRound } from "lucide-react";
+import { Check, Copy, KeyRound, LogOut, ScanLine, Smartphone, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { logout, updateProfile } from "@/app/actions/auth";
+import { logout, setDiscoverability, updateProfile } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { deleteDatabase } from "@/lib/db/dexie";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 
-export function SettingsClient({ userId, phone, fullName }: { userId: string; phone: string | null; fullName: string }) {
+export function SettingsClient({
+  userId,
+  phone,
+  fullName,
+  viatikId,
+  discoverable = false,
+}: {
+  userId: string;
+  phone: string | null;
+  fullName: string;
+  viatikId?: string | null;
+  discoverable?: boolean;
+}) {
   const router = useRouter();
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [copied, setCopied] = useState(false);
 
   function saveProfile(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -38,6 +51,27 @@ export function SettingsClient({ userId, phone, fullName }: { userId: string; ph
         setMessage(error instanceof Error ? error.message : "Passkey setup was cancelled.");
       }
     });
+  }
+
+  function toggleDiscoverability(event: React.ChangeEvent<HTMLInputElement>) {
+    const next = event.target.checked;
+    startTransition(async () => {
+      setMessage(null);
+      const result = await setDiscoverability(next);
+      setMessage(result.success ? "Discoverability updated." : result.error);
+      router.refresh();
+    });
+  }
+
+  async function copyViatikId() {
+    if (!viatikId) return;
+    try {
+      await navigator.clipboard.writeText(viatikId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard may be unavailable; the ID is still visible on screen.
+    }
   }
 
   function signOut() {
@@ -76,6 +110,51 @@ export function SettingsClient({ userId, phone, fullName }: { userId: string; ph
           </div>
           <Button type="submit" disabled={pending}>Save profile</Button>
         </form>
+      </section>
+      <section className="rounded-2xl border bg-card p-5 sm:p-7" aria-labelledby="directory-heading">
+        <div className="flex gap-3">
+          <ScanLine className="size-5 text-primary" />
+          <div>
+            <h2 id="directory-heading" className="font-semibold">Profile directory</h2>
+            <p className="text-sm text-muted-foreground">
+              Control who can find and link you by Viatik ID. Only your public name,
+              avatar, handle, and preferences are shared — never your email or phone.
+            </p>
+          </div>
+        </div>
+        <div className="mt-5 space-y-4">
+          <div className="flex items-center justify-between gap-4 rounded-xl border p-4">
+            <div className="min-w-0">
+              <p className="text-sm font-medium">Discoverable by Viatik ID</p>
+              <p className="text-xs text-muted-foreground">
+                When on, friends can add you instantly by scanning your profile code or entering your ID.
+              </p>
+            </div>
+            <label className="relative inline-flex shrink-0 cursor-pointer items-center">
+              <input
+                type="checkbox"
+                className="peer sr-only"
+                checked={discoverable}
+                onChange={toggleDiscoverability}
+                disabled={pending || !viatikId}
+              />
+              <span className="h-6 w-11 rounded-full bg-muted transition-colors peer-checked:bg-primary" />
+              <span className="pointer-events-none absolute left-0.5 top-0.5 size-5 rounded-full bg-background shadow transition-transform peer-checked:translate-x-5" />
+            </label>
+          </div>
+          {viatikId && (
+            <div className="flex items-center justify-between gap-4 rounded-xl border p-4">
+              <div className="min-w-0">
+                <p className="text-sm font-medium">Your Viatik ID</p>
+                <p className="font-mono text-sm text-muted-foreground">{viatikId}</p>
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={() => void copyViatikId()} disabled={copied}>
+                {copied ? <Check className="size-4 text-success" /> : <Copy className="size-4" />}
+                {copied ? "Copied" : "Copy"}
+              </Button>
+            </div>
+          )}
+        </div>
       </section>
       <section className="rounded-2xl border bg-card p-5 sm:p-7" aria-labelledby="security-heading">
         <div className="flex gap-3">
