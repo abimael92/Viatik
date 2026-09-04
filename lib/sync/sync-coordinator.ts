@@ -60,13 +60,28 @@ export function syncScopeKey(scope: SyncScope): string {
 }
 
 export class WebLockSyncCoordinator {
+  private readonly activeControllers = new Set<AbortController>();
+  private closed = false;
+
   constructor(private readonly locks: LockManager) {}
 
   async runExclusive<T>(scope: SyncScope, operation: (context: SyncExecutionContext) => Promise<T>): Promise<SyncCoordinationResult<T>> {
+    if (this.closed) return { acquired: false };
     return this.locks.request(syncScopeKey(scope), { mode: "exclusive", ifAvailable: true }, async (lock) => {
-      if (!lock) return { acquired: false } as const;
-      return { acquired: true, value: await operation({ signal: new AbortController().signal }) } as const;
+      if (!lock || this.closed) return { acquired: false } as const;
+      const controller = new AbortController();
+      this.activeControllers.add(controller);
+      try {
+        return { acquired: true, value: await operation({ signal: controller.signal }) } as const;
+      } finally {
+        this.activeControllers.delete(controller);
+      }
     });
+  }
+
+  close(): void {
+    this.closed = true;
+    for (const controller of this.activeControllers) controller.abort(new SyncCoordinationInterruptedError("Sync coordinator closed."));
   }
 }
 
@@ -212,6 +227,7 @@ export class BrowserSyncCoordinator implements SyncCoordinator {
 
   close(): void {
     this.closed = true;
+    this.primary?.close();
     this.options.fallback.close();
     this.channel?.close();
     this.listeners.clear();

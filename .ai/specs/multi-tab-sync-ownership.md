@@ -143,11 +143,15 @@ The fallback lease uses a random tab token and the following invariants:
 - **Risk:** BroadcastChannel may be unavailable or drop messages. **Mitigation:** notifications are advisory; periodic sync and durable exclusion preserve correctness.
 - **Question:** None blocking Release A1.
 
+## Release A1.1 Addendum
+
+Ownership cancellation must propagate through retry delays, Supabase RPC builders, PostgREST page requests, and synchronization stages that support `AbortSignal`. Storage operations without cancellation support must check ownership immediately before and after each request. Tests cover throttled heartbeats, closure during replay, and lease replacement while a request is active.
+
 ## Completion Notes
 
 - **Verification commands:** `pnpm test -- lib/sync`, `pnpm test`, `pnpm typecheck`, `pnpm lint`, `pnpm build`
-- **Verification results:** `pnpm test` passed (22 files, 104 tests); `pnpm typecheck`, `pnpm lint`, `pnpm build`, and `git diff --check` passed on 2026-09-03.
+- **Verification results:** `pnpm test` passed (25 files, 123 tests); `pnpm typecheck`, `pnpm lint`, `pnpm build`, and `git diff --check` passed on 2026-09-03.
 - **QA review:** Static review identified graceful lease-loss handling and lifecycle-test gaps. Graceful interruption handling, closed-channel safety, scope binding, and deterministic ownership-loss coverage were added. Browser-level timer-throttling coverage remains follow-up work.
 - **Security review:** Web Locks is the primary strict browser exclusion mechanism. The fallback uses atomic leases, heartbeats, ownership-checked release, abort checkpoints, and existing idempotent CAS semantics. An already-issued storage/network operation may finish after fallback lease loss because not every Supabase Storage API accepts an abort signal; this residual risk requires idempotency and should be covered by future browser-level testing or remote fencing if stronger guarantees are required.
 - **Bug-ledger updates:** Not applicable; this is planned architectural hardening.
-- **Follow-up work:** Browser-level multi-tab suspension/throttling tests and optional remote fencing. Release A2 and Phase B remain explicitly deferred.
+- **Follow-up work:** Browser-level multi-tab suspension/throttling tests and optional remote fencing. Phase B remains explicitly deferred.

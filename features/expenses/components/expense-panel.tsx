@@ -21,6 +21,7 @@ import type {
   ProfileSummary,
   TripMember,
 } from "@/features/domain/entities";
+import { decimalFromMinorUnits, formatMinorUnits, getCurrencyExponent, parseMinorUnits } from "@/features/domain/money";
 import { expenseRepository } from "@/features/expenses/data/dexie-expense-repository";
 import { calculateBalances, calculateSplit } from "@/features/expenses/lib/expense-calculator";
 
@@ -44,7 +45,7 @@ export function ExpensePanel({
   const [profiles] = useState<ProfileSummary[]>([]);
   const [dialog, setDialog] = useState<Expense | "new" | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [balances, setBalances] = useState<Record<string, number>>({});
+  const [balances, setBalances] = useState<Record<string, bigint>>({});
   const autoOpenConsumed = useRef(false);
 
   useEffect(() => {
@@ -67,7 +68,7 @@ export function ExpensePanel({
     let cancelled = false;
     Promise.all(
       (expenses ?? []).map(async (expense) => ({
-        amount: expense.amount,
+        amountMinor: expense.amountMinor,
         paidBy: expense.paidBy,
         shares: await expenseRepository.listSharesByExpense(expense.id),
       }))
@@ -80,7 +81,7 @@ export function ExpensePanel({
   }, [expenses]);
 
   const total = useMemo(
-    () => (expenses ?? []).reduce((sum, expense) => sum + expense.amount, 0),
+    () => (expenses ?? []).reduce((sum, expense) => sum + expense.amountMinor, 0n),
     [expenses]
   );
   const names = useMemo(
@@ -106,11 +107,11 @@ export function ExpensePanel({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Summary label="Trip total" value={formatMoney(total, currency)} />
+        <Summary label="Trip total" value={formatMinorUnits(total, currency)} />
         <Summary
           label="Your balance"
-          value={formatMoney(balances[userId] ?? 0, currency)}
-          detail={(balances[userId] ?? 0) >= 0 ? "You are owed" : "You owe"}
+          value={formatMinorUnits(balances[userId] ?? 0n, currency)}
+          detail={(balances[userId] ?? 0n) >= 0n ? "You are owed" : "You owe"}
         />
       </div>
 
@@ -121,8 +122,8 @@ export function ExpensePanel({
             {Object.entries(balances).map(([memberId, balance]) => (
               <div key={memberId} className="flex justify-between text-sm">
                 <span>{memberId === userId ? "You" : (names.get(memberId) ?? memberId)}</span>
-                <span className={balance >= 0 ? "text-success" : "text-destructive"}>
-                  {balance >= 0 ? "receives" : "owes"} {formatMoney(Math.abs(balance), currency)}
+                <span className={balance >= 0n ? "text-success" : "text-destructive"}>
+                  {balance >= 0n ? "receives" : "owes"} {formatMinorUnits(balance < 0n ? -balance : balance, currency)}
                 </span>
               </div>
             ))}
@@ -161,7 +162,7 @@ export function ExpensePanel({
                   {expense.splitType} split
                 </p>
               </div>
-              <strong>{formatMoney(expense.amount, expense.currency)}</strong>
+              <strong>{formatMinorUnits(expense.amountMinor, expense.currency)}</strong>
               {canEdit && (
                 <>
                   <Button
@@ -243,7 +244,7 @@ function ExpenseDialog({
         const map = new Map<string, string>();
         for (const share of shares) {
           if (mode === "exact") {
-            map.set(share.userId, (share.shareAmount / 100).toFixed(2));
+            map.set(share.userId, decimalFromMinorUnits(share.shareAmountMinor, currency));
           } else if (mode === "percentage") {
             map.set(share.userId, String(share.sharePercentage ?? 0));
           }
@@ -251,23 +252,22 @@ function ExpenseDialog({
         setShareInputs(map);
       })
       .catch(() => setShareInputs(new Map()));
-  }, [expense, mode]);
+  }, [currency, expense, mode]);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
     const data = new FormData(event.currentTarget);
-    const amount = Math.round(Number(data.get("amount")) * 100);
     const description = String(data.get("description"));
     const paidBy = String(data.get("paidBy"));
     try {
-      if (!Number.isSafeInteger(amount) || amount <= 0)
-        throw new Error("Enter an amount greater than zero.");
+      const amountMinor = parseMinorUnits(String(data.get("amount")), currency);
+      if (amountMinor <= 0n) throw new Error("Enter an amount greater than zero.");
       if (!participants.length) throw new Error("Select at least one participant.");
-      const exactCents =
+      const exactMinor =
         mode === "exact"
           ? Object.fromEntries(
-              participants.map((id) => [id, Math.round(Number(data.get(`share-${id}`)) * 100)])
+              participants.map((id) => [id, parseMinorUnits(String(data.get(`share-${id}`)), currency)])
             )
           : undefined;
       const percentages =
@@ -275,17 +275,17 @@ function ExpenseDialog({
           ? Object.fromEntries(participants.map((id) => [id, Number(data.get(`share-${id}`))]))
           : undefined;
       const shares = calculateSplit({
-        totalCents: amount,
+        totalMinor: amountMinor,
         payerId: paidBy,
         participants,
         mode,
-        exactCents,
+        exactMinor,
         percentages,
       }).shares;
       if (expense) {
         await expenseRepository.update(expense.id, {
           description,
-          amount,
+          amountMinor,
           paidBy,
           splitType: mode,
         });
@@ -295,7 +295,7 @@ function ExpenseDialog({
           id: crypto.randomUUID(),
           tripId,
           description,
-          amount,
+          amountMinor,
           currency,
           paidBy,
           splitType: mode,
@@ -329,9 +329,9 @@ function ExpenseDialog({
             label={`Amount (${currency})`}
             name="amount"
             type="number"
-            min="0.01"
-            step="0.01"
-            defaultValue={expense ? (expense.amount / 100).toFixed(2) : ""}
+            min={getCurrencyExponent(currency) === 0 ? "1" : `0.${"0".repeat(getCurrencyExponent(currency) - 1)}1`}
+            step={getCurrencyExponent(currency) === 0 ? "1" : `0.${"0".repeat(getCurrencyExponent(currency) - 1)}1`}
+            defaultValue={expense ? decimalFromMinorUnits(expense.amountMinor, expense.currency) : ""}
             required
           />
           <div className="space-y-2">
@@ -389,7 +389,7 @@ function ExpenseDialog({
                       name={`share-${member.userId}`}
                       type="number"
                       min="0"
-                      step="0.01"
+                      step={getCurrencyExponent(currency) === 0 ? "1" : `0.${"0".repeat(getCurrencyExponent(currency) - 1)}1`}
                       value={shareValue}
                       onChange={(event) =>
                         setShareInputs((current) =>
@@ -458,7 +458,4 @@ function Summary({ label, value, detail }: { label: string; value: string; detai
       {detail && <p className="mt-1 text-xs text-muted-foreground">{detail}</p>}
     </div>
   );
-}
-function formatMoney(cents: number, currency: string) {
-  return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(cents / 100);
 }
