@@ -180,6 +180,12 @@ export class ViatikDatabase extends Dexie {
         trip.timeZone ??= null;
       });
     });
+
+    this.version(15).stores({}).upgrade(async (transaction) => {
+      await transaction.table("contacts").toCollection().modify((contact: Record<string, unknown>) => {
+        contact.avatarUrl ??= null;
+      });
+    });
   }
 }
 

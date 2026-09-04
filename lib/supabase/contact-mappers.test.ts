@@ -7,6 +7,7 @@ const contact: Contact = {
   id: "contact-1",
   ownerId: "user-1",
   fullName: "Jordan Rivera",
+  avatarUrl: null,
   email: null,
   phone: null,
   relationship: "roommate",

@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import QRCode from "react-qr-code";
 import { logout, setDiscoverability, updateProfileDetails, type ProfileDetails } from "@/app/actions/auth";
 import { viatikQrPayload } from "@/features/contacts/lib/viatik-id";
+import { AvatarPicker, type AvatarChange } from "@/components/ui/avatar-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -118,6 +119,21 @@ export function SettingsClient({
             }}
           />
         ) : (
+          <>
+            <div className="mt-5 flex items-center gap-4">
+              <span className="grid size-16 place-items-center overflow-hidden rounded-full bg-primary/10 text-lg font-semibold text-primary">
+                {saved.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={saved.avatarUrl} alt="" className="size-full object-cover" />
+                ) : (
+                  initialsOf(saved.fullName) || <UserRound aria-hidden />
+                )}
+              </span>
+              <div>
+                <p className="font-medium">{saved.fullName}</p>
+                <p className="text-sm text-muted-foreground">{saved.phone ?? "No phone on file"}</p>
+              </div>
+            </div>
           <dl className="mt-5 grid gap-x-8 gap-y-4 sm:grid-cols-2">
             <ProfileRow label="Full name" value={saved.fullName} />
             <ProfileRow label="Phone" value={saved.phone} />
@@ -136,6 +152,7 @@ export function SettingsClient({
               value={[saved.passportIssuingCountry, saved.passportExpiresOn].filter(Boolean).join(" · ")}
             />
           </dl>
+          </>
         )}
       </section>
       <section className="rounded-2xl border bg-card p-5 sm:p-7" aria-labelledby="directory-heading">
@@ -234,6 +251,16 @@ export function SettingsClient({
   );
 }
 
+function initialsOf(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
 function ProfileRow({ label, value }: { label: string; value: string | null | undefined }) {
   const display = value?.trim() || "—";
   return (
@@ -273,18 +300,32 @@ function ProfileEditForm({
   });
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(initial.avatarUrl ?? null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
   function setField(key: keyof typeof values, value: string) {
     setValues((current) => ({ ...current, [key]: value }));
+  }
+
+  function handleAvatarChange(change: AvatarChange) {
+    if (change.file) {
+      setAvatarFile(change.file);
+      setAvatarUrl(null);
+      return;
+    }
+    setAvatarFile(null);
+    setAvatarUrl(change.value);
   }
 
   function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage(null);
     startTransition(async () => {
-      const result = await updateProfileDetails({
-        fullName: values.fullName,
-        phone: values.phone,
+      const result = await updateProfileDetails(
+        {
+          fullName: values.fullName,
+          avatarUrl: avatarUrl ?? undefined,
+          phone: values.phone,
         birthDate: values.birthDate || undefined,
         preferredCurrency: values.preferredCurrency || undefined,
         preferredLanguage: values.preferredLanguage || undefined,
@@ -293,9 +334,11 @@ function ProfileEditForm({
         emergencyContactName: values.emergencyContactName,
         emergencyContactRelationship: values.emergencyContactRelationship,
         emergencyContactPhone: values.emergencyContactPhone,
-        passportIssuingCountry: values.passportIssuingCountry,
-        passportExpiresOn: values.passportExpiresOn || undefined,
-      });
+          passportIssuingCountry: values.passportIssuingCountry,
+          passportExpiresOn: values.passportExpiresOn || undefined,
+        },
+        avatarFile
+      );
       if (!result.success) return setMessage(result.error);
       onSaved(result.success ? "Profile saved." : "");
     });
@@ -303,6 +346,14 @@ function ProfileEditForm({
 
   return (
     <form onSubmit={save} className="mt-5 grid max-w-2xl gap-4 sm:grid-cols-2">
+      <div className="sm:col-span-2">
+        <AvatarPicker
+          value={avatarUrl}
+          name={values.fullName}
+          onChange={handleAvatarChange}
+          uploadHint="Optional · pick a preset or upload a photo."
+        />
+      </div>
       <div className="space-y-2 sm:col-span-2">
         <Label htmlFor="settings-fullName">Full name</Label>
         <Input id="settings-fullName" value={values.fullName} onChange={(event) => setField("fullName", event.target.value)} autoComplete="name" required />
