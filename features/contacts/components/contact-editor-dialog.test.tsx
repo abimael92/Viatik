@@ -66,14 +66,21 @@ describe("ContactEditorDialog", () => {
     expect(within(dialog).getByRole("button", { name: "Save contact" })).toBeTruthy();
   });
 
-  it("jumps directly to a later step from the clickable progress header", async () => {
+  it("requires completing every step before the final one is reachable", () => {
     render(<ContactEditorDialog open userId="user-1" onOpenChange={vi.fn()} />);
     const dialog = screen.getByRole("dialog");
 
-    // Filling the required name lets us jump straight to the final step.
-    fireEvent.change(within(dialog).getByLabelText("Full name"), { target: { value: "Jordan Rivera" } });
+    // Skipping straight to the final step is blocked until prior steps are visited.
     fireEvent.click(within(dialog).getByRole("button", { name: "Go to step: Travel details" }));
+    expect(within(dialog).getByRole("heading", { name: "Identity" })).toBeTruthy();
+    expect(within(dialog).getByText(/Complete Contact details before moving on/)).toBeTruthy();
 
+    // Fill the name and advance to step 2, then the final step becomes reachable.
+    fireEvent.change(within(dialog).getByLabelText("Full name"), { target: { value: "Jordan Rivera" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Next" }));
+    expect(within(dialog).getByRole("heading", { name: "Contact details" })).toBeTruthy();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Go to step: Travel details" }));
     expect(within(dialog).getByRole("heading", { name: "Travel details" })).toBeTruthy();
     expect(within(dialog).getByRole("button", { name: "Save contact" })).toBeTruthy();
     expect(within(dialog).queryByRole("button", { name: "Next" })).toBeNull();

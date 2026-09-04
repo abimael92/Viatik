@@ -119,14 +119,31 @@ function ContactForm({
   const operation = contact ? "edit" : "create";
   const [step, setStep] = useState(1);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [values, setValues] = useState<ContactFormValues>(() => contactToValues(contact));
   const [upcoming, setUpcoming] = useState<Trip[]>([]);
   const [propagate, setPropagate] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
+  // Step 1 is the starting point; later steps are marked visited as the user
+  // actually reaches them. Submission is only allowed once every step is visited.
+  const [visited, setVisited] = useState<boolean[]>(() => [
+    true,
+    ...Array(STEPS.length - 1).fill(false),
+  ]);
+  const allVisited = visited.every(Boolean);
 
   function setField<K extends keyof ContactFormValues>(key: K, value: ContactFormValues[K]) {
     setValues((current) => ({ ...current, [key]: value }));
+  }
+
+  function goToStep(target: number) {
+    setNotice(null);
+    setFieldErrors({});
+    setVisited((current) =>
+      current.map((visitedStep, index) => (index === target - 1 ? true : visitedStep))
+    );
+    setStep(target);
   }
 
   function validateStep(targetStep: number): Record<string, string> {
@@ -156,23 +173,29 @@ function ContactForm({
       focusFirstError(errors);
       return;
     }
-    setFieldErrors({});
-    setStep((current) => current + 1);
+    goToStep(step + 1);
   }
 
   /** Direct step navigation from the clickable progress header. */
   function handleStepNavigate(target: number) {
     if (target === step) return;
-    if (target > step) {
-      const errors = validateStep(step);
-      if (Object.keys(errors).length > 0) {
-        setFieldErrors(errors);
-        focusFirstError(errors);
-        return;
-      }
+    if (target < step) {
+      goToStep(target);
+      return;
     }
-    setFieldErrors({});
-    setStep(target);
+    // Forward jumps require every preceding step to have been visited so the
+    // flow is mandatory: you can't skip ahead to submit.
+    const skipped = STEPS.slice(0, target - 1).some((_, index) => !visited[index]);
+    if (skipped) {
+      const firstUnvisited = visited.findIndex((visitedStep) => !visitedStep);
+      setNotice(
+        firstUnvisited === -1
+          ? null
+          : `Complete ${STEPS[firstUnvisited]} before moving on.`
+      );
+      return;
+    }
+    goToStep(target);
   }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -546,13 +569,15 @@ function ContactForm({
           </p>
         )}
 
+        {notice && <p className="text-xs text-muted-foreground">{notice}</p>}
+
         <DialogFooter>
           {step > 1 && (
             <Button
               type="button"
               variant="outline"
               disabled={pending}
-              onClick={() => setStep((current) => current - 1)}
+              onClick={() => goToStep(step - 1)}
             >
               Back
             </Button>
@@ -562,7 +587,7 @@ function ContactForm({
               Next
             </Button>
           ) : (
-            <Button type="submit" disabled={pending}>
+            <Button type="submit" disabled={pending || !allVisited}>
               {pending
                 ? operation === "edit"
                   ? "Updating…"
