@@ -12,6 +12,8 @@ import {
   removeMutation,
   shouldRetryMutation,
   getRetryDelay,
+  isTransientSchemaCacheError,
+  resetMutationAttempts,
 } from "@/lib/sync/outbox";
 import type { OutboxMutation } from "@/lib/sync/types";
 import {
@@ -281,13 +283,28 @@ async function syncOnce(context?: SyncExecutionContext): Promise<void> {
     context?.signal.throwIfAborted();
     // Check if mutation should be retried
     if (!shouldRetryMutation(mutation)) {
-      logger.warn("Skipping mutation that exceeded max retries", {
-        id: mutation.id,
-        attempts: mutation.attempts,
-        entityType: mutation.entityType,
-      });
-      skippedCount++;
-      continue;
+      // Transient PostgREST schema-cache staleness (e.g. migrations applied after
+      // the mutation was created) must not permanently drop the mutation. Reset
+      // its attempts so it gets a fresh try — the underlying resource exists now.
+      if (isTransientSchemaCacheError(mutation.lastError)) {
+        logger.warn("Resetting attempts for schema-cache-stale mutation", {
+          id: mutation.id,
+          entityType: mutation.entityType,
+          attempts: mutation.attempts,
+          lastError: mutation.lastError,
+        });
+        await resetMutationAttempts(mutation.id);
+        mutation.attempts = 0;
+        mutation.lastError = null;
+      } else {
+        logger.warn("Skipping mutation that exceeded max retries", {
+          id: mutation.id,
+          attempts: mutation.attempts,
+          entityType: mutation.entityType,
+        });
+        skippedCount++;
+        continue;
+      }
     }
 
     // Apply backoff if this mutation has failed before
