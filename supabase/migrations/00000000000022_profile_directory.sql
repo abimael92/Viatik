@@ -109,6 +109,10 @@ alter table public.profile_lookup_attempts enable row level security;
 
 -- Rate-limited lookup. Accepts only a canonical Viatik ID, reads from the public
 -- directory (never the private profiles table), and returns no private fields.
+-- The prior signature returned `full_name`; since the return type changes to
+-- `display_name`, the function must be dropped (CREATE OR REPLACE cannot alter
+-- a function's return type).
+drop function if exists public.lookup_profile_for_linking(text);
 create or replace function public.lookup_profile_for_linking(p_identifier text)
 returns table (
   profile_id uuid,
