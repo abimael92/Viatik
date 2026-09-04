@@ -39,6 +39,10 @@ export interface Trip {
   name: string;
   description: string | null;
   destination: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  placeId: string | null;
+  timeZone: string | null;
   startDate: string | null; // ISO date (yyyy-mm-dd)
   endDate: string | null; // ISO date (yyyy-mm-dd)
   coverImageUrl: string | null;
