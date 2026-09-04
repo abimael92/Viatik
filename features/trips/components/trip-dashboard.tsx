@@ -4,7 +4,11 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   AlertCircle,
+  CalendarClock,
   CalendarDays,
+  Cloud,
+  CloudOff,
+  LogOut,
   Map,
   MapPin,
   Minus,
@@ -14,6 +18,8 @@ import {
   UserPlus,
   X,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { motion } from "motion/react";
 import {
   type ComponentProps,
   type Dispatch,
@@ -26,6 +32,8 @@ import {
 } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Collapsible } from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
@@ -51,16 +59,32 @@ import { collaborationRepository } from "@/features/collaboration/data/dexie-col
 import { DestinationField } from "@/features/trips/components/destination-field";
 import { tripRepository } from "@/features/trips/data/dexie-trip-repository";
 import { getMaxEndDate, getTripDurationError } from "@/features/trips/lib/trip-duration";
+import { logout } from "@/app/actions/auth";
+import { deleteDatabase } from "@/lib/db/dexie";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
+import { useSyncStatus } from "@/lib/sync/use-sync-status";
 import { cn } from "@/lib/utils";
 import type { PlaceDetails } from "@/app/actions/places";
 
 export function TripDashboard({ userId }: { userId: string }) {
+  const router = useRouter();
   const [trips, setTrips] = useState<Trip[] | null>(null);
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
   const [invitations, setInvitations] = useState<TripInvitation[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const sync = useSyncStatus();
+
+  async function handleLogout() {
+    const result = await logout();
+    if (!result.success) {
+      setError(result.error);
+      return;
+    }
+    await deleteDatabase(userId);
+    router.replace("/login");
+    router.refresh();
+  }
 
   useEffect(
     () =>
@@ -100,11 +124,29 @@ export function TripDashboard({ userId }: { userId: string }) {
             Keep plans, costs, and memories together—even offline.
           </p>
         </div>
-        <Button onClick={() => setCreating(true)}>
-          <Plus className="size-4" />
-          Create trip
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => setCreating(true)}>
+            <Plus className="size-4" />
+            Create trip
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Sign out"
+            title="Sign out"
+            onClick={() => void handleLogout()}
+          >
+            <LogOut className="size-4" aria-hidden />
+          </Button>
+        </div>
       </header>
+
+      <MetricsRow
+        sync={sync}
+        upcomingCount={upcoming.length}
+        recentCount={recent.length}
+      />
 
       {invitations.some((invitation) => invitation.status === "pending") && (
         <section className="rounded-2xl border border-primary/30 bg-primary/5 p-5">
@@ -182,8 +224,12 @@ export function TripDashboard({ userId }: { userId: string }) {
         </div>
       ) : (
         <>
-          <TripSection title="Upcoming trips" trips={upcoming} />
-          {recent.length > 0 && <TripSection title="Recent trips" trips={recent} />}
+          <TripSection title="Upcoming trips" trips={upcoming} bento />
+          {recent.length > 0 && (
+            <Collapsible id="recent-trips" title="Recent trips" badge={<span className="text-xs text-muted-foreground">{recent.length}</span>}>
+              <TripSection title="Recent trips" trips={recent} />
+            </Collapsible>
+          )}
         </>
       )}
 
@@ -198,30 +244,46 @@ export function TripDashboard({ userId }: { userId: string }) {
   );
 }
 
-function TripSection({ title, trips }: { title: string; trips: Trip[] }) {
+function TripSection({ title, trips, bento = false }: { title: string; trips: Trip[]; bento?: boolean }) {
   if (!trips.length) return null;
+  const headingId = title.replaceAll(" ", "-").toLowerCase();
   return (
-    <section aria-labelledby={title.replaceAll(" ", "-").toLowerCase()}>
-      <h2 id={title.replaceAll(" ", "-").toLowerCase()} className="mb-4 text-xl font-semibold">
+    <section aria-labelledby={headingId}>
+      <h2 id={headingId} className="mb-4 text-xl font-semibold">
         {title}
       </h2>
+      {/* Asymmetrical bento grid: the first card is featured and spans two columns. */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {trips.map((trip) => (
-          <TripCard key={trip.id} trip={trip} />
+        {trips.map((trip, index) => (
+          <motion.div
+            key={trip.id}
+            className={cn(bento && index === 0 && "sm:col-span-2 xl:col-span-2")}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, delay: Math.min(index * 0.05, 0.25) }}
+          >
+            <TripCard trip={trip} featured={bento && index === 0} />
+          </motion.div>
         ))}
       </div>
     </section>
   );
 }
 
-function TripCard({ trip }: { trip: Trip }) {
+function TripCard({ trip, featured = false }: { trip: Trip; featured?: boolean }) {
   return (
     <Link
       href={`/trips/${trip.id}`}
-      className="group overflow-hidden rounded-2xl border bg-card shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring"
+      className={cn(
+        "group flex h-full flex-col overflow-hidden rounded-2xl border border-border/40 bg-card/70 shadow-sm backdrop-blur-md",
+        "transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      )}
     >
       <div
-        className="h-32 bg-gradient-to-br from-primary/25 via-secondary/20 to-accent/30"
+        className={cn(
+          "bg-gradient-to-br from-primary/25 via-secondary/20 to-accent/30",
+          featured ? "h-44" : "h-32"
+        )}
         style={
           trip.coverImageUrl
             ? {
@@ -232,22 +294,116 @@ function TripCard({ trip }: { trip: Trip }) {
             : undefined
         }
       />
-      <div className="p-5">
-        <h3 className="text-lg font-semibold group-hover:text-primary">{trip.name}</h3>
+      <div className="flex-1 p-5">
+        <div className="flex items-start justify-between gap-3">
+          <h3 className={cn("font-semibold group-hover:text-primary", featured ? "text-xl" : "text-lg")}>
+            {trip.name}
+          </h3>
+          <TripCountdown trip={trip} />
+        </div>
         <div className="mt-3 space-y-2 text-sm text-muted-foreground">
           {trip.destination && (
             <p className="flex items-center gap-2">
-              <MapPin className="size-4" />
+              <MapPin className="size-4" aria-hidden />
               {trip.destination}
             </p>
           )}
           <p className="flex items-center gap-2">
-            <CalendarDays className="size-4" />
+            <CalendarDays className="size-4" aria-hidden />
             {formatDateRange(trip)}
           </p>
         </div>
       </div>
     </Link>
+  );
+}
+
+/** Small label showing how long until the trip, shown in the trip card. */
+function TripCountdown({ trip }: { trip: Trip }) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (!trip.startDate) return null;
+
+  const start = new Date(`${trip.startDate}T00:00:00`);
+  const diffDays = Math.round((start.getTime() - today.getTime()) / 86_400_000);
+
+  if (diffDays < 0) return <TripCountdownPill>In progress</TripCountdownPill>;
+  if (diffDays === 0) return <TripCountdownPill accent>Today</TripCountdownPill>;
+  if (diffDays === 1) return <TripCountdownPill accent>Tomorrow</TripCountdownPill>;
+  return <TripCountdownPill accent>{diffDays} days to go</TripCountdownPill>;
+}
+
+function TripCountdownPill({ children, accent = false }: { children: React.ReactNode; accent?: boolean }) {
+  return (
+    <span
+      className={cn(
+        "shrink-0 rounded-full px-2.5 py-1 text-xs font-medium",
+        accent ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+function MetricsRow({
+  sync,
+  upcomingCount,
+  recentCount,
+}: {
+  sync: ReturnType<typeof useSyncStatus>;
+  upcomingCount: number;
+  recentCount: number;
+}) {
+  const OfflineIcon = sync.isOnline ? Cloud : CloudOff;
+  return (
+    <section aria-label="Trip overview" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <Card glass className="p-5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-sm text-muted-foreground">Upcoming trips</p>
+            <p className="mt-1 text-3xl font-bold tracking-tight">{upcomingCount}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{recentCount} completed in the past</p>
+          </div>
+          <CalendarClock className="size-6 shrink-0 text-primary" aria-hidden />
+        </div>
+      </Card>
+
+      <Card glass className="p-5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-sm text-muted-foreground">Offline ready</p>
+            <p className="mt-1 text-3xl font-bold tracking-tight">
+              {sync.isOnline ? "Online" : "Ready"}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {sync.isOnline ? "Changes sync to the cloud" : "Saved locally for later"}
+            </p>
+          </div>
+          <OfflineIcon
+            className={cn("size-6 shrink-0", sync.isOnline ? "text-success" : "text-muted-foreground")}
+            aria-hidden
+          />
+        </div>
+      </Card>
+
+      <Card glass className="p-5 sm:col-span-2 xl:col-span-1">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-sm text-muted-foreground">Pending changes</p>
+            <p className="mt-1 text-3xl font-bold tracking-tight">{sync.pending}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {sync.pending > 0 ? "Waiting to reach the cloud" : "Everything is up to date"}
+            </p>
+          </div>
+          {sync.pending > 0 && (
+            <span className="grid size-8 shrink-0 animate-pulse place-items-center rounded-full bg-primary/15 text-primary">
+              <span className="size-2.5 rounded-full bg-primary" aria-hidden />
+            </span>
+          )}
+        </div>
+      </Card>
+    </section>
   );
 }
 

@@ -5,6 +5,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, MapPin, Clock } from "lucide-react";
 import { motion } from "motion/react";
 
+import { UserAvatar } from "@/components/ui/user-avatar";
 import type { Activity } from "@/features/domain/entities";
 import { cn } from "@/lib/utils";
 
@@ -68,6 +69,7 @@ export function ActivityCard({ activity, onSelect, draggable = true }: ActivityC
             {activity.description || activity.location || activity.category}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+            <UserAvatar seed={activity.createdBy} name="Collaborator" size="sm" />
             {activity.startTime && (
               <span className="flex items-center gap-1">
                 <Clock className="size-3" />

@@ -4,6 +4,7 @@ import { Link2, Pencil, Trash2, UserPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { ContactEditorDialog } from "@/features/contacts/components/contact-editor-dialog";
 import { ViatikContactImportDialog } from "@/features/contacts/components/viatik-contact-import-dialog";
 import { contactRepository } from "@/features/contacts/data/dexie-contact-repository";
@@ -50,9 +51,12 @@ export function ContactsPanel({ userId }: { userId: string }) {
       <div className="divide-y rounded-2xl border bg-card">
         {contacts.map((contact) => (
           <div key={contact.id} className="flex items-center gap-4 p-4">
-            <div className="grid size-11 place-items-center rounded-full bg-primary/10 font-semibold text-primary">
-              {contact.fullName.slice(0, 2).toUpperCase()}
-            </div>
+            <UserAvatar
+              seed={contact.avatarSeed}
+              src={contact.avatarUrl}
+              name={contact.fullName}
+              size="md"
+            />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <p className="truncate font-medium">{contact.fullName}</p>
