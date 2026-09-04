@@ -5,13 +5,14 @@ const mocks = vi.hoisted(() => ({
   registerPasskey: vi.fn(),
   logout: vi.fn(),
   updateProfile: vi.fn(),
+  setDiscoverability: vi.fn(),
   deleteDatabase: vi.fn(),
   replace: vi.fn(),
   refresh: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: mocks.replace, refresh: mocks.refresh }) }));
-vi.mock("@/app/actions/auth", () => ({ logout: mocks.logout, updateProfile: mocks.updateProfile }));
+vi.mock("@/app/actions/auth", () => ({ logout: mocks.logout, updateProfile: mocks.updateProfile, setDiscoverability: mocks.setDiscoverability }));
 vi.mock("@/lib/db/dexie", () => ({ deleteDatabase: mocks.deleteDatabase }));
 vi.mock("@/lib/supabase/browser-client", () => ({
   getSupabaseBrowserClient: () => ({ auth: { registerPasskey: mocks.registerPasskey } }),
@@ -44,5 +45,22 @@ describe("native passkey registration", () => {
     await waitFor(() => expect(mocks.logout).toHaveBeenCalledOnce());
     expect(mocks.deleteDatabase).toHaveBeenCalledWith("user-1");
     expect(mocks.replace).toHaveBeenCalledWith("/login");
+  });
+
+  it("toggles discoverability through the server action", async () => {
+    mocks.setDiscoverability.mockResolvedValue({ success: true, data: undefined });
+    mocks.refresh.mockImplementation(() => undefined);
+    render(<SettingsClient userId="user-1" phone={null} fullName="Alice" viatikId="VTK-1234ABCD5678EF90" discoverable={false} />);
+
+    fireEvent.click(screen.getByRole("checkbox"));
+
+    await waitFor(() => expect(mocks.setDiscoverability).toHaveBeenCalledWith(true));
+    expect((await screen.findByRole("status")).textContent).toBe("Discoverability updated.");
+  });
+
+  it("shows the user's Viatik ID when present", () => {
+    render(<SettingsClient userId="user-1" phone={null} fullName="Alice" viatikId="VTK-1234ABCD5678EF90" discoverable />);
+    expect(screen.getByText("VTK-1234ABCD5678EF90")).toBeTruthy();
+    expect((screen.getByRole("checkbox") as HTMLInputElement).checked).toBe(true);
   });
 });
