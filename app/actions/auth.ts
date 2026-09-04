@@ -205,7 +205,25 @@ export async function setDiscoverability(discoverable: boolean): Promise<ActionR
   }
 }
 
-export async function completeOnboarding(fullName: string, avatar?: File | null): Promise<ActionResult> {
+export type OnboardingDetails = {
+  phone?: string;
+  birthDate?: string;
+  emergencyContactName?: string;
+  emergencyContactRelationship?: string;
+  emergencyContactPhone?: string;
+  dietaryRestrictions?: string[];
+  allergies?: string[];
+  passportIssuingCountry?: string;
+  passportExpiresOn?: string;
+  preferredCurrency?: string;
+  preferredLanguage?: string;
+};
+
+export async function completeOnboarding(
+  fullName: string,
+  avatar?: File | null,
+  details?: OnboardingDetails
+): Promise<ActionResult> {
   const name = fullName.trim();
   if (name.length < 2 || name.length > 60) return { success: false, error: "Enter a name between 2 and 60 characters." };
   if (avatar && avatar.size > 2 * 1024 * 1024) return { success: false, error: "Choose an image smaller than 2 MB." };
@@ -228,7 +246,23 @@ export async function completeOnboarding(fullName: string, avatar?: File | null)
       avatarUrl = supabase.storage.from("avatars").getPublicUrl(path).data.publicUrl;
     }
 
-    const profile = { id: data.user.id, full_name: name, avatar_url: avatarUrl ?? null };
+    const profile = {
+      id: data.user.id,
+      full_name: name,
+      avatar_url: avatarUrl ?? null,
+      // Everything below is optional; empty values fall back to null/defaults.
+      phone: details?.phone?.trim() || null,
+      birth_date: details?.birthDate || null,
+      emergency_contact_name: details?.emergencyContactName?.trim() || null,
+      emergency_contact_relationship: details?.emergencyContactRelationship?.trim() || null,
+      emergency_contact_phone: details?.emergencyContactPhone?.trim() || null,
+      dietary_restrictions: details?.dietaryRestrictions ?? [],
+      allergies: details?.allergies ?? [],
+      passport_issuing_country: details?.passportIssuingCountry?.trim().toUpperCase() || null,
+      passport_expires_on: details?.passportExpiresOn || null,
+      preferred_currency: details?.preferredCurrency || undefined,
+      preferred_language: details?.preferredLanguage || undefined,
+    };
     const { error } = await supabase.from("profiles").upsert(profile, { onConflict: "id" });
     if (error) {
       logger.warn("Unable to complete onboarding", { code: error.code });
