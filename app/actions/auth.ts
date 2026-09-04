@@ -190,6 +190,7 @@ function onboardingMessage(error: { code?: string; message: string }) {
 
 export type ProfileDetails = {
   fullName: string;
+  avatarUrl?: string | null;
   phone?: string;
   birthDate?: string;
   emergencyContactName?: string;
@@ -204,15 +205,31 @@ export type ProfileDetails = {
 };
 
 /** Replace the signed-in user's saved profile details (empty values are cleared). */
-export async function updateProfileDetails(details: ProfileDetails): Promise<ActionResult> {
+export async function updateProfileDetails(
+  details: ProfileDetails,
+  avatar?: File | null
+): Promise<ActionResult> {
   const name = details.fullName.trim();
   if (name.length < 2 || name.length > 60) return { success: false, error: "Enter a name between 2 and 60 characters." };
+  if (avatar && avatar.size > 2 * 1024 * 1024) return { success: false, error: "Choose an image smaller than 2 MB." };
+  if (avatar && !["image/jpeg", "image/png", "image/webp"].includes(avatar.type)) return { success: false, error: "Choose a JPG, PNG, or WebP image." };
   try {
     const supabase = await createClient();
     const { data } = await supabase.auth.getUser();
     if (!data.user) return { success: false, error: "Authentication required" };
+
+    let avatarUrl: string | undefined;
+    if (avatar?.size) {
+      const extension = avatar.type.split("/")[1].replace("jpeg", "jpg");
+      const path = `${data.user.id}/avatar.${extension}`;
+      const { error: uploadError } = await supabase.storage.from("avatars").upload(path, avatar, { contentType: avatar.type, upsert: true });
+      if (uploadError) return { success: false, error: "We couldn't upload that photo. Try another image or remove it." };
+      avatarUrl = supabase.storage.from("avatars").getPublicUrl(path).data.publicUrl;
+    }
+
     const update = {
       full_name: name,
+      avatar_url: avatarUrl || details.avatarUrl?.trim() || null,
       phone: details.phone?.trim() || null,
       birth_date: details.birthDate || null,
       emergency_contact_name: details.emergencyContactName?.trim() || null,
@@ -251,6 +268,7 @@ export async function setDiscoverability(discoverable: boolean): Promise<ActionR
 }
 
 export type OnboardingDetails = {
+  avatarUrl?: string | null;
   phone?: string;
   birthDate?: string;
   emergencyContactName?: string;
@@ -294,7 +312,7 @@ export async function completeOnboarding(
     const profile = {
       id: data.user.id,
       full_name: name,
-      avatar_url: avatarUrl ?? null,
+      avatar_url: avatarUrl || details?.avatarUrl?.trim() || null,
       // Everything below is optional; empty values fall back to null/defaults.
       phone: details?.phone?.trim() || null,
       birth_date: details?.birthDate || null,

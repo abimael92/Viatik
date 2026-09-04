@@ -50,8 +50,13 @@ export function ContactsPanel({ userId }: { userId: string }) {
       <div className="divide-y rounded-2xl border bg-card">
         {contacts.map((contact) => (
           <div key={contact.id} className="flex items-center gap-4 p-4">
-            <div className="grid size-11 place-items-center rounded-full bg-primary/10 font-semibold text-primary">
-              {contact.fullName.slice(0, 2).toUpperCase()}
+            <div className="grid size-11 place-items-center overflow-hidden rounded-full bg-primary/10 font-semibold text-primary">
+              {contact.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={contact.avatarUrl} alt="" className="size-full object-cover" />
+              ) : (
+                contact.fullName.slice(0, 2).toUpperCase()
+              )}
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">

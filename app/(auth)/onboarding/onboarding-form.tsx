@@ -1,11 +1,11 @@
 "use client";
 
-import Image from "next/image";
-import { CalendarDays, Camera, ShieldCheck, UserRound } from "lucide-react";
+import { CalendarDays, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 
 import { completeOnboarding, type OnboardingDetails } from "@/app/actions/auth";
+import { AvatarPicker, type AvatarChange } from "@/components/ui/avatar-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -58,11 +58,20 @@ export function OnboardingForm({ email, next }: { email: string; next: string })
   const [pending, startTransition] = useTransition();
   const [visited, setVisited] = useState<boolean[]>([true, ...Array(STEPS.length - 1).fill(false)]);
   const allVisited = visited.every(Boolean);
-
-  const preview = useMemo(() => (avatar ? URL.createObjectURL(avatar) : null), [avatar]);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   function setField<K extends keyof FormValues>(key: K, value: FormValues[K]) {
     setValues((current) => ({ ...current, [key]: value }));
+  }
+
+  function handleAvatarChange(change: AvatarChange) {
+    if (change.file) {
+      setAvatar(change.file);
+      setAvatarUrl(null);
+      return;
+    }
+    setAvatar(null);
+    setAvatarUrl(change.value);
   }
 
   function goToStep(target: number) {
@@ -130,6 +139,7 @@ export function OnboardingForm({ email, next }: { email: string; next: string })
       return;
     }
     const details: OnboardingDetails = {
+      avatarUrl: avatarUrl ?? undefined,
       phone: values.phone,
       birthDate: values.birthDate || undefined,
       emergencyContactName: values.emergencyContactName,
@@ -165,17 +175,12 @@ export function OnboardingForm({ email, next }: { email: string; next: string })
 
       {step === 1 && (
         <div className="space-y-6">
-          <div className="flex items-center gap-4">
-            <label htmlFor="avatar" className="group relative grid size-20 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-full border-2 border-dashed bg-muted text-muted-foreground hover:border-primary hover:text-primary">
-              {preview ? <Image src={preview} alt="Avatar preview" fill unoptimized sizes="80px" className="object-cover" /> : <UserRound className="size-8" />}
-              <span className="absolute inset-0 hidden place-items-center bg-black/45 text-white group-hover:grid"><Camera /></span>
-            </label>
-            <div>
-              <Label htmlFor="avatar" className="cursor-pointer font-medium">Add a profile photo</Label>
-              <p className="mt-1 text-xs text-muted-foreground">JPG, PNG, or WebP. Up to 2 MB.</p>
-              <Input id="avatar" name="avatar" type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => setAvatar(event.target.files?.[0] ?? null)} />
-            </div>
-          </div>
+          <AvatarPicker
+            value={avatarUrl}
+            name={values.fullName}
+            onChange={handleAvatarChange}
+            uploadHint="Optional · pick a preset or upload a photo (up to 2 MB)."
+          />
           <Field
             label="Display name"
             name="fullName"

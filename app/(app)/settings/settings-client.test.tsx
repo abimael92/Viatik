@@ -75,8 +75,8 @@ describe("native passkey registration", () => {
         profile={{ fullName: "Alice", phone: "+1 555 0100", birthDate: "1990-01-01", dietaryRestrictions: ["vegetarian"] }}
       />
     );
-    expect(screen.getByText("Alice")).toBeTruthy();
-    expect(screen.getByText("+1 555 0100")).toBeTruthy();
+    expect(screen.getAllByText("Alice").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("+1 555 0100").length).toBeGreaterThan(0);
     expect(screen.getByText("vegetarian")).toBeTruthy();
     expect(screen.queryByLabelText("Full name")).toBeNull();
     expect(screen.getByRole("button", { name: "Edit" })).toBeTruthy();

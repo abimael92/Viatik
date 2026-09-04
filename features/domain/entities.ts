@@ -137,6 +137,7 @@ export interface Contact {
   id: string;
   ownerId: string;
   fullName: string;
+  avatarUrl: string | null;
   email: string | null;
   phone: string | null;
   relationship: ContactRelationship;
