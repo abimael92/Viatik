@@ -3,7 +3,9 @@
 import { Check, Copy, KeyRound, LogOut, ScanLine, Smartphone, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import QRCode from "react-qr-code";
 import { logout, setDiscoverability, updateProfile } from "@/app/actions/auth";
+import { viatikQrPayload } from "@/features/contacts/lib/viatik-id";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -143,15 +145,26 @@ export function SettingsClient({
             </label>
           </div>
           {viatikId && (
-            <div className="flex items-center justify-between gap-4 rounded-xl border p-4">
-              <div className="min-w-0">
-                <p className="text-sm font-medium">Your Viatik ID</p>
-                <p className="font-mono text-sm text-muted-foreground">{viatikId}</p>
+            <div className="rounded-xl border p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">Your Viatik ID</p>
+                  <p className="font-mono text-sm text-muted-foreground">{viatikId}</p>
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={() => void copyViatikId()} disabled={copied}>
+                  {copied ? <Check className="size-4 text-success" /> : <Copy className="size-4" />}
+                  {copied ? "Copied" : "Copy"}
+                </Button>
               </div>
-              <Button type="button" variant="outline" size="sm" onClick={() => void copyViatikId()} disabled={copied}>
-                {copied ? <Check className="size-4 text-success" /> : <Copy className="size-4" />}
-                {copied ? "Copied" : "Copy"}
-              </Button>
+              <div className="mt-4 flex items-center gap-4">
+                <div className="rounded-lg border bg-white p-2" aria-hidden>
+                  <QRCode value={viatikQrPayload(viatikId)} size={120} />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Friends can scan this code to link you instantly. Only your public name,
+                  avatar, handle, and preferences are shared.
+                </p>
+              </div>
             </div>
           )}
         </div>
