@@ -3,6 +3,8 @@ import Dexie, { type EntityTable } from "dexie";
 import type { Activity, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler } from "@/features/domain/entities";
 import type { TripMedia } from "@/features/domain/entities-media";
 import { MAX_MINOR_UNITS } from "@/features/domain/money";
+import type { VaultEntry, VaultKeyset } from "@/features/vault/domain/vault-types";
+import type { TripWeatherForecast } from "@/features/weather/domain/weather-types";
 import type { OutboxMutation, SyncConflict, SyncLease, SyncMetadata } from "@/lib/sync/types";
 
 function migrateMinorUnits(record: Record<string, unknown>, legacyField: string, minorField: string): void {
@@ -43,6 +45,9 @@ export class ViatikDatabase extends Dexie {
   syncConflicts!: EntityTable<SyncConflict, "id">;
   contacts!: EntityTable<Contact, "id">;
   tripTravelers!: EntityTable<TripTraveler, "id">;
+  vaultKeysets!: EntityTable<VaultKeyset, "id">;
+  vaultEntries!: EntityTable<VaultEntry, "id">;
+  tripWeatherForecasts!: EntityTable<TripWeatherForecast, "id">;
 
   constructor(name: string) {
     super(name);
@@ -157,6 +162,22 @@ export class ViatikDatabase extends Dexie {
         if (!mutation.payload) return;
         if (mutation.entityType === "expense" || mutation.entityType === "settlement") migrateMinorUnits(mutation.payload, "amount", "amountMinor");
         if (mutation.entityType === "expenseShare") migrateMinorUnits(mutation.payload, "shareAmount", "shareAmountMinor");
+      });
+    });
+
+    this.version(13).stores({
+      vaultKeysets: "id, ownerId, updatedAt",
+      vaultEntries: "id, tripId, ownerId, [tripId+ownerId], updatedAt, deletedAt",
+    });
+
+    this.version(14).stores({
+      tripWeatherForecasts: "id, [tripId+locationRevision]",
+    }).upgrade(async (transaction) => {
+      await transaction.table("trips").toCollection().modify((trip: Record<string, unknown>) => {
+        trip.latitude ??= null;
+        trip.longitude ??= null;
+        trip.placeId ??= null;
+        trip.timeZone ??= null;
       });
     });
   }
