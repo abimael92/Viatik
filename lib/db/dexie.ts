@@ -186,6 +186,12 @@ export class ViatikDatabase extends Dexie {
         contact.avatarUrl ??= null;
       });
     });
+
+    this.version(16).stores({}).upgrade(async (transaction) => {
+      await transaction.table("contacts").toCollection().modify((contact: Record<string, unknown>) => {
+        contact.avatarSeed ??= null;
+      });
+    });
   }
 }
 

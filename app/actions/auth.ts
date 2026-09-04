@@ -191,6 +191,7 @@ function onboardingMessage(error: { code?: string; message: string }) {
 export type ProfileDetails = {
   fullName: string;
   avatarUrl?: string | null;
+  avatarSeed?: string | null;
   phone?: string;
   birthDate?: string;
   emergencyContactName?: string;
@@ -230,6 +231,7 @@ export async function updateProfileDetails(
     const update = {
       full_name: name,
       avatar_url: avatarUrl || details.avatarUrl?.trim() || null,
+      avatar_seed: details.avatarSeed?.trim() || null,
       phone: details.phone?.trim() || null,
       birth_date: details.birthDate || null,
       emergency_contact_name: details.emergencyContactName?.trim() || null,
@@ -269,6 +271,7 @@ export async function setDiscoverability(discoverable: boolean): Promise<ActionR
 
 export type OnboardingDetails = {
   avatarUrl?: string | null;
+  avatarSeed?: string | null;
   phone?: string;
   birthDate?: string;
   emergencyContactName?: string;
@@ -313,6 +316,7 @@ export async function completeOnboarding(
       id: data.user.id,
       full_name: name,
       avatar_url: avatarUrl || details?.avatarUrl?.trim() || null,
+      avatar_seed: details?.avatarSeed?.trim() || null,
       // Everything below is optional; empty values fall back to null/defaults.
       phone: details?.phone?.trim() || null,
       birth_date: details?.birthDate || null,
