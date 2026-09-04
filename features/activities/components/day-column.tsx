@@ -4,7 +4,9 @@ import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 
 import type { Activity } from "@/features/domain/entities";
+import type { DailyForecast, WeatherWarning } from "@/features/weather/domain/weather-types";
 import { ActivityCard } from "@/features/activities/components/activity-card";
+import { WeatherDayBadge } from "@/features/weather/components/weather-day-badge";
 import { cn } from "@/lib/utils";
 import { useUiStore } from "@/lib/store/ui-store";
 
@@ -14,9 +16,21 @@ interface DayColumnProps {
   category?: string;
   onSelect?: (activity: Activity) => void;
   draggable?: boolean;
+  forecast?: DailyForecast;
+  warnings?: WeatherWarning[];
+  weatherLoading?: boolean;
 }
 
-export function DayColumn({ dayDate, activities, category = "all", onSelect, draggable = true }: DayColumnProps) {
+export function DayColumn({
+  dayDate,
+  activities,
+  category = "all",
+  onSelect,
+  draggable = true,
+  forecast,
+  warnings,
+  weatherLoading,
+}: DayColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: dayDate, data: { dayDate } });
   const setDragOverDay = useUiStore((s) => s.setDragOverDay);
 
@@ -43,13 +57,21 @@ export function DayColumn({ dayDate, activities, category = "all", onSelect, dra
         isOver && "border-primary bg-primary/5 ring-2 ring-primary/20"
       )}
     >
-      <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-        {new Date(dayDate).toLocaleDateString(undefined, {
-          weekday: "short",
-          month: "short",
-          day: "numeric",
-        })}
-      </h3>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          {new Date(dayDate).toLocaleDateString(undefined, {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+          })}
+        </h3>
+        <WeatherDayBadge
+          dayDate={dayDate}
+          forecast={forecast}
+          warnings={warnings}
+          loading={weatherLoading}
+        />
+      </div>
       <SortableContext
         items={activities.map((a) => a.id)}
         strategy={verticalListSortingStrategy}
