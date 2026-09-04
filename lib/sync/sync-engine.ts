@@ -108,38 +108,41 @@ function mutationPayloadToRow(mutation: OutboxMutation): Record<string, unknown>
   }
 }
 
-async function resolveCasConflict(mutation: OutboxMutation, result: CasResult): Promise<void> {
+async function resolveCasConflict(mutation: OutboxMutation, result: CasResult, signal?: AbortSignal): Promise<void> {
   syncDiagnostics.conflictEvents++;
   const remoteUpdatedAt = result.server_updated_at ?? "unknown";
   await recordConflict(mutation, remoteUpdatedAt, "remote");
   await removeMutation(mutation.id);
-  await pullRemoteChanges(true);
+  await pullRemoteChanges(true, signal);
 }
 
-async function replayCasMutation(mutation: OutboxMutation): Promise<boolean> {
+async function replayCasMutation(mutation: OutboxMutation, signal?: AbortSignal): Promise<boolean> {
   if (mutation.baseUpdatedAt === undefined || (mutation.operation !== "insert" && mutation.baseUpdatedAt === null)) {
-    await resolveCasConflict(mutation, { status: "conflict" });
+    await resolveCasConflict(mutation, { status: "conflict" }, signal);
     return false;
   }
 
   const client = getSupabaseBrowserClient();
-  const response = mutation.operation === "delete"
-    ? await client.rpc("sync_cas_delete", { p_entity: mutation.entityType, p_id: mutation.entityId, p_base_updated_at: mutation.baseUpdatedAt })
+  const request = mutation.operation === "delete"
+    ? client.rpc("sync_cas_delete", { p_entity: mutation.entityType, p_id: mutation.entityId, p_base_updated_at: mutation.baseUpdatedAt })
     : mutation.entityType === "contact"
-      ? await client.rpc("sync_contact_cas_upsert", { p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt })
-      : await client.rpc("sync_cas_upsert", { p_entity: mutation.entityType, p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt });
+      ? client.rpc("sync_contact_cas_upsert", { p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt })
+      : client.rpc("sync_cas_upsert", { p_entity: mutation.entityType, p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt });
+  const response = signal ? await request.abortSignal(signal) : await request;
   if (response.error) throw new Error(response.error.message);
   const result = response.data as CasResult;
   if (result.status === "conflict" || (result.status === "not_found" && mutation.operation !== "delete")) {
-    await resolveCasConflict(mutation, result);
+    await resolveCasConflict(mutation, result, signal);
     return false;
   }
   if (mutation.operation !== "delete" && !result.server_updated_at) throw new Error("CAS upsert did not return server_updated_at");
+  signal?.throwIfAborted();
   await acknowledgeMutation(mutation, result.server_updated_at ?? "");
+  signal?.throwIfAborted();
   return true;
 }
 
-async function replayOne(mutation: OutboxMutation) {
+async function replayOne(mutation: OutboxMutation, signal?: AbortSignal) {
   logger.debug("Replaying mutation", {
     id: mutation.id,
     entityType: mutation.entityType,
@@ -149,15 +152,16 @@ async function replayOne(mutation: OutboxMutation) {
   });
 
   try {
-    const applied = await replayCasMutation(mutation);
+    const applied = await replayCasMutation(mutation, signal);
     if (!applied) return;
-    if (mutation.entityType === "media" && mutation.payload?.deletedAt && mutation.payload.storagePath) await deleteRemoteMedia(String(mutation.payload.storagePath));
+    if (mutation.entityType === "media" && mutation.payload?.deletedAt && mutation.payload.storagePath) await deleteRemoteMedia(String(mutation.payload.storagePath), signal);
 
     logger.debug("Mutation replayed successfully", {
       id: mutation.id,
       entityType: mutation.entityType,
     });
   } catch (error) {
+    signal?.throwIfAborted();
     logger.error("Failed to replay mutation", error instanceof Error ? error : new Error(String(error)), {
       mutationId: mutation.id,
       entityType: mutation.entityType,
@@ -203,6 +207,22 @@ async function runCoordinatedSync(): Promise<void> {
     await refreshPending();
     setStatus(typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "idle");
   }
+}
+
+function abortableDelay(delay: number, signal?: AbortSignal): Promise<void> {
+  if (!signal) return new Promise((resolve) => setTimeout(resolve, delay));
+  signal.throwIfAborted();
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      signal.removeEventListener("abort", abort);
+      resolve();
+    }, delay);
+    const abort = () => {
+      clearTimeout(timer);
+      reject(signal.reason);
+    };
+    signal.addEventListener("abort", abort, { once: true });
+  });
 }
 
 async function syncOnce(context?: SyncExecutionContext): Promise<void> {
@@ -254,14 +274,14 @@ async function syncOnce(context?: SyncExecutionContext): Promise<void> {
         attempts: mutation.attempts,
         delay,
       });
-      await new Promise((resolve) => setTimeout(resolve, delay));
-      context?.signal.throwIfAborted();
+      await abortableDelay(delay, context?.signal);
     }
 
     try {
-      await replayOne(mutation);
+      await replayOne(mutation, context?.signal);
       successCount++;
     } catch (error) {
+      context?.signal.throwIfAborted();
       const message = error instanceof Error ? error.message : String(error);
       logger.error("Mutation failed, marking as failed", error instanceof Error ? error : new Error(String(error)), {
         mutationId: mutation.id,
@@ -275,9 +295,9 @@ async function syncOnce(context?: SyncExecutionContext): Promise<void> {
   }
 
   context?.signal.throwIfAborted();
-  await processPendingMedia();
+  await processPendingMedia(context?.signal);
   context?.signal.throwIfAborted();
-  await pullRemoteChanges(lastSyncAt === null);
+  await pullRemoteChanges(lastSyncAt === null, context?.signal);
   context?.signal.throwIfAborted();
 
   const duration = Date.now() - startTime;
@@ -430,6 +450,7 @@ export function subscribeToSync(
 // Exposed for testing.
 export const __syncEngineInternals = {
   syncOnce,
+  abortableDelay,
   runCoordinatedSync,
   refreshPending,
   replayCasMutation,

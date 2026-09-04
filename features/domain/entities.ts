@@ -6,6 +6,8 @@
  * never against a specific storage engine's row type.
  */
 
+import type { CurrencyCode, MinorUnits } from "@/features/domain/money";
+
 export type TripMemberRole = "owner" | "editor" | "viewer";
 
 export type ExpenseSplitType = "equal" | "exact" | "percentage";
@@ -37,6 +39,10 @@ export interface Trip {
   name: string;
   description: string | null;
   destination: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  placeId: string | null;
+  timeZone: string | null;
   startDate: string | null; // ISO date (yyyy-mm-dd)
   endDate: string | null; // ISO date (yyyy-mm-dd)
   coverImageUrl: string | null;
@@ -82,8 +88,8 @@ export interface Expense {
   tripId: string;
   activityId: string | null;
   description: string;
-  amount: number;
-  currency: string;
+  amountMinor: MinorUnits;
+  currency: CurrencyCode;
   paidBy: string;
   splitType: ExpenseSplitType;
   createdBy: string;
@@ -96,7 +102,7 @@ export interface ExpenseShare {
   id: string;
   expenseId: string;
   userId: string;
-  shareAmount: number;
+  shareAmountMinor: MinorUnits;
   sharePercentage: number | null;
   createdAt: string;
   updatedAt: string;
@@ -107,8 +113,8 @@ export interface ExpenseSettlement {
   tripId: string;
   fromUserId: string;
   toUserId: string;
-  amount: number;
-  currency: string;
+  amountMinor: MinorUnits;
+  currency: CurrencyCode;
   createdBy: string;
   createdAt: string;
   updatedAt: string;

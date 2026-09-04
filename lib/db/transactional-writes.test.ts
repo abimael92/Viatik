@@ -159,14 +159,14 @@ describe("transactional writes", () => {
       id: "expense-1",
       tripId: "trip-1",
       description: "Dinner",
-      amount: 10000,
+      amountMinor: 10000n,
       currency: "USD",
       paidBy: "user-1",
       splitType: "equal",
       createdBy: "user-1",
       shares: [
-        { userId: "user-1", shareAmount: 5000, sharePercentage: 50 },
-        { userId: "user-2", shareAmount: 5000, sharePercentage: 50 },
+        { userId: "user-1", shareAmountMinor: 5000n, sharePercentage: 50 },
+        { userId: "user-2", shareAmountMinor: 5000n, sharePercentage: 50 },
       ],
     });
 
@@ -190,12 +190,12 @@ describe("transactional writes", () => {
         id: "expense-fail",
         tripId: "trip-1",
         description: "Lunch",
-        amount: 5000,
+        amountMinor: 5000n,
         currency: "USD",
         paidBy: "user-1",
         splitType: "equal",
         createdBy: "user-1",
-        shares: [{ userId: "user-1", shareAmount: 5000, sharePercentage: 100 }],
+        shares: [{ userId: "user-1", shareAmountMinor: 5000n, sharePercentage: 100 }],
       })
     ).rejects.toThrow("share outbox failed");
 
@@ -211,21 +211,21 @@ describe("transactional writes", () => {
       id: "expense-replace",
       tripId: "trip-1",
       description: "Taxi",
-      amount: 3000,
+      amountMinor: 3000n,
       currency: "USD",
       paidBy: "user-1",
       splitType: "equal",
       createdBy: "user-1",
       shares: [
-        { userId: "user-1", shareAmount: 1500, sharePercentage: 50 },
-        { userId: "user-2", shareAmount: 1500, sharePercentage: 50 },
+        { userId: "user-1", shareAmountMinor: 1500n, sharePercentage: 50 },
+        { userId: "user-2", shareAmountMinor: 1500n, sharePercentage: 50 },
       ],
     });
 
     await db.outboxMutations.clear();
 
     await expenseRepository.replaceShares("expense-replace", [
-      { userId: "user-1", shareAmount: 3000, sharePercentage: 100 },
+      { userId: "user-1", shareAmountMinor: 3000n, sharePercentage: 100 },
     ]);
 
     const shares = await db.expenseShares.where("expenseId").equals("expense-replace").toArray();
