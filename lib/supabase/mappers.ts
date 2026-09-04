@@ -1,6 +1,8 @@
 import type { Activity, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler } from "@/features/domain/entities";
 import type { TripMedia } from "@/features/domain/entities-media";
 import { MAX_MINOR_UNITS, type MinorUnits } from "@/features/domain/money";
+import type { VaultEntry, VaultKeyset } from "@/features/vault/domain/vault-types";
+import type { TripWeatherForecast } from "@/features/weather/domain/weather-types";
 
 function minorUnitsToRemote(value: MinorUnits, field: string): string {
   if (value < 0n || value > MAX_MINOR_UNITS) throw new Error(`Invalid remote ${field}`);
@@ -29,6 +31,10 @@ export function tripToRow(trip: Trip): Record<string, unknown> {
     name: trip.name,
     description: trip.description,
     destination: trip.destination,
+    latitude: trip.latitude,
+    longitude: trip.longitude,
+    place_id: trip.placeId,
+    time_zone: trip.timeZone,
     start_date: trip.startDate,
     end_date: trip.endDate,
     cover_image_url: trip.coverImageUrl,
@@ -48,6 +54,10 @@ export function rowToTrip(row: Record<string, unknown>): Trip {
     name: String(row.name),
     description: row.description == null ? null : String(row.description),
     destination: row.destination == null ? null : String(row.destination),
+    latitude: row.latitude == null ? null : Number(row.latitude),
+    longitude: row.longitude == null ? null : Number(row.longitude),
+    placeId: row.place_id == null ? null : String(row.place_id),
+    timeZone: row.time_zone == null ? null : String(row.time_zone),
     startDate: row.start_date == null ? null : String(row.start_date),
     endDate: row.end_date == null ? null : String(row.end_date),
     coverImageUrl: row.cover_image_url == null ? null : String(row.cover_image_url),
@@ -191,4 +201,112 @@ export function tripTravelerToRow(traveler: TripTraveler): Record<string, unknow
 }
 export function rowToTripTraveler(row: Record<string, unknown>): TripTraveler {
   return { id: String(row.id), tripId: String(row.trip_id), contactId: String(row.contact_id), displayName: String(row.display_name), travelerType: String(row.traveler_type) as TripTraveler["travelerType"], createdBy: String(row.created_by), createdAt: String(row.created_at), updatedAt: String(row.updated_at), deletedAt: row.deleted_at == null ? null : String(row.deleted_at) };
+}
+
+export function vaultKeysetToRow(keyset: VaultKeyset): Record<string, unknown> {
+  return {
+    id: keyset.id,
+    owner_id: keyset.ownerId,
+    salt: keyset.salt,
+    verification_ciphertext: keyset.verificationCiphertext,
+    verification_iv: keyset.verificationIv,
+    kdf: keyset.kdf,
+    iterations: keyset.iterations,
+    key_version: keyset.keyVersion,
+    created_at: keyset.createdAt,
+    updated_at: keyset.updatedAt,
+  };
+}
+
+export function rowToVaultKeyset(row: Record<string, unknown>): VaultKeyset {
+  return {
+    id: String(row.id),
+    ownerId: String(row.owner_id),
+    salt: String(row.salt),
+    verificationCiphertext: String(row.verification_ciphertext),
+    verificationIv: String(row.verification_iv),
+    kdf: String(row.kdf) as VaultKeyset["kdf"],
+    iterations: Number(row.iterations),
+    keyVersion: Number(row.key_version),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  };
+}
+
+export function vaultEntryToRow(entry: VaultEntry): Record<string, unknown> {
+  return {
+    id: entry.id,
+    trip_id: entry.tripId,
+    owner_id: entry.ownerId,
+    ciphertext: entry.ciphertext,
+    initialization_vector: entry.initializationVector,
+    key_version: entry.keyVersion,
+    created_at: entry.createdAt,
+    updated_at: entry.updatedAt,
+    deleted_at: entry.deletedAt,
+  };
+}
+
+export function rowToVaultEntry(row: Record<string, unknown>): VaultEntry {
+  return {
+    id: String(row.id),
+    tripId: String(row.trip_id),
+    ownerId: String(row.owner_id),
+    ciphertext: String(row.ciphertext),
+    initializationVector: String(row.initialization_vector),
+    keyVersion: Number(row.key_version),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+    deletedAt: row.deleted_at == null ? null : String(row.deleted_at),
+  };
+}
+
+export function tripWeatherForecastToRow(forecast: TripWeatherForecast): Record<string, unknown> {
+  return {
+    id: forecast.id,
+    trip_id: forecast.tripId,
+    location_revision: forecast.locationRevision,
+    fetched_at: forecast.fetchedAt,
+    forecast_json: forecast.forecast,
+    created_by: forecast.createdBy,
+    created_at: forecast.createdAt,
+    updated_at: forecast.updatedAt,
+    deleted_at: forecast.deletedAt,
+  };
+}
+
+export function rowToTripWeatherForecast(row: Record<string, unknown>): TripWeatherForecast {
+  const forecastJson = row.forecast_json;
+  const forecast =
+    forecastJson && typeof forecastJson === "object"
+      ? (forecastJson as Record<string, unknown>)
+      : {};
+  return {
+    id: String(row.id),
+    tripId: String(row.trip_id),
+    locationRevision: String(row.location_revision),
+    fetchedAt: String(row.fetched_at),
+    forecast: {
+      dates: Array.isArray(forecast.dates) ? forecast.dates.map(String) : [],
+      temperature2mMax: Array.isArray(forecast.temperature2mMax)
+        ? forecast.temperature2mMax.map(Number)
+        : [],
+      temperature2mMin: Array.isArray(forecast.temperature2mMin)
+        ? forecast.temperature2mMin.map(Number)
+        : [],
+      precipitationSum: Array.isArray(forecast.precipitationSum)
+        ? forecast.precipitationSum.map(Number)
+        : [],
+      weatherCode: Array.isArray(forecast.weatherCode)
+        ? forecast.weatherCode.map(Number)
+        : [],
+      windSpeed10mMax: Array.isArray(forecast.windSpeed10mMax)
+        ? forecast.windSpeed10mMax.map(Number)
+        : [],
+    },
+    createdBy: String(row.created_by),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+    deletedAt: row.deleted_at == null ? null : String(row.deleted_at),
+  };
 }
