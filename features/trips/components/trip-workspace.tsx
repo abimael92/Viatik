@@ -21,9 +21,15 @@ import { TripFormDialog } from "@/features/trips/components/trip-dashboard";
 import { TripGallery } from "@/features/trips/components/trip-gallery";
 import { tripRepository } from "@/features/trips/data/dexie-trip-repository";
 import { mediaRepository } from "@/features/media/data/dexie-media-repository";
+import { VaultPanel } from "@/features/vault/components/vault-panel";
+import { TripWeatherStrip } from "@/features/weather/components/trip-weather-strip";
+import { deriveWeatherWarnings } from "@/features/weather/domain/weather-warnings";
+import { loadTripWeatherForecast } from "@/features/weather/lib/load-trip-weather-forecast";
+import { weatherRepository } from "@/features/weather/data/dexie-weather-repository";
+import type { TripWeatherForecast } from "@/features/weather/domain/weather-types";
 import { cn } from "@/lib/utils";
 
-const tabs = ["overview", "itinerary", "expenses", "gallery", "travelers", "collaborators", "settings"] as const;
+const tabs = ["overview", "itinerary", "expenses", "gallery", "travelers", "vault", "collaborators", "settings"] as const;
 type Tab = (typeof tabs)[number];
 
 type ActivityDialogState = null | "new" | { activity: Activity; readOnly: boolean };
@@ -45,11 +51,15 @@ export function TripWorkspace({ tripId, userId }: { tripId: string; userId: stri
   const [media, setMedia] = useState<TripMedia[]>([]);
   const [pendingExpense, setPendingExpense] = useState(false);
   const [pendingPhotos, setPendingPhotos] = useState(false);
+  const [forecast, setForecast] = useState<TripWeatherForecast | undefined>(undefined);
+  const [weatherLoading, setWeatherLoading] = useState(false);
+  const [weatherError, setWeatherError] = useState<string | null>(null);
 
   useEffect(() => tripRepository.watchById(tripId, (value) => setTrip(value ?? null)), [tripId]);
   useEffect(() => activityRepository.watchByTrip(tripId, setActivities), [tripId]);
   useEffect(() => collaborationRepository.watchMembers(tripId, setMembers), [tripId]);
   useEffect(() => mediaRepository.watchByTrip(tripId, null, setMedia), [tripId]);
+  useEffect(() => weatherRepository.watchForecast(tripId, setForecast), [tripId]);
 
   useEffect(() => {
     if (toast?.id && toastRef.current) {
@@ -71,6 +81,38 @@ export function TripWorkspace({ tripId, userId }: { tripId: string; userId: stri
   const canEdit = members.some((member) => member.userId === userId && (member.role === "owner" || member.role === "editor"));
   const isOwner = members.some((member) => member.userId === userId && member.role === "owner");
   const days = useMemo(() => dateRange(trip?.startDate, trip?.endDate), [trip?.startDate, trip?.endDate]);
+
+  const weatherWarnings = useMemo(() => (forecast ? deriveWeatherWarnings(forecast.forecast) : []), [forecast]);
+
+  useEffect(() => {
+    if (!trip) return;
+    let cancelled = false;
+    Promise.resolve()
+      .then(() => {
+        if (cancelled) return;
+        setWeatherLoading(true);
+        setWeatherError(null);
+        return loadTripWeatherForecast(trip, userId, canEdit);
+      })
+      .then((result) => {
+        if (cancelled || !result) return;
+        if (result.status === "hit" || result.status === "fetched" || result.status === "stale-offline") {
+          setForecast(result.forecast);
+          setWeatherError(null);
+        } else {
+          setForecast(undefined);
+          setWeatherError(result.error);
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setWeatherError("Unable to load weather.");
+      })
+      .finally(() => {
+        if (!cancelled) setWeatherLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [trip, userId, canEdit]);
 
   const handleAddExpense = useCallback(() => { if (canEdit) { setPendingExpense(true); setTab("expenses"); } }, [canEdit]);
   const handleAddPhotos = useCallback(() => { if (canEdit) { setPendingPhotos(true); setTab("gallery"); } }, [canEdit]);
@@ -127,11 +169,25 @@ export function TripWorkspace({ tripId, userId }: { tripId: string; userId: stri
         </div>
         <div className="p-5 sm:p-7">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
+            <div className="min-w-0">
               <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{trip.name}</h1>
               <div className="mt-2 flex flex-wrap gap-4 text-sm text-muted-foreground">
                 {trip.destination && <span className="flex items-center gap-1.5"><MapPin className="size-4" />{trip.destination}</span>}
                 <span className="flex items-center gap-1.5"><CalendarDays className="size-4" />{trip.startDate && trip.endDate ? `${formatDate(trip.startDate)} – ${formatDate(trip.endDate)}` : "Dates not set"}</span>
+              </div>
+              <div className="mt-4">
+                <TripWeatherStrip
+                  dayDates={days}
+                  forecast={forecast}
+                  warnings={weatherWarnings}
+                  loading={weatherLoading}
+                  emptyMessage={
+                    weatherError ??
+                    (trip.latitude == null || trip.longitude == null
+                      ? "Set a destination with coordinates to see the weather forecast."
+                      : "")
+                  }
+                />
               </div>
             </div>
             {canEdit && <Button variant="outline" onClick={() => setEditTrip(true)}><Pencil className="size-4" />Edit trip</Button>}
@@ -157,10 +213,11 @@ export function TripWorkspace({ tripId, userId }: { tripId: string; userId: stri
       )}
 
       {tab === "overview" && <Overview trip={trip} activities={activities} mediaCount={media.length} setTab={setTab} onAddActivity={() => { if (canEdit) setActivityDialog("new"); }} onAddExpense={handleAddExpense} onAddPhotos={handleAddPhotos} onSetDates={handleSetDates} canEdit={canEdit} />}
-      {tab === "itinerary" && <section className="space-y-5"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="text-2xl font-bold">Itinerary</h2><p className="text-muted-foreground">See open time, schedule activities, or organize each day.</p></div><div className="flex flex-wrap gap-2"><div className="flex rounded-md border p-0.5"><Button size="sm" variant={itineraryView === "calendar" ? "default" : "ghost"} onClick={() => setItineraryView("calendar")}>Calendar</Button><Button size="sm" variant={itineraryView === "board" ? "default" : "ghost"} onClick={() => setItineraryView("board")}>Board</Button></div>{itineraryView === "board" && <select aria-label="Filter by category" value={category} onChange={(event) => setCategory(event.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm"><option value="all">All categories</option>{Array.from(new Set(activities.map((item) => item.category))).map((item) => <option key={item}>{item}</option>)}</select>}{canEdit && <Button onClick={() => setActivityDialog("new")}><Plus className="size-4" />Activity</Button>}</div></div>{days.length ? itineraryView === "calendar" ? <WeekCalendar days={days} activities={activities} onSelect={openActivity} /> : <ItineraryBoard tripId={tripId} dayDates={days} category={category} onSelect={openActivity} readOnly={!canEdit} /> : <div className="rounded-2xl border border-dashed p-10 text-center"><h3 className="font-semibold">{canEdit ? "Add trip dates to build your itinerary" : "Trip dates are not set"}</h3>{canEdit && <Button variant="link" onClick={() => setEditTrip(true)}>Set dates</Button>}</div>}</section>}
+      {tab === "itinerary" && <section className="space-y-5"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="text-2xl font-bold">Itinerary</h2><p className="text-muted-foreground">See open time, schedule activities, or organize each day.</p></div><div className="flex flex-wrap gap-2"><div className="flex rounded-md border p-0.5"><Button size="sm" variant={itineraryView === "calendar" ? "default" : "ghost"} onClick={() => setItineraryView("calendar")}>Calendar</Button><Button size="sm" variant={itineraryView === "board" ? "default" : "ghost"} onClick={() => setItineraryView("board")}>Board</Button></div>{itineraryView === "board" && <select aria-label="Filter by category" value={category} onChange={(event) => setCategory(event.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm"><option value="all">All categories</option>{Array.from(new Set(activities.map((item) => item.category))).map((item) => <option key={item}>{item}</option>)}</select>}{canEdit && <Button onClick={() => setActivityDialog("new")}><Plus className="size-4" />Activity</Button>}</div></div>{days.length ? itineraryView === "calendar" ? <WeekCalendar days={days} activities={activities} onSelect={openActivity} forecast={forecast?.forecast} warnings={weatherWarnings} weatherLoading={weatherLoading} /> : <ItineraryBoard tripId={tripId} dayDates={days} category={category} onSelect={openActivity} readOnly={!canEdit} forecast={forecast?.forecast} warnings={weatherWarnings} weatherLoading={weatherLoading} /> : <div className="rounded-2xl border border-dashed p-10 text-center"><h3 className="font-semibold">{canEdit ? "Add trip dates to build your itinerary" : "Trip dates are not set"}</h3>{canEdit && <Button variant="link" onClick={() => setEditTrip(true)}>Set dates</Button>}</div>}</section>}
       {tab === "expenses" && <ExpensePanel tripId={tripId} userId={userId} currency={trip.baseCurrency} canEdit={canEdit} autoOpen={pendingExpense} onAutoOpen={() => setPendingExpense(false)} />}
       {tab === "gallery" && <section className="rounded-2xl border bg-card p-5 sm:p-7"><TripGallery tripId={tripId} userId={userId} canEdit={canEdit} autoOpen={pendingPhotos} onAutoOpened={() => setPendingPhotos(false)} /></section>}
       {tab === "travelers" && <TravelerPanel tripId={tripId} userId={userId} canEdit={canEdit} />}
+      {tab === "vault" && <VaultPanel tripId={tripId} userId={userId} />}
       {tab === "collaborators" && <MemberPanel tripId={tripId} userId={userId} />}
       {tab === "settings" && <section className="space-y-6"><div><h2 className="text-2xl font-bold">Trip settings</h2><p className="text-muted-foreground">Manage trip details and access.</p></div>{canEdit && <div className="rounded-2xl border bg-card p-5"><h3 className="font-semibold">Trip details</h3><p className="mt-1 text-sm text-muted-foreground">Destination, dates, cover, and {trip.baseCurrency} currency.</p><Button className="mt-4" variant="outline" onClick={() => setEditTrip(true)}><Settings className="size-4" />Edit details</Button></div>}{isOwner && <div className="rounded-2xl border border-destructive/30 bg-card p-5"><h3 className="font-semibold text-destructive">Delete trip</h3><p className="mt-1 text-sm text-muted-foreground">The trip is soft-deleted locally and queued for sync.</p><Button className="mt-4" variant="destructive" onClick={async () => { if (window.confirm(`Delete ${trip.name}? This can’t be undone from the app.`)) { await tripRepository.remove(trip.id); router.replace("/trips"); } }}><Trash2 className="size-4" />Delete trip</Button></div>}</section>}
 

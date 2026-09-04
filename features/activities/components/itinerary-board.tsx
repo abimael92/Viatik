@@ -17,6 +17,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { activityRepository } from "@/features/activities/data/dexie-activity-repository";
 import { useDatabase } from "@/lib/db/database-provider";
 import type { Activity } from "@/features/domain/entities";
+import type { DailyForecast, WeatherWarning } from "@/features/weather/domain/weather-types";
 import { positionBetween } from "@/lib/ordering";
 import { useUiStore } from "@/lib/store/ui-store";
 import { logger } from "@/lib/observability/logger";
@@ -29,9 +30,21 @@ interface ItineraryBoardProps {
   category?: string;
   onSelect?: (activity: Activity) => void;
   readOnly?: boolean;
+  forecast?: DailyForecast;
+  warnings?: WeatherWarning[];
+  weatherLoading?: boolean;
 }
 
-export function ItineraryBoard({ tripId, dayDates, category = "all", onSelect, readOnly = false }: ItineraryBoardProps) {
+export function ItineraryBoard({
+  tripId,
+  dayDates,
+  category = "all",
+  onSelect,
+  readOnly = false,
+  forecast,
+  warnings,
+  weatherLoading,
+}: ItineraryBoardProps) {
   const db = useDatabase();
   const activities = useLiveQuery(
     () =>
@@ -164,6 +177,9 @@ export function ItineraryBoard({ tripId, dayDates, category = "all", onSelect, r
             category={category}
             onSelect={onSelect}
             draggable={!readOnly}
+            forecast={forecast}
+            warnings={warnings}
+            weatherLoading={weatherLoading}
           />
         ))}
       </div>
