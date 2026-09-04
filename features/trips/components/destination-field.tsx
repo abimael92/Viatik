@@ -3,7 +3,7 @@
 import { MapPin } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { searchDestinations, type PlaceSuggestion } from "@/app/actions/places";
+import { getPlaceDetails, searchDestinations, type PlaceDetails, type PlaceSuggestion } from "@/app/actions/places";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -11,11 +11,13 @@ import { cn } from "@/lib/utils";
 export function DestinationField({
   value: controlledValue,
   onChange,
+  onPlaceSelect,
   defaultValue = "",
   error,
 }: {
   value?: string;
   onChange?: (value: string) => void;
+  onPlaceSelect?: (details: PlaceDetails) => void;
   defaultValue?: string;
   error?: string;
 }) {
@@ -24,6 +26,7 @@ export function DestinationField({
   const value = isControlled ? controlledValue : internalValue;
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [configured, setConfigured] = useState(true);
+  const [pendingPlaceId, setPendingPlaceId] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(async () => {
@@ -41,6 +44,17 @@ export function DestinationField({
   function setValue(next: string) {
     if (!isControlled) setInternalValue(next);
     onChange?.(next);
+  }
+
+  async function handleSelect(suggestion: PlaceSuggestion) {
+    setValue(suggestion.label);
+    setSuggestions([]);
+    if (onPlaceSelect) {
+      setPendingPlaceId(suggestion.placeId);
+      const details = await getPlaceDetails(suggestion.placeId, suggestion.label);
+      if (details) onPlaceSelect(details);
+      setPendingPlaceId(null);
+    }
   }
 
   return (
@@ -63,6 +77,7 @@ export function DestinationField({
           placeholder="Tokyo, Japan"
           maxLength={120}
           autoComplete="off"
+          disabled={pendingPlaceId !== null}
           aria-invalid={Boolean(error)}
           aria-describedby={error ? "destination-error" : "destination-help"}
           className={cn(
@@ -77,11 +92,9 @@ export function DestinationField({
             <button
               key={suggestion.placeId}
               type="button"
-              className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-muted"
-              onClick={() => {
-                setValue(suggestion.label);
-                setSuggestions([]);
-              }}
+              disabled={pendingPlaceId === suggestion.placeId}
+              className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-muted disabled:opacity-60"
+              onClick={() => handleSelect(suggestion)}
             >
               <MapPin className="size-4 text-primary" />
               {suggestion.label}
