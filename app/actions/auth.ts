@@ -188,6 +188,51 @@ function onboardingMessage(error: { code?: string; message: string }) {
   return "We couldn't save your profile right now. Please try again.";
 }
 
+export type ProfileDetails = {
+  fullName: string;
+  phone?: string;
+  birthDate?: string;
+  emergencyContactName?: string;
+  emergencyContactRelationship?: string;
+  emergencyContactPhone?: string;
+  dietaryRestrictions?: string[];
+  allergies?: string[];
+  passportIssuingCountry?: string;
+  passportExpiresOn?: string;
+  preferredCurrency?: string;
+  preferredLanguage?: string;
+};
+
+/** Replace the signed-in user's saved profile details (empty values are cleared). */
+export async function updateProfileDetails(details: ProfileDetails): Promise<ActionResult> {
+  const name = details.fullName.trim();
+  if (name.length < 2 || name.length > 60) return { success: false, error: "Enter a name between 2 and 60 characters." };
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) return { success: false, error: "Authentication required" };
+    const update = {
+      full_name: name,
+      phone: details.phone?.trim() || null,
+      birth_date: details.birthDate || null,
+      emergency_contact_name: details.emergencyContactName?.trim() || null,
+      emergency_contact_relationship: details.emergencyContactRelationship?.trim() || null,
+      emergency_contact_phone: details.emergencyContactPhone?.trim() || null,
+      dietary_restrictions: details.dietaryRestrictions ?? [],
+      allergies: details.allergies ?? [],
+      passport_issuing_country: details.passportIssuingCountry?.trim().toUpperCase() || null,
+      passport_expires_on: details.passportExpiresOn || null,
+      preferred_currency: details.preferredCurrency || undefined,
+      preferred_language: details.preferredLanguage || undefined,
+    };
+    const { error } = await supabase.from("profiles").update(update).eq("id", data.user.id);
+    if (error) return { success: false, error: error.message };
+    return { success: true, data: undefined };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Unable to update profile" };
+  }
+}
+
 export async function setDiscoverability(discoverable: boolean): Promise<ActionResult> {
   try {
     const supabase = await createClient();
