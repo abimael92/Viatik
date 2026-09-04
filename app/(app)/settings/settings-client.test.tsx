@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   registerPasskey: vi.fn(),
   logout: vi.fn(),
   updateProfile: vi.fn(),
+  updateProfileDetails: vi.fn(),
   setDiscoverability: vi.fn(),
   deleteDatabase: vi.fn(),
   replace: vi.fn(),
@@ -12,7 +13,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: mocks.replace, refresh: mocks.refresh }) }));
-vi.mock("@/app/actions/auth", () => ({ logout: mocks.logout, updateProfile: mocks.updateProfile, setDiscoverability: mocks.setDiscoverability }));
+vi.mock("@/app/actions/auth", () => ({ logout: mocks.logout, updateProfile: mocks.updateProfile, updateProfileDetails: mocks.updateProfileDetails, setDiscoverability: mocks.setDiscoverability }));
 vi.mock("@/lib/db/dexie", () => ({ deleteDatabase: mocks.deleteDatabase }));
 vi.mock("@/lib/supabase/browser-client", () => ({
   getSupabaseBrowserClient: () => ({ auth: { registerPasskey: mocks.registerPasskey } }),
@@ -63,5 +64,35 @@ describe("native passkey registration", () => {
     expect(screen.getByText("VTK-1234ABCD5678EF90")).toBeTruthy();
     expect((screen.getByRole("checkbox") as HTMLInputElement).checked).toBe(true);
     expect(container.querySelector("svg")).toBeTruthy();
+  });
+
+  it("displays saved profile details read-only until edit is pressed", () => {
+    render(
+      <SettingsClient
+        userId="user-1"
+        phone={null}
+        fullName="Alice"
+        profile={{ fullName: "Alice", phone: "+1 555 0100", birthDate: "1990-01-01", dietaryRestrictions: ["vegetarian"] }}
+      />
+    );
+    expect(screen.getByText("Alice")).toBeTruthy();
+    expect(screen.getByText("+1 555 0100")).toBeTruthy();
+    expect(screen.getByText("vegetarian")).toBeTruthy();
+    expect(screen.queryByLabelText("Full name")).toBeNull();
+    expect(screen.getByRole("button", { name: "Edit" })).toBeTruthy();
+  });
+
+  it("edits profile details through the server action", async () => {
+    mocks.updateProfileDetails.mockResolvedValue({ success: true, data: undefined });
+    mocks.refresh.mockImplementation(() => undefined);
+    render(<SettingsClient userId="user-1" phone={null} fullName="Alice" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.change(screen.getByLabelText("Full name"), { target: { value: "Alicia" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
+
+    await waitFor(() => expect(mocks.updateProfileDetails).toHaveBeenCalled());
+    expect(mocks.updateProfileDetails.mock.calls[0][0].fullName).toBe("Alicia");
+    expect(mocks.refresh).toHaveBeenCalled();
   });
 });
