@@ -93,7 +93,7 @@ function WeatherDayCard({
   return (
     <div
       className={cn(
-        "flex min-w-[7rem] flex-col items-center gap-1 rounded-xl border bg-card p-3 text-center shadow-sm",
+        "flex min-w-28 flex-col items-center gap-1 rounded-xl border bg-card p-3 text-center shadow-sm",
         day?.warnings.length ? "border-warning/50" : "border-border"
       )}
       aria-label={day ? weatherLabel(day) : `No weather for ${formatDay(dayDate)}`}
