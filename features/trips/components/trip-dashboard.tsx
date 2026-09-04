@@ -53,6 +53,7 @@ import { tripRepository } from "@/features/trips/data/dexie-trip-repository";
 import { getMaxEndDate, getTripDurationError } from "@/features/trips/lib/trip-duration";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import { cn } from "@/lib/utils";
+import type { PlaceDetails } from "@/app/actions/places";
 
 export function TripDashboard({ userId }: { userId: string }) {
   const [trips, setTrips] = useState<Trip[] | null>(null);
@@ -270,6 +271,10 @@ export function TripFormDialog({
 
   const [name, setName] = useState(trip?.name ?? "");
   const [destination, setDestination] = useState(trip?.destination ?? "");
+  const [placeId, setPlaceId] = useState(trip?.placeId ?? "");
+  const [latitude, setLatitude] = useState<number | null>(trip?.latitude ?? null);
+  const [longitude, setLongitude] = useState<number | null>(trip?.longitude ?? null);
+  const [timeZone, setTimeZone] = useState(trip?.timeZone ?? "");
   const [description, setDescription] = useState(trip?.description ?? "");
   const [startDate, setStartDate] = useState(trip?.startDate ?? "");
   const [endDate, setEndDate] = useState(trip?.endDate ?? "");
@@ -316,6 +321,22 @@ export function TripFormDialog({
   function handleStartDateChange(value: string) {
     setStartDate(value);
     if (endDate && value && endDate < value) setEndDate("");
+  }
+
+  function handleDestinationChange(value: string) {
+    setDestination(value);
+    setPlaceId("");
+    setLatitude(null);
+    setLongitude(null);
+    setTimeZone("");
+  }
+
+  function handlePlaceSelect(details: PlaceDetails) {
+    setDestination(details.label);
+    setPlaceId(details.placeId);
+    setLatitude(details.latitude);
+    setLongitude(details.longitude);
+    setTimeZone(details.timeZone ?? "");
   }
 
   function validateStep(targetStep: number): Record<string, string> {
@@ -423,6 +444,10 @@ export function TripFormDialog({
       const values = {
         name: name.trim(),
         destination: destination.trim() || null,
+        latitude,
+        longitude,
+        placeId: placeId || null,
+        timeZone: timeZone || null,
         description: description.trim() || null,
         startDate: startDate || null,
         endDate: endDate || null,
@@ -522,7 +547,8 @@ export function TripFormDialog({
               />
               <DestinationField
                 value={destination}
-                onChange={setDestination}
+                onChange={handleDestinationChange}
+                onPlaceSelect={handlePlaceSelect}
                 error={fieldErrors.destination}
               />
               <TextareaField
