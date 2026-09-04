@@ -58,7 +58,7 @@ export function OnboardingForm({ email, next }: { email: string; next: string })
   const [pending, startTransition] = useTransition();
   const [visited, setVisited] = useState<boolean[]>([true, ...Array(STEPS.length - 1).fill(false)]);
   const allVisited = visited.every(Boolean);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarSeed, setAvatarSeed] = useState<string | null>(null);
 
   function setField<K extends keyof FormValues>(key: K, value: FormValues[K]) {
     setValues((current) => ({ ...current, [key]: value }));
@@ -67,11 +67,11 @@ export function OnboardingForm({ email, next }: { email: string; next: string })
   function handleAvatarChange(change: AvatarChange) {
     if (change.file) {
       setAvatar(change.file);
-      setAvatarUrl(null);
+      setAvatarSeed(null);
       return;
     }
     setAvatar(null);
-    setAvatarUrl(change.value);
+    setAvatarSeed(change.seed);
   }
 
   function goToStep(target: number) {
@@ -139,7 +139,7 @@ export function OnboardingForm({ email, next }: { email: string; next: string })
       return;
     }
     const details: OnboardingDetails = {
-      avatarUrl: avatarUrl ?? undefined,
+      avatarSeed: avatarSeed ?? undefined,
       phone: values.phone,
       birthDate: values.birthDate || undefined,
       emergencyContactName: values.emergencyContactName,
@@ -176,10 +176,11 @@ export function OnboardingForm({ email, next }: { email: string; next: string })
       {step === 1 && (
         <div className="space-y-6">
           <AvatarPicker
-            value={avatarUrl}
+            seed={avatarSeed}
+            src={null}
             name={values.fullName}
             onChange={handleAvatarChange}
-            uploadHint="Optional · pick a preset or upload a photo (up to 2 MB)."
+            uploadHint="Optional · randomize a playful avatar or upload a photo (up to 2 MB)."
           />
           <Field
             label="Display name"

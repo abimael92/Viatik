@@ -1,32 +1,24 @@
 "use client";
 
-import { Camera, Trash2, UserRound } from "lucide-react";
+import { Camera, Dices, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import {
+  DEFAULT_AVATAR_STYLE,
+  parseAvatarSeed,
+  randomAvatarSeed,
+  UserAvatar,
+  type AvatarStyle,
+} from "@/components/ui/user-avatar";
 import { cn } from "@/lib/utils";
 
-export type AvatarChange = { value: string | null; file?: File | null };
+export type AvatarChange = { seed: string | null; src: string | null; file?: File | null };
 
-type Preset = { key: string; label: string; from: string; to: string; url: string };
-
-function presetDataUrl(from: string, to: string): string {
-  const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80">` +
-    `<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">` +
-    `<stop offset="0" stop-color="${from}"/><stop offset="1" stop-color="${to}"/>` +
-    `</linearGradient></defs>` +
-    `<rect width="80" height="80" rx="40" fill="url(#g)"/></svg>`;
-  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
-}
-
-export const PRESET_AVATARS: Preset[] = [
-  { key: "indigo", label: "Indigo", from: "#6366f1", to: "#8b5cf6", url: presetDataUrl("#6366f1", "#8b5cf6") },
-  { key: "cyan", label: "Cyan", from: "#06b6d4", to: "#3b82f6", url: presetDataUrl("#06b6d4", "#3b82f6") },
-  { key: "green", label: "Green", from: "#10b981", to: "#84cc16", url: presetDataUrl("#10b981", "#84cc16") },
-  { key: "amber", label: "Amber", from: "#f59e0b", to: "#f97316", url: presetDataUrl("#f59e0b", "#f97316") },
-  { key: "rose", label: "Rose", from: "#ef4444", to: "#ec4899", url: presetDataUrl("#ef4444", "#ec4899") },
-  { key: "slate", label: "Slate", from: "#64748b", to: "#94a3b8", url: presetDataUrl("#64748b", "#94a3b8") },
+const STYLE_OPTIONS: { value: AvatarStyle; label: string }[] = [
+  { value: "adventurer", label: "Adventurer" },
+  { value: "bottts", label: "Bottts" },
+  { value: "avataaars", label: "Avatar" },
 ];
 
 /** Read a local image into a small data URL (capped, so offline avatar values stay small). */
@@ -53,87 +45,81 @@ export function fileToDataUrl(file: File, maxSize = 256): Promise<string> {
   });
 }
 
-function initialsOf(name?: string): string {
-  return (name ?? "")
-    .trim()
-    .split(/\s+/)
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
-
 export function AvatarPicker({
-  value,
+  seed,
+  src,
   name,
   onChange,
   uploadHint,
 }: {
-  value: string | null;
+  seed: string | null;
+  src: string | null;
   name?: string;
   onChange: (change: AvatarChange) => void;
   uploadHint?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [localPreview, setLocalPreview] = useState<string | null>(null);
-  const shown = localPreview ?? value;
+  const style = parseAvatarSeed(seed).style;
+
+  function handleStyleChange(next: AvatarStyle) {
+    const { seed: body } = parseAvatarSeed(seed);
+    setLocalPreview(null);
+    onChange({ seed: `${next}|${body}`, src: null });
+  }
+
+  function handleRandomize() {
+    setLocalPreview(null);
+    onChange({ seed: randomAvatarSeed(style), src: null });
+  }
 
   function handleFile(file?: File | null) {
     if (!file) return;
     setLocalPreview(URL.createObjectURL(file));
-    onChange({ value: null, file });
+    onChange({ seed: null, src: null, file });
+  }
+
+  function handleRemove() {
+    setLocalPreview(null);
+    onChange({ seed: null, src: null });
   }
 
   return (
     <div className="flex items-start gap-4">
-      <span className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-full border bg-muted text-muted-foreground">
-        {shown ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={shown} alt="" className="size-full object-cover" />
-        ) : (
-          <span className="grid size-full place-items-center text-lg font-semibold">
-            {initialsOf(name) || <UserRound className="size-8" aria-hidden />}
-          </span>
-        )}
-      </span>
+      <UserAvatar seed={seed} src={localPreview ?? src} name={name} size="lg" />
 
-      <div className="space-y-2.5">
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Choose a preset avatar">
-          {PRESET_AVATARS.map((preset) => (
-            <button
-              key={preset.key}
-              type="button"
-              onClick={() => {
-                setLocalPreview(null);
-                onChange({ value: preset.url });
-              }}
-              aria-label={`Use ${preset.label} avatar`}
-              className={cn(
-                "size-10 rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                value === preset.url ? "ring-2 ring-ring ring-offset-2" : "hover:ring-2 hover:ring-ring/50"
-              )}
-              style={{ background: `linear-gradient(135deg, ${preset.from}, ${preset.to})` }}
-            />
-          ))}
-        </div>
-
-        <div className="flex items-center gap-2">
+      <div className="min-w-0 space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={handleRandomize}>
+            <Dices className="size-4" /> Randomize
+          </Button>
           <Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()}>
             <Camera className="size-4" /> Upload photo
           </Button>
-          {value && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setLocalPreview(null);
-                onChange({ value: null });
-              }}
-            >
+          {(seed || src) && (
+            <Button type="button" variant="ghost" size="sm" onClick={handleRemove}>
               <Trash2 className="size-4" /> Remove
             </Button>
           )}
+        </div>
+
+        <div role="group" aria-label="Avatar style" className="flex flex-wrap gap-1.5">
+          {STYLE_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => handleStyleChange(option.value)}
+              aria-pressed={style === option.value}
+              className={cn(
+                "rounded-full border px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                style === option.value
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:bg-muted"
+              )}
+            >
+              {option.label}
+            </button>
+          ))}
         </div>
 
         <input
@@ -150,3 +136,5 @@ export function AvatarPicker({
     </div>
   );
 }
+
+export { DEFAULT_AVATAR_STYLE };

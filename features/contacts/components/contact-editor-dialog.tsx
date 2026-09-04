@@ -28,6 +28,7 @@ function parseTags(value: string): string[] {
 type ContactFormValues = {
   fullName: string;
   avatarUrl: string | null;
+  avatarSeed: string | null;
   relationship: Contact["relationship"];
   travelerType: TravelerType;
   email: string;
@@ -49,6 +50,7 @@ function contactToValues(contact?: Contact | null): ContactFormValues {
   return {
     fullName: contact?.fullName ?? "",
     avatarUrl: contact?.avatarUrl ?? null,
+    avatarSeed: contact?.avatarSeed ?? null,
     relationship: contact?.relationship ?? "other",
     travelerType: contact?.travelerType ?? "adult",
     email: contact?.email ?? "",
@@ -143,12 +145,16 @@ function ContactForm({
   function handleAvatarChange(change: AvatarChange) {
     if (change.file) {
       void fileToDataUrl(change.file).then(
-        (url) => setField("avatarUrl", url),
+        (url) => {
+          setField("avatarUrl", url);
+          setField("avatarSeed", null);
+        },
         () => setError("The selected image could not be read.")
       );
       return;
     }
-    setField("avatarUrl", change.value);
+    setField("avatarUrl", change.src);
+    setField("avatarSeed", change.seed);
   }
 
   function goToStep(target: number) {
@@ -224,6 +230,7 @@ function ContactForm({
     const data = {
       fullName,
       avatarUrl: values.avatarUrl,
+      avatarSeed: values.avatarSeed,
       email: values.email,
       phone: values.phone,
       relationship: values.relationship,
@@ -320,10 +327,11 @@ function ContactForm({
               description="The details used to recognize this traveler across your trips."
             >
               <AvatarPicker
-                value={values.avatarUrl}
+                seed={values.avatarSeed}
+                src={values.avatarUrl}
                 name={values.fullName}
                 onChange={handleAvatarChange}
-                uploadHint="Optional · pick a preset or upload a photo."
+                uploadHint="Optional · randomize a playful avatar or upload a photo."
               />
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field

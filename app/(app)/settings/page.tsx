@@ -11,7 +11,7 @@ export default async function SettingsPage() {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "full_name, avatar_url, phone, birth_date, emergency_contact_name, emergency_contact_relationship, emergency_contact_phone, dietary_restrictions, allergies, passport_issuing_country, passport_expires_on, preferred_currency, preferred_language, viatik_id, discoverable"
+      "full_name, avatar_url, avatar_seed, phone, birth_date, emergency_contact_name, emergency_contact_relationship, emergency_contact_phone, dietary_restrictions, allergies, passport_issuing_country, passport_expires_on, preferred_currency, preferred_language, viatik_id, discoverable"
     )
     .eq("id", data.user.id)
     .maybeSingle();
@@ -19,6 +19,7 @@ export default async function SettingsPage() {
     ? {
         fullName: profile.full_name ?? "",
         avatarUrl: profile.avatar_url ?? undefined,
+        avatarSeed: profile.avatar_seed ?? undefined,
         phone: profile.phone ?? undefined,
         birthDate: profile.birth_date ?? undefined,
         emergencyContactName: profile.emergency_contact_name ?? undefined,

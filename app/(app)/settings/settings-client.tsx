@@ -7,6 +7,7 @@ import QRCode from "react-qr-code";
 import { logout, setDiscoverability, updateProfileDetails, type ProfileDetails } from "@/app/actions/auth";
 import { viatikQrPayload } from "@/features/contacts/lib/viatik-id";
 import { AvatarPicker, type AvatarChange } from "@/components/ui/avatar-picker";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -121,14 +122,12 @@ export function SettingsClient({
         ) : (
           <>
             <div className="mt-5 flex items-center gap-4">
-              <span className="grid size-16 place-items-center overflow-hidden rounded-full bg-primary/10 text-lg font-semibold text-primary">
-                {saved.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={saved.avatarUrl} alt="" className="size-full object-cover" />
-                ) : (
-                  initialsOf(saved.fullName) || <UserRound aria-hidden />
-                )}
-              </span>
+              <UserAvatar
+                seed={saved.avatarSeed}
+                src={saved.avatarUrl}
+                name={saved.fullName}
+                size="lg"
+              />
               <div>
                 <p className="font-medium">{saved.fullName}</p>
                 <p className="text-sm text-muted-foreground">{saved.phone ?? "No phone on file"}</p>
@@ -251,16 +250,6 @@ export function SettingsClient({
   );
 }
 
-function initialsOf(name: string): string {
-  return name
-    .trim()
-    .split(/\s+/)
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
-
 function ProfileRow({ label, value }: { label: string; value: string | null | undefined }) {
   const display = value?.trim() || "—";
   return (
@@ -301,6 +290,7 @@ function ProfileEditForm({
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initial.avatarUrl ?? null);
+  const [avatarSeed, setAvatarSeed] = useState<string | null>(initial.avatarSeed ?? null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
   function setField(key: keyof typeof values, value: string) {
@@ -310,11 +300,13 @@ function ProfileEditForm({
   function handleAvatarChange(change: AvatarChange) {
     if (change.file) {
       setAvatarFile(change.file);
+      setAvatarSeed(null);
       setAvatarUrl(null);
       return;
     }
     setAvatarFile(null);
-    setAvatarUrl(change.value);
+    setAvatarSeed(change.seed);
+    setAvatarUrl(null);
   }
 
   function save(event: React.FormEvent<HTMLFormElement>) {
@@ -325,6 +317,7 @@ function ProfileEditForm({
         {
           fullName: values.fullName,
           avatarUrl: avatarUrl ?? undefined,
+          avatarSeed: avatarSeed ?? undefined,
           phone: values.phone,
         birthDate: values.birthDate || undefined,
         preferredCurrency: values.preferredCurrency || undefined,
@@ -348,10 +341,11 @@ function ProfileEditForm({
     <form onSubmit={save} className="mt-5 grid max-w-2xl gap-4 sm:grid-cols-2">
       <div className="sm:col-span-2">
         <AvatarPicker
-          value={avatarUrl}
+          seed={avatarSeed}
+          src={avatarUrl}
           name={values.fullName}
           onChange={handleAvatarChange}
-          uploadHint="Optional · pick a preset or upload a photo."
+          uploadHint="Optional · randomize a playful avatar or upload a photo."
         />
       </div>
       <div className="space-y-2 sm:col-span-2">
