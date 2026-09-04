@@ -7,6 +7,18 @@ export default async function SettingsPage() {
   const supabase = await createClient();
   const { data } = await supabase.auth.getUser();
   if (!data.user) redirect("/login");
-  const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", data.user.id).maybeSingle();
-  return <SettingsClient userId={data.user.id} phone={data.user.phone ?? null} fullName={profile?.full_name ?? ""} />;
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name, viatik_id, discoverable")
+    .eq("id", data.user.id)
+    .maybeSingle();
+  return (
+    <SettingsClient
+      userId={data.user.id}
+      phone={data.user.phone ?? null}
+      fullName={profile?.full_name ?? ""}
+      viatikId={profile?.viatik_id ?? null}
+      discoverable={profile?.discoverable ?? false}
+    />
+  );
 }

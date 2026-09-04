@@ -1,6 +1,7 @@
 "use server";
 
 import type { ViatikProfileLookup } from "@/features/domain/entities";
+import { mapProfileDirectoryRow } from "@/features/contacts/lib/profile-directory";
 import { parseViatikId } from "@/features/contacts/lib/viatik-id";
 import { logger } from "@/lib/observability/logger";
 import { createClient } from "@/lib/supabase/server-client";
@@ -20,22 +21,14 @@ export async function lookupViatikProfile(value: string): Promise<ProfileLookupR
     const { data, error } = await supabase.rpc("lookup_profile_for_linking", { p_identifier: viatikId });
     if (error) {
       logger.warn("Unable to look up Viatik profile", { code: error.code });
+      if (error.code === "42900" || error.message.toLowerCase().includes("rate limit")) {
+        return { success: false, error: "Too many lookups. Wait a moment and try again." };
+      }
       return { success: false, error: "We couldn't look up that Viatik ID right now." };
     }
     const row = Array.isArray(data) ? data[0] : data;
-    if (!row) return { success: false, error: "No Viatik account was found for that ID." };
-    return {
-      success: true,
-      profile: {
-        profileId: String(row.profile_id),
-        viatikId: String(row.viatik_id),
-        fullName: String(row.full_name),
-        avatarUrl: row.avatar_url == null ? null : String(row.avatar_url),
-        publicHandle: row.public_handle == null ? null : String(row.public_handle),
-        preferredCurrency: row.preferred_currency == null ? null : String(row.preferred_currency),
-        preferredLanguage: row.preferred_language == null ? null : String(row.preferred_language),
-      },
-    };
+    if (!row) return { success: false, error: "No Viatik account was found for that ID. They may not be discoverable yet." };
+    return { success: true, profile: mapProfileDirectoryRow(row as Record<string, unknown>) };
   } catch (error) {
     logger.error("Unexpected Viatik profile lookup error", error instanceof Error ? error : new Error(String(error)));
     return { success: false, error: "We couldn't look up that Viatik ID right now." };

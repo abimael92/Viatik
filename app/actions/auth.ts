@@ -188,6 +188,23 @@ function onboardingMessage(error: { code?: string; message: string }) {
   return "We couldn't save your profile right now. Please try again.";
 }
 
+export async function setDiscoverability(discoverable: boolean): Promise<ActionResult> {
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) return { success: false, error: "Authentication required" };
+    const { error } = await supabase
+      .from("profiles")
+      .update({ discoverable })
+      .eq("id", data.user.id);
+    if (error) return { success: false, error: error.message };
+    return { success: true, data: undefined };
+  } catch (error) {
+    logger.error("Unexpected discoverability update error", error instanceof Error ? error : new Error(String(error)));
+    return { success: false, error: "We couldn't update your discoverability right now." };
+  }
+}
+
 export async function completeOnboarding(fullName: string, avatar?: File | null): Promise<ActionResult> {
   const name = fullName.trim();
   if (name.length < 2 || name.length > 60) return { success: false, error: "Enter a name between 2 and 60 characters." };
