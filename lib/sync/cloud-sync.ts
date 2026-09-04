@@ -2,10 +2,27 @@ import type { RealtimeChannel, RealtimePostgresChangesPayload, SupabaseClient } 
 
 import type { Activity, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler } from "@/features/domain/entities";
 import type { TripMedia } from "@/features/domain/entities-media";
+import type { VaultEntry, VaultKeyset } from "@/features/vault/domain/vault-types";
+import type { TripWeatherForecast } from "@/features/weather/domain/weather-types";
 import { mediaPayload } from "@/features/media/data/dexie-media-repository";
 import { getCurrentDatabase, type ViatikDatabase } from "@/lib/db/dexie";
 import { logger } from "@/lib/observability/logger";
-import { rowToActivity, rowToContact, rowToExpense, rowToExpenseShare, rowToInvitation, rowToMedia, rowToSettlement, rowToTrip, rowToTripMember, rowToTripTraveler, mediaToRow } from "@/lib/supabase/mappers";
+import {
+  rowToActivity,
+  rowToContact,
+  rowToExpense,
+  rowToExpenseShare,
+  rowToInvitation,
+  rowToMedia,
+  rowToSettlement,
+  rowToTrip,
+  rowToTripMember,
+  rowToTripTraveler,
+  mediaToRow,
+  rowToVaultEntry,
+  rowToVaultKeyset,
+  rowToTripWeatherForecast,
+} from "@/lib/supabase/mappers";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import type { OutboxEntityType } from "@/lib/sync/types";
 import { getSyncUser } from "@/lib/sync/sync-context";
@@ -32,9 +49,12 @@ const tableDefinitions = [
   { table: "expense_settlements", entityType: "settlement" as const, map: rowToSettlement, store: "expenseSettlements" as const },
   { table: "contacts", entityType: "contact" as const, map: rowToContact, store: "contacts" as const },
   { table: "trip_travelers", entityType: "tripTraveler" as const, map: rowToTripTraveler, store: "tripTravelers" as const },
+  { table: "vault_keysets", entityType: "vaultKeyset" as const, map: rowToVaultKeyset, store: "vaultKeysets" as const },
+  { table: "vault_entries", entityType: "vaultEntry" as const, map: rowToVaultEntry, store: "vaultEntries" as const },
+  { table: "trip_weather_forecasts", entityType: "tripWeatherForecast" as const, map: rowToTripWeatherForecast, store: "tripWeatherForecasts" as const },
 ];
 
-type RemoteEntity = Trip | TripMember | TripInvitation | Activity | Expense | ExpenseShare | TripMedia | ExpenseSettlement | Contact | TripTraveler;
+type RemoteEntity = Trip | TripMember | TripInvitation | Activity | Expense | ExpenseShare | TripMedia | ExpenseSettlement | Contact | TripTraveler | VaultEntry | VaultKeyset | TripWeatherForecast;
 
 async function signedMediaUrl(client: SupabaseClient, entity: RemoteEntity, signal?: AbortSignal): Promise<RemoteEntity> {
   signal?.throwIfAborted();
@@ -119,10 +139,10 @@ export async function pullRemoteChanges(full = false, signal?: AbortSignal): Pro
       if (remoteTripIds.has(trip.id)) continue;
       const pending = await getDb().outboxMutations.where("tripId").equals(trip.id).count();
       if (pending > 0) continue;
-      await getDb().transaction("rw", [getDb().trips, getDb().tripMembers, getDb().activities, getDb().expenses, getDb().expenseShares, getDb().tripMedia, getDb().tripInvitations, getDb().expenseSettlements, getDb().tripTravelers], async () => {
+      await getDb().transaction("rw", [getDb().trips, getDb().tripMembers, getDb().activities, getDb().expenses, getDb().expenseShares, getDb().tripMedia, getDb().tripInvitations, getDb().expenseSettlements, getDb().tripTravelers, getDb().vaultEntries, getDb().tripWeatherForecasts], async () => {
         const expenseIds = await getDb().expenses.where("tripId").equals(trip.id).primaryKeys();
         await getDb().expenseShares.where("expenseId").anyOf(expenseIds).delete();
-        await Promise.all([getDb().trips.delete(trip.id), getDb().tripMembers.where("tripId").equals(trip.id).delete(), getDb().activities.where("tripId").equals(trip.id).delete(), getDb().expenses.where("tripId").equals(trip.id).delete(), getDb().tripMedia.where("tripId").equals(trip.id).delete(), getDb().tripInvitations.where("tripId").equals(trip.id).delete(), getDb().expenseSettlements.where("tripId").equals(trip.id).delete(), getDb().tripTravelers.where("tripId").equals(trip.id).delete()]);
+        await Promise.all([getDb().trips.delete(trip.id), getDb().tripMembers.where("tripId").equals(trip.id).delete(), getDb().activities.where("tripId").equals(trip.id).delete(), getDb().expenses.where("tripId").equals(trip.id).delete(), getDb().tripMedia.where("tripId").equals(trip.id).delete(), getDb().tripInvitations.where("tripId").equals(trip.id).delete(), getDb().expenseSettlements.where("tripId").equals(trip.id).delete(), getDb().tripTravelers.where("tripId").equals(trip.id).delete(), getDb().vaultEntries.where("tripId").equals(trip.id).delete(), getDb().tripWeatherForecasts.filter((forecast) => forecast.tripId === trip.id).delete()]);
       });
     }
   }
