@@ -8,6 +8,7 @@ import {
   CalendarDays,
   Cloud,
   CloudOff,
+  LogOut,
   Map,
   MapPin,
   Minus,
@@ -17,6 +18,7 @@ import {
   UserPlus,
   X,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import {
   type ComponentProps,
@@ -57,18 +59,32 @@ import { collaborationRepository } from "@/features/collaboration/data/dexie-col
 import { DestinationField } from "@/features/trips/components/destination-field";
 import { tripRepository } from "@/features/trips/data/dexie-trip-repository";
 import { getMaxEndDate, getTripDurationError } from "@/features/trips/lib/trip-duration";
+import { logout } from "@/app/actions/auth";
+import { deleteDatabase } from "@/lib/db/dexie";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import { useSyncStatus } from "@/lib/sync/use-sync-status";
 import { cn } from "@/lib/utils";
 import type { PlaceDetails } from "@/app/actions/places";
 
 export function TripDashboard({ userId }: { userId: string }) {
+  const router = useRouter();
   const [trips, setTrips] = useState<Trip[] | null>(null);
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
   const [invitations, setInvitations] = useState<TripInvitation[]>([]);
   const [error, setError] = useState<string | null>(null);
   const sync = useSyncStatus();
+
+  async function handleLogout() {
+    const result = await logout();
+    if (!result.success) {
+      setError(result.error);
+      return;
+    }
+    await deleteDatabase(userId);
+    router.replace("/login");
+    router.refresh();
+  }
 
   useEffect(
     () =>
@@ -108,10 +124,22 @@ export function TripDashboard({ userId }: { userId: string }) {
             Keep plans, costs, and memories together—even offline.
           </p>
         </div>
-        <Button onClick={() => setCreating(true)}>
-          <Plus className="size-4" />
-          Create trip
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => setCreating(true)}>
+            <Plus className="size-4" />
+            Create trip
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Sign out"
+            title="Sign out"
+            onClick={() => void handleLogout()}
+          >
+            <LogOut className="size-4" aria-hidden />
+          </Button>
+        </div>
       </header>
 
       <MetricsRow
@@ -267,9 +295,12 @@ function TripCard({ trip, featured = false }: { trip: Trip; featured?: boolean }
         }
       />
       <div className="flex-1 p-5">
-        <h3 className={cn("font-semibold group-hover:text-primary", featured ? "text-xl" : "text-lg")}>
-          {trip.name}
-        </h3>
+        <div className="flex items-start justify-between gap-3">
+          <h3 className={cn("font-semibold group-hover:text-primary", featured ? "text-xl" : "text-lg")}>
+            {trip.name}
+          </h3>
+          <TripCountdown trip={trip} />
+        </div>
         <div className="mt-3 space-y-2 text-sm text-muted-foreground">
           {trip.destination && (
             <p className="flex items-center gap-2">
@@ -284,6 +315,34 @@ function TripCard({ trip, featured = false }: { trip: Trip; featured?: boolean }
         </div>
       </div>
     </Link>
+  );
+}
+
+/** Small label showing how long until the trip, shown in the trip card. */
+function TripCountdown({ trip }: { trip: Trip }) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (!trip.startDate) return null;
+
+  const start = new Date(`${trip.startDate}T00:00:00`);
+  const diffDays = Math.round((start.getTime() - today.getTime()) / 86_400_000);
+
+  if (diffDays < 0) return <TripCountdownPill>In progress</TripCountdownPill>;
+  if (diffDays === 0) return <TripCountdownPill accent>Today</TripCountdownPill>;
+  if (diffDays === 1) return <TripCountdownPill accent>Tomorrow</TripCountdownPill>;
+  return <TripCountdownPill accent>{diffDays} days to go</TripCountdownPill>;
+}
+
+function TripCountdownPill({ children, accent = false }: { children: React.ReactNode; accent?: boolean }) {
+  return (
+    <span
+      className={cn(
+        "shrink-0 rounded-full px-2.5 py-1 text-xs font-medium",
+        accent ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+      )}
+    >
+      {children}
+    </span>
   );
 }
 
