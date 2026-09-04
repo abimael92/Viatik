@@ -106,14 +106,14 @@ describe("cloud synchronization", () => {
 
   it("bootstraps every collaborative table and stores a pull cursor", async () => {
     await pullRemoteChanges(true);
-    expect(mocks.from).toHaveBeenCalledTimes(10);
+    expect(mocks.from).toHaveBeenCalledTimes(13);
     expect(mocks.metadataPut).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ key: "cloud:last-pull:user-1" })]));
   });
 
   it("uses the stored cursor for incremental pulls", async () => {
     mocks.metadataGet.mockImplementation(async (key: string) => key === "cloud:active-user" ? { key, value: "user-1" } : { key, value: "2026-01-01T00:00:00.000Z" });
     await pullRemoteChanges();
-    expect(mocks.query.gt).toHaveBeenCalledTimes(10);
+    expect(mocks.query.gt).toHaveBeenCalledTimes(13);
     expect(mocks.query.gt).toHaveBeenCalledWith("updated_at", "2026-01-01T00:00:00.000Z");
   });
 
@@ -122,7 +122,7 @@ describe("cloud synchronization", () => {
 
     await pullRemoteChanges(false, controller.signal);
 
-    expect(mocks.query.abortSignal).toHaveBeenCalledTimes(10);
+    expect(mocks.query.abortSignal).toHaveBeenCalledTimes(13);
     expect(mocks.query.abortSignal).toHaveBeenCalledWith(controller.signal);
   });
 
@@ -187,7 +187,7 @@ describe("cloud synchronization", () => {
 
   it("subscribes to realtime changes for every table", () => {
     const stop = startRealtimeSync();
-    expect(mocks.channel.on).toHaveBeenCalledTimes(10);
+    expect(mocks.channel.on).toHaveBeenCalledTimes(13);
     expect(mocks.channel.subscribe).toHaveBeenCalledOnce();
     stop();
   });
