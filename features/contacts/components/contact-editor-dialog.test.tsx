@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ContactEditorDialog } from "@/features/contacts/components/contact-editor-dialog";
@@ -26,27 +26,43 @@ describe("ContactEditorDialog", () => {
     vi.clearAllMocks();
   });
 
-  it("groups contact fields into a clear single-page form", () => {
-    render(
-      <ContactEditorDialog
-        open
-        userId="user-1"
-        onOpenChange={vi.fn()}
-      />
-    );
+  it("guides the user through a stepped contact form", () => {
+    render(<ContactEditorDialog open userId="user-1" onOpenChange={vi.fn()} />);
 
     const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByRole("heading", { name: "New contact" })).toBeTruthy();
+    const steps = within(dialog).getByRole("navigation", { name: "Contact setup progress" });
+
+    // All three steps are announced up front.
+    for (const label of ["Identity", "Contact details", "Travel details"]) {
+      expect(within(steps).getByText(label)).toBeTruthy();
+    }
+
+    // Step 1 — Identity, with the privacy note. Later sections are hidden.
     expect(within(dialog).getByRole("heading", { name: "Identity" })).toBeTruthy();
+    expect(within(dialog).getByText(/Only you can see email, phone, birth date, and notes/)).toBeTruthy();
+    expect(within(dialog).queryByLabelText("Dietary restrictions")).toBeNull();
+    expect(within(dialog).getByRole("button", { name: "Next" })).toBeTruthy();
+
+    // A valid name is required to advance.
+    fireEvent.click(within(dialog).getByRole("button", { name: "Next" }));
+    expect(within(dialog).getByRole("heading", { name: "Identity" })).toBeTruthy();
+
+    fireEvent.change(within(dialog).getByLabelText("Full name"), { target: { value: "Jordan Rivera" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Next" }));
+
+    // Step 2 — contact + emergency details.
     expect(within(dialog).getByRole("heading", { name: "Contact details" })).toBeTruthy();
     expect(within(dialog).getByRole("heading", { name: "Emergency contact" })).toBeTruthy();
+    expect(within(dialog).getByRole("button", { name: "Back" })).toBeTruthy();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Next" }));
+
+    // Step 3 — travel details and the final submit action.
     expect(within(dialog).getByRole("heading", { name: "Travel details" })).toBeTruthy();
-    expect(within(dialog).getByText(/Only you can see email, phone, birth date, and notes/)).toBeTruthy();
     expect(within(dialog).getByLabelText("Dietary restrictions")).toBeTruthy();
     expect(within(dialog).getByLabelText("Allergies")).toBeTruthy();
     expect(within(dialog).getByLabelText("Passport expiration")).toBeTruthy();
     expect(within(dialog).getByText("No passport number is stored.")).toBeTruthy();
-    expect(dialog.querySelectorAll("form")).toHaveLength(1);
     expect(within(dialog).getByRole("button", { name: "Save contact" })).toBeTruthy();
   });
 });
