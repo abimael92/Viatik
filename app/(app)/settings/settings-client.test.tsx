@@ -58,9 +58,10 @@ describe("native passkey registration", () => {
     expect((await screen.findByRole("status")).textContent).toBe("Discoverability updated.");
   });
 
-  it("shows the user's Viatik ID when present", () => {
-    render(<SettingsClient userId="user-1" phone={null} fullName="Alice" viatikId="VTK-1234ABCD5678EF90" discoverable />);
+  it("shows the user's Viatik ID and QR code when present", () => {
+    const { container } = render(<SettingsClient userId="user-1" phone={null} fullName="Alice" viatikId="VTK-1234ABCD5678EF90" discoverable />);
     expect(screen.getByText("VTK-1234ABCD5678EF90")).toBeTruthy();
     expect((screen.getByRole("checkbox") as HTMLInputElement).checked).toBe(true);
+    expect(container.querySelector("svg")).toBeTruthy();
   });
 });
