@@ -26,6 +26,10 @@ export interface NewTrip {
   name: string;
   description?: string | null;
   destination?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  placeId?: string | null;
+  timeZone?: string | null;
   startDate?: string | null;
   endDate?: string | null;
   coverImageUrl?: string | null;

@@ -107,6 +107,10 @@ describe("DexieTripRepository trip duration limit", () => {
         name: "Inverted Trip",
         startDate: "2026-09-25",
         endDate: "2026-09-22",
+        latitude: null,
+        longitude: null,
+        placeId: null,
+        timeZone: null,
       })
     ).rejects.toThrow("End date must be on or after the start date.");
   });
@@ -118,6 +122,10 @@ describe("DexieTripRepository trip duration limit", () => {
       name: "Legacy Trip",
       description: null,
       destination: null,
+      latitude: null,
+      longitude: null,
+      placeId: null,
+      timeZone: null,
       startDate: "2026-01-01",
       endDate: "2026-05-01",
       coverImageUrl: null,
