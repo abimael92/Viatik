@@ -60,6 +60,9 @@ on conflict (profile_id) do update set
   updated_at = now();
 
 -- Rate-limited lookup now also returns the avatar seed for linked contacts.
+-- The return type gains an `avatar_seed` column, so the prior function must be
+-- dropped first (CREATE OR REPLACE cannot alter a function's return type).
+drop function if exists public.lookup_profile_for_linking(text);
 create or replace function public.lookup_profile_for_linking(p_identifier text)
 returns table (
   profile_id uuid,
