@@ -1,14 +1,14 @@
 "use client";
 
 import { createAvatar, type Style } from "@dicebear/core";
-import { adventurer, avataaars, bottts } from "@dicebear/collection";
+import { adventurer, avataaars, bigEars, bottts, croodles } from "@dicebear/collection";
 import { useMemo } from "react";
 
 import { cn } from "@/lib/utils";
 
 // DiceBear styles each have distinct option types; unify them here.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const STYLES: Record<string, Style<any>> = { adventurer, avataaars, bottts };
+const STYLES: Record<string, Style<any>> = { adventurer, avataaars, bigEars, bottts, croodles };
 export type AvatarStyle = keyof typeof STYLES;
 export const DEFAULT_AVATAR_STYLE: AvatarStyle = "adventurer";
 
