@@ -10,6 +10,9 @@ const mocks = vi.hoisted(() => {
   const conflictAdd = vi.fn();
   const mediaUpdate = vi.fn();
   const pendingMedia = vi.fn();
+  const contactQueryToArray = vi.fn();
+  const contactDelete = vi.fn();
+  const outboxAnyOfCount = vi.fn();
   const queryResponses: Array<{ data: Record<string, unknown>[] | null; error: { message: string } | null }> = [];
   const query = {
     lte: vi.fn(),
@@ -48,7 +51,14 @@ const mocks = vi.hoisted(() => {
           count: vi.fn().mockResolvedValue(0),
           and: vi.fn(() => ({ last: outboxLast, delete: outboxDelete })),
         })),
+        anyOf: vi.fn(() => ({ filter: vi.fn(() => ({ count: outboxAnyOfCount })) })),
       })),
+    },
+    contacts: {
+      where: vi.fn(() => ({
+        anyOf: vi.fn(() => ({ filter: vi.fn(() => ({ toArray: contactQueryToArray })) })),
+      })),
+      delete: contactDelete,
     },
     tripMedia: {
       where: vi.fn(() => ({
@@ -70,7 +80,7 @@ const mocks = vi.hoisted(() => {
     storage: { from: storageFrom },
   };
 
-  return { put, tableDelete, metadataGet, metadataPut, queryResponses, query, from, upsert, rpc, channel, upload, createSignedUrl, remove, storageFrom, mediaUpdate, pendingMedia, db, client, outboxLast, outboxDelete, conflictAdd };
+  return { put, tableDelete, metadataGet, metadataPut, queryResponses, query, from, upsert, rpc, channel, upload, createSignedUrl, remove, storageFrom, mediaUpdate, pendingMedia, db, client, outboxLast, outboxDelete, conflictAdd, contactQueryToArray, contactDelete, outboxAnyOfCount };
 });
 
 vi.mock("@/lib/db/dexie", () => ({
@@ -98,6 +108,8 @@ describe("cloud synchronization", () => {
     mocks.metadataGet.mockResolvedValue(undefined);
     mocks.pendingMedia.mockResolvedValue([]);
     mocks.outboxLast.mockResolvedValue(undefined);
+    mocks.contactQueryToArray.mockResolvedValue([]);
+    mocks.outboxAnyOfCount.mockResolvedValue(0);
     mocks.upload.mockResolvedValue({ error: null });
     mocks.upsert.mockResolvedValue({ error: null });
     mocks.rpc.mockResolvedValue({ data: { status: "applied", server_updated_at: "2026-01-02T00:00:00.000Z" }, error: null });
@@ -106,14 +118,14 @@ describe("cloud synchronization", () => {
 
   it("bootstraps every collaborative table and stores a pull cursor", async () => {
     await pullRemoteChanges(true);
-    expect(mocks.from).toHaveBeenCalledTimes(13);
+    expect(mocks.from).toHaveBeenCalledTimes(14);
     expect(mocks.metadataPut).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ key: "cloud:last-pull:user-1" })]));
   });
 
   it("uses the stored cursor for incremental pulls", async () => {
     mocks.metadataGet.mockImplementation(async (key: string) => key === "cloud:active-user" ? { key, value: "user-1" } : { key, value: "2026-01-01T00:00:00.000Z" });
     await pullRemoteChanges();
-    expect(mocks.query.gt).toHaveBeenCalledTimes(13);
+    expect(mocks.query.gt).toHaveBeenCalledTimes(14);
     expect(mocks.query.gt).toHaveBeenCalledWith("updated_at", "2026-01-01T00:00:00.000Z");
   });
 
@@ -122,7 +134,7 @@ describe("cloud synchronization", () => {
 
     await pullRemoteChanges(false, controller.signal);
 
-    expect(mocks.query.abortSignal).toHaveBeenCalledTimes(13);
+    expect(mocks.query.abortSignal).toHaveBeenCalledTimes(14);
     expect(mocks.query.abortSignal).toHaveBeenCalledWith(controller.signal);
   });
 
@@ -176,6 +188,23 @@ describe("cloud synchronization", () => {
     expect(mocks.put).toHaveBeenCalledWith(activity);
   });
 
+  it("sweeps stale local connection edges after a full pull", async () => {
+    mocks.contactQueryToArray.mockResolvedValue([
+      { id: "conn-1", ownerId: "user-1", connectionId: "conn-1", connectionStatus: "pending", connectionDirection: "outbound", deletedAt: null },
+    ]);
+    await pullRemoteChanges(true);
+    expect(mocks.contactDelete).toHaveBeenCalledWith("conn-1");
+  });
+
+  it("spares connection edges with a not-yet-replayed outbox mutation", async () => {
+    mocks.contactQueryToArray.mockResolvedValue([
+      { id: "conn-2", ownerId: "user-1", connectionId: "conn-2", connectionStatus: "pending", connectionDirection: "outbound", deletedAt: null },
+    ]);
+    mocks.outboxAnyOfCount.mockResolvedValue(1);
+    await pullRemoteChanges(true);
+    expect(mocks.contactDelete).not.toHaveBeenCalled();
+  });
+
   it("uploads pending compressed media and marks it complete", async () => {
     const blob = new Blob(["photo"], { type: "image/jpeg" });
     mocks.pendingMedia.mockResolvedValue([{ id: "media-1", tripId: "trip-1", activityId: null, caption: null, blob, storagePath: "trip-1/media-1.jpg", uploadedUrl: null, contentType: "image/jpeg", byteSize: blob.size, createdBy: "user-1", uploadStatus: "pending", uploadProgress: 0, uploadError: null, createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z", deletedAt: null }]);
@@ -187,7 +216,7 @@ describe("cloud synchronization", () => {
 
   it("subscribes to realtime changes for every table", () => {
     const stop = startRealtimeSync();
-    expect(mocks.channel.on).toHaveBeenCalledTimes(13);
+    expect(mocks.channel.on).toHaveBeenCalledTimes(14);
     expect(mocks.channel.subscribe).toHaveBeenCalledOnce();
     stop();
   });
