@@ -2,7 +2,7 @@ import { liveQuery } from "dexie";
 
 import { getCurrentDatabase, type ViatikDatabase } from "@/lib/db/dexie";
 import { TransactionContext } from "@/lib/db/transaction-context";
-import type { Contact, Trip, TripTraveler } from "@/features/domain/entities";
+import type { Connection, ConnectionSnapshot, Contact, Trip, TripTraveler, ViatikProfileLookup } from "@/features/domain/entities";
 import type { ContactRepository, TripTravelerRepository } from "@/features/domain/repositories/contact-repository";
 import { append } from "@/lib/sync/outbox-transactional";
 
@@ -46,6 +46,9 @@ export class DexieContactRepository implements ContactRepository {
         linkedProfileId: input.linkedProfileId ?? null,
         linkedAvatarUrl: input.linkedAvatarUrl?.trim() || null,
         linkedHandle: input.linkedHandle?.trim() || null,
+        connectionId: input.connectionId ?? null,
+        connectionStatus: input.connectionStatus ?? "unverified_offline",
+        connectionDirection: input.connectionDirection ?? null,
         emergencyContactName: input.emergencyContactName?.trim() || null,
         emergencyContactRelationship: input.emergencyContactRelationship?.trim() || null,
         emergencyContactPhone: input.emergencyContactPhone?.trim() || null,
@@ -132,6 +135,169 @@ export class DexieContactRepository implements ContactRepository {
       const updated = { ...contact, updatedAt: now, deletedAt: now };
       await ctx.table<Contact>("contacts").put(updated);
       await append("contact", "update", updated, { tx: ctx, baseUpdatedAt: contact.updatedAt });
+    });
+  }
+
+  listInboundRequests(ownerId: string): Promise<Contact[]> {
+    const db = getDb();
+    return db.contacts
+      .where("connectionStatus").equals("pending")
+      .filter((contact) => contact.ownerId === ownerId && contact.connectionDirection === "inbound" && contact.deletedAt === null)
+      .sortBy("fullName");
+  }
+
+  async sendConnectionRequest(ownerId: string, profile: ViatikProfileLookup, ownSnapshot: ConnectionSnapshot): Promise<Contact> {
+    const db = getDb();
+    return TransactionContext.runInTransaction([db.contacts], async (ctx) => {
+      const now = new Date().toISOString();
+      const connectionId = crypto.randomUUID();
+      const existing = await ctx.table<Contact>("contacts")
+        .where("linkedProfileId").equals(profile.profileId)
+        .and((contact) => contact.deletedAt === null)
+        .first();
+      const id = existing?.connectionId ?? connectionId;
+      const contact: Contact = {
+        id,
+        ownerId,
+        fullName: profile.fullName.trim(),
+        avatarUrl: profile.avatarUrl?.trim() || null,
+        avatarSeed: profile.avatarSeed?.trim() || null,
+        email: existing?.email ?? null,
+        phone: existing?.phone ?? null,
+        relationship: existing?.relationship ?? "friend",
+        travelerType: existing?.travelerType ?? "adult",
+        birthDate: existing?.birthDate ?? null,
+        notes: existing?.notes ?? null,
+        linkedProfileId: profile.profileId,
+        linkedAvatarUrl: profile.avatarUrl?.trim() || null,
+        linkedHandle: profile.publicHandle?.trim() || null,
+        connectionId: id,
+        connectionStatus: "pending",
+        connectionDirection: "outbound",
+        emergencyContactName: existing?.emergencyContactName ?? null,
+        emergencyContactRelationship: existing?.emergencyContactRelationship ?? null,
+        emergencyContactPhone: existing?.emergencyContactPhone ?? null,
+        dietaryRestrictions: existing?.dietaryRestrictions ?? [],
+        allergies: existing?.allergies ?? [],
+        passportIssuingCountry: existing?.passportIssuingCountry ?? null,
+        passportExpiresOn: existing?.passportExpiresOn ?? null,
+        preferredCurrency: (existing?.preferredCurrency ?? profile.preferredCurrency?.trim().toUpperCase()) || null,
+        preferredLanguage: (existing?.preferredLanguage ?? profile.preferredLanguage?.trim()) || null,
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+        deletedAt: null,
+      };
+      await ctx.table<Contact>("contacts").put(contact);
+
+      const connection: Connection = {
+        id,
+        requesterId: ownerId,
+        recipientId: profile.profileId,
+        status: "pending",
+        requesterSnapshot: ownSnapshot,
+        recipientSnapshot: {
+          profileId: profile.profileId,
+          displayName: profile.fullName.trim(),
+          viatikId: profile.viatikId,
+          avatarUrl: profile.avatarUrl?.trim() || null,
+          avatarSeed: profile.avatarSeed?.trim() || null,
+          publicHandle: profile.publicHandle?.trim() || null,
+        },
+        createdAt: now,
+        updatedAt: now,
+      };
+      await append("connectionRequest", "insert", connection, { tx: ctx, baseUpdatedAt: null });
+      return contact;
+    });
+  }
+
+  async respondToConnectionRequest(id: string, ownerId: string, accept: boolean): Promise<Contact> {
+    const db = getDb();
+    return TransactionContext.runInTransaction([db.contacts], async (ctx) => {
+      const contact = await ctx.table<Contact>("contacts").get(id);
+      if (!contact || contact.ownerId !== ownerId || contact.deletedAt) throw new Error("Contact not found.");
+      if (!contact.linkedProfileId) throw new Error("This request has no linked profile.");
+      const now = new Date().toISOString();
+      const updated: Contact = {
+        ...contact,
+        connectionStatus: accept ? "accepted" : "pending",
+        connectionDirection: null,
+        updatedAt: now,
+        // A declined request hides the contact from the active list.
+        deletedAt: accept ? null : now,
+      };
+      await ctx.table<Contact>("contacts").put(updated);
+
+      const connection: Connection = {
+        id,
+        requesterId: contact.linkedProfileId,
+        recipientId: ownerId,
+        status: accept ? "accepted" : "blocked",
+        requesterSnapshot: {
+          profileId: contact.linkedProfileId,
+          displayName: contact.fullName,
+          viatikId: contact.linkedHandle ?? null,
+          avatarUrl: contact.linkedAvatarUrl,
+          avatarSeed: contact.avatarSeed,
+          publicHandle: contact.linkedHandle,
+        },
+        recipientSnapshot: { profileId: ownerId, displayName: contact.fullName },
+        createdAt: contact.createdAt,
+        updatedAt: now,
+      };
+      await append("connectionResponse", "update", connection, { tx: ctx, baseUpdatedAt: contact.updatedAt });
+      return updated;
+    });
+  }
+
+  async markAcceptedFromScan(id: string, ownerId: string): Promise<Contact> {
+    const db = getDb();
+    return TransactionContext.runInTransaction([db.contacts], async (ctx) => {
+      const contact = await ctx.table<Contact>("contacts").get(id);
+      if (!contact || contact.ownerId !== ownerId || contact.deletedAt) throw new Error("Contact not found.");
+      const updated: Contact = { ...contact, connectionStatus: "accepted", connectionDirection: null, deletedAt: null, updatedAt: new Date().toISOString() };
+      await ctx.table<Contact>("contacts").put(updated);
+      return updated;
+    });
+  }
+
+  async recordAcceptedConnection(ownerId: string, profile: ViatikProfileLookup, ownSnapshot: ConnectionSnapshot, connectionId: string): Promise<Contact> {
+    const db = getDb();
+    return TransactionContext.runInTransaction([db.contacts], async (ctx) => {
+      const now = new Date().toISOString();
+      const contact: Contact = {
+        id: connectionId,
+        ownerId,
+        fullName: profile.fullName.trim(),
+        avatarUrl: profile.avatarUrl?.trim() || null,
+        avatarSeed: profile.avatarSeed?.trim() || null,
+        email: null,
+        phone: null,
+        relationship: "friend",
+        travelerType: "adult",
+        birthDate: null,
+        notes: null,
+        linkedProfileId: profile.profileId,
+        linkedAvatarUrl: profile.avatarUrl?.trim() || null,
+        linkedHandle: profile.publicHandle?.trim() || null,
+        connectionId,
+        connectionStatus: "accepted",
+        connectionDirection: null,
+        emergencyContactName: null,
+        emergencyContactRelationship: null,
+        emergencyContactPhone: null,
+        dietaryRestrictions: [],
+        allergies: [],
+        passportIssuingCountry: null,
+        passportExpiresOn: null,
+        preferredCurrency: profile.preferredCurrency?.trim().toUpperCase() || null,
+        preferredLanguage: profile.preferredLanguage?.trim() || null,
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: null,
+      };
+      await ctx.table<Contact>("contacts").put(contact);
+      return contact;
     });
   }
 }
