@@ -27,7 +27,7 @@ export async function lookupViatikProfile(value: string): Promise<ProfileLookupR
       return { success: false, error: "We couldn't look up that Viatik ID right now." };
     }
     const row = Array.isArray(data) ? data[0] : data;
-    if (!row) return { success: false, error: "No Viatik account was found for that ID. They may not be discoverable yet." };
+    if (!row) return { success: false, error: "No Viatik account was found for that ID." };
     return { success: true, profile: mapProfileDirectoryRow(row as Record<string, unknown>) };
   } catch (error) {
     logger.error("Unexpected Viatik profile lookup error", error instanceof Error ? error : new Error(String(error)));
