@@ -192,6 +192,18 @@ export class ViatikDatabase extends Dexie {
         contact.avatarSeed ??= null;
       });
     });
+
+    // v17: bidirectional mutual `connections` graph. Existing (unidirectional)
+    // contacts become `unverified_offline` — no remote edge is implied.
+    this.version(17).stores({
+      contacts: "id, ownerId, linkedProfileId, connectionStatus, updatedAt, deletedAt",
+    }).upgrade(async (transaction) => {
+      await transaction.table("contacts").toCollection().modify((contact: Record<string, unknown>) => {
+        if (contact.connectionStatus === undefined) contact.connectionStatus = "unverified_offline";
+        if (contact.connectionId === undefined) contact.connectionId = null;
+        if (contact.connectionDirection === undefined) contact.connectionDirection = null;
+      });
+    });
   }
 }
 
