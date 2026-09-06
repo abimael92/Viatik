@@ -9,10 +9,13 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "rounded-2xl border text-card-foreground shadow-sm",
+      "rounded-2xl border text-card-foreground",
       glass
-        ? "border-border/40 bg-background/70 backdrop-blur-md"
-        : "border-border bg-card",
+        ? // Translucent white card so it reads raised against the cool canvas
+          // in light mode (and elevated in dark). Specular top-edge inset adds
+          // a microscopic highlight to the dark-glass variant.
+          "border-border/60 bg-card/70 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_1px_3px_rgba(15,23,42,0.05)] backdrop-blur-md"
+        : "border-border bg-card shadow-[0_1px_2px_rgba(15,23,42,0.04),0_2px_10px_rgba(15,23,42,0.05)]",
       className
     )}
     {...props}
