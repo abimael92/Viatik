@@ -1,6 +1,7 @@
-import type { Activity, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler } from "@/features/domain/entities";
+import type { Activity, Connection, ConnectionRemoteStatus, ConnectionSnapshot, ConnectionStatus, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler } from "@/features/domain/entities";
 import type { TripMedia } from "@/features/domain/entities-media";
 import { MAX_MINOR_UNITS, type MinorUnits } from "@/features/domain/money";
+import { getSyncUser } from "@/lib/sync/sync-context";
 import type { VaultEntry, VaultKeyset } from "@/features/vault/domain/vault-types";
 import type { TripWeatherForecast } from "@/features/weather/domain/weather-types";
 
@@ -194,8 +195,102 @@ export function contactToRow(contact: Contact): Record<string, unknown> {
   return { id: contact.id, owner_id: contact.ownerId, full_name: contact.fullName, avatar_url: contact.avatarUrl, avatar_seed: contact.avatarSeed, email: contact.email, phone: contact.phone, relationship: contact.relationship, traveler_type: contact.travelerType, birth_date: contact.birthDate, notes: contact.notes, linked_profile_id: contact.linkedProfileId, linked_avatar_url: contact.linkedAvatarUrl, linked_handle: contact.linkedHandle, emergency_contact_name: contact.emergencyContactName, emergency_contact_relationship: contact.emergencyContactRelationship, emergency_contact_phone: contact.emergencyContactPhone, dietary_restrictions: contact.dietaryRestrictions, allergies: contact.allergies, passport_issuing_country: contact.passportIssuingCountry, passport_expires_on: contact.passportExpiresOn, preferred_currency: contact.preferredCurrency, preferred_language: contact.preferredLanguage, created_at: contact.createdAt, updated_at: contact.updatedAt, deleted_at: contact.deletedAt };
 }
 export function rowToContact(row: Record<string, unknown>): Contact {
-  return { id: String(row.id), ownerId: String(row.owner_id), fullName: String(row.full_name), avatarUrl: row.avatar_url == null ? null : String(row.avatar_url), avatarSeed: row.avatar_seed == null ? null : String(row.avatar_seed), email: row.email == null ? null : String(row.email), phone: row.phone == null ? null : String(row.phone), relationship: (row.relationship ?? "other") as Contact["relationship"], travelerType: (row.traveler_type ?? "adult") as Contact["travelerType"], birthDate: row.birth_date == null ? null : String(row.birth_date), notes: row.notes == null ? null : String(row.notes), linkedProfileId: row.linked_profile_id == null ? null : String(row.linked_profile_id), linkedAvatarUrl: row.linked_avatar_url == null ? null : String(row.linked_avatar_url), linkedHandle: row.linked_handle == null ? null : String(row.linked_handle), emergencyContactName: row.emergency_contact_name == null ? null : String(row.emergency_contact_name), emergencyContactRelationship: row.emergency_contact_relationship == null ? null : String(row.emergency_contact_relationship), emergencyContactPhone: row.emergency_contact_phone == null ? null : String(row.emergency_contact_phone), dietaryRestrictions: Array.isArray(row.dietary_restrictions) ? row.dietary_restrictions.map(String) : [], allergies: Array.isArray(row.allergies) ? row.allergies.map(String) : [], passportIssuingCountry: row.passport_issuing_country == null ? null : String(row.passport_issuing_country), passportExpiresOn: row.passport_expires_on == null ? null : String(row.passport_expires_on), preferredCurrency: row.preferred_currency == null ? null : String(row.preferred_currency), preferredLanguage: row.preferred_language == null ? null : String(row.preferred_language), createdAt: String(row.created_at), updatedAt: String(row.updated_at), deletedAt: row.deleted_at == null ? null : String(row.deleted_at) };
+  return { id: String(row.id), ownerId: String(row.owner_id), fullName: String(row.full_name), avatarUrl: row.avatar_url == null ? null : String(row.avatar_url), avatarSeed: row.avatar_seed == null ? null : String(row.avatar_seed), email: row.email == null ? null : String(row.email), phone: row.phone == null ? null : String(row.phone), relationship: (row.relationship ?? "other") as Contact["relationship"], travelerType: (row.traveler_type ?? "adult") as Contact["travelerType"], birthDate: row.birth_date == null ? null : String(row.birth_date), notes: row.notes == null ? null : String(row.notes), linkedProfileId: row.linked_profile_id == null ? null : String(row.linked_profile_id), linkedAvatarUrl: row.linked_avatar_url == null ? null : String(row.linked_avatar_url), linkedHandle: row.linked_handle == null ? null : String(row.linked_handle), connectionId: row.connection_id == null ? null : String(row.connection_id), connectionStatus: (row.connection_status ?? "unverified_offline") as ConnectionStatus, connectionDirection: row.connection_direction == null ? null : (row.connection_direction as Contact["connectionDirection"]), emergencyContactName: row.emergency_contact_name == null ? null : String(row.emergency_contact_name), emergencyContactRelationship: row.emergency_contact_relationship == null ? null : String(row.emergency_contact_relationship), emergencyContactPhone: row.emergency_contact_phone == null ? null : String(row.emergency_contact_phone), dietaryRestrictions: Array.isArray(row.dietary_restrictions) ? row.dietary_restrictions.map(String) : [], allergies: Array.isArray(row.allergies) ? row.allergies.map(String) : [], passportIssuingCountry: row.passport_issuing_country == null ? null : String(row.passport_issuing_country), passportExpiresOn: row.passport_expires_on == null ? null : String(row.passport_expires_on), preferredCurrency: row.preferred_currency == null ? null : String(row.preferred_currency), preferredLanguage: row.preferred_language == null ? null : String(row.preferred_language), createdAt: String(row.created_at), updatedAt: String(row.updated_at), deletedAt: row.deleted_at == null ? null : String(row.deleted_at) };
 }
+function snapshotFromRemote(value: unknown): ConnectionSnapshot {
+  const snap = (value ?? {}) as Record<string, unknown>;
+  return {
+    profileId: String(snap.profile_id ?? snap.profileId ?? ""),
+    viatikId: String(snap.viatik_id ?? snap.viatikId ?? ""),
+    displayName: String(snap.display_name ?? snap.displayName ?? "Viatik user"),
+    avatarUrl: (snap.avatar_url ?? snap.avatarUrl ?? null) == null ? null : String(snap.avatar_url ?? snap.avatarUrl),
+    avatarSeed: (snap.avatar_seed ?? snap.avatarSeed ?? null) == null ? null : String(snap.avatar_seed ?? snap.avatarSeed),
+    publicHandle: (snap.public_handle ?? snap.publicHandle ?? null) == null ? null : String(snap.public_handle ?? snap.publicHandle),
+  };
+}
+
+/** Converts a local `Connection` edge into a snake_case `connections` row for the CAS RPC. */
+export function connectionToRow(conn: Connection): Record<string, unknown> {
+  return {
+    id: conn.id,
+    requester_id: conn.requesterId,
+    recipient_id: conn.recipientId,
+    status: conn.status,
+    requester_snapshot: conn.requesterSnapshot,
+    recipient_snapshot: conn.recipientSnapshot,
+    created_at: conn.createdAt,
+    updated_at: conn.updatedAt,
+  };
+}
+
+/** Parses a snake_case `connections` row back into a local `Connection`. */
+export function rowToConnection(row: Record<string, unknown>): Connection {
+  return {
+    id: String(row.id),
+    requesterId: String(row.requester_id),
+    recipientId: String(row.recipient_id),
+    status: (row.status ?? "pending") as ConnectionRemoteStatus,
+    requesterSnapshot: snapshotFromRemote(row.requester_snapshot),
+    recipientSnapshot: snapshotFromRemote(row.recipient_snapshot),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  };
+}
+
+/**
+ * Materializes a local `Contact` read-model from a pulled `connections` row for
+ * the CURRENT user. The counterpart is the party on the other side of the edge;
+ * their PUBLIC-ONLY snapshot feeds the contact's display fields. A `blocked`
+ * (declined) edge is materialized as a soft-deleted contact so it drops out of
+ * the active list while the authoritative edge row remains.
+ */
+export function rowToConnectionContact(row: Record<string, unknown>): Contact {
+  const viewerId = getSyncUser() ?? "";
+  const requesterId = String(row.requester_id);
+  const recipientId = String(row.recipient_id);
+  const status = (row.status ?? "pending") as ConnectionRemoteStatus;
+  const isRecipient = recipientId === viewerId;
+  const counterpart = snapshotFromRemote(isRecipient ? row.requester_snapshot : row.recipient_snapshot);
+  const counterpartId = isRecipient ? requesterId : recipientId;
+  const avatarUrl = counterpart.avatarUrl ?? null;
+  const publicHandle = counterpart.publicHandle ?? null;
+  const connectionStatus: ConnectionStatus = status === "accepted" ? "accepted" : "pending";
+  const direction = status === "pending" ? (isRecipient ? "inbound" : "outbound") : null;
+  const updatedAt = String(row.updated_at);
+  const blocked = status === "blocked";
+  return {
+    id: String(row.id),
+    ownerId: viewerId,
+    fullName: counterpart.displayName,
+    avatarUrl,
+    avatarSeed: counterpart.avatarSeed ?? null,
+    email: null,
+    phone: null,
+    relationship: "other",
+    travelerType: "adult",
+    birthDate: null,
+    notes: null,
+    linkedProfileId: counterpartId,
+    linkedAvatarUrl: avatarUrl,
+    linkedHandle: publicHandle,
+    connectionId: String(row.id),
+    connectionStatus,
+    connectionDirection: direction,
+    emergencyContactName: null,
+    emergencyContactRelationship: null,
+    emergencyContactPhone: null,
+    dietaryRestrictions: [],
+    allergies: [],
+    passportIssuingCountry: null,
+    passportExpiresOn: null,
+    preferredCurrency: null,
+    preferredLanguage: null,
+    createdAt: String(row.created_at),
+    updatedAt,
+    deletedAt: blocked ? updatedAt : null,
+  };
+}
+
 export function tripTravelerToRow(traveler: TripTraveler): Record<string, unknown> {
   return { id: traveler.id, trip_id: traveler.tripId, contact_id: traveler.contactId, display_name: traveler.displayName, traveler_type: traveler.travelerType, created_by: traveler.createdBy, created_at: traveler.createdAt, updated_at: traveler.updatedAt, deleted_at: traveler.deletedAt };
 }
