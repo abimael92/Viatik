@@ -22,6 +22,7 @@ import { collaborationRepository } from "@/features/collaboration/data/dexie-col
 import type { Activity, DailyBudgetOverride, Expense, ExpenseShare, Trip, TripMember, UserWallet } from "@/features/domain/entities";
 import { decimalFromMinorUnits, formatMinorUnits, getCurrencyExponent, parseMinorUnits, type MinorUnits } from "@/features/domain/money";
 import { expenseRepository } from "@/features/expenses/data/dexie-expense-repository";
+import { CurrencyConverterView } from "@/features/finance/components/currency-converter-view";
 import { dailyBudgetOverrideRepository, userWalletRepository } from "@/features/finance/data/dexie-finance-repository";
 import {
   getDailyPacing,
@@ -49,7 +50,7 @@ export function FinanceDashboard({
   days: string[];
   canEdit: boolean;
 }) {
-  const [view, setView] = useState<"personal" | "group">("personal");
+  const [view, setView] = useState<"personal" | "group" | "converter">("personal");
   const [expenses, setExpenses] = useState<Expense[] | null>(null);
   const [sharesByExpense, setSharesByExpense] = useState<Record<string, ExpenseShare[]>>({});
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -124,7 +125,7 @@ export function FinanceDashboard({
           <p className="text-muted-foreground">Private wallet, group spending, and daily pacing.</p>
         </div>
         <div className="flex rounded-full border border-border bg-muted p-1" role="tablist" aria-label="Finance view">
-          {(["personal", "group"] as const).map((key) => (
+          {(["personal", "group", "converter"] as const).map((key) => (
             <button
               key={key}
               role="tab"
@@ -135,13 +136,15 @@ export function FinanceDashboard({
                 view === key ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               )}
             >
-              {key === "personal" ? "My Finances" : "Group Finances"}
+              {key === "personal" ? "My Finances" : key === "group" ? "Group Finances" : "Converter"}
             </button>
           ))}
         </div>
       </div>
 
-      {view === "personal" ? (
+      {view === "converter" ? (
+        <CurrencyConverterView trip={trip} />
+      ) : view === "personal" ? (
         <PersonalView
           tripId={tripId}
           userId={userId}

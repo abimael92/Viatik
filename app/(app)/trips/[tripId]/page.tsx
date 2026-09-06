@@ -11,9 +11,12 @@ const VALID_TABS = [
   "map",
   "expenses",
   "finance",
+  "packing",
+  "health",
   "gallery",
   "travelers",
   "vault",
+  "polls",
   "settings",
 ] as const;
 

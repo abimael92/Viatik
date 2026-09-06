@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   AlertCircle,
   CalendarClock,
@@ -15,6 +16,7 @@ import {
   Search,
   Upload,
   UserPlus,
+  Wand2,
   X,
 } from "lucide-react";
 import { motion } from "motion/react";
@@ -56,6 +58,7 @@ import {
 } from "@/features/contacts/data/dexie-contact-repository";
 import { collaborationRepository } from "@/features/collaboration/data/dexie-collaboration-repository";
 import { ensureMemberForLinkedContact } from "@/features/collaboration/lib/ensure-member";
+import { AiTripModal } from "@/features/ai/components/ai-trip-modal";
 import { DestinationField } from "@/features/trips/components/destination-field";
 import { tripRepository } from "@/features/trips/data/dexie-trip-repository";
 import { getTripCoverGradient, isTripCoverImage } from "@/features/trips/lib/trip-cover";
@@ -66,9 +69,11 @@ import { cn } from "@/lib/utils";
 import type { PlaceDetails } from "@/app/actions/places";
 
 export function TripDashboard({ userId }: { userId: string }) {
+  const router = useRouter();
   const [trips, setTrips] = useState<Trip[] | null>(null);
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
   const [invitations, setInvitations] = useState<TripInvitation[]>([]);
   const [error, setError] = useState<string | null>(null);
   const sync = useSyncStatus();
@@ -117,6 +122,10 @@ export function TripDashboard({ userId }: { userId: string }) {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setAiOpen(true)}>
+            <Wand2 className="size-5 text-viatik-magenta" />
+            Build with AI
+          </Button>
           <Button variant="primary" onClick={() => setCreating(true)}>
             <Plus className="size-5" />
             Create trip
@@ -222,6 +231,15 @@ export function TripDashboard({ userId }: { userId: string }) {
         onOpenChange={setCreating}
         userId={userId}
         onError={setError}
+      />
+
+      <AiTripModal
+        key={aiOpen ? "ai-open" : "ai-closed"}
+        open={aiOpen}
+        onOpenChange={setAiOpen}
+        userId={userId}
+        mode="create"
+        onCreated={(tripId) => router.push(`/trips/${tripId}`)}
       />
     </div>
   );

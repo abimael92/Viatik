@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Receipt, Plus, ShieldAlert, ShieldCheck, UserPlus, type LucideIcon } from "lucide-react";
+import { Calculator, Receipt, Plus, ShieldAlert, ShieldCheck, UserPlus, type LucideIcon } from "lucide-react";
 
 import { EmergencyCenter } from "@/features/emergency/components/emergency-center";
 import type { Trip } from "@/features/domain/entities";
@@ -50,6 +50,13 @@ export function QuickActionHub({ userId, primaryTrip }: { userId: string; primar
       description: "Add travelers",
       href: primaryTrip ? tripTabPath(primaryTrip.id, "travelers") : tripFallback,
       icon: UserPlus,
+    },
+    {
+      key: "converter",
+      label: "Currency & tips",
+      description: "Convert & tip fast",
+      href: primaryTrip ? tripTabPath(primaryTrip.id, "finance") : tripFallback,
+      icon: Calculator,
     },
   ];
 
