@@ -1,4 +1,5 @@
 import type { Activity } from "@/features/domain/entities";
+import type { MinorUnits } from "@/features/domain/money";
 
 /** Storage-agnostic contract for reading/writing itinerary activities. */
 export interface ActivityRepository {
@@ -26,9 +27,12 @@ export interface NewActivity {
   title: string;
   description?: string | null;
   location?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   category?: string;
   startTime?: string | null;
   endTime?: string | null;
   position: number;
+  estimatedCostMinor?: MinorUnits | null;
   createdBy: string;
 }

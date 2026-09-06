@@ -22,12 +22,16 @@ export interface NewExpense {
   description: string;
   amountMinor: MinorUnits;
   currency: CurrencyCode;
+  exchangeRateToBase?: number | null;
   paidBy: string;
-  splitType: "equal" | "exact" | "percentage";
+  splitType: Expense["splitType"];
+  categoryId?: string | null;
+  date?: string;
   createdBy: string;
   shares: Array<{
     userId: string;
     shareAmountMinor: MinorUnits;
     sharePercentage: number | null;
+    splitType?: Expense["splitType"];
   }>;
 }
