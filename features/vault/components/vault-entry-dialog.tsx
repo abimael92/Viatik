@@ -14,7 +14,18 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { VaultEntryValues } from "@/features/vault/domain/vault-types";
+import {
+  VAULT_ENTRY_CATEGORIES,
+  type VaultEntryCategory,
+  type VaultEntryValues,
+} from "@/features/vault/domain/vault-types";
+
+const CATEGORY_LABELS: Record<VaultEntryCategory, string> = {
+  passport: "Passport",
+  insurance: "Travel insurance",
+  visa: "Visa",
+  other: "Other",
+};
 
 export function VaultEntryDialog({
   open,
@@ -35,6 +46,7 @@ export function VaultEntryDialog({
   const [username, setUsername] = useState(() => values?.username ?? "");
   const [secret, setSecret] = useState(() => values?.secret ?? "");
   const [notes, setNotes] = useState(() => values?.notes ?? "");
+  const [category, setCategory] = useState<VaultEntryCategory>(() => values?.category ?? "other");
   const [showSecret, setShowSecret] = useState(false);
   const [validation, setValidation] = useState<string | null>(null);
 
@@ -54,6 +66,7 @@ export function VaultEntryDialog({
       username: username.trim() || null,
       secret,
       notes: notes.trim() || null,
+      category,
     });
   }
 
@@ -79,6 +92,26 @@ export function VaultEntryDialog({
               required
               autoFocus
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="vault-entry-category">Document type</Label>
+            <select
+              id="vault-entry-category"
+              value={category}
+              onChange={(event) => setCategory(event.target.value as VaultEntryCategory)}
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            >
+              {VAULT_ENTRY_CATEGORIES.map((value) => (
+                <option key={value} value={value}>
+                  {CATEGORY_LABELS[value]}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Marking a document as a passport, insurance, or visa lets it surface as a critical
+              shortcut in the Emergency Center.
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -113,7 +146,7 @@ export function VaultEntryDialog({
                 aria-label={showSecret ? "Hide secret" : "Show secret"}
                 className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                {showSecret ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                {showSecret ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
               </button>
             </div>
           </div>
@@ -141,7 +174,7 @@ export function VaultEntryDialog({
             <Button type="button" variant="outline" disabled={pending} onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={pending}>
+            <Button type="submit" variant="primary" disabled={pending}>
               {pending ? "Saving…" : values ? "Update entry" : "Add entry"}
             </Button>
           </DialogFooter>

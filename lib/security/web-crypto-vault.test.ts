@@ -72,7 +72,32 @@ describe("WebCryptoVault", () => {
       session
     );
 
-    expect(decrypted).toEqual(values);
+    // Legacy entries without an explicit category default to `other`.
+    expect(decrypted).toEqual({ ...values, category: "other" });
+  });
+
+  it("round-trips a critical document category", async () => {
+    const session = await vault.unlock(passphrase, keyset);
+    const values: VaultEntryValues = {
+      title: "Passport",
+      username: null,
+      secret: "P12345678",
+      notes: null,
+      category: "passport",
+    };
+    const encrypted = await vault.encrypt({ id: "entry-2", tripId, ownerId, values }, session);
+    const decrypted = await vault.decrypt(
+      {
+        id: "entry-2",
+        tripId,
+        ownerId,
+        ciphertext: encrypted.ciphertext,
+        initializationVector: encrypted.initializationVector,
+        keyVersion: encrypted.keyVersion,
+      },
+      session
+    );
+    expect(decrypted.category).toBe("passport");
   });
 
   it("generates a unique IV for each encryption", async () => {

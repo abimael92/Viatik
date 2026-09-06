@@ -4,6 +4,7 @@ import { Copy, Eye, EyeOff, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Heading } from "@/components/ui/heading";
 import type { VaultEntry, VaultEntryValues } from "@/features/vault/domain/vault-types";
 
 export function VaultEntryCard({
@@ -36,7 +37,7 @@ export function VaultEntryCard({
     <div data-entry-id={entry.id} className="rounded-2xl border bg-card p-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1 space-y-1">
-          <h3 className="truncate font-semibold">{values.title}</h3>
+          <Heading level={3} className="truncate text-base font-semibold">{values.title}</Heading>
           {values.username && (
             <p className="text-sm text-muted-foreground">
               <span className="sr-only">Username</span>
@@ -53,7 +54,7 @@ export function VaultEntryCard({
             onClick={() => setRevealed((value) => !value)}
             className="size-10"
           >
-            {revealed ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            {revealed ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
           </Button>
           <Button
             variant="ghost"
@@ -62,7 +63,7 @@ export function VaultEntryCard({
             onClick={() => onCopy(values.secret, `secret for ${values.title}`)}
             className="size-10"
           >
-            <Copy className="size-4" />
+            <Copy className="size-5" />
           </Button>
           <Button
             variant="ghost"
@@ -71,7 +72,7 @@ export function VaultEntryCard({
             onClick={onEdit}
             className="size-10"
           >
-            <Pencil className="size-4" />
+            <Pencil className="size-5" />
           </Button>
           <Button
             variant="ghost"
@@ -80,7 +81,7 @@ export function VaultEntryCard({
             onClick={onDelete}
             className="size-10"
           >
-            <Trash2 className="size-4 text-destructive" />
+            <Trash2 className="size-5 text-destructive" />
           </Button>
         </div>
       </div>
