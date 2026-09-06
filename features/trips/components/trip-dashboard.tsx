@@ -8,7 +8,6 @@ import {
   CalendarDays,
   Cloud,
   CloudOff,
-  LogOut,
   Map,
   MapPin,
   Minus,
@@ -18,7 +17,6 @@ import {
   UserPlus,
   X,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import {
   type ComponentProps,
@@ -33,6 +31,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Heading } from "@/components/ui/heading";
 import { Collapsible } from "@/components/ui/collapsible";
 import {
   Dialog,
@@ -56,35 +55,23 @@ import {
   tripTravelerRepository,
 } from "@/features/contacts/data/dexie-contact-repository";
 import { collaborationRepository } from "@/features/collaboration/data/dexie-collaboration-repository";
+import { ensureMemberForLinkedContact } from "@/features/collaboration/lib/ensure-member";
 import { DestinationField } from "@/features/trips/components/destination-field";
 import { tripRepository } from "@/features/trips/data/dexie-trip-repository";
+import { getTripCoverGradient, isTripCoverImage } from "@/features/trips/lib/trip-cover";
 import { getMaxEndDate, getTripDurationError } from "@/features/trips/lib/trip-duration";
-import { logout } from "@/app/actions/auth";
-import { deleteDatabase } from "@/lib/db/dexie";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import { useSyncStatus } from "@/lib/sync/use-sync-status";
 import { cn } from "@/lib/utils";
 import type { PlaceDetails } from "@/app/actions/places";
 
 export function TripDashboard({ userId }: { userId: string }) {
-  const router = useRouter();
   const [trips, setTrips] = useState<Trip[] | null>(null);
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
   const [invitations, setInvitations] = useState<TripInvitation[]>([]);
   const [error, setError] = useState<string | null>(null);
   const sync = useSyncStatus();
-
-  async function handleLogout() {
-    const result = await logout();
-    if (!result.success) {
-      setError(result.error);
-      return;
-    }
-    await deleteDatabase(userId);
-    router.replace("/login");
-    router.refresh();
-  }
 
   useEffect(
     () =>
@@ -114,30 +101,25 @@ export function TripDashboard({ userId }: { userId: string }) {
 
   return (
     <div className="space-y-10">
-      <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-sm font-medium text-primary">Your journeys</p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">
+      <header className="relative flex flex-col gap-5 overflow-hidden sm:flex-row sm:items-end sm:justify-between">
+        {/* Ambient multi-color gradient bleed — environmental light source. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-24 -right-16 h-72 w-72 rounded-full bg-linear-to-br from-viatik-blue/10 via-viatik-magenta/10 to-transparent blur-3xl"
+        />
+        <div className="relative">
+          <p className="text-sm font-semibold text-viatik-magenta">Your journeys</p>
+          <Heading level={1} className="mt-1 text-3xl font-bold sm:text-4xl">
             Where are you going next?
-          </h1>
+          </Heading>
           <p className="mt-2 text-muted-foreground">
             Keep plans, costs, and memories together—even offline.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={() => setCreating(true)}>
-            <Plus className="size-4" />
+          <Button variant="primary" onClick={() => setCreating(true)}>
+            <Plus className="size-5" />
             Create trip
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="Sign out"
-            title="Sign out"
-            onClick={() => void handleLogout()}
-          >
-            <LogOut className="size-4" aria-hidden />
           </Button>
         </div>
       </header>
@@ -149,8 +131,8 @@ export function TripDashboard({ userId }: { userId: string }) {
       />
 
       {invitations.some((invitation) => invitation.status === "pending") && (
-        <section className="rounded-2xl border border-primary/30 bg-primary/5 p-5">
-          <h2 className="font-semibold">Trip invitations</h2>
+        <section className="rounded-2xl border border-viatik-magenta/30 bg-viatik-magenta/5 p-5">
+          <Heading level={2} className="text-base font-semibold">Trip invitations</Heading>
           <div className="mt-3 space-y-3">
             {invitations
               .filter((invitation) => invitation.status === "pending")
@@ -160,13 +142,14 @@ export function TripDashboard({ userId }: { userId: string }) {
                   className="flex flex-col gap-3 rounded-xl bg-card p-4 sm:flex-row sm:items-center"
                 >
                   <div className="flex-1">
-                    <p className="font-medium">You were invited to a shared trip</p>
+                    <p className="font-semibold">You were invited to a shared trip</p>
                     <p className="text-sm text-muted-foreground">
                       Role: {invitation.role} · expires{" "}
                       {new Date(invitation.expiresAt).toLocaleDateString()}
                     </p>
                   </div>
                   <Button
+                    variant="primary"
                     onClick={() =>
                       void collaborationRepository
                         .acceptInvitation(invitation.id)
@@ -192,7 +175,7 @@ export function TripDashboard({ userId }: { userId: string }) {
       )}
 
       <div className="relative max-w-xl">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
         <Input
           aria-label="Search trips"
           placeholder="Search by trip or destination"
@@ -217,7 +200,7 @@ export function TripDashboard({ userId }: { userId: string }) {
         <EmptyTrips onCreate={() => setCreating(true)} />
       ) : filtered.length === 0 ? (
         <div className="rounded-2xl border border-dashed p-10 text-center">
-          <h2 className="font-semibold">No trips match “{query}”</h2>
+          <Heading level={2} className="text-base font-semibold">No trips match “{query}”</Heading>
           <Button variant="link" onClick={() => setQuery("")}>
             Clear search
           </Button>
@@ -249,9 +232,9 @@ function TripSection({ title, trips, bento = false }: { title: string; trips: Tr
   const headingId = title.replaceAll(" ", "-").toLowerCase();
   return (
     <section aria-labelledby={headingId}>
-      <h2 id={headingId} className="mb-4 text-xl font-semibold">
+      <Heading level={2} id={headingId} className="mb-4 text-xl font-semibold">
         {title}
-      </h2>
+      </Heading>
       {/* Asymmetrical bento grid: the first card is featured and spans two columns. */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {trips.map((trip, index) => (
@@ -271,21 +254,24 @@ function TripSection({ title, trips, bento = false }: { title: string; trips: Tr
 }
 
 function TripCard({ trip, featured = false }: { trip: Trip; featured?: boolean }) {
+  const coverGradient = getTripCoverGradient(trip.coverImageUrl);
+  const hasCoverImage = isTripCoverImage(trip.coverImageUrl);
+
   return (
     <Link
       href={`/trips/${trip.id}`}
       className={cn(
-        "group flex h-full flex-col overflow-hidden rounded-2xl border border-border/40 bg-card/70 shadow-sm backdrop-blur-md",
+        "group flex h-full flex-col overflow-hidden rounded-2xl border border-border/60 bg-card/70 shadow-sm backdrop-blur-md",
         "transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       )}
     >
       <div
         className={cn(
-          "bg-gradient-to-br from-primary/25 via-secondary/20 to-accent/30",
+          !hasCoverImage && (coverGradient?.className ?? "bg-linear-to-br from-sky-500 via-blue-500 to-violet-600"),
           featured ? "h-44" : "h-32"
         )}
         style={
-          trip.coverImageUrl
+          hasCoverImage
             ? {
                 backgroundImage: `url(${trip.coverImageUrl})`,
                 backgroundSize: "cover",
@@ -296,20 +282,20 @@ function TripCard({ trip, featured = false }: { trip: Trip; featured?: boolean }
       />
       <div className="flex-1 p-5">
         <div className="flex items-start justify-between gap-3">
-          <h3 className={cn("font-semibold group-hover:text-primary", featured ? "text-xl" : "text-lg")}>
+          <Heading level={3} className={cn("font-semibold group-hover:text-viatik-magenta", featured ? "text-xl" : "text-lg")}>
             {trip.name}
-          </h3>
+          </Heading>
           <TripCountdown trip={trip} />
         </div>
         <div className="mt-3 space-y-2 text-sm text-muted-foreground">
           {trip.destination && (
             <p className="flex items-center gap-2">
-              <MapPin className="size-4" aria-hidden />
+              <MapPin className="size-5" aria-hidden />
               {trip.destination}
             </p>
           )}
           <p className="flex items-center gap-2">
-            <CalendarDays className="size-4" aria-hidden />
+            <CalendarDays className="size-5" aria-hidden />
             {formatDateRange(trip)}
           </p>
         </div>
@@ -337,7 +323,7 @@ function TripCountdownPill({ children, accent = false }: { children: React.React
   return (
     <span
       className={cn(
-        "shrink-0 rounded-full px-2.5 py-1 text-xs font-medium",
+        "shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold",
         accent ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
       )}
     >
@@ -365,7 +351,7 @@ function MetricsRow({
             <p className="mt-1 text-3xl font-bold tracking-tight">{upcomingCount}</p>
             <p className="mt-1 text-xs text-muted-foreground">{recentCount} completed in the past</p>
           </div>
-          <CalendarClock className="size-6 shrink-0 text-primary" aria-hidden />
+          <CalendarClock className="size-6 shrink-0 text-viatik-blue" aria-hidden />
         </div>
       </Card>
 
@@ -397,8 +383,8 @@ function MetricsRow({
             </p>
           </div>
           {sync.pending > 0 && (
-            <span className="grid size-8 shrink-0 animate-pulse place-items-center rounded-full bg-primary/15 text-primary">
-              <span className="size-2.5 rounded-full bg-primary" aria-hidden />
+            <span className="grid size-8 shrink-0 animate-pulse place-items-center rounded-full bg-viatik-magenta/15 text-viatik-magenta">
+              <span className="size-2.5 rounded-full bg-viatik-magenta" aria-hidden />
             </span>
           )}
         </div>
@@ -562,6 +548,24 @@ export function TripFormDialog({
     setStep((s) => s + 1);
   }
 
+  /** Jump to a step from the clickable step header. Going back is free; going
+   *  forward requires every intermediate step to validate so users can't skip
+   *  past incomplete required fields. */
+  function goToStep(target: number) {
+    if (target === step) return;
+    if (target > step) {
+      let errors: Record<string, string> = {};
+      for (let s = step; s < target; s++) errors = { ...errors, ...validateStep(s) };
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+        focusFirstError(errors);
+        return;
+      }
+    }
+    setFieldErrors({});
+    setStep(target);
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError(null);
@@ -616,7 +620,7 @@ export function TripFormDialog({
       else await tripRepository.create({ id: tripId, ownerId: userId, ...values });
       for (const [contactId, travelerType] of Object.entries(selectedContacts)) {
         const contact = contacts.find((item) => item.id === contactId);
-        if (contact)
+        if (contact) {
           await tripTravelerRepository.attach({
             id: crypto.randomUUID(),
             tripId,
@@ -624,6 +628,9 @@ export function TripFormDialog({
             travelerType,
             createdBy: userId,
           });
+          // Viatik-account travelers join as collaborators, admin by default.
+          await ensureMemberForLinkedContact(tripId, contact, userId);
+        }
       }
       for (const traveler of manualTravelers) {
         const contact = await contactRepository.create({
@@ -682,11 +689,11 @@ export function TripFormDialog({
               role="alert"
               className="flex gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
             >
-              <AlertCircle className="mt-0.5 size-4 shrink-0" />
+              <AlertCircle className="mt-0.5 size-5 shrink-0" />
               <span>{formError}</span>
             </div>
           )}
-          <StepHeader step={step} />
+          <StepHeader step={step} onStepClick={goToStep} />
 
           {step === 1 && (
             <div className="space-y-5">
@@ -832,7 +839,7 @@ export function TripFormDialog({
                 Next
               </Button>
             ) : (
-              <Button type="submit" disabled={saving}>
+              <Button type="submit" variant="primary" disabled={saving}>
                 {uploadingCover
                   ? "Uploading cover…"
                   : saving
@@ -849,7 +856,7 @@ export function TripFormDialog({
   );
 }
 
-function StepHeader({ step }: { step: number }) {
+function StepHeader({ step, onStepClick }: { step: number; onStepClick: (target: number) => void }) {
   const steps = ["The Basics", "The Itinerary", "Group & Media"];
   return (
     <nav aria-label="Trip setup progress" className="mb-6">
@@ -859,25 +866,29 @@ function StepHeader({ step }: { step: number }) {
           const active = step === number;
           const completed = step > number;
           return (
-            <li
-              key={title}
-              className="flex flex-1 flex-col gap-2"
-              aria-current={active ? "step" : undefined}
-            >
-              <div
-                className={cn(
-                  "h-1.5 rounded-full transition-colors",
-                  active ? "bg-primary" : completed ? "bg-primary/40" : "bg-muted"
-                )}
-              />
-              <span
-                className={cn(
-                  "text-xs sm:text-sm font-medium",
-                  active ? "text-primary" : completed ? "text-foreground" : "text-muted-foreground"
-                )}
+            <li key={title} className="flex flex-1">
+              <button
+                type="button"
+                onClick={() => onStepClick(number)}
+                aria-current={active ? "step" : undefined}
+                aria-label={`${title}${completed ? " (completed)" : ""}`}
+                className="group flex min-h-11 w-full flex-col justify-center gap-2 rounded-md px-0.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                {title}
-              </span>
+                <span
+                  className={cn(
+                    "h-1.5 rounded-full transition-colors",
+                    active ? "bg-primary" : completed ? "bg-primary/40" : "bg-muted group-hover:bg-primary/20"
+                  )}
+                />
+                <span
+                  className={cn(
+                    "text-xs sm:text-sm font-semibold",
+                    active ? "text-primary" : completed ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
+                  )}
+                >
+                  {title}
+                </span>
+              </button>
             </li>
           );
         })}
@@ -918,7 +929,7 @@ function FormField({
       )}
       {children}
       {error && (
-        <p id={`${name}-error`} role="alert" className="text-xs font-medium text-destructive">
+        <p id={`${name}-error`} role="alert" className="text-xs font-semibold text-destructive">
           {error}
         </p>
       )}
@@ -1024,7 +1035,7 @@ function StepperField({
           onClick={() => adjust(-1)}
           aria-label={`Decrease ${label.toLowerCase()}`}
         >
-          <Minus className="size-4" />
+          <Minus className="size-5" />
         </Button>
         <span
           aria-live="polite"
@@ -1042,7 +1053,7 @@ function StepperField({
           onClick={() => adjust(1)}
           aria-label={`Increase ${label.toLowerCase()}`}
         >
-          <Plus className="size-4" />
+          <Plus className="size-5" />
         </Button>
       </div>
     </FormField>
@@ -1161,7 +1172,7 @@ function CoverImageField({
               <Upload className="size-6" />
             </div>
             <div>
-              <p className="text-sm font-medium">
+              <p className="text-sm font-semibold">
                 Drag and drop your cover image here, or click to browse.
               </p>
               <p className="text-xs text-muted-foreground">JPG, PNG, or WebP up to 5 MB</p>
@@ -1204,15 +1215,15 @@ function NamedTravelersSection({
 }) {
   return (
     <fieldset className="space-y-3 rounded-xl border p-4" id="travelers">
-      <legend className="px-1 text-sm font-medium">Named travelers</legend>
+      <legend className="px-1 text-sm font-semibold">Named travelers</legend>
       {existingTravelers.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">Already on this trip</p>
+          <p className="text-xs font-semibold text-muted-foreground">Already on this trip</p>
           <div className="flex flex-wrap gap-2">
             {existingTravelers.map((traveler) => (
               <span
                 key={traveler.id}
-                className="rounded-full bg-primary/10 px-3 py-1 text-xs text-primary"
+                className="rounded-full bg-viatik-magenta/10 px-3 py-1 text-xs text-viatik-magenta"
               >
                 {traveler.displayName} · {traveler.travelerType}
               </span>
@@ -1222,7 +1233,7 @@ function NamedTravelersSection({
       )}
       {availableContacts.length === 0 && (
         <div className="rounded-lg border border-dashed bg-muted/30 p-4 text-center">
-          <p className="text-sm font-medium">
+          <p className="text-sm font-semibold">
             {contacts.length
               ? "All saved contacts are already on this trip"
               : "No saved contacts yet"}
@@ -1240,7 +1251,7 @@ function NamedTravelersSection({
       {availableContacts.length > 0 && (
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-xs font-medium text-muted-foreground">From your contacts</p>
+            <p className="text-xs font-semibold text-muted-foreground">From your contacts</p>
             <Button asChild type="button" variant="link" size="sm" className="h-auto px-0">
               <Link href="/contacts">Manage contacts</Link>
             </Button>
@@ -1276,7 +1287,7 @@ function NamedTravelersSection({
       {manualTravelers.map((traveler, index) => (
         <div key={traveler.id} className="space-y-2 rounded-lg bg-muted/50 p-3">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-medium">New traveler {index + 1}</p>
+            <p className="text-xs font-semibold">New traveler {index + 1}</p>
             <Button
               type="button"
               size="icon"
@@ -1361,7 +1372,7 @@ function NamedTravelersSection({
         </div>
       ))}
       {error && (
-        <p role="alert" className="text-xs font-medium text-destructive">
+        <p role="alert" className="text-xs font-semibold text-destructive">
           {error}
         </p>
       )}
@@ -1387,15 +1398,15 @@ function NamedTravelersSection({
 function EmptyTrips({ onCreate }: { onCreate: () => void }) {
   return (
     <div className="rounded-2xl border border-dashed bg-card px-6 py-16 text-center">
-      <div className="mx-auto grid size-14 place-items-center rounded-full bg-primary/10 text-primary">
+      <div className="mx-auto grid size-14 place-items-center rounded-full bg-viatik-magenta/10 text-viatik-magenta">
         <Map className="size-7" />
       </div>
-      <h2 className="mt-5 text-xl font-semibold">Your next trip starts here</h2>
+      <Heading level={2} className="mt-5 text-xl font-semibold">Your next trip starts here</Heading>
       <p className="mx-auto mt-2 max-w-md text-muted-foreground">
         Create a shared space for your itinerary, expenses, and favorite moments.
       </p>
       <Button className="mt-6" onClick={onCreate}>
-        <Plus className="size-4" />
+        <Plus className="size-5" />
         Create your first trip
       </Button>
     </div>
