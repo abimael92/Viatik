@@ -137,14 +137,14 @@ export function AvatarPicker({
       <div className="min-w-0 space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
-            <ImagePlus className="size-4" /> Select avatar
+            <ImagePlus className="size-5" /> Select avatar
           </Button>
           <Button type="button" variant="ghost" size="sm" onClick={() => inputRef.current?.click()}>
-            <Camera className="size-4" /> Upload photo
+            <Camera className="size-5" /> Upload photo
           </Button>
           {(seed || src) && (
             <Button type="button" variant="ghost" size="sm" onClick={handleRemove}>
-              <Trash2 className="size-4" /> Remove
+              <Trash2 className="size-5" /> Remove
             </Button>
           )}
         </div>
@@ -194,10 +194,10 @@ export function AvatarPicker({
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <Button type="button" variant="outline" size="sm" onClick={handleRandomize}>
-              <Dices className="size-4" /> Randomize
+              <Dices className="size-5" /> Randomize
             </Button>
             <Button type="button" variant="ghost" size="sm" onClick={handleRegenerate}>
-              <RefreshCw className="size-4" /> Regenerate
+              <RefreshCw className="size-5" /> Regenerate
             </Button>
           </div>
         </DialogContent>

@@ -14,6 +14,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 type LoginFormProps = {
   mode?: "login" | "register";
   next?: string;
+  initialError?: string;
 };
 
 function safeNext(value?: string) {
@@ -25,14 +26,23 @@ function maskEmail(email: string) {
   return `${name.slice(0, 2)}${"•".repeat(Math.max(1, name.length - 2))}@${domain}`;
 }
 
-export function LoginForm({ mode = "login", next }: LoginFormProps) {
+function formatCooldown(seconds: number) {
+  if (seconds < 60) return `${seconds}s`;
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remainingSeconds = seconds % 60;
+  if (hours > 0) return `${hours}h ${String(minutes).padStart(2, "0")}m`;
+  return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
+}
+
+export function LoginForm({ mode = "login", next, initialError }: LoginFormProps) {
   const router = useRouter();
   const refs = useRef<Array<HTMLInputElement | null>>([]);
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [digits, setDigits] = useState(["", "", "", "", "", ""]);
   const [sent, setSent] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(initialError ?? null);
   const [cooldown, setCooldown] = useState(0);
   const [pending, startTransition] = useTransition();
 
@@ -52,6 +62,13 @@ export function LoginForm({ mode = "login", next }: LoginFormProps) {
         return;
       }
       setEmail(email.trim().toLowerCase());
+      // Development-only: the account was created without sending an email, so
+      // verify immediately with the returned magic-link token instead of showing
+      // the OTP entry screen.
+      if (result.data?.devTokenHash) {
+        verifyEmail(result.data.devTokenHash);
+        return;
+      }
       setSent(true);
       setCooldown(60);
       window.setTimeout(() => refs.current[0]?.focus(), 0);
@@ -87,15 +104,25 @@ export function LoginForm({ mode = "login", next }: LoginFormProps) {
     });
   }
 
-  function verifyCode(code = digits.join("")) {
-    if (code.length !== 6) return setMessage("Enter the complete 6-digit code.");
+  function verifyEmail(codeOrToken: string) {
     setMessage(null);
     startTransition(async () => {
-      const result = await verifyEmailOtp(email, code);
+      const result = await verifyEmailOtp(email, codeOrToken);
       if (!result.success) return setMessage(result.error);
-      router.replace(result.data.onboarded ? safeNext(next) : `/onboarding?next=${encodeURIComponent(safeNext(next))}`);
+      router.replace(
+        mode === "register"
+          ? `/onboarding?setup=1&next=${encodeURIComponent(safeNext(next))}`
+          : result.data.onboarded
+            ? safeNext(next)
+            : `/onboarding?next=${encodeURIComponent(safeNext(next))}`
+      );
       router.refresh();
     });
+  }
+
+  function verifyCode(code = digits.join("")) {
+    if (code.length !== 6) return setMessage("Enter the complete 6-digit code.");
+    verifyEmail(code);
   }
 
   function updateDigit(index: number, value: string) {
@@ -152,12 +179,12 @@ export function LoginForm({ mode = "login", next }: LoginFormProps) {
           </div>
         </div>
         {message && <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{message}</p>}
-        <Button className="w-full" size="lg" disabled={pending || digits.some((digit) => !digit)} onClick={() => verifyCode()}>
+        <Button variant="primary" className="w-full" size="lg" disabled={pending || digits.some((digit) => !digit)} onClick={() => verifyCode()}>
           {pending ? "Verifying…" : "Verify and continue"}
         </Button>
         <div className="flex flex-col items-center gap-2 text-sm">
-          <button type="button" className="font-medium text-primary disabled:text-muted-foreground" disabled={pending || cooldown > 0} onClick={requestCode}>
-            {cooldown ? `Resend code in ${cooldown}s` : "Resend code"}
+          <button type="button" className="font-semibold text-primary disabled:text-muted-foreground" disabled={pending || cooldown > 0} onClick={requestCode}>
+            {cooldown ? `Resend code in ${formatCooldown(cooldown)}` : "Resend code"}
           </button>
           <button type="button" className="text-muted-foreground hover:text-foreground" onClick={() => { setSent(false); setDigits(["", "", "", "", "", ""]); setMessage(null); }}>
             Use a different email
@@ -178,7 +205,7 @@ export function LoginForm({ mode = "login", next }: LoginFormProps) {
       </div>
       {mode === "register" && (
         <ul className="grid gap-2 rounded-xl bg-muted/60 p-4 text-sm">
-          {["Your profile and trips saved securely", "Shared itineraries and expenses", "Offline access while you travel"].map((item) => <li key={item} className="flex items-center gap-2"><Check className="size-4 text-success" />{item}</li>)}
+          {["Your profile and trips saved securely", "Shared itineraries and expenses", "Offline access while you travel"].map((item) => <li key={item} className="flex items-center gap-2"><Check className="size-5 text-success" />{item}</li>)}
         </ul>
       )}
       {mode === "register" && (
@@ -194,18 +221,18 @@ export function LoginForm({ mode = "login", next }: LoginFormProps) {
       </div>
       {mode === "register" && (
         <label className="flex items-start gap-3 text-sm text-muted-foreground">
-          <input type="checkbox" required className="mt-0.5 size-4 rounded border-input accent-primary" />
+          <input type="checkbox" required className="mt-0.5 size-5 rounded border-input accent-primary" />
           <span>I agree to create a Viatik account and receive a one-time verification email.</span>
         </label>
       )}
       {message && <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{message}</p>}
-      <Button type="submit" className="w-full" size="lg" disabled={pending || cooldown > 0}>
-        {pending ? "Sending code…" : cooldown > 0 ? `Try again in ${cooldown}s` : mode === "register" ? "Create account with email" : "Sign in with email"}
+      <Button type="submit" variant="primary" className="w-full" size="lg" disabled={pending || cooldown > 0}>
+        {pending ? "Sending code…" : cooldown > 0 ? `Try again in ${formatCooldown(cooldown)}` : mode === "register" ? "Create account with email" : "Sign in with email"}
       </Button>
       {mode === "login" && (
         <div className="space-y-3 border-t pt-5">
           <Button type="button" variant="outline" className="w-full" size="lg" disabled={pending} onClick={signInWithPasskey}>
-            <KeyRound className="size-4" />Sign in with a passkey
+            <KeyRound className="size-5" />Sign in with a passkey
           </Button>
           <p className="text-center text-xs text-muted-foreground">Use a passkey already registered with your Viatik account.</p>
         </div>
@@ -219,7 +246,7 @@ export function LoginForm({ mode = "login", next }: LoginFormProps) {
       )}
       <p className="text-center text-sm">
         {mode === "register" ? "Already have an account? " : "New to Viatik? "}
-        <Link className="font-medium text-primary hover:underline" href={mode === "register" ? "/login" : "/register"}>
+        <Link className="font-semibold text-primary hover:underline" href={mode === "register" ? "/login" : "/register"}>
           {mode === "register" ? "Sign in" : "Create an account"}
         </Link>
       </p>

@@ -4,6 +4,7 @@ import { QrCode, UserPlus, UserRoundSearch } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Heading } from "@/components/ui/heading";
 import { AddContactCommandBar } from "@/features/contacts/components/AddContactCommandBar";
 import { ContactEditorDialog } from "@/features/contacts/components/contact-editor-dialog";
 import { ContactRequestInbox } from "@/features/contacts/components/ContactRequestInbox";
@@ -34,20 +35,20 @@ export function ContactsPanel({ userId, ownProfile }: { userId: string; ownProfi
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Contacts</h1>
+          <Heading level={1} className="text-3xl font-bold">Contacts</Heading>
           <p className="mt-1 text-muted-foreground">
             Mutual connections for shared trips and safe settlements. Private details are never exposed.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => setScanning(true)}>
-            <QrCode className="size-4" /> Scan QR
+            <QrCode className="size-5" /> Scan QR
           </Button>
           <Button variant="outline" onClick={() => setAdding(true)}>
-            <UserRoundSearch className="size-4" /> Add by ID
+            <UserRoundSearch className="size-5" /> Add by ID
           </Button>
-          <Button onClick={() => setEditing(null)}>
-            <UserPlus className="size-4" /> New contact
+          <Button variant="primary" onClick={() => setEditing(null)}>
+            <UserPlus className="size-5" /> New contact
           </Button>
         </div>
       </div>

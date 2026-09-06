@@ -204,11 +204,11 @@ export function QRScannerModal({
                 type="button"
                 onClick={() => switchView(v)}
                 className={cn(
-                  "flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-medium transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)]",
+                  "flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)]",
                   view === v ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                {v === "scan" ? <ScanLine className="size-4" /> : <QrCode className="size-4" />}
+                {v === "scan" ? <ScanLine className="size-5" /> : <QrCode className="size-5" />}
                 {v === "scan" ? "Scan their code" : "Show my code"}
               </button>
             ))}
@@ -231,7 +231,7 @@ export function QRScannerModal({
                 className="flex min-h-72 w-full flex-col items-center justify-center gap-3 rounded-3xl border border-dashed border-border/60 text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
               >
                 <Camera className="size-8" />
-                <span className="text-sm font-medium">Start camera</span>
+                <span className="text-sm font-semibold">Start camera</span>
               </button>
             )
           ) : (
@@ -251,7 +251,7 @@ export function QRScannerModal({
                     They scan this to instantly connect — no request needed.
                   </p>
                   <p className="inline-flex items-center gap-1.5 text-xs text-success">
-                    <ShieldCheck className="size-4" /> Signed &amp; expires in 5 minutes
+                    <ShieldCheck className="size-5" /> Signed &amp; expires in 5 minutes
                   </p>
                 </>
               ) : null}
@@ -284,7 +284,7 @@ function ConnectedState({ result }: { result: ScanConnectionSuccess }) {
           <p className="text-xs text-muted-foreground">{result.viatikId}</p>
         </div>
       </div>
-      <p className="text-lg font-medium text-success">🟢 Connected!</p>
+      <p className="text-lg font-semibold text-success">🟢 Connected!</p>
     </div>
   );
 }
@@ -298,7 +298,7 @@ function ScanFrame() {
       <span className="absolute bottom-4 left-4 h-8 w-8 border-b-2 border-l-2 border-white/90 animate-pulse" />
       <span className="absolute bottom-4 right-4 h-8 w-8 border-b-2 border-r-2 border-white/90 animate-pulse" />
       {/* Sweeping scan line */}
-      <span className="absolute inset-x-8 top-0 h-0.5 animate-scan-line bg-gradient-to-r from-transparent via-primary to-transparent" />
+      <span className="absolute inset-x-8 top-0 h-0.5 animate-scan-line bg-linear-to-r from-transparent via-primary to-transparent" />
     </div>
   );
 }

@@ -30,14 +30,14 @@ export function Collapsible({
   const panelId = `${id}-panel`;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border/40 bg-background/60 backdrop-blur-md">
+    <div className="overflow-hidden rounded-2xl border border-border/60 bg-card/70 backdrop-blur-md">
       <button
         type="button"
         id={buttonId}
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((value) => !value)}
-        className="flex min-h-11 w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex min-h-11 w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-semibold transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <span className="flex items-center gap-2">
           {title}
@@ -45,7 +45,7 @@ export function Collapsible({
         </span>
         <ChevronDown
           className={cn(
-            "size-4 shrink-0 text-muted-foreground transition-transform duration-200",
+            "size-5 shrink-0 text-muted-foreground transition-transform duration-200",
             open && "rotate-180"
           )}
           aria-hidden

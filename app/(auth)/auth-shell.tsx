@@ -4,17 +4,23 @@ import Link from "next/link";
 
 export function AuthShell({ children, mode = "login" }: { children: React.ReactNode; mode?: "login" | "register" }) {
   return (
-    <main className="relative min-h-dvh overflow-hidden bg-primary lg:grid lg:grid-cols-[1.08fr_.92fr]">
-      <section className="relative flex min-h-[42dvh] flex-col justify-between overflow-hidden px-6 py-7 text-primary-foreground sm:px-10 lg:min-h-dvh lg:px-14 lg:py-10">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,.22),transparent_32%),radial-gradient(circle_at_80%_70%,rgba(34,211,238,.2),transparent_38%)]" />
-        <Link href="/" className="relative flex items-center gap-3 text-xl font-bold tracking-tight">
+    <main className="relative min-h-dvh overflow-hidden bg-surface-dark lg:grid lg:grid-cols-[1.08fr_.92fr]">
+      <section className="relative flex min-h-[42dvh] flex-col justify-between overflow-hidden px-6 py-7 text-white sm:px-10 lg:min-h-dvh lg:px-14 lg:py-10">
+        {/* Deep atmospheric surface: the signature V-icon gradient (blue→magenta→red)
+            layered with soft radial highlights for depth. */}
+        <div className="absolute inset-0 bg-viatik-gradient" aria-hidden />
+        <div
+          className="absolute inset-0 bg-[radial-gradient(circle_at_18%_16%,rgba(255,255,255,.3),transparent_32%),radial-gradient(circle_at_88%_82%,rgba(14,165,233,.4),transparent_42%),radial-gradient(circle_at_60%_45%,rgba(244,63,94,.25),transparent_40%)]"
+          aria-hidden
+        />
+        <Link href="/" className="relative flex items-center gap-3 text-xl font-bold tracking-tight drop-shadow-sm">
           <Image src="/viatik-logo.png" alt="" width={44} height={44} priority className="size-11 object-contain drop-shadow-lg" />
           Viatik
         </Link>
         <div className="relative max-w-xl pb-24 lg:pb-0">
-          <p className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-primary-foreground/70">{mode === "register" ? "Your next adventure starts here" : "Welcome back, traveler"}</p>
-          <h2 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl lg:text-6xl">{mode === "register" ? "Turn the group chat into a trip everyone can follow." : "Your trips, people, and plans are waiting."}</h2>
-          <div className="mt-8 hidden gap-6 text-sm text-primary-foreground/80 sm:flex">
+          <p className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-white/75">{mode === "register" ? "Your next adventure starts here" : "Welcome back, traveler"}</p>
+          <h2 className="text-4xl font-bold leading-tight tracking-tight drop-shadow-sm sm:text-5xl lg:text-6xl">{mode === "register" ? "Turn the group chat into a trip everyone can follow." : "Your trips, people, and plans are waiting."}</h2>
+          <div className="mt-8 hidden gap-6 text-sm text-white/85 sm:flex">
             <span className="flex items-center gap-2"><Map className="size-5" />Shared itineraries</span>
             <span className="flex items-center gap-2"><Users className="size-5" />Built together</span>
             <span className="flex items-center gap-2"><Cloud className="size-5" />Ready offline</span>

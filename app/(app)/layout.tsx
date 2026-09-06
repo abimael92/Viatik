@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell/app-shell";
+import { CommandPalette } from "@/components/pro/command-palette";
 import { DatabaseProvider } from "@/lib/db/database-provider";
 import { SyncProvider } from "@/lib/sync/sync-provider";
 import { createClient } from "@/lib/supabase/server-client";
@@ -29,6 +30,7 @@ export default async function AuthenticatedLayout({ children }: { children: Reac
         >
           {children}
         </AppShell>
+        <CommandPalette />
       </SyncProvider>
     </DatabaseProvider>
   );

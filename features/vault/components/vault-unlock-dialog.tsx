@@ -101,7 +101,7 @@ export function VaultUnlockDialog({
                 aria-label={show ? "Hide passphrase" : "Show passphrase"}
                 className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                {show ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
               </button>
             </div>
             <p id="vault-passphrase-help" className="text-xs text-muted-foreground">
@@ -141,7 +141,7 @@ export function VaultUnlockDialog({
             <Button type="button" variant="outline" disabled={pending} onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={pending}>
+            <Button type="submit" variant="primary" disabled={pending}>
               {pending ? (mode === "create" ? "Creating…" : "Unlocking…") : mode === "create" ? "Create vault" : "Unlock"}
             </Button>
           </DialogFooter>

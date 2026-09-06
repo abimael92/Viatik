@@ -52,14 +52,14 @@ export function ActivityCard({ activity, onSelect, draggable = true }: ActivityC
             className="mt-0.5 cursor-grab rounded-sm text-muted-foreground active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label={`Move ${activity.title}`}
           >
-            <GripVertical className="size-4" />
+            <GripVertical className="size-5" />
           </button>
         ) : null}
         <div className="flex-1 min-w-0">
           <button
             type="button"
             onClick={() => onSelect?.(activity)}
-            className="block w-full rounded-sm text-left font-medium text-card-foreground truncate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="block w-full rounded-sm text-left font-semibold text-card-foreground truncate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label={`Open details for ${activity.title}`}
             data-activity-id={activity.id}
           >
