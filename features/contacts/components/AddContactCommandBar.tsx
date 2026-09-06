@@ -152,7 +152,7 @@ export function AddContactCommandBar({
                   <ShieldCheck className="size-5 shrink-0 text-success" aria-label="Verified Viatik account" />
                 </div>
                 <Button type="button" className="min-h-11 w-full" disabled={sending} onClick={() => void sendRequest()}>
-                  {sending ? <LoaderCircle className="size-4 animate-spin" /> : <Send className="size-4" />}
+                  {sending ? <LoaderCircle className="size-5 animate-spin" /> : <Send className="size-5" />}
                   Send request
                 </Button>
               </div>
@@ -164,7 +164,7 @@ export function AddContactCommandBar({
                   onClick={onOpenScanner}
                   className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
                 >
-                  <QrCode className="size-4" /> Scan their QR code instead
+                  <QrCode className="size-5" /> Scan their QR code instead
                 </button>
               </div>
             ) : (
@@ -178,9 +178,9 @@ export function AddContactCommandBar({
             <button
               type="button"
               onClick={onOpenScanner}
-              className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-border/40 text-sm font-medium transition-colors hover:bg-accent"
+              className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-border/40 text-sm font-semibold transition-colors hover:bg-accent"
             >
-              <QrCode className="size-4" /> Scan their QR code
+              <QrCode className="size-5" /> Scan their QR code
             </button>
           )}
         </div>
