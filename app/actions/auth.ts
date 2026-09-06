@@ -252,23 +252,6 @@ export async function updateProfileDetails(
   }
 }
 
-export async function setDiscoverability(discoverable: boolean): Promise<ActionResult> {
-  try {
-    const supabase = await createClient();
-    const { data } = await supabase.auth.getUser();
-    if (!data.user) return { success: false, error: "Authentication required" };
-    const { error } = await supabase
-      .from("profiles")
-      .update({ discoverable })
-      .eq("id", data.user.id);
-    if (error) return { success: false, error: error.message };
-    return { success: true, data: undefined };
-  } catch (error) {
-    logger.error("Unexpected discoverability update error", error instanceof Error ? error : new Error(String(error)));
-    return { success: false, error: "We couldn't update your discoverability right now." };
-  }
-}
-
 export type OnboardingDetails = {
   avatarUrl?: string | null;
   avatarSeed?: string | null;
