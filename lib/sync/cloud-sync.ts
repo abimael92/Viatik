@@ -9,6 +9,7 @@ import { getCurrentDatabase, type ViatikDatabase } from "@/lib/db/dexie";
 import { logger } from "@/lib/observability/logger";
 import {
   rowToActivity,
+  rowToConnectionContact,
   rowToContact,
   rowToExpense,
   rowToExpenseShare,
@@ -48,6 +49,7 @@ const tableDefinitions = [
   { table: "trip_media", entityType: "media" as const, map: rowToMedia, store: "tripMedia" as const },
   { table: "expense_settlements", entityType: "settlement" as const, map: rowToSettlement, store: "expenseSettlements" as const },
   { table: "contacts", entityType: "contact" as const, map: rowToContact, store: "contacts" as const },
+  { table: "connections", entityType: "connectionRequest" as const, map: rowToConnectionContact, store: "contacts" as const },
   { table: "trip_travelers", entityType: "tripTraveler" as const, map: rowToTripTraveler, store: "tripTravelers" as const },
   { table: "vault_keysets", entityType: "vaultKeyset" as const, map: rowToVaultKeyset, store: "vaultKeysets" as const },
   { table: "vault_entries", entityType: "vaultEntry" as const, map: rowToVaultEntry, store: "vaultEntries" as const },
@@ -144,6 +146,30 @@ export async function pullRemoteChanges(full = false, signal?: AbortSignal): Pro
         await getDb().expenseShares.where("expenseId").anyOf(expenseIds).delete();
         await Promise.all([getDb().trips.delete(trip.id), getDb().tripMembers.where("tripId").equals(trip.id).delete(), getDb().activities.where("tripId").equals(trip.id).delete(), getDb().expenses.where("tripId").equals(trip.id).delete(), getDb().tripMedia.where("tripId").equals(trip.id).delete(), getDb().tripInvitations.where("tripId").equals(trip.id).delete(), getDb().expenseSettlements.where("tripId").equals(trip.id).delete(), getDb().tripTravelers.where("tripId").equals(trip.id).delete(), getDb().vaultEntries.where("tripId").equals(trip.id).delete(), getDb().tripWeatherForecasts.filter((forecast) => forecast.tripId === trip.id).delete()]);
       });
+    }
+
+    // Tombstone sweep for mutual connections. A full pull is authoritative for
+    // the edges visible to this user, so if a remote `connections` row was
+    // hard-deleted while we were offline, drop the locally-materialized contact
+    // for that edge. Edges with a not-yet-replayed outbox mutation are spared so
+    // an in-flight request/response isn't wiped by an offline pull.
+    const remoteConnectionIds = new Set(
+      staged.find(({ definition }) => definition.table === "connections")?.rows.map((row) => String(row.id)) ?? []
+    );
+    const localEdges = await getDb().contacts
+      .where("connectionStatus").anyOf("pending", "accepted")
+      .filter((contact) => contact.connectionId !== null && contact.deletedAt === null)
+      .toArray();
+    for (const contact of localEdges) {
+      signal?.throwIfAborted();
+      const edgeId = String(contact.connectionId);
+      if (remoteConnectionIds.has(edgeId)) continue;
+      const pending = await getDb().outboxMutations
+        .where("entityType").anyOf("connectionRequest", "connectionResponse", "contact")
+        .filter((mutation) => mutation.entityId === edgeId)
+        .count();
+      if (pending > 0) continue;
+      await getDb().contacts.delete(contact.id);
     }
   }
   signal?.throwIfAborted();
