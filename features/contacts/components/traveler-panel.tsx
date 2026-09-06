@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { Link2, Trash2, UserPlus, Users } from "lucide-react";
+import { Trash2, UserPlus, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ContactEditorDialog } from "@/features/contacts/components/contact-editor-dialog";
-import { ViatikContactImportDialog } from "@/features/contacts/components/viatik-contact-import-dialog";
 import {
   contactRepository,
   tripTravelerRepository,
@@ -26,7 +25,6 @@ export function TravelerPanel({
   const [travelers, setTravelers] = useState<TripTraveler[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
-  const [linking, setLinking] = useState(false);
   useEffect(() => contactRepository.watch(userId, setContacts), [userId]);
   useEffect(() => tripTravelerRepository.watch(tripId, setTravelers), [tripId]);
   const available = useMemo(
@@ -54,16 +52,6 @@ export function TravelerPanel({
     } catch (cause) {
       setMessage(cause instanceof Error ? cause.message : "Unable to add traveler.");
     }
-  }
-
-  async function attachCreated(contact: Contact) {
-    await tripTravelerRepository.attach({
-      id: crypto.randomUUID(),
-      tripId,
-      contact,
-      createdBy: userId,
-    });
-    setMessage(null);
   }
 
   return (
@@ -127,9 +115,6 @@ export function TravelerPanel({
               <Button onClick={() => setCreating(true)}>
                 Add new contact
               </Button>
-              <Button variant="outline" onClick={() => setLinking(true)}>
-                <Link2 className="size-4" /> Link Viatik account
-              </Button>
             </div>
           </div>
           <form onSubmit={attach} className="rounded-2xl border bg-card p-5">
@@ -170,13 +155,14 @@ export function TravelerPanel({
         userId={userId}
         attachToTrip
         onOpenChange={setCreating}
-        onSaved={attachCreated}
-      />
-      <ViatikContactImportDialog
-        open={linking}
-        userId={userId}
-        onOpenChange={setLinking}
-        onLinked={attachCreated}
+        onSaved={async (contact) => {
+          await tripTravelerRepository.attach({
+            id: crypto.randomUUID(),
+            tripId,
+            contact,
+            createdBy: userId,
+          });
+        }}
       />
     </section>
   );
