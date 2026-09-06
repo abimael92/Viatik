@@ -68,7 +68,7 @@ export function DestinationField({
         </p>
       )}
       <div className="relative">
-        <MapPin className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <MapPin className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
         <Input
           id="destination"
           name="destination"
@@ -96,14 +96,14 @@ export function DestinationField({
               className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-muted disabled:opacity-60"
               onClick={() => handleSelect(suggestion)}
             >
-              <MapPin className="size-4 text-primary" />
+              <MapPin className="size-5 text-primary" />
               {suggestion.label}
             </button>
           ))}
         </div>
       )}
       {error && (
-        <p id="destination-error" role="alert" className="text-xs font-medium text-destructive">
+        <p id="destination-error" role="alert" className="text-xs font-semibold text-destructive">
           {error}
         </p>
       )}
