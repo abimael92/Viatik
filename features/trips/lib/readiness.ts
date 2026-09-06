@@ -1,0 +1,107 @@
+import type { Trip } from "@/features/domain/entities";
+
+export type ReadinessStatus = "complete" | "missing";
+
+export interface ReadinessItem {
+  key: string;
+  label: string;
+  /** Short imperative label for the hero "next action" CTA, e.g. "Set dates". */
+  action: string;
+  /** Long-form hint shown beside a missing item, e.g. "Add your travel dates". */
+  hint: string;
+  status: ReadinessStatus;
+  /** Trip workspace tab to deep-link to when the item is tapped. */
+  targetTab: "settings" | "itinerary" | "travelers" | "finance" | "vault";
+}
+
+export interface TripReadiness {
+  score: number;
+  completed: number;
+  total: number;
+  items: ReadinessItem[];
+  nextAction: ReadinessItem | null;
+}
+
+export interface ReadinessInput {
+  trip: Trip;
+  activityCount: number;
+  memberCount: number;
+  travelerCount: number;
+  vaultEntryCount: number;
+  passportOnFile: boolean;
+}
+
+const DOCS_TAB = "vault" as const;
+const TRAVELERS_TAB = "travelers" as const;
+
+/**
+ * Computes a trip-readiness score from real, typed signals in the local data
+ * layer. Each checklist item maps to a concrete queryable source — there is no
+ * heuristic keyword matching, so the score reflects what Viatik actually knows
+ * about the trip.
+ */
+export function computeReadiness(input: ReadinessInput): TripReadiness {
+  const { trip, activityCount, memberCount, travelerCount, vaultEntryCount, passportOnFile } = input;
+
+  const datesSet = Boolean(trip.startDate && trip.endDate);
+  const crewConfirmed = memberCount > 1 || travelerCount > 1;
+  const budgetSet = trip.totalBudgetMinor !== null && trip.totalBudgetMinor > 0;
+
+  const items: ReadinessItem[] = [
+    {
+      key: "dates",
+      label: "Travel dates",
+      action: "Set dates",
+      hint: "Add your travel dates to unlock itinerary planning.",
+      status: datesSet ? "complete" : "missing",
+      targetTab: "settings",
+    },
+    {
+      key: "itinerary",
+      label: "Itinerary",
+      action: "Plan itinerary",
+      hint: "Add flights, stays, and activities to your itinerary.",
+      status: activityCount > 0 ? "complete" : "missing",
+      targetTab: "itinerary",
+    },
+    {
+      key: "crew",
+      label: "Crew confirmed",
+      action: "Add travelers",
+      hint: "Invite your travel crew so everyone stays in sync.",
+      status: crewConfirmed ? "complete" : "missing",
+      targetTab: TRAVELERS_TAB,
+    },
+    {
+      key: "budget",
+      label: "Budget planned",
+      action: "Set a budget",
+      hint: "Set a trip budget to track planned versus spent.",
+      status: budgetSet ? "complete" : "missing",
+      targetTab: "finance",
+    },
+    {
+      key: "docs",
+      label: "Docs in vault",
+      action: "Add documents",
+      hint: "Store bookings, insurance, and confirmations in the vault.",
+      status: vaultEntryCount > 0 ? "complete" : "missing",
+      targetTab: DOCS_TAB,
+    },
+    {
+      key: "passport",
+      label: "Passport",
+      action: "Add passport",
+      hint: "Add a passport expiry for your travelers.",
+      status: passportOnFile ? "complete" : "missing",
+      targetTab: TRAVELERS_TAB,
+    },
+  ];
+
+  const completed = items.filter((item) => item.status === "complete").length;
+  const total = items.length;
+  const score = total === 0 ? 0 : Math.round((completed / total) * 100);
+  const nextAction = items.find((item) => item.status === "missing") ?? null;
+
+  return { score, completed, total, items, nextAction };
+}
