@@ -8,6 +8,12 @@ import type { TripWeatherForecast } from "@/features/weather/domain/weather-type
 import type { LocalProfile } from "@/features/profile/domain/profile-types";
 import type { TripPin } from "@/features/maps/domain/map-types";
 import type { TripFeedItem } from "@/features/feed/domain/feed-types";
+import type { PackingItem } from "@/features/packing/domain/packing-types";
+import type { TravelDocument } from "@/features/health/domain/health-types";
+import type { Poll, PollVote } from "@/features/polls/domain/poll-types";
+import type { CurrencyRate } from "@/features/finance/domain/currency-types";
+import type { TripShareLink } from "@/features/sharing/domain/share-types";
+import type { TransitSegment } from "@/features/transit/domain/transit-types";
 import type { OutboxMutation, SyncConflict, SyncLease, SyncMetadata } from "@/lib/sync/types";
 
 function migrateMinorUnits(record: Record<string, unknown>, legacyField: string, minorField: string): void {
@@ -59,6 +65,19 @@ export class ViatikDatabase extends Dexie {
   tripPins!: EntityTable<TripPin, "id">;
   /** Local-only collaborative activity feed (not synced — derived from synced entities). */
   feedItems!: EntityTable<TripFeedItem, "id">;
+  /** Local-only Smart Packing List items (not synced — device-local checklists). */
+  packingItems!: EntityTable<PackingItem, "id">;
+  /** Local-only travel documents tracked for expiry (not synced). */
+  travelDocuments!: EntityTable<TravelDocument, "id">;
+  /** Local-only group polls and votes (not synced — device-local, like feed). */
+  polls!: EntityTable<Poll, "id">;
+  pollVotes!: EntityTable<PollVote, "id">;
+  /** Local-only cached offline exchange rates (not synced). */
+  currencyRates!: EntityTable<CurrencyRate, "id">;
+  /** Guest share links for trips (synced via the outbox to Supabase). */
+  shareLinks!: EntityTable<TripShareLink, "id">;
+  /** Local-only live transit segments (flights & trains). */
+  transitSegments!: EntityTable<TransitSegment, "id">;
 
   constructor(name: string) {
     super(name);
@@ -274,6 +293,49 @@ export class ViatikDatabase extends Dexie {
     // sync is needed.
     this.version(23).stores({
       feedItems: "id, tripId, actorId, verb, createdAt, [tripId+createdAt]",
+    });
+
+    // v24: local-only `packingItems` for Smart Packing Lists. Checklists are
+    // private per-device to-dos (like `profiles`/`tripPins`), indexed by trip
+    // and category so the list view can group and filter reactively.
+    this.version(24).stores({
+      packingItems: "id, tripId, category, isPacked, [tripId+category], position, updatedAt, deletedAt",
+    });
+
+    // v25: local-only `travelDocuments` for the Travel Health & Document Expiry
+    // Tracker. Indexed by user, type, and expiry date for quick grouped reads.
+    this.version(25).stores({
+      travelDocuments: "id, userId, type, expiryDate, [userId+type], updatedAt, deletedAt",
+    });
+
+    // v26: local-only `polls`/`pollVotes` for Group Polls & Real-Time Voting.
+    // Polls are indexed by trip; votes by poll (with a per-user uniqueness
+    // index so one member == one vote). Device-local like `feedItems`/`packingItems`.
+    this.version(26).stores({
+      polls: "id, tripId, status, [tripId+status], updatedAt, deletedAt",
+      pollVotes: "id, pollId, userId, optionId, [pollId+userId], updatedAt",
+    });
+
+    // v27: local-only `currencyRates` for the Offline Currency Converter.
+    // Exchange rates are cached per (base → quote) pair, indexed by each leg
+    // so the converter can look up or seed cross-rates. Device-local (not synced).
+    this.version(27).stores({
+      currencyRates: "id, baseCurrency, quoteCurrency, [baseCurrency+quoteCurrency], updatedAt",
+    });
+
+    // v28: `shareLinks` for Social & Access Sharing. Unlike the local-only
+    // stores above, share links ARE synced via the outbox to the remote
+    // `trip_share_links` table so the unauthenticated /share/[slug] route can
+    // resolve them. Indexed by trip and (globally) by slug.
+    this.version(28).stores({
+      shareLinks: "id, tripId, slug, active, [tripId+active], updatedAt, deletedAt",
+    });
+
+    // v29: local-only `transitSegments` for Live Transit & Logistics. Flights
+    // and trains are device-local (like `packingItems`/`polls`); live status is
+    // cached onto the segment. Indexed by trip, day, mode, and departure time.
+    this.version(29).stores({
+      transitSegments: "id, tripId, dayDate, mode, scheduledDeparture, [tripId+dayDate], updatedAt, deletedAt",
     });
   }
 }

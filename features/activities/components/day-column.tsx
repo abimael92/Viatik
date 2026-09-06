@@ -5,12 +5,16 @@ import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 
 import type { Activity } from "@/features/domain/entities";
 import type { DailyForecast, WeatherWarning } from "@/features/weather/domain/weather-types";
+import type { WeatherConflict } from "@/features/weather/domain/weather-conflict-types";
 import { ActivityCard } from "@/features/activities/components/activity-card";
 import { WeatherDayBadge } from "@/features/weather/components/weather-day-badge";
+import { TransitCard } from "@/features/transit/components/transit-card";
+import { useTransitSegments } from "@/features/transit/components/use-transit";
 import { cn } from "@/lib/utils";
 import { useUiStore } from "@/lib/store/ui-store";
 
 interface DayColumnProps {
+  tripId: string;
   dayDate: string;
   activities: Activity[];
   category?: string;
@@ -19,9 +23,12 @@ interface DayColumnProps {
   forecast?: DailyForecast;
   warnings?: WeatherWarning[];
   weatherLoading?: boolean;
+  /** Weather conflict per activity id, to badge impacted cards. */
+  conflicts?: Record<string, WeatherConflict>;
 }
 
 export function DayColumn({
+  tripId,
   dayDate,
   activities,
   category = "all",
@@ -30,9 +37,12 @@ export function DayColumn({
   forecast,
   warnings,
   weatherLoading,
+  conflicts,
 }: DayColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: dayDate, data: { dayDate } });
   const setDragOverDay = useUiStore((s) => s.setDragOverDay);
+  const { segments, refresh } = useTransitSegments(tripId);
+  const transitForDay = segments.filter((segment) => segment.dayDate === dayDate);
 
   const emptyText =
     activities.length === 0
@@ -72,6 +82,15 @@ export function DayColumn({
           loading={weatherLoading}
         />
       </div>
+      {transitForDay.length > 0 && (
+        <ul className="flex flex-col gap-2" aria-label="Transit">
+          {transitForDay.map((segment) => (
+            <li key={segment.id}>
+              <TransitCard segment={segment} onRefresh={(s) => void refresh(s)} />
+            </li>
+          ))}
+        </ul>
+      )}
       <SortableContext
         items={activities.map((a) => a.id)}
         strategy={verticalListSortingStrategy}
@@ -83,6 +102,7 @@ export function DayColumn({
               activity={activity}
               onSelect={onSelect}
               draggable={draggable}
+              conflict={conflicts?.[activity.id]}
             />
           ))}
           {emptyText && (

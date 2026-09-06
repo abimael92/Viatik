@@ -19,6 +19,7 @@ import { activityRepository } from "@/features/activities/data/dexie-activity-re
 import { useDatabase } from "@/lib/db/database-provider";
 import type { Activity } from "@/features/domain/entities";
 import type { DailyForecast, WeatherWarning } from "@/features/weather/domain/weather-types";
+import type { WeatherConflict } from "@/features/weather/domain/weather-conflict-types";
 import { positionBetween } from "@/lib/ordering";
 import { useUiStore } from "@/lib/store/ui-store";
 import { logger } from "@/lib/observability/logger";
@@ -34,6 +35,8 @@ interface ItineraryBoardProps {
   forecast?: DailyForecast;
   warnings?: WeatherWarning[];
   weatherLoading?: boolean;
+  /** Weather conflict per activity id, to badge impacted cards. */
+  conflicts?: Record<string, WeatherConflict>;
 }
 
 export function ItineraryBoard({
@@ -45,6 +48,7 @@ export function ItineraryBoard({
   forecast,
   warnings,
   weatherLoading,
+  conflicts,
 }: ItineraryBoardProps) {
   const db = useDatabase();
   const activities = useLiveQuery(
@@ -184,6 +188,7 @@ export function ItineraryBoard({
         {dayDates.map((day) => (
           <DayColumn
             key={day}
+            tripId={tripId}
             dayDate={day}
             activities={byDay.get(day) ?? []}
             category={category}
@@ -192,6 +197,7 @@ export function ItineraryBoard({
             forecast={forecast}
             warnings={warnings}
             weatherLoading={weatherLoading}
+            conflicts={conflicts}
           />
         ))}
       </div>
