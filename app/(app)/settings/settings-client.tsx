@@ -9,6 +9,7 @@ import { viatikQrPayload } from "@/features/contacts/lib/viatik-id";
 import { AvatarPicker, type AvatarChange } from "@/components/ui/avatar-picker";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { Button } from "@/components/ui/button";
+import { Heading } from "@/components/ui/heading";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -61,16 +62,16 @@ export function SettingsClient({
   return (
     <div className="space-y-6">
       <header>
-        <p className="text-sm font-medium text-primary">Account</p>
-        <h1 className="mt-1 text-3xl font-bold tracking-tight">Settings</h1>
+        <p className="text-sm font-semibold text-primary">Account</p>
+        <Heading level={1} className="mt-1 text-3xl font-bold">Settings</Heading>
         <p className="mt-2 text-muted-foreground">Manage your profile, sign-in methods, and session.</p>
       </header>
       {message && <p role="status" className="rounded-lg border bg-card p-3 text-sm">{message}</p>}
       <Tabs defaultValue="profile" className="w-full">
         <TabsList>
-          <TabsTrigger value="profile"><UserRound className="size-4" />Profile</TabsTrigger>
-          <TabsTrigger value="directory"><ScanLine className="size-4" />Directory</TabsTrigger>
-          <TabsTrigger value="security"><KeyRound className="size-4" />Security</TabsTrigger>
+          <TabsTrigger value="profile"><UserRound className="size-5" />Profile</TabsTrigger>
+          <TabsTrigger value="directory"><ScanLine className="size-5" />Directory</TabsTrigger>
+          <TabsTrigger value="security"><KeyRound className="size-5" />Security</TabsTrigger>
         </TabsList>
         <TabsContent value="profile">
           <section className="rounded-2xl border bg-card p-5 sm:p-7" aria-labelledby="profile-heading">
@@ -84,7 +85,7 @@ export function SettingsClient({
               </div>
               {!editing && (
                 <Button type="button" variant="outline" onClick={() => setEditing(true)} disabled={pending}>
-                  <Pencil className="size-4" />Edit
+                  <Pencil className="size-5" />Edit
                 </Button>
               )}
             </div>
@@ -109,7 +110,7 @@ export function SettingsClient({
                     size="lg"
                   />
                   <div>
-                    <p className="font-medium">{saved.fullName}</p>
+                    <p className="font-semibold">{saved.fullName}</p>
                     <p className="text-sm text-muted-foreground">{saved.phone ?? "No phone on file"}</p>
                   </div>
                 </div>
@@ -152,11 +153,11 @@ export function SettingsClient({
                 <div className="rounded-xl border p-4">
                   <div className="flex items-center justify-between gap-4">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium">Your Viatik ID</p>
+                      <p className="text-sm font-semibold">Your Viatik ID</p>
                       <p className="font-mono text-sm text-muted-foreground">{viatikId}</p>
                     </div>
                     <Button type="button" variant="outline" size="sm" onClick={() => void copyViatikId()} disabled={copied}>
-                      {copied ? <Check className="size-4 text-success" /> : <Copy className="size-4" />}
+                      {copied ? <Check className="size-5 text-success" /> : <Copy className="size-5" />}
                       {copied ? "Copied" : "Copy"}
                     </Button>
                   </div>
@@ -187,15 +188,15 @@ export function SettingsClient({
               <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
                 <Smartphone className="size-5 text-muted-foreground" />
                 <div className="flex-1">
-                  <p className="font-medium">SMS authentication</p>
+                  <p className="font-semibold">SMS authentication</p>
                   <p className="text-sm text-muted-foreground">{phone ?? "No phone number available"}</p>
                 </div>
-                <span className="text-xs font-medium text-success">Verified session</span>
+                <span className="text-xs font-semibold text-success">Verified session</span>
               </div>
               <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
                 <KeyRound className="size-5 text-muted-foreground" />
                 <div className="flex-1">
-                  <p className="font-medium">Passkeys</p>
+                  <p className="font-semibold">Passkeys</p>
                   <p className="text-sm text-muted-foreground">Use your device biometrics for a faster sign-in.</p>
                 </div>
                 <Button variant="outline" onClick={addPasskey} disabled={pending}>Add passkey</Button>
@@ -212,7 +213,7 @@ function ProfileRow({ label, value }: { label: string; value: string | null | un
   const display = value?.trim() || "—";
   return (
     <div>
-      <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</dt>
+      <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</dt>
       <dd className="mt-1 text-sm text-foreground">{display}</dd>
     </div>
   );
@@ -364,7 +365,7 @@ function ProfileEditForm({
       </div>
       {message && <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive sm:col-span-2">{message}</p>}
       <div className="flex gap-2 sm:col-span-2">
-        <Button type="submit" disabled={pending}>{pending ? "Saving…" : "Save profile"}</Button>
+        <Button type="submit" variant="primary" disabled={pending}>{pending ? "Saving…" : "Save profile"}</Button>
         <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>Cancel</Button>
       </div>
     </form>

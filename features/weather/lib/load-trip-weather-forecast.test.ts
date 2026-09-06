@@ -37,6 +37,7 @@ function makeTrip(overrides: Partial<Trip> = {}): Trip {
     adultCount: 2,
     childCount: 0,
     baseCurrency: "USD",
+    totalBudgetMinor: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     deletedAt: null,
