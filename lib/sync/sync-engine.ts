@@ -1,6 +1,6 @@
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import { getCurrentDatabase, type ViatikDatabase } from "@/lib/db/dexie";
-import type { Activity, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler } from "@/features/domain/entities";
+import type { Activity, Connection, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler } from "@/features/domain/entities";
 import type { TripMedia } from "@/features/domain/entities-media";
 import type { VaultEntry, VaultKeyset } from "@/features/vault/domain/vault-types";
 import type { TripWeatherForecast } from "@/features/weather/domain/weather-types";
@@ -26,6 +26,7 @@ import {
   settlementToRow,
   mediaToRow,
   contactToRow,
+  connectionToRow,
   tripTravelerToRow,
   vaultEntryToRow,
   vaultKeysetToRow,
@@ -111,6 +112,8 @@ function mutationPayloadToRow(mutation: OutboxMutation): Record<string, unknown>
     case "settlement": return settlementToRow(mutation.payload as unknown as ExpenseSettlement);
     case "media": return mediaToRow(mutation.payload as unknown as TripMedia);
     case "contact": return contactToRow(mutation.payload as unknown as Contact);
+    case "connectionRequest":
+    case "connectionResponse": return connectionToRow(mutation.payload as unknown as Connection);
     case "tripTraveler": return tripTravelerToRow(mutation.payload as unknown as TripTraveler);
     case "vaultKeyset": return vaultKeysetToRow(mutation.payload as unknown as VaultKeyset);
     case "vaultEntry": return vaultEntryToRow(mutation.payload as unknown as VaultEntry);
@@ -151,9 +154,11 @@ async function replayCasMutation(mutation: OutboxMutation, signal?: AbortSignal)
         ? client.rpc("sync_vault_keyset_cas_upsert", { p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt })
         : mutation.entityType === "vaultEntry"
           ? client.rpc("sync_vault_entry_cas_upsert", { p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt })
-          : mutation.entityType === "tripWeatherForecast"
-            ? client.rpc("sync_trip_weather_forecast_cas_upsert", { p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt })
-            : client.rpc("sync_cas_upsert", { p_entity: mutation.entityType, p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt });
+          : mutation.entityType === "connectionRequest" || mutation.entityType === "connectionResponse"
+            ? client.rpc("sync_connection_cas_upsert", { p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt })
+            : mutation.entityType === "tripWeatherForecast"
+              ? client.rpc("sync_trip_weather_forecast_cas_upsert", { p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt })
+              : client.rpc("sync_cas_upsert", { p_entity: mutation.entityType, p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt });
   const response = signal ? await request.abortSignal(signal) : await request;
   if (response.error) throw new Error(response.error.message);
   const result = response.data as CasResult;
