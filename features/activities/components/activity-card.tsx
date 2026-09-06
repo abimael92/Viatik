@@ -2,20 +2,23 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, MapPin, Clock } from "lucide-react";
+import { GripVertical, MapPin, Clock, CloudRain } from "lucide-react";
 import { motion } from "motion/react";
 
 import { UserAvatar } from "@/components/ui/user-avatar";
 import type { Activity } from "@/features/domain/entities";
+import type { WeatherConflict } from "@/features/weather/domain/weather-conflict-types";
 import { cn } from "@/lib/utils";
 
 interface ActivityCardProps {
   activity: Activity;
   onSelect?: (activity: Activity) => void;
   draggable?: boolean;
+  /** Weather conflict affecting this activity, shown as a warning badge. */
+  conflict?: WeatherConflict;
 }
 
-export function ActivityCard({ activity, onSelect, draggable = true }: ActivityCardProps) {
+export function ActivityCard({ activity, onSelect, draggable = true, conflict }: ActivityCardProps) {
   const {
     attributes,
     listeners,
@@ -83,6 +86,17 @@ export function ActivityCard({ activity, onSelect, draggable = true }: ActivityC
               <span className="flex items-center gap-1">
                 <MapPin className="size-3" />
                 {activity.location}
+              </span>
+            )}
+            {conflict && (
+              <span
+                className="inline-flex items-center gap-1 text-destructive"
+                role="img"
+                aria-label={`Weather warning: ${conflict.reason}`}
+                title={conflict.reason}
+              >
+                <CloudRain className="size-3.5" />
+                Weather
               </span>
             )}
           </div>
