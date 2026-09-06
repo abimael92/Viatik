@@ -1,9 +1,11 @@
 import { describe, it, expect } from "vitest";
 
+import type { MinorUnits } from "@/features/domain/money";
 import {
   splitEqual,
   splitExact,
   splitPercentage,
+  splitShares,
   calculateSplit,
   calculateBalances,
 } from "./expense-calculator";
@@ -23,8 +25,8 @@ describe("expense-calculator", () => {
     const result = splitExact(100n, { a: 40n, b: 60n });
     expect(result.assignedTotal).toBe(100n);
     expect(result.shares).toEqual([
-      { userId: "a", shareAmountMinor: 40n, sharePercentage: 40 },
-      { userId: "b", shareAmountMinor: 60n, sharePercentage: 60 },
+      { userId: "a", shareAmountMinor: 40n, sharePercentage: 40, splitType: "exact" },
+      { userId: "b", shareAmountMinor: 60n, sharePercentage: 60, splitType: "exact" },
     ]);
   });
 
@@ -69,5 +71,47 @@ describe("expense-calculator", () => {
     // Payer paid 100 but owes nothing in this scenario; a owes 40.
     expect(balances["p"]).toBe(100n);
     expect(balances["a"]).toBe(-40n);
+  });
+
+  it("splitShares distributes proportional to share counts", () => {
+    // 2:1 shares → b owes twice as much.
+    const result = splitShares(300n, ["a", "b"], { a: 1, b: 2 });
+    expect(result.shares.map((s) => s.shareAmountMinor)).toEqual([100n, 200n]);
+    expect(result.shares.map((s) => s.splitType)).toEqual(["shares", "shares"]);
+    expect(result.shares.every((s) => s.sharePercentage === null)).toBe(true);
+  });
+
+  it("splitShares distributes remainder to the largest fractional share", () => {
+    const result = splitShares(101n, ["a", "b"], { a: 1, b: 1 });
+    expect(result.shares.map((s) => s.shareAmountMinor)).toEqual([51n, 50n]);
+    expect(result.assignedTotal).toBe(101n);
+  });
+
+  it("splitShares rejects non-positive or non-integer counts", () => {
+    expect(() => splitShares(100n, ["a", "b"], { a: 1, b: 0 })).toThrow("positive whole numbers");
+    expect(() => splitShares(100n, ["a", "b"], { a: 1, b: 1.5 })).toThrow("positive whole numbers");
+    expect(() => splitShares(100n, ["a", "b"], { a: 1, outsider: 1 })).toThrow("Every participant");
+  });
+
+  it("calculateSplit dispatches to shares mode", () => {
+    const result = calculateSplit({ totalMinor: 100n, payerId: "p", participants: ["a", "b"], mode: "shares", shares: { a: 1, b: 3 } });
+    expect(result.shares.map((s) => s.shareAmountMinor)).toEqual([25n, 75n]);
+  });
+
+  it("the sum of shares always exactly equals the total (penny rounding)", () => {
+    const totals: MinorUnits[] = [0n, 1n, 2n, 3n, 7n, 99n, 100n, 101n, 1000n, 1000001n];
+    for (const total of totals) {
+      const equal = splitEqual(total, ["a", "b", "c"]);
+      expect(equal.shares.reduce((sum, s) => sum + s.shareAmountMinor, 0n)).toBe(total);
+
+      const shares = splitShares(total, ["a", "b", "c"], { a: 2, b: 3, c: 5 });
+      expect(shares.shares.reduce((sum, s) => sum + s.shareAmountMinor, 0n)).toBe(total);
+
+      const pct = splitPercentage(total, ["a", "b", "c"], { a: 25, b: 30, c: 45 });
+      expect(pct.shares.reduce((sum, s) => sum + s.shareAmountMinor, 0n)).toBe(total);
+
+      const exact = splitExact(total, { a: total, b: 0n });
+      expect(exact.shares.reduce((sum, s) => sum + s.shareAmountMinor, 0n)).toBe(total);
+    }
   });
 });
