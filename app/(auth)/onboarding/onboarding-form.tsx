@@ -47,14 +47,14 @@ const emptyValues: FormValues = {
   passportExpiresOn: "",
 };
 
-export function OnboardingForm({ email, next }: { email: string; next: string }) {
+export function OnboardingForm({ email, next, initialName = "" }: { email: string; next: string; initialName?: string }) {
   const router = useRouter();
   const [avatar, setAvatar] = useState<File | null>(null);
   const [step, setStep] = useState(1);
   const [message, setMessage] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [values, setValues] = useState<FormValues>(emptyValues);
+  const [values, setValues] = useState<FormValues>(() => ({ ...emptyValues, fullName: initialName }));
   const [pending, startTransition] = useTransition();
   const [visited, setVisited] = useState<boolean[]>([true, ...Array(STEPS.length - 1).fill(false)]);
   const allVisited = visited.every(Boolean);
@@ -211,7 +211,7 @@ export function OnboardingForm({ email, next }: { email: string; next: string })
         <section className="space-y-4 rounded-xl border border-border/70 bg-card p-4 sm:p-5">
           <div className="flex items-start gap-3 border-b border-border/60 pb-4">
             <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
-              <ShieldCheck className="size-4" />
+              <ShieldCheck className="size-5" />
             </span>
             <div>
               <h3 className="text-sm font-semibold">Emergency contact</h3>
@@ -232,7 +232,7 @@ export function OnboardingForm({ email, next }: { email: string; next: string })
         <section className="space-y-4 rounded-xl border border-border/70 bg-card p-4 sm:p-5">
           <div className="flex items-start gap-3 border-b border-border/60 pb-4">
             <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
-              <CalendarDays className="size-4" />
+              <CalendarDays className="size-5" />
             </span>
             <div>
               <h3 className="text-sm font-semibold">Travel details</h3>
@@ -273,9 +273,9 @@ export function OnboardingForm({ email, next }: { email: string; next: string })
             </Button>
           )}
           {step < STEPS.length ? (
-            <Button type="button" onClick={handleNext}>Next</Button>
+            <Button type="button" variant="primary" onClick={handleNext}>Next</Button>
           ) : (
-            <Button type="submit" disabled={pending || !allVisited}>
+            <Button type="submit" variant="primary" disabled={pending || !allVisited}>
               {pending ? "Saving your profile…" : "Continue to Viatik"}
             </Button>
           )}
@@ -309,7 +309,7 @@ function StepHeader({
                 className="group flex min-h-11 flex-col gap-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <div className={cn("h-1.5 rounded-full transition-colors", active ? "bg-primary" : completed ? "bg-primary/40" : "bg-muted group-hover:bg-primary/20")} />
-                <span className={cn("text-xs sm:text-sm font-medium", active ? "text-primary" : completed ? "text-foreground" : "text-muted-foreground group-hover:text-foreground")}>
+                <span className={cn("text-xs sm:text-sm font-semibold", active ? "text-primary" : completed ? "text-foreground" : "text-muted-foreground group-hover:text-foreground")}>
                   {title}
                 </span>
               </button>
