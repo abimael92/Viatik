@@ -27,22 +27,24 @@ describe("landing page visual hierarchy", () => {
     const signIn = within(navigation).getByRole("link", { name: "Sign in" });
     expect(features.className).toContain("border-primary/40");
     expect(features.className).toContain("bg-transparent");
-    expect(signIn.className.split(" ")).toContain("bg-primary");
-    expect(signIn.className).toContain("text-primary-foreground");
+    // Primary CTA uses the Viatik brand gradient, not the flat primary fill.
+    expect(signIn.className.split(" ")).toContain("bg-linear-to-r");
+    expect(signIn.className).toContain("from-viatik-magenta");
+    expect(signIn.className).toContain("text-white");
 
     const hero = screen.getByRole("heading", { level: 1 }).closest("section");
     expect(hero).not.toBeNull();
     const heroPrimary = within(hero!).getByRole("link", { name: /Start planning/ });
     expect(heroPrimary.getAttribute("href")).toBe("/register");
-    expect(heroPrimary.className.split(" ")).toContain("bg-primary");
-    expect(heroPrimary.className).toContain("border-primary");
-    expect(heroPrimary.className).toContain("shadow-primary/25");
+    expect(heroPrimary.className.split(" ")).toContain("bg-linear-to-r");
+    expect(heroPrimary.className).toContain("to-viatik-red");
+    expect(heroPrimary.className).toContain("shadow-viatik-red/25");
 
     const heroSecondary = within(hero!).getByRole("link", { name: "See how it works" });
     expect(heroSecondary.getAttribute("href")).toBe("#how-it-works");
-    expect(heroSecondary.className).toContain("border-primary/40");
+    expect(heroSecondary.className).toContain("border-viatik-magenta/40");
     expect(heroSecondary.className).toContain("bg-transparent");
-    expect(heroSecondary.className).toContain("hover:bg-primary/10");
+    expect(heroSecondary.className).toContain("hover:bg-viatik-magenta/10");
     expect(within(hero!).queryByText("Free to start. No password required.")).toBeNull();
   });
 
