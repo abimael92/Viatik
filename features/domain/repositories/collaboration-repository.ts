@@ -8,6 +8,8 @@ export interface CollaborationRepository {
   watchInvitations(tripId: string | undefined, onChange: (invitations: TripInvitation[]) => void): () => void;
   invite(input: { id: string; tripId: string; email: string; role: Exclude<TripMemberRole, "owner">; invitedBy: string }): Promise<TripInvitation>;
   updateMemberRole(memberId: string, role: Exclude<TripMemberRole, "owner">): Promise<void>;
+  /** Upsert a member by user id: create (default admin/editor) or update role. */
+  setMemberRoleByUser(tripId: string, userId: string, role: Exclude<TripMemberRole, "owner">, byUserId: string): Promise<void>;
   removeMember(memberId: string): Promise<void>;
   acceptInvitation(invitationId: string): Promise<void>;
   rejectInvitation(invitationId: string): Promise<void>;
