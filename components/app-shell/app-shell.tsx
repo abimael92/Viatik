@@ -3,13 +3,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ContactRound, LogOut, Map, Menu, Settings, X } from "lucide-react";
+import { Compass, ContactRound, Home, LogOut, Map, Menu, Settings, X } from "lucide-react";
 import { useState, useTransition } from "react";
 
 import { logout } from "@/app/actions/auth";
 import { SyncStatusPill } from "@/components/app-shell/sync-status-pill";
 import { ThemeToggle } from "@/components/app-shell/theme-toggle";
 import { Button } from "@/components/ui/button";
+import { IconTile } from "@/components/ui/icon-tile";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { deleteDatabase } from "@/lib/db/dexie";
 import { syncNow } from "@/lib/sync/sync-engine";
@@ -17,6 +18,8 @@ import { useSyncStatus } from "@/lib/sync/use-sync-status";
 import { cn } from "@/lib/utils";
 
 const links = [
+  { href: "/home", label: "Home", icon: Home },
+  { href: "/community", label: "Community", icon: Compass },
   { href: "/trips", label: "Trips", icon: Map },
   { href: "/contacts", label: "Contacts", icon: ContactRound },
   { href: "/settings", label: "Settings", icon: Settings },
@@ -63,21 +66,25 @@ export function AppShell({
             onClick={() => setMenuOpen(false)}
             aria-current={active ? "page" : undefined}
             className={cn(
-              // Linear-style quiet nav: subtle ghost tint + 2px left accent when active.
-              "relative flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              // Theme-aware glass nav: brand-magenta glow on the active item.
+              // Tighter optical tracking + semibold gives an authored, compact
+              // label; active item reads in brand foreground, inactive in muted.
+              "relative flex min-h-11 items-center gap-3 rounded-lg px-3 text-[15px] tracking-tight transition-all",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-viatik-magenta",
               active
-                ? "bg-primary/10 text-primary"
-                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                ? "font-bold bg-side-active text-side-active-fg shadow-[var(--side-glow)]"
+                : "font-semibold text-side-muted hover:bg-side-hover hover:text-side-fg"
             )}
           >
             {active && (
               <span
                 aria-hidden
-                className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-primary"
+                className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-linear-to-b from-viatik-blue to-viatik-magenta shadow-[0_0_10px_rgba(168,85,247,0.8)]"
               />
             )}
-            <Icon className="size-5" aria-hidden />
+            <IconTile aria-hidden className="size-9 text-inherit">
+              <Icon className="size-6" />
+            </IconTile>
             {label}
           </Link>
         );
@@ -87,15 +94,19 @@ export function AppShell({
 
   // Static user profile card — not clickable, no icon, carries the sync status.
   const userCard = (
-    <div className="flex items-center gap-3 rounded-xl border border-border/60 p-2.5">
-      <UserAvatar seed={avatarSeed} src={avatarUrl} name={userName} size="sm" />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-medium">{userName}</span>
-        {userEmail && (
-          <span className="block truncate text-xs text-muted-foreground">{userEmail}</span>
-        )}
-      </span>
-      <SyncStatusPill compact />
+    <div className="rounded-xl border border-side-border bg-side-hover p-3">
+      <div className="flex min-w-0 items-center gap-3">
+        <UserAvatar seed={avatarSeed} src={avatarUrl} name={userName} size="md" />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[15px] font-semibold leading-tight text-side-fg" title={userName}>{userName}</span>
+          {userEmail && (
+            <span className="mt-1 block truncate text-[13px] leading-tight text-side-muted" title={userEmail}>{userEmail}</span>
+          )}
+        </span>
+      </div>
+      <div className="mt-3 flex border-t border-side-border pt-2.5">
+        <SyncStatusPill compact />
+      </div>
     </div>
   );
 
@@ -128,11 +139,17 @@ export function AppShell({
         </div>
       )}
 
-      {/* Floating glass sidebar — pinned on scroll. */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-border/40 bg-background/70 p-5 backdrop-blur-md lg:flex">
+      {/* Arc-inspired dark glass sidebar — structural viatik-blue depth,
+          crisp 1px hairline borders, and blur. Pinned on scroll. */}
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col overflow-hidden border-r border-side-border bg-side p-5 shadow-[inset_1px_0_0_0_rgba(255,255,255,0.04)] backdrop-blur-xl lg:flex">
+        {/* Faint structural blue depth wash toward the top of the panel. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-linear-to-b from-viatik-blue/15 via-transparent to-transparent"
+        />
         {/* Top: brand row — logo image untouched, theme toggle sits beside the app name. */}
-        <div className="flex items-center justify-between gap-2">
-          <Link href="/trips" className="flex items-center gap-3 text-xl font-bold">
+        <div className="relative flex items-center justify-between gap-2">
+          <Link href="/trips" className="flex items-center gap-3 text-xl font-bold text-side-fg">
             <Image src="/viatik-logo.png" alt="" width={44} height={44} priority className="size-11 object-contain" />
             Viatik
           </Link>
@@ -146,22 +163,22 @@ export function AppShell({
         <div className="mt-3 flex-1">{navigation}</div>
 
         {/* Bottom: logout lives only here in the sidebar. */}
-        <div className="mt-8">
+        <div className="relative mt-8">
           <Button
             variant="ghost"
-            className="w-full justify-between rounded-xl border border-border/40 px-3 py-2 text-muted-foreground hover:text-foreground"
+            className="w-full justify-between rounded-xl border border-side-border bg-side-hover px-3 py-2 text-side-muted hover:bg-side-hover hover:text-side-fg"
             onClick={() => signOut()}
             disabled={pending}
           >
-            <span className="text-xs font-medium">Sign out</span>
-            <LogOut className="size-4" />
+            <span className="text-xs font-semibold">Sign out</span>
+            <LogOut className="size-5" />
           </Button>
         </div>
       </aside>
 
       {/* Glass mobile header — pinned on scroll. */}
-      <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border/40 bg-background/80 px-4 backdrop-blur-md lg:hidden">
-        <Link href="/trips" className="flex items-center gap-2 font-bold">
+      <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-side-border bg-side px-4 backdrop-blur-xl lg:hidden">
+        <Link href="/trips" className="flex items-center gap-2 font-bold text-side-fg">
           <Image src="/viatik-logo.png" alt="" width={36} height={36} priority className="size-9 object-contain" />
           Viatik
         </Link>
@@ -184,10 +201,10 @@ export function AppShell({
       {menuOpen && (
         <div
           id="mobile-navigation"
-          className="fixed inset-x-0 top-16 z-30 border-b border-border/40 bg-background/85 p-4 shadow-lg backdrop-blur-md lg:hidden"
+          className="fixed inset-x-0 top-16 z-30 border-b border-side-border bg-side p-4 shadow-lg backdrop-blur-xl lg:hidden"
         >
           {navigation}
-          <div className="mt-4 border-t border-border/40 pt-3">{userCard}</div>
+          <div className="mt-4 border-t border-side-border pt-3">{userCard}</div>
         </div>
       )}
 
