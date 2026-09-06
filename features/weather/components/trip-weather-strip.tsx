@@ -50,7 +50,7 @@ export function TripWeatherStrip({
   if (loading) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground" aria-live="polite">
-        <Loader2 className="size-4 animate-spin" /> Loading weather…
+        <Loader2 className="size-5 animate-spin" /> Loading weather…
       </div>
     );
   }
@@ -98,7 +98,7 @@ function WeatherDayCard({
       )}
       aria-label={day ? weatherLabel(day) : `No weather for ${formatDay(dayDate)}`}
     >
-      <p className="text-xs font-medium uppercase text-muted-foreground">
+      <p className="text-xs font-semibold uppercase text-muted-foreground">
         {formatDay(dayDate)}
       </p>
       {day ? (
@@ -122,7 +122,7 @@ function WeatherDayCard({
                 <span
                   key={warning.type}
                   className={cn(
-                    "rounded-full px-2 py-0.5 text-[10px] font-medium",
+                    "rounded-full px-2 py-0.5 text-[11px] font-semibold",
                     warning.severity === "high"
                       ? "bg-destructive/10 text-destructive"
                       : "bg-muted text-foreground"
