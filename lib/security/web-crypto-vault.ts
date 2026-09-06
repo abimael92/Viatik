@@ -17,6 +17,7 @@ import type {
   VaultEntryValues,
   VaultKeyset,
 } from "@/features/vault/domain/vault-types";
+import { normalizeVaultCategory } from "@/features/vault/domain/vault-types";
 
 export const DEFAULT_ITERATIONS = 100_000;
 const DEFAULT_KEY_VERSION = 1;
@@ -300,6 +301,7 @@ function serializeValues(values: VaultEntryValues): Uint8Array {
     username: values.username,
     secret: values.secret,
     notes: values.notes,
+    category: normalizeVaultCategory(values.category),
   });
   const encoded = textEncoder.encode(json);
   if (encoded.length > MAX_PAYLOAD_SIZE) {
@@ -319,6 +321,7 @@ function deserializeValues(bytes: Uint8Array): VaultEntryValues {
     username: typeof parsed.username === "string" ? parsed.username : null,
     secret: parsed.secret,
     notes: typeof parsed.notes === "string" ? parsed.notes : null,
+    category: normalizeVaultCategory(parsed.category),
   };
 }
 
