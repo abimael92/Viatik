@@ -53,7 +53,7 @@ export function ContactRequestInbox({
             type="button"
             onClick={() => setTab(key)}
             className={cn(
-              "flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] sm:flex-none",
+              "flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] sm:flex-none",
               tab === key ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -71,7 +71,7 @@ export function ContactRequestInbox({
                 className="flex w-32 shrink-0 flex-col items-center gap-2 rounded-2xl border border-border/40 bg-card p-3 text-center"
               >
                 <UserAvatar seed={contact.avatarSeed} src={contact.linkedAvatarUrl} name={contact.fullName} size="md" />
-                <p className="w-full truncate text-sm font-medium">{contact.fullName}</p>
+                <p className="w-full truncate text-sm font-semibold">{contact.fullName}</p>
                 <div className="flex gap-1.5">
                   <Button
                     variant="ghost"
@@ -124,14 +124,14 @@ export function ContactRequestInbox({
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <p className="truncate font-medium">{contact.fullName}</p>
+                    <p className="truncate font-semibold">{contact.fullName}</p>
                     {contact.connectionStatus === "accepted" && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-xs font-semibold text-success">
                         <Link2 className="size-3" /> Connected
                       </span>
                     )}
                     {pending && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-medium text-accent-foreground">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-xs font-semibold text-accent-foreground">
                         Request sent
                       </span>
                     )}
@@ -142,10 +142,10 @@ export function ContactRequestInbox({
                   </p>
                 </div>
                 <Button variant="ghost" size="icon" aria-label={`Edit ${contact.fullName}`} className="min-h-11 min-w-11" onClick={() => onEdit(contact)}>
-                  <Pencil className="size-4" />
+                  <Pencil className="size-5" />
                 </Button>
                 <Button variant="ghost" size="icon" aria-label={`Remove ${contact.fullName}`} className="min-h-11 min-w-11" onClick={() => onRemove(contact)}>
-                  <Trash2 className="size-4 text-destructive" />
+                  <Trash2 className="size-5 text-destructive" />
                 </Button>
               </div>
             );
