@@ -1,4 +1,4 @@
-export type OutboxEntityType = "trip" | "tripMember" | "invitation" | "activity" | "expense" | "expenseShare" | "settlement" | "media" | "contact" | "tripTraveler" | "vaultKeyset" | "vaultEntry" | "tripWeatherForecast" | "connectionRequest" | "connectionResponse";
+export type OutboxEntityType = "trip" | "tripMember" | "invitation" | "activity" | "expense" | "expenseShare" | "settlement" | "media" | "contact" | "tripTraveler" | "vaultKeyset" | "vaultEntry" | "tripWeatherForecast" | "connectionRequest" | "connectionResponse" | "userWallet" | "dailyBudgetOverride";
 export type OutboxOperation = "insert" | "update" | "delete";
 
 /**
