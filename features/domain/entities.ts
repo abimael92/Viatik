@@ -123,11 +123,52 @@ export interface ExpenseSettlement {
 
 export type ContactRelationship = "family" | "friend" | "coworker" | "roommate" | "other";
 
+/**
+ * Whether the contact is backed by a mutual `connections` edge.
+ * - `accepted`: verified, bidirectional connection (both directions resolved).
+ * - `pending`: a request exists locally/remotely but has not been accepted yet.
+ * - `unverified_offline`: a manually entered contact with no remote connection.
+ */
+export type ConnectionStatus = "pending" | "accepted" | "unverified_offline";
+
+/** For `pending` connections: did we send the request or receive it? */
+export type ConnectionDirection = "inbound" | "outbound";
+
+/** Public-only snapshot of a profile carried on a `connections` edge. */
+export interface ConnectionSnapshot {
+  profileId: string;
+  displayName: string;
+  viatikId?: string | null;
+  avatarUrl?: string | null;
+  avatarSeed?: string | null;
+  publicHandle?: string | null;
+}
+
+/** The remote `connections.status` enum (authoritative edge state). */
+export type ConnectionRemoteStatus = "pending" | "accepted" | "blocked";
+
+/**
+ * The remote mutual connection edge (request/accept graph). Local representation
+ * of the Supabase `connections` row; carried in outbox payloads for
+ * `connectionRequest` / `connectionResponse` mutations.
+ */
+export interface Connection {
+  id: string;
+  requesterId: string;
+  recipientId: string;
+  status: ConnectionRemoteStatus;
+  requesterSnapshot: ConnectionSnapshot;
+  recipientSnapshot: ConnectionSnapshot;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ViatikProfileLookup {
   profileId: string;
   viatikId: string;
   fullName: string;
   avatarUrl: string | null;
+  avatarSeed: string | null;
   publicHandle: string | null;
   preferredCurrency: string | null;
   preferredLanguage: string | null;
@@ -148,6 +189,10 @@ export interface Contact {
   linkedProfileId: string | null;
   linkedAvatarUrl: string | null;
   linkedHandle: string | null;
+  /** The remote `connections` edge id backing this contact, when connection-based. */
+  connectionId: string | null;
+  connectionStatus: ConnectionStatus;
+  connectionDirection: ConnectionDirection | null;
   emergencyContactName: string | null;
   emergencyContactRelationship: string | null;
   emergencyContactPhone: string | null;
