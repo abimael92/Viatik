@@ -10,7 +10,7 @@ import type { CurrencyCode, MinorUnits } from "@/features/domain/money";
 
 export type TripMemberRole = "owner" | "editor" | "viewer";
 
-export type ExpenseSplitType = "equal" | "exact" | "percentage";
+export type ExpenseSplitType = "equal" | "exact" | "percentage" | "shares";
 export type InvitationStatus = "pending" | "accepted" | "rejected" | "revoked";
 
 export interface TripInvitation {
@@ -49,6 +49,18 @@ export interface Trip {
   adultCount: number;
   childCount: number;
   baseCurrency: string;
+  /** Optional overall trip budget in the trip's base currency, in minor units. */
+  totalBudgetMinor: MinorUnits | null;
+  /**
+   * Community / public-template fields (offline-first, local-only). Not synced
+   * to the shared `trips` table — these describe a trip as a browsable public
+   * template in the Community hub.
+   */
+  isPublic?: boolean;
+  shareSlug?: string | null;
+  likesCount?: number;
+  forkCount?: number;
+  authorName?: string | null;
   createdAt: string; // ISO datetime
   updatedAt: string; // ISO datetime
   deletedAt: string | null;
@@ -72,11 +84,16 @@ export interface Activity {
   title: string;
   description: string | null;
   location: string | null;
+  /** Optional geocoordinates for the activity, plotted on the trip map. */
+  latitude?: number | null;
+  longitude?: number | null;
   category: string;
   startTime: string | null; // ISO datetime
   endTime: string | null; // ISO datetime
   /** Fractional ordering key within (tripId, dayDate) for drag-and-drop reordering. */
   position: number;
+  /** Planned/estimated cost in the trip's base currency (minor units), used for "planned" budget pacing. */
+  estimatedCostMinor: MinorUnits | null;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -90,8 +107,14 @@ export interface Expense {
   description: string;
   amountMinor: MinorUnits;
   currency: CurrencyCode;
+  /** Multiplier converting 1 unit of this expense's currency to the trip's base currency. */
+  exchangeRateToBase: number | null;
   paidBy: string;
   splitType: ExpenseSplitType;
+  /** Opaque expense category reference (free-form for now; future FK to a categories table). */
+  categoryId: string | null;
+  /** ISO date (yyyy-mm-dd) the expense occurred, distinct from `createdAt`. */
+  date: string;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -102,8 +125,38 @@ export interface ExpenseShare {
   id: string;
   expenseId: string;
   userId: string;
+  /** The amount this user owes for the expense (in the expense's currency), in minor units. */
   shareAmountMinor: MinorUnits;
   sharePercentage: number | null;
+  /** The split methodology used to derive this share (copied from the parent expense). */
+  splitType: ExpenseSplitType;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * A member's personal starting balance attributed to a trip, in the wallet's
+ * own currency. Owner-only at the RLS layer: a wallet is private to its owner.
+ */
+export interface UserWallet {
+  id: string;
+  tripId: string;
+  userId: string;
+  startingBalanceMinor: MinorUnits;
+  currency: CurrencyCode;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Per-day budget override for a trip, in minor units of the trip's base
+ * currency. Takes precedence over the trip's derived daily budget.
+ */
+export interface DailyBudgetOverride {
+  id: string;
+  tripId: string;
+  date: string; // ISO date (yyyy-mm-dd)
+  customBudgetAmountMinor: MinorUnits;
   createdAt: string;
   updatedAt: string;
 }
