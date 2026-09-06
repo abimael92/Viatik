@@ -10,13 +10,25 @@ export default async function AuthenticatedLayout({ children }: { children: Reac
   const { data } = await supabase.auth.getUser();
   if (!data.user) redirect("/login");
 
-  const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", data.user.id).maybeSingle();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name, avatar_url, avatar_seed")
+    .eq("id", data.user.id)
+    .maybeSingle();
   if (!profile?.full_name?.trim()) redirect("/onboarding");
 
   return (
     <DatabaseProvider userId={data.user.id}>
       <SyncProvider>
-        <AppShell userLabel={profile.full_name || data.user.email || "Traveler"}>{children}</AppShell>
+        <AppShell
+          userId={data.user.id}
+          userName={profile.full_name || data.user.email || "Traveler"}
+          userEmail={data.user.email ?? undefined}
+          avatarSeed={profile.avatar_seed ?? undefined}
+          avatarUrl={profile.avatar_url ?? undefined}
+        >
+          {children}
+        </AppShell>
       </SyncProvider>
     </DatabaseProvider>
   );
