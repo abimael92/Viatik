@@ -7,7 +7,10 @@ import type {
   ActivityRepository,
   NewActivity,
 } from "@/features/domain/repositories/activity-repository";
+import { buildActivityFeed, materializeFeedItem } from "@/features/feed/lib/feed-builder";
+import { emitFeedItem } from "@/features/feed/data/dexie-feed-repository";
 import { append } from "@/lib/sync/outbox-transactional";
+import { getSyncUser } from "@/lib/sync/sync-context";
 import { logger } from "@/lib/observability/logger";
 
 function getDb(): ViatikDatabase {
@@ -40,7 +43,7 @@ export class DexieActivityRepository implements ActivityRepository {
 
   async create(input: NewActivity): Promise<Activity> {
     const db = getDb();
-    return TransactionContext.runInTransaction([db.activities], async (ctx) => {
+    return TransactionContext.runInTransaction([db.activities, db.feedItems], async (ctx) => {
       const now = new Date().toISOString();
       const activity: Activity = {
         id: input.id,
@@ -49,10 +52,13 @@ export class DexieActivityRepository implements ActivityRepository {
         title: input.title,
         description: input.description ?? null,
         location: input.location ?? null,
+        latitude: input.latitude ?? null,
+        longitude: input.longitude ?? null,
         category: input.category ?? "general",
         startTime: input.startTime ?? null,
         endTime: input.endTime ?? null,
         position: input.position,
+        estimatedCostMinor: input.estimatedCostMinor ?? null,
         createdBy: input.createdBy,
         createdAt: now,
         updatedAt: now,
@@ -60,6 +66,7 @@ export class DexieActivityRepository implements ActivityRepository {
       };
       await ctx.table<Activity>("activities").add(activity);
       await append("activity", "insert", activity, { tx: ctx, baseUpdatedAt: null });
+      await emitFeedItem(ctx, materializeFeedItem(buildActivityFeed("added_activity", activity, activity.createdBy)));
       logger.debug("Activity created locally", { activityId: activity.id });
       return activity;
     });
@@ -70,7 +77,7 @@ export class DexieActivityRepository implements ActivityRepository {
     patch: Partial<Omit<Activity, "id" | "tripId">>
   ): Promise<Activity> {
     const db = getDb();
-    return TransactionContext.runInTransaction([db.activities], async (ctx) => {
+    return TransactionContext.runInTransaction([db.activities, db.feedItems], async (ctx) => {
       const previous = await ctx.table<Activity>("activities").get(id);
       if (!previous) throw new Error(`Activity ${id} not found before update`);
       const updatedAt = new Date().toISOString();
@@ -78,6 +85,7 @@ export class DexieActivityRepository implements ActivityRepository {
       const activity = await ctx.table<Activity>("activities").get(id);
       if (!activity) throw new Error(`Activity ${id} not found after update`);
       await append("activity", "update", activity, { tx: ctx, baseUpdatedAt: previous.updatedAt });
+      await emitFeedItem(ctx, materializeFeedItem(buildActivityFeed("updated_activity", activity, getSyncUser() ?? activity.createdBy)));
       logger.debug("Activity updated locally", { activityId: activity.id });
       return activity;
     });
@@ -89,26 +97,28 @@ export class DexieActivityRepository implements ActivityRepository {
 
   async remove(id: string): Promise<void> {
     const db = getDb();
-    return TransactionContext.runInTransaction([db.activities], async (ctx) => {
+    return TransactionContext.runInTransaction([db.activities, db.feedItems], async (ctx) => {
       const activity = await ctx.table<Activity>("activities").get(id);
       if (!activity) return;
       const deletedAt = new Date().toISOString();
       const updated = { ...activity, deletedAt, updatedAt: deletedAt };
       await ctx.table<Activity>("activities").put(updated);
       await append("activity", "update", updated, { tx: ctx, baseUpdatedAt: activity.updatedAt });
+      await emitFeedItem(ctx, materializeFeedItem(buildActivityFeed("deleted_activity", updated, getSyncUser() ?? updated.createdBy)));
       logger.debug("Activity deleted locally", { activityId: id });
     });
   }
 
   async restore(id: string): Promise<Activity> {
     const db = getDb();
-    return TransactionContext.runInTransaction([db.activities], async (ctx) => {
+    return TransactionContext.runInTransaction([db.activities, db.feedItems], async (ctx) => {
       const activity = await ctx.table<Activity>("activities").get(id);
       if (!activity) throw new Error(`Activity ${id} not found`);
       const updatedAt = new Date().toISOString();
       const restored = { ...activity, deletedAt: null, updatedAt };
       await ctx.table<Activity>("activities").put(restored);
       await append("activity", "update", restored, { tx: ctx, baseUpdatedAt: activity.updatedAt });
+      await emitFeedItem(ctx, materializeFeedItem(buildActivityFeed("restored_activity", restored, getSyncUser() ?? restored.createdBy)));
       logger.debug("Activity restored locally", { activityId: id });
       return restored;
     });
