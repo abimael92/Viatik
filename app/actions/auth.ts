@@ -1,5 +1,7 @@
 "use server";
 
+import { headers } from "next/headers";
+
 import { createClient } from "@/lib/supabase/server-client";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { logger } from "@/lib/observability/logger";
@@ -25,7 +27,11 @@ function authMessage(message: string, operation: "send" | "verify") {
   return "We couldn't verify that code. Please try again.";
 }
 
-export async function sendEmailOtp(email: string, shouldCreateUser = false, fullName?: string): Promise<ActionResult> {
+export async function sendEmailOtp(
+  email: string,
+  shouldCreateUser = false,
+  fullName?: string
+): Promise<ActionResult<{ devTokenHash?: string }>> {
   const normalizedEmail = normalizeEmail(email);
   const normalizedName = fullName?.trim();
   if (!isValidEmail(normalizedEmail)) return { success: false, error: "Enter a valid email address." };
@@ -33,30 +39,61 @@ export async function sendEmailOtp(email: string, shouldCreateUser = false, full
     return { success: false, error: "Enter a display name between 2 and 60 characters." };
   }
 
+  // Development-only registration: skip sending an email entirely. Supabase's
+  // built-in sender is rate-limited (~2/hour), which blocks repeated signups
+  // during local dev. Create the user via the service-role admin API and return
+  // the magic-link token so verification can continue without email quota.
+  if (shouldCreateUser && process.env.NODE_ENV === "development") {
+    // `normalizedName` is guaranteed defined here: the validation above only
+    // passes when a non-empty, in-range name is present alongside `shouldCreateUser`.
+    return createDevRegistration(normalizedEmail, normalizedName!);
+  }
+
   try {
     const supabase = await createClient();
+    const requestHeaders = await headers();
+    const origin = requestHeaders.get("origin");
+    const emailRedirectTo = origin
+      ? `${origin}/auth/confirm?next=${encodeURIComponent("/trips")}`
+      : undefined;
     const { error } = await supabase.auth.signInWithOtp({
       email: normalizedEmail,
       options: {
         shouldCreateUser,
-        data: shouldCreateUser ? { full_name: normalizedName } : undefined,
+        emailRedirectTo,
+        data: shouldCreateUser
+          ? { full_name: normalizedName, onboarding_required: true }
+          : undefined,
       },
     });
     if (error) {
       logger.warn("Unable to send email OTP", { code: error.code });
-      const rateLimited = error.message.toLowerCase().includes("rate") || error.message.toLowerCase().includes("too many");
-      const accountMissing = !shouldCreateUser && (error.message.toLowerCase().includes("signup") || error.message.toLowerCase().includes("not found"));
+      const errorMessage = error.message.toLowerCase();
+      const hourlyEmailLimit =
+        error.code === "over_email_send_rate_limit" ||
+        errorMessage.includes("email rate limit") ||
+        errorMessage.includes("hourly email");
+      const shortRateLimit =
+        !hourlyEmailLimit &&
+        (error.code === "over_request_rate_limit" ||
+          errorMessage.includes("rate") ||
+          errorMessage.includes("too many"));
+      const accountMissing =
+        !shouldCreateUser &&
+        (errorMessage.includes("signup") || errorMessage.includes("not found"));
       return {
         success: false,
-        error: rateLimited
-          ? "Too many attempts. Try again when the countdown ends. If it continues, the hourly email limit has been reached."
-          : accountMissing
-            ? "No account was found for that email. Create an account to get started."
-            : authMessage(error.message, "send"),
-        retryAfter: rateLimited ? 60 : undefined,
+        error: hourlyEmailLimit
+          ? "Supabase's hourly email limit has been reached. Wait for the quota to reset or configure custom SMTP in Supabase."
+          : shortRateLimit
+            ? "Too many requests. Wait for the countdown, then try again."
+            : accountMissing
+              ? "No account was found for that email. Create an account to get started."
+              : authMessage(error.message, "send"),
+        retryAfter: hourlyEmailLimit ? 3600 : shortRateLimit ? 60 : undefined,
       };
     }
-    return { success: true, data: undefined };
+    return { success: true, data: {} };
   } catch (error) {
     logger.error("Unexpected email OTP error", error instanceof Error ? error : new Error(String(error)));
     return { success: false, error: "We couldn't send your code right now. Please try again shortly." };
@@ -66,11 +103,17 @@ export async function sendEmailOtp(email: string, shouldCreateUser = false, full
 export async function verifyEmailOtp(email: string, token: string): Promise<ActionResult<{ userId: string; onboarded: boolean }>> {
   const normalizedEmail = normalizeEmail(email);
   if (!isValidEmail(normalizedEmail)) return { success: false, error: "Enter a valid email address." };
-  if (!/^\d{6}$/.test(token)) return { success: false, error: "Enter the complete 6-digit code." };
+  // Development registrations verify with a magic-link token instead of a
+  // 6-digit code (no email is sent, so no OTP exists). The token form is only
+  // accepted outside of production.
+  const isDevToken = process.env.NODE_ENV === "development" && !/^\d{6}$/.test(token);
+  if (!isDevToken && !/^\d{6}$/.test(token)) return { success: false, error: "Enter the complete 6-digit code." };
 
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.auth.verifyOtp({ email: normalizedEmail, token, type: "email" });
+    const { data, error } = isDevToken
+      ? await supabase.auth.verifyOtp({ token_hash: token, type: "magiclink" })
+      : await supabase.auth.verifyOtp({ email: normalizedEmail, token, type: "email" });
     if (error) {
       logger.warn("Unable to verify email OTP", { code: error.code });
       return { success: false, error: authMessage(error.message, "verify") };
@@ -104,6 +147,34 @@ export async function developmentLogin(): Promise<ActionResult<{ onboarded: bool
   } catch (error) {
     logger.error("Development login failed", error instanceof Error ? error : new Error(String(error)));
     return { success: false, error: "Development login failed." };
+  }
+}
+
+/**
+ * Development-only registration. Creates the user with the service-role admin
+ * API and returns the magic-link token without sending any email, so repeated
+ * signups during local development do not consume Supabase's email quota.
+ * Never reachable outside `NODE_ENV === "development"`.
+ */
+async function createDevRegistration(
+  email: string,
+  fullName: string
+): Promise<ActionResult<{ devTokenHash: string }>> {
+  try {
+    const serviceClient = getServiceClient();
+    const { data, error } = await serviceClient.auth.admin.generateLink({
+      type: "magiclink",
+      email,
+      options: { data: { full_name: fullName, onboarding_required: true } },
+    });
+    if (error || !data.properties.hashed_token) {
+      logger.warn("Dev registration link generation failed", { code: error?.code });
+      return { success: false, error: "The development account could not be created. Please try again." };
+    }
+    return { success: true, data: { devTokenHash: data.properties.hashed_token } };
+  } catch (error) {
+    logger.error("Unexpected dev registration error", error instanceof Error ? error : new Error(String(error)));
+    return { success: false, error: "We couldn't create your account right now. Please try again." };
   }
 }
 
@@ -317,6 +388,13 @@ export async function completeOnboarding(
     if (error) {
       logger.warn("Unable to complete onboarding", { code: error.code });
       return { success: false, error: onboardingMessage(error) };
+    }
+    const { error: metadataError } = await supabase.auth.updateUser({
+      data: { ...data.user.user_metadata, full_name: name, onboarding_required: false },
+    });
+    if (metadataError) {
+      logger.warn("Unable to mark onboarding complete", { code: metadataError.code });
+      return { success: false, error: "Your profile was saved, but setup could not be finalized. Try continuing again." };
     }
     return { success: true, data: undefined };
   } catch (error) {
