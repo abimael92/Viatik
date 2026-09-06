@@ -6,12 +6,13 @@ import {
   type DragEndEvent,
   DragOverlay,
   type DragStartEvent,
+  KeyboardSensor,
   PointerSensor,
   TouchSensor,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { arrayMove } from "@dnd-kit/sortable";
+import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useLiveQuery } from "dexie-react-hooks";
 
 import { activityRepository } from "@/features/activities/data/dexie-activity-repository";
@@ -88,7 +89,13 @@ export function ItineraryBoard({
   const touch = useSensor(TouchSensor, {
     activationConstraint: { delay: 200, tolerance: 5 },
   });
-  const sensors = useSensors(pointer, touch);
+  // KeyboardSensor + sortableKeyboardCoordinates make the sortable grip
+  // keyboard-operable: focused grip + Space starts the drag, arrow keys move
+  // the item between adjacent slots/days, and Space/Escape ends or cancels it.
+  const keyboard = useSensor(KeyboardSensor, {
+    coordinateGetter: sortableKeyboardCoordinates,
+  });
+  const sensors = useSensors(pointer, touch, keyboard);
 
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {
@@ -96,6 +103,10 @@ export function ItineraryBoard({
     },
     [beginDrag]
   );
+
+  const handleDragCancel = useCallback(() => {
+    endDrag();
+  }, [endDrag]);
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
@@ -167,6 +178,7 @@ export function ItineraryBoard({
       sensors={sensors}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
     >
       <div className="grid w-full grid-cols-1 gap-4 p-4 @md:grid-cols-2 @xl:grid-cols-3">
         {dayDates.map((day) => (
