@@ -1,4 +1,4 @@
-import type { Activity, Connection, ConnectionRemoteStatus, ConnectionSnapshot, ConnectionStatus, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler } from "@/features/domain/entities";
+import type { Activity, Connection, ConnectionRemoteStatus, ConnectionSnapshot, ConnectionStatus, Contact, DailyBudgetOverride, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler, UserWallet } from "@/features/domain/entities";
 import type { TripMedia } from "@/features/domain/entities-media";
 import { MAX_MINOR_UNITS, type MinorUnits } from "@/features/domain/money";
 import { getSyncUser } from "@/lib/sync/sync-context";
@@ -42,6 +42,7 @@ export function tripToRow(trip: Trip): Record<string, unknown> {
     adult_count: trip.adultCount,
     child_count: trip.childCount,
     base_currency: trip.baseCurrency,
+    total_budget: trip.totalBudgetMinor == null ? null : minorUnitsToRemote(trip.totalBudgetMinor, "total_budget"),
     created_at: trip.createdAt,
     updated_at: trip.updatedAt,
     deleted_at: trip.deletedAt,
@@ -65,6 +66,13 @@ export function rowToTrip(row: Record<string, unknown>): Trip {
     adultCount: row.adult_count == null ? 1 : Number(row.adult_count),
     childCount: row.child_count == null ? 0 : Number(row.child_count),
     baseCurrency: row.base_currency == null ? "USD" : String(row.base_currency),
+    totalBudgetMinor: row.total_budget == null ? null : minorUnitsFromRemote(row.total_budget, "total_budget"),
+    // Community fields are local-only (never persisted remotely); default on read.
+    isPublic: false,
+    shareSlug: null,
+    likesCount: 0,
+    forkCount: 0,
+    authorName: null,
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
     deletedAt: row.deleted_at == null ? null : String(row.deleted_at),
@@ -79,10 +87,13 @@ export function activityToRow(activity: Activity): Record<string, unknown> {
     title: activity.title,
     description: activity.description,
     location: activity.location,
+    latitude: activity.latitude ?? null,
+    longitude: activity.longitude ?? null,
     category: activity.category,
     start_time: activity.startTime,
     end_time: activity.endTime,
     position: activity.position,
+    estimated_cost: activity.estimatedCostMinor == null ? null : minorUnitsToRemote(activity.estimatedCostMinor, "estimated_cost"),
     created_by: activity.createdBy,
     created_at: activity.createdAt,
     updated_at: activity.updatedAt,
@@ -98,10 +109,13 @@ export function rowToActivity(row: Record<string, unknown>): Activity {
     title: String(row.title),
     description: row.description == null ? null : String(row.description),
     location: row.location == null ? null : String(row.location),
+    latitude: row.latitude == null ? null : Number(row.latitude),
+    longitude: row.longitude == null ? null : Number(row.longitude),
     category: row.category == null ? "general" : String(row.category),
     startTime: row.start_time == null ? null : String(row.start_time),
     endTime: row.end_time == null ? null : String(row.end_time),
     position: typeof row.position === "number" ? row.position : Number(row.position),
+    estimatedCostMinor: row.estimated_cost == null ? null : minorUnitsFromRemote(row.estimated_cost, "estimated_cost"),
     createdBy: String(row.created_by),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
@@ -117,8 +131,11 @@ export function expenseToRow(expense: Expense): Record<string, unknown> {
     description: expense.description,
     amount: minorUnitsToRemote(expense.amountMinor, "amount"),
     currency: expense.currency,
+    exchange_rate_to_base: expense.exchangeRateToBase,
     paid_by: expense.paidBy,
     split_type: expense.splitType,
+    category_id: expense.categoryId,
+    expense_date: expense.date,
     created_by: expense.createdBy,
     created_at: expense.createdAt,
     updated_at: expense.updatedAt,
@@ -134,8 +151,11 @@ export function rowToExpense(row: Record<string, unknown>): Expense {
     description: String(row.description),
     amountMinor: minorUnitsFromRemote(row.amount, "amount"),
     currency: String(row.currency),
+    exchangeRateToBase: row.exchange_rate_to_base == null ? null : Number(row.exchange_rate_to_base),
     paidBy: String(row.paid_by),
     splitType: (row.split_type == null ? "equal" : String(row.split_type)) as Expense["splitType"],
+    categoryId: row.category_id == null ? null : String(row.category_id),
+    date: row.expense_date == null ? String(row.created_at).slice(0, 10) : String(row.expense_date),
     createdBy: String(row.created_by),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
@@ -150,6 +170,7 @@ export function expenseShareToRow(share: ExpenseShare): Record<string, unknown> 
     user_id: share.userId,
     share_amount: minorUnitsToRemote(share.shareAmountMinor, "share_amount"),
     share_percentage: share.sharePercentage,
+    split_type: share.splitType,
     created_at: share.createdAt,
     updated_at: share.updatedAt,
   };
@@ -162,6 +183,53 @@ export function rowToExpenseShare(row: Record<string, unknown>): ExpenseShare {
     userId: String(row.user_id),
     shareAmountMinor: minorUnitsFromRemote(row.share_amount, "share_amount"),
     sharePercentage: row.share_percentage == null ? null : Number(row.share_percentage),
+    splitType: (row.split_type == null ? "equal" : String(row.split_type)) as ExpenseShare["splitType"],
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  };
+}
+
+export function userWalletToRow(wallet: UserWallet): Record<string, unknown> {
+  return {
+    id: wallet.id,
+    trip_id: wallet.tripId,
+    user_id: wallet.userId,
+    starting_balance: minorUnitsToRemote(wallet.startingBalanceMinor, "starting_balance"),
+    currency: wallet.currency,
+    created_at: wallet.createdAt,
+    updated_at: wallet.updatedAt,
+  };
+}
+
+export function rowToUserWallet(row: Record<string, unknown>): UserWallet {
+  return {
+    id: String(row.id),
+    tripId: String(row.trip_id),
+    userId: String(row.user_id),
+    startingBalanceMinor: minorUnitsFromRemote(row.starting_balance, "starting_balance"),
+    currency: String(row.currency),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  };
+}
+
+export function dailyBudgetOverrideToRow(override: DailyBudgetOverride): Record<string, unknown> {
+  return {
+    id: override.id,
+    trip_id: override.tripId,
+    date: override.date,
+    custom_budget_amount: minorUnitsToRemote(override.customBudgetAmountMinor, "custom_budget_amount"),
+    created_at: override.createdAt,
+    updated_at: override.updatedAt,
+  };
+}
+
+export function rowToDailyBudgetOverride(row: Record<string, unknown>): DailyBudgetOverride {
+  return {
+    id: String(row.id),
+    tripId: String(row.trip_id),
+    date: String(row.date),
+    customBudgetAmountMinor: minorUnitsFromRemote(row.custom_budget_amount, "custom_budget_amount"),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
   };
