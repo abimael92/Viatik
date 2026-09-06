@@ -32,8 +32,9 @@ describe("money schema migration", () => {
     const db = new ViatikDatabase(name);
     await db.open();
 
-    expect(await db.expenses.get("expense-1")).toEqual({ id: "expense-1", amountMinor: 12345n });
-    expect(await db.expenseShares.get("share-1")).toEqual({ id: "share-1", shareAmountMinor: 4567n });
+    // v18 backfills the Phase 2A expense columns with defaults on migration.
+    expect(await db.expenses.get("expense-1")).toEqual({ id: "expense-1", amountMinor: 12345n, exchangeRateToBase: null, categoryId: null, date: "" });
+    expect(await db.expenseShares.get("share-1")).toEqual({ id: "share-1", shareAmountMinor: 4567n, splitType: "equal" });
     expect(await db.expenseSettlements.get("settlement-1")).toEqual({ id: "settlement-1", amountMinor: 1000n });
     expect((await db.outboxMutations.get("mutation-1"))?.payload).toEqual({ id: "expense-1", amountMinor: 12345n });
     db.close();

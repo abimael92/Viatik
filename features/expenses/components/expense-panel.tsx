@@ -4,6 +4,7 @@ import { Pencil, Plus, ReceiptText, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Heading } from "@/components/ui/heading";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +25,9 @@ import type {
 import { decimalFromMinorUnits, formatMinorUnits, getCurrencyExponent, parseMinorUnits } from "@/features/domain/money";
 import { expenseRepository } from "@/features/expenses/data/dexie-expense-repository";
 import { calculateBalances, calculateSplit } from "@/features/expenses/lib/expense-calculator";
+
+const CURRENCIES = ["USD", "EUR", "GBP", "JPY", "CAD", "MXN"] as const;
+const EXPENSE_CATEGORIES = ["Meals", "Transport", "Lodging", "Activities", "Shopping", "Other"] as const;
 
 export function ExpensePanel({
   tripId,
@@ -93,14 +97,14 @@ export function ExpensePanel({
     <section className="space-y-6" aria-labelledby="expenses-heading">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 id="expenses-heading" className="text-2xl font-bold">
+          <Heading level={2} id="expenses-heading" className="text-2xl font-bold">
             Expenses
-          </h2>
+          </Heading>
           <p className="text-muted-foreground">Track shared costs and settle balances together.</p>
         </div>
         {canEdit && (
-          <Button onClick={() => setDialog("new")}>
-            <Plus className="size-4" />
+          <Button variant="primary" onClick={() => setDialog("new")}>
+            <Plus className="size-5" />
             Add expense
           </Button>
         )}
@@ -117,13 +121,13 @@ export function ExpensePanel({
 
       {Object.keys(balances).length > 1 && (
         <div className="rounded-2xl border bg-card p-5">
-          <h3 className="font-semibold">Settlement summary</h3>
+          <Heading level={3} className="text-base font-semibold">Settlement summary</Heading>
           <div className="mt-3 space-y-2">
             {Object.entries(balances).map(([memberId, balance]) => (
               <div key={memberId} className="flex justify-between text-sm">
                 <span>{memberId === userId ? "You" : (names.get(memberId) ?? memberId)}</span>
                 <span className={balance >= 0n ? "text-success" : "text-destructive"}>
-                  {balance >= 0n ? "receives" : "owes"} {formatMinorUnits(balance < 0n ? -balance : balance, currency)}
+                  {balance >= 0n ? "receives" : "owes"} <span className="font-mono tracking-tight tabular-nums">{formatMinorUnits(balance < 0n ? -balance : balance, currency)}</span>
                 </span>
               </div>
             ))}
@@ -142,7 +146,7 @@ export function ExpensePanel({
       ) : expenses.length === 0 ? (
         <div className="rounded-2xl border border-dashed p-10 text-center">
           <ReceiptText className="mx-auto size-8 text-muted-foreground" />
-          <h3 className="mt-3 font-semibold">No expenses yet</h3>
+          <Heading level={3} className="mt-3 text-base font-semibold">No expenses yet</Heading>
           <p className="mt-1 text-sm text-muted-foreground">
             {canEdit ? "Add the first shared cost." : "No shared costs have been added yet."}
           </p>
@@ -155,14 +159,14 @@ export function ExpensePanel({
                 <ReceiptText className="size-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{expense.description}</p>
+                <p className="truncate font-semibold">{expense.description}</p>
                 <p className="text-xs text-muted-foreground">
                   Paid by{" "}
                   {expense.paidBy === userId ? "you" : (names.get(expense.paidBy) ?? "traveler")} ·{" "}
                   {expense.splitType} split
                 </p>
               </div>
-              <strong>{formatMinorUnits(expense.amountMinor, expense.currency)}</strong>
+              <strong className="font-mono tracking-tight tabular-nums">{formatMinorUnits(expense.amountMinor, expense.currency)}</strong>
               {canEdit && (
                 <>
                   <Button
@@ -171,7 +175,7 @@ export function ExpensePanel({
                     aria-label={`Edit ${expense.description}`}
                     onClick={() => setDialog(expense)}
                   >
-                    <Pencil className="size-4" />
+                    <Pencil className="size-5" />
                   </Button>
                   <Button
                     variant="ghost"
@@ -184,7 +188,7 @@ export function ExpensePanel({
                           .catch(() => setError("Unable to delete expense."));
                     }}
                   >
-                    <Trash2 className="size-4 text-destructive" />
+                    <Trash2 className="size-5 text-destructive" />
                   </Button>
                 </>
               )}
@@ -235,6 +239,12 @@ function ExpenseDialog({
   const [participantSelection, setParticipants] = useState<string[] | null>(null);
   const participants = participantSelection ?? members.map((member) => member.userId);
   const [shareInputs, setShareInputs] = useState<Map<string, string>>(new Map());
+  const [shareCounts, setShareCounts] = useState<Record<string, string>>({});
+  const [expenseCurrency, setExpenseCurrency] = useState(expense?.currency ?? currency);
+  const [exchangeRate, setExchangeRate] = useState<string>(expense?.exchangeRateToBase != null ? String(expense.exchangeRateToBase) : "");
+
+  const isForeign = expenseCurrency !== currency;
+  const exchangeRateToBase = isForeign && exchangeRate !== "" && Number.isFinite(Number(exchangeRate)) && Number(exchangeRate) > 0 ? Number(exchangeRate) : null;
 
   useEffect(() => {
     if (!expense) return;
@@ -260,19 +270,25 @@ function ExpenseDialog({
     const data = new FormData(event.currentTarget);
     const description = String(data.get("description"));
     const paidBy = String(data.get("paidBy"));
+    const categoryId = String(data.get("categoryId") || "") || null;
+    const date = String(data.get("date") || new Date().toISOString().slice(0, 10));
     try {
-      const amountMinor = parseMinorUnits(String(data.get("amount")), currency);
+      const amountMinor = parseMinorUnits(String(data.get("amount")), expenseCurrency);
       if (amountMinor <= 0n) throw new Error("Enter an amount greater than zero.");
       if (!participants.length) throw new Error("Select at least one participant.");
       const exactMinor =
         mode === "exact"
           ? Object.fromEntries(
-              participants.map((id) => [id, parseMinorUnits(String(data.get(`share-${id}`)), currency)])
+              participants.map((id) => [id, parseMinorUnits(String(data.get(`share-${id}`)), expenseCurrency)])
             )
           : undefined;
       const percentages =
         mode === "percentage"
           ? Object.fromEntries(participants.map((id) => [id, Number(data.get(`share-${id}`))]))
+          : undefined;
+      const shareCountsInput =
+        mode === "shares"
+          ? Object.fromEntries(participants.map((id) => [id, Number(shareCounts[id] ?? 1)]))
           : undefined;
       const shares = calculateSplit({
         totalMinor: amountMinor,
@@ -281,13 +297,18 @@ function ExpenseDialog({
         mode,
         exactMinor,
         percentages,
+        shares: shareCountsInput,
       }).shares;
       if (expense) {
         await expenseRepository.update(expense.id, {
           description,
           amountMinor,
+          currency: expenseCurrency,
+          exchangeRateToBase,
           paidBy,
           splitType: mode,
+          categoryId,
+          date,
         });
         await expenseRepository.replaceShares(expense.id, shares);
       } else {
@@ -296,9 +317,12 @@ function ExpenseDialog({
           tripId,
           description,
           amountMinor,
-          currency,
+          currency: expenseCurrency,
+          exchangeRateToBase,
           paidBy,
           splitType: mode,
+          categoryId,
+          date,
           createdBy: userId,
           shares,
         });
@@ -326,14 +350,53 @@ function ExpenseDialog({
             required
           />
           <Field
-            label={`Amount (${currency})`}
+            label={`Amount (${expenseCurrency})`}
             name="amount"
             type="number"
-            min={getCurrencyExponent(currency) === 0 ? "1" : `0.${"0".repeat(getCurrencyExponent(currency) - 1)}1`}
-            step={getCurrencyExponent(currency) === 0 ? "1" : `0.${"0".repeat(getCurrencyExponent(currency) - 1)}1`}
+            min={getCurrencyExponent(expenseCurrency) === 0 ? "1" : `0.${"0".repeat(getCurrencyExponent(expenseCurrency) - 1)}1`}
+            step={getCurrencyExponent(expenseCurrency) === 0 ? "1" : `0.${"0".repeat(getCurrencyExponent(expenseCurrency) - 1)}1`}
             defaultValue={expense ? decimalFromMinorUnits(expense.amountMinor, expense.currency) : ""}
             required
           />
+          <div className="space-y-2">
+            <Label htmlFor="expenseCurrency">Currency</Label>
+            <select
+              id="expenseCurrency"
+              name="expenseCurrency"
+              value={expenseCurrency}
+              onChange={(event) => setExpenseCurrency(event.target.value)}
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+            >
+              {CURRENCIES.map((code) => <option key={code} value={code}>{code}</option>)}
+            </select>
+            {isForeign && (
+              <div className="rounded-lg border bg-muted p-3 text-sm">
+                <Label htmlFor="exchangeRate" className="text-muted-foreground">Exchange rate (1 {expenseCurrency} → {currency})</Label>
+                <Input
+                  id="exchangeRate"
+                  name="exchangeRate"
+                  type="number"
+                  min="0"
+                  step="0.000001"
+                  value={exchangeRate}
+                  onChange={(event) => setExchangeRate(event.target.value)}
+                  className="mt-1"
+                  placeholder="e.g. 0.0067"
+                />
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {exchangeRateToBase != null ? "Used to convert this expense into the trip's base currency." : "Set a rate so group totals can convert to the trip base currency."}
+                </p>
+              </div>
+            )}
+          </div>
+          <Field label="Date" name="date" type="date" defaultValue={expense ? expense.date : new Date().toISOString().slice(0, 10)} required />
+          <div className="space-y-2">
+            <Label htmlFor="categoryId">Category</Label>
+            <select id="categoryId" name="categoryId" defaultValue={expense?.categoryId ?? ""} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
+              <option value="">None</option>
+              {EXPENSE_CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
+            </select>
+          </div>
           <div className="space-y-2">
             <Label htmlFor="paidBy">Paid by</Label>
             <select
@@ -354,16 +417,21 @@ function ExpenseDialog({
             <select
               id="splitType"
               value={mode}
-              onChange={(event) => setMode(event.target.value as ExpenseSplitType)}
+              onChange={(event) => {
+                const next = event.target.value as ExpenseSplitType;
+                setMode(next);
+                if (next === "shares") setShareCounts(Object.fromEntries(participants.map((id) => [id, "1"])));
+              }}
               className="h-10 w-full rounded-md border bg-background px-3 text-sm"
             >
               <option value="equal">Equal</option>
               <option value="exact">Exact</option>
               <option value="percentage">Percentage</option>
+              <option value="shares">Shares</option>
             </select>
           </div>
           <fieldset className="space-y-3">
-            <legend className="text-sm font-medium">Participants</legend>
+            <legend className="text-sm font-semibold">Participants</legend>
             {members.map((member) => {
               const selected = participants.includes(member.userId);
               const shareValue = shareInputs.get(member.userId) ?? "";
@@ -389,7 +457,7 @@ function ExpenseDialog({
                       name={`share-${member.userId}`}
                       type="number"
                       min="0"
-                      step={getCurrencyExponent(currency) === 0 ? "1" : `0.${"0".repeat(getCurrencyExponent(currency) - 1)}1`}
+                      step={getCurrencyExponent(expenseCurrency) === 0 ? "1" : `0.${"0".repeat(getCurrencyExponent(expenseCurrency) - 1)}1`}
                       value={shareValue}
                       onChange={(event) =>
                         setShareInputs((current) =>
@@ -417,8 +485,23 @@ function ExpenseDialog({
                       disabled={!selected}
                     />
                   )}
+                  {mode === "shares" && (
+                    <input
+                      name={`shares-${member.userId}`}
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={shareCounts[member.userId] ?? "1"}
+                      onChange={(event) =>
+                        setShareCounts((current) => ({ ...current, [member.userId]: event.target.value }))
+                      }
+                      className="h-9 w-20 rounded-md border bg-background px-2 text-right text-sm"
+                      disabled={!selected}
+                      aria-label={`Share count for ${names.get(member.userId) ?? member.userId}`}
+                    />
+                  )}
                   <span className="text-sm text-muted-foreground">
-                    {mode === "exact" ? currency : "%"}
+                    {mode === "exact" ? expenseCurrency : mode === "shares" ? "shares" : "%"}
                   </span>
                 </div>
               );
@@ -428,7 +511,7 @@ function ExpenseDialog({
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={saving}>
+            <Button type="submit" variant="primary" disabled={saving}>
               {saving ? "Saving…" : "Save expense"}
             </Button>
           </DialogFooter>
@@ -454,7 +537,7 @@ function Summary({ label, value, detail }: { label: string; value: string; detai
   return (
     <div className="rounded-2xl border bg-card p-5">
       <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-bold">{value}</p>
+      <p className="mt-1 text-2xl font-bold font-mono tracking-tight tabular-nums">{value}</p>
       {detail && <p className="mt-1 text-xs text-muted-foreground">{detail}</p>}
     </div>
   );

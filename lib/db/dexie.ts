@@ -1,10 +1,13 @@
 import Dexie, { type EntityTable } from "dexie";
 
-import type { Activity, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler } from "@/features/domain/entities";
+import type { Activity, Contact, DailyBudgetOverride, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler, UserWallet } from "@/features/domain/entities";
 import type { TripMedia } from "@/features/domain/entities-media";
 import { MAX_MINOR_UNITS } from "@/features/domain/money";
 import type { VaultEntry, VaultKeyset } from "@/features/vault/domain/vault-types";
 import type { TripWeatherForecast } from "@/features/weather/domain/weather-types";
+import type { LocalProfile } from "@/features/profile/domain/profile-types";
+import type { TripPin } from "@/features/maps/domain/map-types";
+import type { TripFeedItem } from "@/features/feed/domain/feed-types";
 import type { OutboxMutation, SyncConflict, SyncLease, SyncMetadata } from "@/lib/sync/types";
 
 function migrateMinorUnits(record: Record<string, unknown>, legacyField: string, minorField: string): void {
@@ -48,6 +51,14 @@ export class ViatikDatabase extends Dexie {
   vaultKeysets!: EntityTable<VaultKeyset, "id">;
   vaultEntries!: EntityTable<VaultEntry, "id">;
   tripWeatherForecasts!: EntityTable<TripWeatherForecast, "id">;
+  userWallets!: EntityTable<UserWallet, "id">;
+  dailyBudgetOverrides!: EntityTable<DailyBudgetOverride, "id">;
+  /** Local-only mirror of the signed-in user's own profile (not synced). */
+  profiles!: EntityTable<LocalProfile, "id">;
+  /** Local-only dropped map pins (not synced — device-local annotations). */
+  tripPins!: EntityTable<TripPin, "id">;
+  /** Local-only collaborative activity feed (not synced — derived from synced entities). */
+  feedItems!: EntityTable<TripFeedItem, "id">;
 
   constructor(name: string) {
     super(name);
@@ -203,6 +214,66 @@ export class ViatikDatabase extends Dexie {
         if (contact.connectionId === undefined) contact.connectionId = null;
         if (contact.connectionDirection === undefined) contact.connectionDirection = null;
       });
+    });
+
+    // v18: Phase 2A finance — new wallet/budget stores plus added expense &
+    // share columns. Existing records are backfilled with safe defaults.
+    this.version(18).stores({
+      expenses: "id, tripId, activityId, date, [tripId+date], updatedAt, deletedAt",
+      expenseShares: "id, expenseId, userId, splitType, [expenseId+userId]",
+      userWallets: "id, tripId, userId, [tripId+userId], updatedAt",
+      dailyBudgetOverrides: "id, tripId, date, [tripId+date], updatedAt",
+    }).upgrade(async (transaction) => {
+      await transaction.table("trips").toCollection().modify((trip: Record<string, unknown>) => {
+        trip.totalBudgetMinor ??= null;
+      });
+      await transaction.table("expenses").toCollection().modify((expense: Record<string, unknown>) => {
+        expense.exchangeRateToBase ??= null;
+        expense.categoryId ??= null;
+        expense.date ??= String(expense.createdAt ?? "").slice(0, 10);
+      });
+      await transaction.table("expenseShares").toCollection().modify((share: Record<string, unknown>) => {
+        share.splitType ??= "equal";
+      });
+    });
+
+    // v19: Phase 2B planned-budget tracking — itinerary activities gain an
+    // optional estimated cost (in the trip's base currency, minor units).
+    this.version(19).stores({}).upgrade(async (transaction) => {
+      await transaction.table("activities").toCollection().modify((activity: Record<string, unknown>) => {
+        activity.estimatedCostMinor ??= null;
+      });
+    });
+
+    // v20: Smart import — trip media gains a capture date (`takenAt`) so the
+    // gallery can group/filter photos by the day they were taken. The index is
+    // additive (inserts `takenAt`); existing rows backfill to `null`.
+    this.version(20).stores({
+      tripMedia: "id, tripId, activityId, uploadStatus, takenAt, updatedAt, deletedAt",
+    }).upgrade(async (transaction) => {
+      await transaction.table("tripMedia").toCollection().modify((media: Record<string, unknown>) => {
+        if (media.takenAt === undefined) media.takenAt = null;
+      });
+    });
+
+    // v21: local-only `profiles` mirror so safety data (emergency contact,
+    // passport) stays available offline. Not synced via the outbox.
+    this.version(21).stores({
+      profiles: "id, updatedAt",
+    });
+
+    // v22: local-only `tripPins` table for the Offline Maps feature. Dropped
+    // pins are device-local annotations (like `profiles`), not synced.
+    this.version(22).stores({
+      tripPins: "id, tripId, category, updatedAt, deletedAt",
+    });
+
+    // v23: local-only `feedItems` for the Collaborative Real-Time Feed. Feed
+    // entries are device-local (like `profiles`/`tripPins`) — they are derived
+    // from the already-synced expenses/media/activities, so no outbox/cloud
+    // sync is needed.
+    this.version(23).stores({
+      feedItems: "id, tripId, actorId, verb, createdAt, [tripId+createdAt]",
     });
   }
 }
