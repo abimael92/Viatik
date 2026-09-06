@@ -1,32 +1,28 @@
 "use client";
 
-import { Check, Copy, KeyRound, LogOut, Pencil, ScanLine, Smartphone, UserRound } from "lucide-react";
+import { Check, Copy, KeyRound, Pencil, ScanLine, Smartphone, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import QRCode from "react-qr-code";
-import { logout, setDiscoverability, updateProfileDetails, type ProfileDetails } from "@/app/actions/auth";
+import { updateProfileDetails, type ProfileDetails } from "@/app/actions/auth";
 import { viatikQrPayload } from "@/features/contacts/lib/viatik-id";
 import { AvatarPicker, type AvatarChange } from "@/components/ui/avatar-picker";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { deleteDatabase } from "@/lib/db/dexie";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 
 export function SettingsClient({
-  userId,
   phone,
   fullName,
   viatikId,
-  discoverable = false,
   profile = null,
 }: {
-  userId: string;
   phone: string | null;
   fullName: string;
   viatikId?: string | null;
-  discoverable?: boolean;
   profile?: ProfileDetails | null;
 }) {
   const router = useRouter();
@@ -51,16 +47,6 @@ export function SettingsClient({
     });
   }
 
-  function toggleDiscoverability(event: React.ChangeEvent<HTMLInputElement>) {
-    const next = event.target.checked;
-    startTransition(async () => {
-      setMessage(null);
-      const result = await setDiscoverability(next);
-      setMessage(result.success ? "Discoverability updated." : result.error);
-      router.refresh();
-    });
-  }
-
   async function copyViatikId() {
     if (!viatikId) return;
     try {
@@ -72,180 +58,152 @@ export function SettingsClient({
     }
   }
 
-  function signOut() {
-    startTransition(async () => {
-      const result = await logout();
-      if (!result.success) {
-        setMessage(result.error);
-        return;
-      }
-      await deleteDatabase(userId);
-      router.replace("/login");
-      router.refresh();
-    });
-  }
-
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <header>
         <p className="text-sm font-medium text-primary">Account</p>
         <h1 className="mt-1 text-3xl font-bold tracking-tight">Settings</h1>
         <p className="mt-2 text-muted-foreground">Manage your profile, sign-in methods, and session.</p>
       </header>
       {message && <p role="status" className="rounded-lg border bg-card p-3 text-sm">{message}</p>}
-      <section className="rounded-2xl border bg-card p-5 sm:p-7" aria-labelledby="profile-heading">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex gap-3">
-            <UserRound className="size-5 text-primary" />
-            <div>
-              <h2 id="profile-heading" className="font-semibold">Profile</h2>
-              <p className="text-sm text-muted-foreground">How you appear in shared trips. Shown read-only until you edit.</p>
-            </div>
-          </div>
-          {!editing && (
-            <Button type="button" variant="outline" onClick={() => setEditing(true)} disabled={pending}>
-              <Pencil className="size-4" />Edit
-            </Button>
-          )}
-        </div>
-
-        {editing ? (
-          <ProfileEditForm
-            initial={saved}
-            onCancel={() => setEditing(false)}
-            onSaved={(message) => {
-              setMessage(message);
-              setEditing(false);
-              router.refresh();
-            }}
-          />
-        ) : (
-          <>
-            <div className="mt-5 flex items-center gap-4">
-              <UserAvatar
-                seed={saved.avatarSeed}
-                src={saved.avatarUrl}
-                name={saved.fullName}
-                size="lg"
-              />
-              <div>
-                <p className="font-medium">{saved.fullName}</p>
-                <p className="text-sm text-muted-foreground">{saved.phone ?? "No phone on file"}</p>
-              </div>
-            </div>
-          <dl className="mt-5 grid gap-x-8 gap-y-4 sm:grid-cols-2">
-            <ProfileRow label="Full name" value={saved.fullName} />
-            <ProfileRow label="Phone" value={saved.phone} />
-            <ProfileRow label="Date of birth" value={saved.birthDate} />
-            <ProfileRow label="Preferred currency" value={saved.preferredCurrency} />
-            <ProfileRow label="Preferred language" value={saved.preferredLanguage} />
-            <ProfileRow label="Dietary restrictions" value={saved.dietaryRestrictions?.join(", ")} />
-            <ProfileRow label="Allergies" value={saved.allergies?.join(", ")} />
-            <ProfileRow
-              label="Emergency contact"
-              value={[saved.emergencyContactName, saved.emergencyContactRelationship].filter(Boolean).join(" · ")}
-            />
-            <ProfileRow label="Emergency phone" value={saved.emergencyContactPhone} />
-            <ProfileRow
-              label="Passport"
-              value={[saved.passportIssuingCountry, saved.passportExpiresOn].filter(Boolean).join(" · ")}
-            />
-          </dl>
-          </>
-        )}
-      </section>
-      <section className="rounded-2xl border bg-card p-5 sm:p-7" aria-labelledby="directory-heading">
-        <div className="flex gap-3">
-          <ScanLine className="size-5 text-primary" />
-          <div>
-            <h2 id="directory-heading" className="font-semibold">Profile directory</h2>
-            <p className="text-sm text-muted-foreground">
-              Control who can find and link you by Viatik ID. Only your public name,
-              avatar, handle, and preferences are shared — never your email or phone.
-            </p>
-          </div>
-        </div>
-        <div className="mt-5 space-y-4">
-          <div className="flex items-center justify-between gap-4 rounded-xl border p-4">
-            <div className="min-w-0">
-              <p className="text-sm font-medium">Discoverable by Viatik ID</p>
-              <p className="text-xs text-muted-foreground">
-                When on, friends can add you instantly by scanning your profile code or entering your ID.
-              </p>
-            </div>
-            <label className="relative inline-flex shrink-0 cursor-pointer items-center">
-              <input
-                type="checkbox"
-                className="peer sr-only"
-                checked={discoverable}
-                onChange={toggleDiscoverability}
-                disabled={pending || !viatikId}
-              />
-              <span className="h-6 w-11 rounded-full bg-muted transition-colors peer-checked:bg-primary" />
-              <span className="pointer-events-none absolute left-0.5 top-0.5 size-5 rounded-full bg-background shadow transition-transform peer-checked:translate-x-5" />
-            </label>
-          </div>
-          {viatikId && (
-            <div className="rounded-xl border p-4">
-              <div className="flex items-center justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">Your Viatik ID</p>
-                  <p className="font-mono text-sm text-muted-foreground">{viatikId}</p>
+      <Tabs defaultValue="profile" className="w-full">
+        <TabsList>
+          <TabsTrigger value="profile"><UserRound className="size-4" />Profile</TabsTrigger>
+          <TabsTrigger value="directory"><ScanLine className="size-4" />Directory</TabsTrigger>
+          <TabsTrigger value="security"><KeyRound className="size-4" />Security</TabsTrigger>
+        </TabsList>
+        <TabsContent value="profile">
+          <section className="rounded-2xl border bg-card p-5 sm:p-7" aria-labelledby="profile-heading">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex gap-3">
+                <UserRound className="size-5 text-primary" />
+                <div>
+                  <h2 id="profile-heading" className="font-semibold">Profile</h2>
+                  <p className="text-sm text-muted-foreground">How you appear in shared trips. Shown read-only until you edit.</p>
                 </div>
-                <Button type="button" variant="outline" size="sm" onClick={() => void copyViatikId()} disabled={copied}>
-                  {copied ? <Check className="size-4 text-success" /> : <Copy className="size-4" />}
-                  {copied ? "Copied" : "Copy"}
+              </div>
+              {!editing && (
+                <Button type="button" variant="outline" onClick={() => setEditing(true)} disabled={pending}>
+                  <Pencil className="size-4" />Edit
                 </Button>
-              </div>
-              <div className="mt-4 flex items-center gap-4">
-                <div className="rounded-lg border bg-white p-2" aria-hidden>
-                  <QRCode value={viatikQrPayload(viatikId)} size={120} />
+              )}
+            </div>
+
+            {editing ? (
+              <ProfileEditForm
+                initial={saved}
+                onCancel={() => setEditing(false)}
+                onSaved={(message) => {
+                  setMessage(message);
+                  setEditing(false);
+                  router.refresh();
+                }}
+              />
+            ) : (
+              <>
+                <div className="mt-5 flex items-center gap-4">
+                  <UserAvatar
+                    seed={saved.avatarSeed}
+                    src={saved.avatarUrl}
+                    name={saved.fullName}
+                    size="lg"
+                  />
+                  <div>
+                    <p className="font-medium">{saved.fullName}</p>
+                    <p className="text-sm text-muted-foreground">{saved.phone ?? "No phone on file"}</p>
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Friends can scan this code to link you instantly. Only your public name,
-                  avatar, handle, and preferences are shared.
+                <dl className="mt-5 grid gap-x-8 gap-y-4 sm:grid-cols-2">
+                  <ProfileRow label="Full name" value={saved.fullName} />
+                  <ProfileRow label="Phone" value={saved.phone} />
+                  <ProfileRow label="Date of birth" value={saved.birthDate} />
+                  <ProfileRow label="Preferred currency" value={saved.preferredCurrency} />
+                  <ProfileRow label="Preferred language" value={saved.preferredLanguage} />
+                  <ProfileRow label="Dietary restrictions" value={saved.dietaryRestrictions?.join(", ")} />
+                  <ProfileRow label="Allergies" value={saved.allergies?.join(", ")} />
+                  <ProfileRow
+                    label="Emergency contact"
+                    value={[saved.emergencyContactName, saved.emergencyContactRelationship].filter(Boolean).join(" · ")}
+                  />
+                  <ProfileRow label="Emergency phone" value={saved.emergencyContactPhone} />
+                  <ProfileRow
+                    label="Passport"
+                    value={[saved.passportIssuingCountry, saved.passportExpiresOn].filter(Boolean).join(" · ")}
+                  />
+                </dl>
+              </>
+            )}
+          </section>
+        </TabsContent>
+        <TabsContent value="directory">
+          <section className="rounded-2xl border bg-card p-5 sm:p-7" aria-labelledby="directory-heading">
+            <div className="flex gap-3">
+              <ScanLine className="size-5 text-primary" />
+              <div>
+                <h2 id="directory-heading" className="font-semibold">Profile directory</h2>
+                <p className="text-sm text-muted-foreground">
+                  Anyone can link you by scanning your Viatik ID or entering it. Only your public
+                  name, avatar, handle, and preferences are shared — never your email or phone.
                 </p>
               </div>
             </div>
-          )}
-        </div>
-      </section>
-      <section className="rounded-2xl border bg-card p-5 sm:p-7" aria-labelledby="security-heading">
-        <div className="flex gap-3">
-          <KeyRound className="size-5 text-primary" />
-          <div>
-            <h2 id="security-heading" className="font-semibold">Sign-in and security</h2>
-            <p className="text-sm text-muted-foreground">Add a passkey to your verified Supabase account.</p>
-          </div>
-        </div>
-        <div className="mt-5 divide-y rounded-xl border">
-          <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
-            <Smartphone className="size-5 text-muted-foreground" />
-            <div className="flex-1">
-              <p className="font-medium">SMS authentication</p>
-              <p className="text-sm text-muted-foreground">{phone ?? "No phone number available"}</p>
+            <div className="mt-5 space-y-4">
+              {viatikId && (
+                <div className="rounded-xl border p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">Your Viatik ID</p>
+                      <p className="font-mono text-sm text-muted-foreground">{viatikId}</p>
+                    </div>
+                    <Button type="button" variant="outline" size="sm" onClick={() => void copyViatikId()} disabled={copied}>
+                      {copied ? <Check className="size-4 text-success" /> : <Copy className="size-4" />}
+                      {copied ? "Copied" : "Copy"}
+                    </Button>
+                  </div>
+                  <div className="mt-4 flex items-center gap-4">
+                    <div className="rounded-lg border bg-white p-2" aria-hidden>
+                      <QRCode value={viatikQrPayload(viatikId)} size={120} />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Friends can scan this code to link you instantly. Only your public name,
+                      avatar, handle, and preferences are shared.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
-            <span className="text-xs font-medium text-success">Verified session</span>
-          </div>
-          <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
-            <KeyRound className="size-5 text-muted-foreground" />
-            <div className="flex-1">
-              <p className="font-medium">Passkeys</p>
-              <p className="text-sm text-muted-foreground">Use your device biometrics for a faster sign-in.</p>
+          </section>
+        </TabsContent>
+        <TabsContent value="security">
+          <section className="rounded-2xl border bg-card p-5 sm:p-7" aria-labelledby="security-heading">
+            <div className="flex gap-3">
+              <KeyRound className="size-5 text-primary" />
+              <div>
+                <h2 id="security-heading" className="font-semibold">Sign-in and security</h2>
+                <p className="text-sm text-muted-foreground">Add a passkey to your verified Supabase account.</p>
+              </div>
             </div>
-            <Button variant="outline" onClick={addPasskey} disabled={pending}>Add passkey</Button>
-          </div>
-        </div>
-      </section>
-      <section className="rounded-2xl border bg-card p-5 sm:p-7" aria-labelledby="session-heading">
-        <h2 id="session-heading" className="font-semibold">Current session</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Signed in as {phone ?? userId}. Signing out removes offline trip data from this device.
-        </p>
-        <Button className="mt-5" variant="outline" onClick={signOut} disabled={pending}>
-          <LogOut className="size-4" />Sign out
-        </Button>
-      </section>
+            <div className="mt-5 divide-y rounded-xl border">
+              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+                <Smartphone className="size-5 text-muted-foreground" />
+                <div className="flex-1">
+                  <p className="font-medium">SMS authentication</p>
+                  <p className="text-sm text-muted-foreground">{phone ?? "No phone number available"}</p>
+                </div>
+                <span className="text-xs font-medium text-success">Verified session</span>
+              </div>
+              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+                <KeyRound className="size-5 text-muted-foreground" />
+                <div className="flex-1">
+                  <p className="font-medium">Passkeys</p>
+                  <p className="text-sm text-muted-foreground">Use your device biometrics for a faster sign-in.</p>
+                </div>
+                <Button variant="outline" onClick={addPasskey} disabled={pending}>Add passkey</Button>
+              </div>
+            </div>
+          </section>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

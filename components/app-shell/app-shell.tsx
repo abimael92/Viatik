@@ -2,13 +2,16 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { CircleUserRound, ContactRound, Map, Menu, Settings, X } from "lucide-react";
-import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { ContactRound, LogOut, Map, Menu, Settings, X } from "lucide-react";
+import { useState, useTransition } from "react";
 
-import { Button } from "@/components/ui/button";
+import { logout } from "@/app/actions/auth";
 import { SyncStatusPill } from "@/components/app-shell/sync-status-pill";
 import { ThemeToggle } from "@/components/app-shell/theme-toggle";
+import { Button } from "@/components/ui/button";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import { deleteDatabase } from "@/lib/db/dexie";
 import { syncNow } from "@/lib/sync/sync-engine";
 import { useSyncStatus } from "@/lib/sync/use-sync-status";
 import { cn } from "@/lib/utils";
@@ -19,10 +22,35 @@ const links = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
-export function AppShell({ children, userLabel }: { children: React.ReactNode; userLabel: string }) {
+export function AppShell({
+  children,
+  userId,
+  userName,
+  userEmail,
+  avatarSeed,
+  avatarUrl,
+}: {
+  children: React.ReactNode;
+  userId: string;
+  userName: string;
+  userEmail?: string;
+  avatarSeed?: string | null;
+  avatarUrl?: string | null;
+}) {
   const pathname = usePathname();
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [pending, startTransition] = useTransition();
   const sync = useSyncStatus();
+
+  function signOut() {
+    startTransition(async () => {
+      const result = await logout();
+      if (!result.success) return;
+      await deleteDatabase(userId);
+      router.replace("/login");
+    });
+  }
 
   const navigation = (
     <nav aria-label="Main navigation" className="space-y-1">
@@ -35,20 +63,40 @@ export function AppShell({ children, userLabel }: { children: React.ReactNode; u
             onClick={() => setMenuOpen(false)}
             aria-current={active ? "page" : undefined}
             className={cn(
-              // Quiet utility link: >=44px target, muted fill when active.
-              "flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors",
+              // Linear-style quiet nav: subtle ghost tint + 2px left accent when active.
+              "relative flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               active
-                ? "bg-muted text-foreground"
+                ? "bg-primary/10 text-primary"
                 : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
             )}
           >
+            {active && (
+              <span
+                aria-hidden
+                className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-primary"
+              />
+            )}
             <Icon className="size-5" aria-hidden />
             {label}
           </Link>
         );
       })}
     </nav>
+  );
+
+  // Static user profile card — not clickable, no icon, carries the sync status.
+  const userCard = (
+    <div className="flex items-center gap-3 rounded-xl border border-border/60 p-2.5">
+      <UserAvatar seed={avatarSeed} src={avatarUrl} name={userName} size="sm" />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-medium">{userName}</span>
+        {userEmail && (
+          <span className="block truncate text-xs text-muted-foreground">{userEmail}</span>
+        )}
+      </span>
+      <SyncStatusPill compact />
+    </div>
   );
 
   return (
@@ -82,18 +130,32 @@ export function AppShell({ children, userLabel }: { children: React.ReactNode; u
 
       {/* Floating glass sidebar — pinned on scroll. */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-border/40 bg-background/70 p-5 backdrop-blur-md lg:flex">
-        <Link href="/trips" className="mb-8 flex items-center gap-3 text-xl font-bold">
-          <Image src="/viatik-logo.png" alt="" width={44} height={44} priority className="size-11 object-contain" />
-          Viatik
-        </Link>
-        <div className="flex-1">{navigation}</div>
-        <SyncStatusPill />
-        <div className="mt-4 flex items-center justify-between gap-3 border-t border-border/40 pt-4 text-sm">
-          <div className="flex min-w-0 items-center gap-3">
-            <CircleUserRound className="size-8 shrink-0 text-muted-foreground" aria-hidden />
-            <span className="min-w-0 truncate">{userLabel}</span>
-          </div>
+        {/* Top: brand row — logo image untouched, theme toggle sits beside the app name. */}
+        <div className="flex items-center justify-between gap-2">
+          <Link href="/trips" className="flex items-center gap-3 text-xl font-bold">
+            <Image src="/viatik-logo.png" alt="" width={44} height={44} priority className="size-11 object-contain" />
+            Viatik
+          </Link>
           <ThemeToggle />
+        </div>
+
+        {/* User profile card (static) sits before the navigation links, with sync status on it. */}
+        <div className="mt-6">{userCard}</div>
+
+        {/* Center: navigation fills the middle. */}
+        <div className="mt-3 flex-1">{navigation}</div>
+
+        {/* Bottom: logout lives only here in the sidebar. */}
+        <div className="mt-8">
+          <Button
+            variant="ghost"
+            className="w-full justify-between rounded-xl border border-border/40 px-3 py-2 text-muted-foreground hover:text-foreground"
+            onClick={() => signOut()}
+            disabled={pending}
+          >
+            <span className="text-xs font-medium">Sign out</span>
+            <LogOut className="size-4" />
+          </Button>
         </div>
       </aside>
 
@@ -125,6 +187,7 @@ export function AppShell({ children, userLabel }: { children: React.ReactNode; u
           className="fixed inset-x-0 top-16 z-30 border-b border-border/40 bg-background/85 p-4 shadow-lg backdrop-blur-md lg:hidden"
         >
           {navigation}
+          <div className="mt-4 border-t border-border/40 pt-3">{userCard}</div>
         </div>
       )}
 
