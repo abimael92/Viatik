@@ -4,6 +4,7 @@ import { MAX_MINOR_UNITS, type MinorUnits } from "@/features/domain/money";
 import { getSyncUser } from "@/lib/sync/sync-context";
 import type { VaultEntry, VaultKeyset } from "@/features/vault/domain/vault-types";
 import type { TripWeatherForecast } from "@/features/weather/domain/weather-types";
+import type { TripShareLink } from "@/features/sharing/domain/share-types";
 
 function minorUnitsToRemote(value: MinorUnits, field: string): string {
   if (value < 0n || value > MAX_MINOR_UNITS) throw new Error(`Invalid remote ${field}`);
@@ -435,6 +436,40 @@ export function tripWeatherForecastToRow(forecast: TripWeatherForecast): Record<
     created_at: forecast.createdAt,
     updated_at: forecast.updatedAt,
     deleted_at: forecast.deletedAt,
+  };
+}
+
+export function shareLinkToRow(link: TripShareLink): Record<string, unknown> {
+  return {
+    id: link.id,
+    trip_id: link.tripId,
+    slug: link.slug,
+    label: link.label,
+    created_by: link.createdBy,
+    allow_itinerary: link.allowItinerary,
+    allow_map: link.allowMap,
+    allow_gallery: link.allowGallery,
+    active: link.active,
+    created_at: link.createdAt,
+    updated_at: link.updatedAt,
+    deleted_at: link.deletedAt,
+  };
+}
+
+export function rowToShareLink(row: Record<string, unknown>): TripShareLink {
+  return {
+    id: String(row.id),
+    tripId: String(row.trip_id),
+    slug: String(row.slug),
+    label: row.label == null ? null : String(row.label),
+    createdBy: String(row.created_by),
+    allowItinerary: row.allow_itinerary == null ? true : Boolean(row.allow_itinerary),
+    allowMap: row.allow_map == null ? true : Boolean(row.allow_map),
+    allowGallery: row.allow_gallery == null ? true : Boolean(row.allow_gallery),
+    active: row.active == null ? true : Boolean(row.active),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+    deletedAt: row.deleted_at == null ? null : String(row.deleted_at),
   };
 }
 

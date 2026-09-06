@@ -4,6 +4,7 @@ import type { Activity, Connection, Contact, DailyBudgetOverride, Expense, Expen
 import type { TripMedia } from "@/features/domain/entities-media";
 import type { VaultEntry, VaultKeyset } from "@/features/vault/domain/vault-types";
 import type { TripWeatherForecast } from "@/features/weather/domain/weather-types";
+import type { TripShareLink } from "@/features/sharing/domain/share-types";
 import {
   acknowledgeMutation,
   countPendingMutations,
@@ -33,6 +34,7 @@ import {
   vaultEntryToRow,
   vaultKeysetToRow,
   tripWeatherForecastToRow,
+  shareLinkToRow,
 } from "@/lib/supabase/mappers";
 import { logger } from "@/lib/observability/logger";
 import { deleteRemoteMedia, processPendingMedia, pullRemoteChanges, startRealtimeSync } from "@/lib/sync/cloud-sync";
@@ -122,6 +124,7 @@ function mutationPayloadToRow(mutation: OutboxMutation): Record<string, unknown>
     case "tripWeatherForecast": return tripWeatherForecastToRow(mutation.payload as unknown as TripWeatherForecast);
     case "userWallet": return userWalletToRow(mutation.payload as unknown as UserWallet);
     case "dailyBudgetOverride": return dailyBudgetOverrideToRow(mutation.payload as unknown as DailyBudgetOverride);
+    case "tripShareLink": return shareLinkToRow(mutation.payload as unknown as TripShareLink);
   }
 }
 
@@ -139,6 +142,9 @@ function resolveDeleteRequest(client: ReturnType<typeof getSupabaseBrowserClient
   }
   if (mutation.entityType === "vaultEntry") {
     return client.rpc("sync_vault_entry_cas_delete", { p_id: mutation.entityId, p_base_updated_at: mutation.baseUpdatedAt });
+  }
+  if (mutation.entityType === "tripShareLink") {
+    return client.rpc("sync_trip_share_link_cas_delete", { p_id: mutation.entityId, p_base_updated_at: mutation.baseUpdatedAt });
   }
   return client.rpc("sync_cas_delete", { p_entity: mutation.entityType, p_id: mutation.entityId, p_base_updated_at: mutation.baseUpdatedAt });
 }
@@ -162,7 +168,9 @@ async function replayCasMutation(mutation: OutboxMutation, signal?: AbortSignal)
             ? client.rpc("sync_connection_cas_upsert", { p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt })
             : mutation.entityType === "tripWeatherForecast"
               ? client.rpc("sync_trip_weather_forecast_cas_upsert", { p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt })
-              : client.rpc("sync_cas_upsert", { p_entity: mutation.entityType, p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt });
+              : mutation.entityType === "tripShareLink"
+                ? client.rpc("sync_trip_share_link_cas_upsert", { p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt })
+                : client.rpc("sync_cas_upsert", { p_entity: mutation.entityType, p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt });
   const response = signal ? await request.abortSignal(signal) : await request;
   if (response.error) throw new Error(response.error.message);
   const result = response.data as CasResult;
