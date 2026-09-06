@@ -3,6 +3,7 @@ import type { RealtimeChannel, RealtimePostgresChangesPayload, SupabaseClient } 
 import type { Activity, Contact, DailyBudgetOverride, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler, UserWallet } from "@/features/domain/entities";
 import type { TripMedia } from "@/features/domain/entities-media";
 import type { TripFeedItem } from "@/features/feed/domain/feed-types";
+import type { TripShareLink } from "@/features/sharing/domain/share-types";
 import { buildActivityFeed, buildExpenseFeed, buildMediaFeed, materializeFeedItem } from "@/features/feed/lib/feed-builder";
 import type { VaultEntry, VaultKeyset } from "@/features/vault/domain/vault-types";
 import type { TripWeatherForecast } from "@/features/weather/domain/weather-types";
@@ -27,6 +28,7 @@ import {
   rowToVaultEntry,
   rowToVaultKeyset,
   rowToTripWeatherForecast,
+  rowToShareLink,
 } from "@/lib/supabase/mappers";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import type { OutboxEntityType } from "@/lib/sync/types";
@@ -60,9 +62,10 @@ const tableDefinitions = [
   { table: "trip_weather_forecasts", entityType: "tripWeatherForecast" as const, map: rowToTripWeatherForecast, store: "tripWeatherForecasts" as const },
   { table: "user_wallets", entityType: "userWallet" as const, map: rowToUserWallet, store: "userWallets" as const },
   { table: "daily_budget_overrides", entityType: "dailyBudgetOverride" as const, map: rowToDailyBudgetOverride, store: "dailyBudgetOverrides" as const },
+  { table: "trip_share_links", entityType: "tripShareLink" as const, map: rowToShareLink, store: "shareLinks" as const },
 ];
 
-type RemoteEntity = Trip | TripMember | TripInvitation | Activity | Expense | ExpenseShare | TripMedia | ExpenseSettlement | Contact | TripTraveler | VaultEntry | VaultKeyset | TripWeatherForecast | UserWallet | DailyBudgetOverride;
+type RemoteEntity = Trip | TripMember | TripInvitation | Activity | Expense | ExpenseShare | TripMedia | ExpenseSettlement | Contact | TripTraveler | VaultEntry | VaultKeyset | TripWeatherForecast | UserWallet | DailyBudgetOverride | TripShareLink;
 
 async function signedMediaUrl(client: SupabaseClient, entity: RemoteEntity, signal?: AbortSignal): Promise<RemoteEntity> {
   signal?.throwIfAborted();
