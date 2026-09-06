@@ -76,6 +76,35 @@ export class DexieCollaborationRepository implements CollaborationRepository {
     });
   }
 
+  async setMemberRoleByUser(tripId: string, userId: string, role: Exclude<TripMemberRole, "owner">, byUserId: string): Promise<void> {
+    const db = getDb();
+    return TransactionContext.runInTransaction([db.tripMembers], async (ctx) => {
+      const now = new Date().toISOString();
+      const existing = await ctx.table<TripMember>("tripMembers")
+        .where("[tripId+userId]").equals([tripId, userId])
+        .first();
+      if (existing) {
+        if (existing.role === role) return;
+        const updated = { ...existing, role, updatedAt: now };
+        await ctx.table<TripMember>("tripMembers").put(updated);
+        await append("tripMember", "update", updated, { tx: ctx, baseUpdatedAt: existing.updatedAt });
+        return;
+      }
+      const member: TripMember = {
+        id: crypto.randomUUID(),
+        tripId,
+        userId,
+        role,
+        invitedBy: byUserId,
+        joinedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      };
+      await ctx.table<TripMember>("tripMembers").add(member);
+      await append("tripMember", "insert", member, { tx: ctx, baseUpdatedAt: null });
+    });
+  }
+
   async removeMember(memberId: string): Promise<void> {
     const db = getDb();
     return TransactionContext.runInTransaction([db.tripMembers], async (ctx) => {

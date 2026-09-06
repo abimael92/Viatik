@@ -314,7 +314,7 @@ function ContactForm({
             <div className="flex gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm">
               <ShieldCheck className="mt-0.5 size-5 shrink-0 text-primary" />
               <div>
-                <p className="font-medium">Private by default</p>
+                <p className="font-semibold">Private by default</p>
                 <p className="mt-1 leading-5 text-muted-foreground">
                   Only you can see email, phone, birth date, and notes. Travelers only see the name
                   and traveler type attached to a trip.
@@ -322,7 +322,7 @@ function ContactForm({
               </div>
             </div>
             <FormSection
-              icon={<UserRound className="size-4" />}
+              icon={<UserRound className="size-5" />}
               title="Identity"
               description="The details used to recognize this traveler across your trips."
             >
@@ -378,7 +378,7 @@ function ContactForm({
         {step === 2 && (
           <div className="space-y-6">
             <FormSection
-              icon={<Mail className="size-4" />}
+              icon={<Mail className="size-5" />}
               title="Contact details"
               description="Optional details that remain private to your account."
             >
@@ -406,7 +406,7 @@ function ContactForm({
               </div>
             </FormSection>
             <FormSection
-              icon={<ShieldCheck className="size-4" />}
+              icon={<ShieldCheck className="size-5" />}
               title="Emergency contact"
               description="Private safety details for the person to contact during an emergency."
             >
@@ -444,7 +444,7 @@ function ContactForm({
         {step === 3 && (
           <div className="space-y-6">
             <FormSection
-              icon={<CalendarDays className="size-4" />}
+              icon={<CalendarDays className="size-5" />}
               title="Travel details"
               description="Optional context for planning age-aware activities and future trips."
             >
@@ -536,7 +536,7 @@ function ContactForm({
             </FormSection>
             {upcoming.length > 0 && (
               <fieldset className="space-y-3 rounded-lg border p-3">
-                <legend className="px-1 text-sm font-medium">Update upcoming trips?</legend>
+                <legend className="px-1 text-sm font-semibold">Update upcoming trips?</legend>
                 <label className="flex gap-2 text-sm">
                   <input
                     type="radio"
@@ -616,7 +616,7 @@ function ContactForm({
               Next
             </Button>
           ) : (
-            <Button type="submit" disabled={pending || !allVisited}>
+            <Button type="submit" variant="primary" disabled={pending || !allVisited}>
               {pending
                 ? operation === "edit"
                   ? "Updating…"
@@ -665,7 +665,7 @@ function StepHeader({
                 />
                 <span
                   className={cn(
-                    "text-xs sm:text-sm font-medium",
+                    "text-xs sm:text-sm font-semibold",
                     active ? "text-primary" : completed ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
                   )}
                 >
