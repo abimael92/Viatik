@@ -1,7 +1,9 @@
 import type { RealtimeChannel, RealtimePostgresChangesPayload, SupabaseClient } from "@supabase/supabase-js";
 
-import type { Activity, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler } from "@/features/domain/entities";
+import type { Activity, Contact, DailyBudgetOverride, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler, UserWallet } from "@/features/domain/entities";
 import type { TripMedia } from "@/features/domain/entities-media";
+import type { TripFeedItem } from "@/features/feed/domain/feed-types";
+import { buildActivityFeed, buildExpenseFeed, buildMediaFeed, materializeFeedItem } from "@/features/feed/lib/feed-builder";
 import type { VaultEntry, VaultKeyset } from "@/features/vault/domain/vault-types";
 import type { TripWeatherForecast } from "@/features/weather/domain/weather-types";
 import { mediaPayload } from "@/features/media/data/dexie-media-repository";
@@ -19,6 +21,8 @@ import {
   rowToTrip,
   rowToTripMember,
   rowToTripTraveler,
+  rowToUserWallet,
+  rowToDailyBudgetOverride,
   mediaToRow,
   rowToVaultEntry,
   rowToVaultKeyset,
@@ -54,9 +58,11 @@ const tableDefinitions = [
   { table: "vault_keysets", entityType: "vaultKeyset" as const, map: rowToVaultKeyset, store: "vaultKeysets" as const },
   { table: "vault_entries", entityType: "vaultEntry" as const, map: rowToVaultEntry, store: "vaultEntries" as const },
   { table: "trip_weather_forecasts", entityType: "tripWeatherForecast" as const, map: rowToTripWeatherForecast, store: "tripWeatherForecasts" as const },
+  { table: "user_wallets", entityType: "userWallet" as const, map: rowToUserWallet, store: "userWallets" as const },
+  { table: "daily_budget_overrides", entityType: "dailyBudgetOverride" as const, map: rowToDailyBudgetOverride, store: "dailyBudgetOverrides" as const },
 ];
 
-type RemoteEntity = Trip | TripMember | TripInvitation | Activity | Expense | ExpenseShare | TripMedia | ExpenseSettlement | Contact | TripTraveler | VaultEntry | VaultKeyset | TripWeatherForecast;
+type RemoteEntity = Trip | TripMember | TripInvitation | Activity | Expense | ExpenseShare | TripMedia | ExpenseSettlement | Contact | TripTraveler | VaultEntry | VaultKeyset | TripWeatherForecast | UserWallet | DailyBudgetOverride;
 
 async function signedMediaUrl(client: SupabaseClient, entity: RemoteEntity, signal?: AbortSignal): Promise<RemoteEntity> {
   signal?.throwIfAborted();
@@ -68,6 +74,8 @@ async function signedMediaUrl(client: SupabaseClient, entity: RemoteEntity, sign
 
 async function applyRemote(entityType: OutboxEntityType, store: typeof tableDefinitions[number]["store"], entity: RemoteEntity, client: SupabaseClient, signal?: AbortSignal): Promise<void> {
   signal?.throwIfAborted();
+  const storeTable = getDb().table(store);
+  const previous = typeof storeTable.get === "function" ? await storeTable.get(entity.id) as RemoteEntity | undefined : undefined;
   const pending = await getDb().outboxMutations.where("entityType").equals(entityType).and((mutation) => mutation.entityId === entity.id).last();
   signal?.throwIfAborted();
   const remoteUpdatedAt = "updatedAt" in entity ? entity.updatedAt : new Date().toISOString();
@@ -83,6 +91,50 @@ async function applyRemote(entityType: OutboxEntityType, store: typeof tableDefi
   signal?.throwIfAborted();
   await getDb().table(store).put(hydrated);
   signal?.throwIfAborted();
+  if (!pending) await emitRemoteFeedItem(entityType, previous, hydrated);
+  signal?.throwIfAborted();
+}
+
+async function emitRemoteFeedItem(entityType: OutboxEntityType, previous: RemoteEntity | undefined, entity: RemoteEntity): Promise<void> {
+  if (entityType !== "activity" && entityType !== "expense" && entityType !== "media") return;
+  if (!("createdBy" in entity) || entity.createdBy === getSyncUser()) return;
+  if (previous && "updatedAt" in previous && "updatedAt" in entity && previous.updatedAt === entity.updatedAt) return;
+
+  let draft;
+  if (entityType === "activity") {
+    const activity = entity as Activity;
+    const old = previous as Activity | undefined;
+    const verb = activity.deletedAt
+      ? "deleted_activity"
+      : old?.deletedAt
+        ? "restored_activity"
+        : old
+          ? "updated_activity"
+          : "added_activity";
+    draft = buildActivityFeed(verb, activity, activity.createdBy);
+  } else if (entityType === "expense") {
+    const expense = entity as Expense;
+    const verb = expense.deletedAt ? "deleted_expense" : previous ? "updated_expense" : "added_expense";
+    draft = buildExpenseFeed(verb, expense, expense.createdBy);
+  } else {
+    const media = entity as TripMedia;
+    const verb = media.deletedAt ? "deleted_photo" : previous ? "updated_photo" : "uploaded_photo";
+    draft = buildMediaFeed(verb, media, media.createdBy);
+  }
+
+  const sourceUpdatedAt = "updatedAt" in entity ? entity.updatedAt : new Date().toISOString();
+  const duplicate = await getDb().feedItems
+    .where("tripId")
+    .equals(draft.tripId)
+    .filter((item) => item.entityType === draft.entityType && item.entityId === draft.entityId && item.verb === draft.verb && item.metadata.sourceUpdatedAt === sourceUpdatedAt)
+    .first();
+  if (duplicate) return;
+
+  const item: TripFeedItem = materializeFeedItem({
+    ...draft,
+    metadata: { ...draft.metadata, sourceUpdatedAt },
+  }, sourceUpdatedAt);
+  await getDb().feedItems.add(item);
 }
 
 async function deleteLocal(store: typeof tableDefinitions[number]["store"], id: string): Promise<void> {
@@ -141,10 +193,10 @@ export async function pullRemoteChanges(full = false, signal?: AbortSignal): Pro
       if (remoteTripIds.has(trip.id)) continue;
       const pending = await getDb().outboxMutations.where("tripId").equals(trip.id).count();
       if (pending > 0) continue;
-      await getDb().transaction("rw", [getDb().trips, getDb().tripMembers, getDb().activities, getDb().expenses, getDb().expenseShares, getDb().tripMedia, getDb().tripInvitations, getDb().expenseSettlements, getDb().tripTravelers, getDb().vaultEntries, getDb().tripWeatherForecasts], async () => {
+      await getDb().transaction("rw", [getDb().trips, getDb().tripMembers, getDb().activities, getDb().expenses, getDb().expenseShares, getDb().tripMedia, getDb().tripInvitations, getDb().expenseSettlements, getDb().tripTravelers, getDb().vaultEntries, getDb().tripWeatherForecasts, getDb().userWallets, getDb().dailyBudgetOverrides], async () => {
         const expenseIds = await getDb().expenses.where("tripId").equals(trip.id).primaryKeys();
         await getDb().expenseShares.where("expenseId").anyOf(expenseIds).delete();
-        await Promise.all([getDb().trips.delete(trip.id), getDb().tripMembers.where("tripId").equals(trip.id).delete(), getDb().activities.where("tripId").equals(trip.id).delete(), getDb().expenses.where("tripId").equals(trip.id).delete(), getDb().tripMedia.where("tripId").equals(trip.id).delete(), getDb().tripInvitations.where("tripId").equals(trip.id).delete(), getDb().expenseSettlements.where("tripId").equals(trip.id).delete(), getDb().tripTravelers.where("tripId").equals(trip.id).delete(), getDb().vaultEntries.where("tripId").equals(trip.id).delete(), getDb().tripWeatherForecasts.filter((forecast) => forecast.tripId === trip.id).delete()]);
+        await Promise.all([getDb().trips.delete(trip.id), getDb().tripMembers.where("tripId").equals(trip.id).delete(), getDb().activities.where("tripId").equals(trip.id).delete(), getDb().expenses.where("tripId").equals(trip.id).delete(), getDb().tripMedia.where("tripId").equals(trip.id).delete(), getDb().tripInvitations.where("tripId").equals(trip.id).delete(), getDb().expenseSettlements.where("tripId").equals(trip.id).delete(), getDb().tripTravelers.where("tripId").equals(trip.id).delete(), getDb().vaultEntries.where("tripId").equals(trip.id).delete(), getDb().tripWeatherForecasts.filter((forecast) => forecast.tripId === trip.id).delete(), getDb().userWallets.where("tripId").equals(trip.id).delete(), getDb().dailyBudgetOverrides.where("tripId").equals(trip.id).delete()]);
       });
     }
 

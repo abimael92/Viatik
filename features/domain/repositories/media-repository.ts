@@ -5,6 +5,8 @@ export interface NewTripMedia {
   tripId: string;
   activityId?: string | null;
   caption?: string | null;
+  /** Capture date (`yyyy-mm-dd`) read from EXIF or the file's lastModified time. */
+  takenAt?: string | null;
   blob: Blob;
   createdBy: string;
 }

@@ -1,6 +1,6 @@
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import { getCurrentDatabase, type ViatikDatabase } from "@/lib/db/dexie";
-import type { Activity, Connection, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler } from "@/features/domain/entities";
+import type { Activity, Connection, Contact, DailyBudgetOverride, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler, UserWallet } from "@/features/domain/entities";
 import type { TripMedia } from "@/features/domain/entities-media";
 import type { VaultEntry, VaultKeyset } from "@/features/vault/domain/vault-types";
 import type { TripWeatherForecast } from "@/features/weather/domain/weather-types";
@@ -28,6 +28,8 @@ import {
   contactToRow,
   connectionToRow,
   tripTravelerToRow,
+  userWalletToRow,
+  dailyBudgetOverrideToRow,
   vaultEntryToRow,
   vaultKeysetToRow,
   tripWeatherForecastToRow,
@@ -118,6 +120,8 @@ function mutationPayloadToRow(mutation: OutboxMutation): Record<string, unknown>
     case "vaultKeyset": return vaultKeysetToRow(mutation.payload as unknown as VaultKeyset);
     case "vaultEntry": return vaultEntryToRow(mutation.payload as unknown as VaultEntry);
     case "tripWeatherForecast": return tripWeatherForecastToRow(mutation.payload as unknown as TripWeatherForecast);
+    case "userWallet": return userWalletToRow(mutation.payload as unknown as UserWallet);
+    case "dailyBudgetOverride": return dailyBudgetOverrideToRow(mutation.payload as unknown as DailyBudgetOverride);
   }
 }
 
