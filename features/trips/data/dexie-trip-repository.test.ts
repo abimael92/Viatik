@@ -132,7 +132,6 @@ describe("DexieTripRepository trip duration limit", () => {
       adultCount: 1,
       childCount: 0,
       baseCurrency: "USD",
-      totalBudgetMinor: null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       deletedAt: null,

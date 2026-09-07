@@ -7,11 +7,15 @@
  */
 
 import type { CurrencyCode, MinorUnits } from "@/features/domain/money";
+import type { SpendingCategory, SpendingSubcategory } from "@/features/domain/categories";
 
 export type TripMemberRole = "owner" | "editor" | "viewer";
 
 export type ExpenseSplitType = "equal" | "exact" | "percentage" | "shares";
 export type InvitationStatus = "pending" | "accepted" | "rejected" | "revoked";
+
+/** Lifecycle of a debt/split: a pending obligation vs. one already settled. */
+export type SettlementStatus = "pending" | "settled";
 
 export interface TripInvitation {
   id: string;
@@ -49,8 +53,6 @@ export interface Trip {
   adultCount: number;
   childCount: number;
   baseCurrency: string;
-  /** Optional overall trip budget in the trip's base currency, in minor units. */
-  totalBudgetMinor: MinorUnits | null;
   /**
    * Community / public-template fields (offline-first, local-only). Not synced
    * to the shared `trips` table — these describe a trip as a browsable public
@@ -111,8 +113,10 @@ export interface Expense {
   exchangeRateToBase: number | null;
   paidBy: string;
   splitType: ExpenseSplitType;
-  /** Opaque expense category reference (free-form for now; future FK to a categories table). */
-  categoryId: string | null;
+  /** Top-level spending category (one of the predefined set in `features/domain/categories`). */
+  category: SpendingCategory | null;
+  /** Subcategory within `category` (e.g. `"uber"` under `"transport"`), nullable for uncategorized costs. */
+  subcategory: SpendingSubcategory | null;
   /** ISO date (yyyy-mm-dd) the expense occurred, distinct from `createdAt`. */
   date: string;
   createdBy: string;
@@ -124,12 +128,19 @@ export interface Expense {
 export interface ExpenseShare {
   id: string;
   expenseId: string;
+  /** Who fronted the full cost (mirrors the parent expense, stored explicitly on each split). */
+  paidBy: string;
+  /** Who owes this share for the expense. */
   userId: string;
   /** The amount this user owes for the expense (in the expense's currency), in minor units. */
   shareAmountMinor: MinorUnits;
   sharePercentage: number | null;
   /** The split methodology used to derive this share (copied from the parent expense). */
   splitType: ExpenseSplitType;
+  /** Whether this split has been paid back (`pending`) or fully settled (`settled`). */
+  settlementStatus: SettlementStatus;
+  /** ISO datetime when this split was settled, or `null` while it is still pending. */
+  settledAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -149,25 +160,67 @@ export interface UserWallet {
 }
 
 /**
- * Per-day budget override for a trip, in minor units of the trip's base
- * currency. Takes precedence over the trip's derived daily budget.
+ * A single cash transfer settling a debt between two travelers. `fromUserId`
+ * pays `toUserId`; the debt stays `pending` until the transfer is marked
+ * `settled` (with the timestamp recorded in `settledAt`).
  */
-export interface DailyBudgetOverride {
+export interface ExpenseSettlement {
   id: string;
   tripId: string;
-  date: string; // ISO date (yyyy-mm-dd)
-  customBudgetAmountMinor: MinorUnits;
+  /** The traveler who owes money (the debtor). */
+  fromUserId: string;
+  /** The traveler being repaid (the creditor). */
+  toUserId: string;
+  amountMinor: MinorUnits;
+  currency: CurrencyCode;
+  /** Whether this debt is still outstanding (`pending`) or has been paid back (`settled`). */
+  status: SettlementStatus;
+  /** ISO datetime the debt was settled, or `null` while it is still pending. */
+  settledAt: string | null;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+/**
+ * A per-category spending cap within a trip budget, in the trip's base
+ * currency (minor units). All monetary figures are integer minor units to
+ * avoid floating-point drift.
+ */
+export interface TripBudgetCategoryAllocation {
+  category: SpendingCategory;
+  /** Cap for this category, in the trip's base currency, minor units. */
+  allocationMinor: MinorUnits;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface ExpenseSettlement {
+/**
+ * The unified, single-source-of-truth budget for a trip. Consolidates the
+ * former `Trip.totalBudgetMinor` and per-day `DailyBudgetOverride` stores into
+ * one entity that supports:
+ *
+ * - a total budget limit (`totalBudgetMinor`),
+ * - an optional daily target for pacing (`dailyTargetMinor`), and
+ * - per-category allocation caps (`categoryAllocations`).
+ *
+ * One budget exists per trip (unique on `tripId`). All amounts are stored as
+ * integer minor units (bigint cents) in the trip's base currency.
+ */
+export interface TripBudget {
   id: string;
   tripId: string;
-  fromUserId: string;
-  toUserId: string;
-  amountMinor: MinorUnits;
-  currency: CurrencyCode;
+  /** Overall budget limit for the trip, in the trip's base currency, minor units. */
+  totalBudgetMinor: MinorUnits;
+  /**
+   * Optional daily target for pacing (per-day budget), in minor units. When
+   * set it overrides the derived total ÷ trip-days pacing; when `null` the
+   * daily target is derived from the total.
+   */
+  dailyTargetMinor: MinorUnits | null;
+  /** Per-category allocation limits, in the trip's base currency. */
+  categoryAllocations: TripBudgetCategoryAllocation[];
   createdBy: string;
   createdAt: string;
   updatedAt: string;
