@@ -1,9 +1,16 @@
 # Feature Specification: AI Trip Builder & Assistant
 
 **Project:** Viatik
-**Status:** In Progress
+**Status:** Superseded
 **Created:** 2026-09-06
-**Related work:** None
+**Updated:** 2026-09-06
+**Related work:** Replaced by `ai-activity-scout.md`
+
+> **Superseded.** The AI Trip Builder modal (create flow on the Trips page and
+> enhance flow in the trip workspace) has been replaced by the AI Activity
+> Scout drawer. See [`ai-activity-scout.md`](./ai-activity-scout.md). The pure
+> validation/parsing patterns below remain useful reference for how the codebase
+> validates untrusted "AI output" against a domain contract.
 
 > Read [`../constitution.md`](../constitution.md) and [`../AGENTS.md`](../AGENTS.md) before completing this template.
 
