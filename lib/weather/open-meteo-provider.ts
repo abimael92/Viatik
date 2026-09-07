@@ -44,6 +44,7 @@ export class OpenMeteoProvider implements WeatherProvider {
       "daily",
       "temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode,wind_speed_10m_max"
     );
+    url.searchParams.set("hourly", "temperature_2m,precipitation_probability,weather_code,wind_speed_10m");
     url.searchParams.set("timeformat", "iso8601");
     url.searchParams.set("timezone", timeZone?.trim() || "auto");
 
@@ -66,6 +67,13 @@ export class OpenMeteoProvider implements WeatherProvider {
         precipitation_sum?: number[];
         weathercode?: number[];
         wind_speed_10m_max?: number[];
+      };
+      hourly?: {
+        time?: string[];
+        temperature_2m?: number[];
+        precipitation_probability?: number[];
+        weather_code?: number[];
+        wind_speed_10m?: number[];
       };
       error?: boolean;
       reason?: string;
@@ -93,6 +101,15 @@ export class OpenMeteoProvider implements WeatherProvider {
       throw new WeatherError("Weather service returned mismatched daily arrays.");
     }
 
+    const hourlyTimes = payload.hourly?.time ?? [];
+    const hourly = hourlyTimes.length > 0 ? {
+      times: hourlyTimes,
+      temperature2m: payload.hourly?.temperature_2m ?? new Array(hourlyTimes.length).fill(NaN),
+      precipitationProbability: payload.hourly?.precipitation_probability ?? new Array(hourlyTimes.length).fill(0),
+      weatherCode: payload.hourly?.weather_code ?? new Array(hourlyTimes.length).fill(-1),
+      windSpeed10m: payload.hourly?.wind_speed_10m ?? new Array(hourlyTimes.length).fill(0),
+    } : undefined;
+
     return {
       dates,
       temperature2mMax,
@@ -100,6 +117,7 @@ export class OpenMeteoProvider implements WeatherProvider {
       precipitationSum,
       weatherCode,
       windSpeed10mMax,
+      hourly,
     };
   }
 }

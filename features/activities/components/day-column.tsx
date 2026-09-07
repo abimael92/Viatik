@@ -2,10 +2,13 @@
 
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { useState } from "react";
 
 import type { Activity } from "@/features/domain/entities";
 import type { DailyForecast, WeatherWarning } from "@/features/weather/domain/weather-types";
 import type { WeatherConflict } from "@/features/weather/domain/weather-conflict-types";
+import type { ScoutDndPayload } from "@/features/ai/lib/ai-scout-dnd";
+import { parseScoutDataTransfer, SCOUT_DND_MIME } from "@/features/ai/lib/ai-scout-dnd";
 import { ActivityCard } from "@/features/activities/components/activity-card";
 import { WeatherDayBadge } from "@/features/weather/components/weather-day-badge";
 import { TransitCard } from "@/features/transit/components/transit-card";
@@ -25,6 +28,8 @@ interface DayColumnProps {
   weatherLoading?: boolean;
   /** Weather conflict per activity id, to badge impacted cards. */
   conflicts?: Record<string, WeatherConflict>;
+  /** Receives a scout suggestion dropped onto this column. */
+  onDropScout?: (dayDate: string, payload: ScoutDndPayload) => void;
 }
 
 export function DayColumn({
@@ -38,9 +43,11 @@ export function DayColumn({
   warnings,
   weatherLoading,
   conflicts,
+  onDropScout,
 }: DayColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: dayDate, data: { dayDate } });
   const setDragOverDay = useUiStore((s) => s.setDragOverDay);
+  const [scoutOver, setScoutOver] = useState(false);
   const { segments, refresh } = useTransitSegments(tripId);
   const transitForDay = segments.filter((segment) => segment.dayDate === dayDate);
 
@@ -57,14 +64,35 @@ export function DayColumn({
     day: "numeric",
   });
 
+  const hasScoutDrop = Boolean(onDropScout);
+
   return (
     <div
       ref={setNodeRef}
       onPointerEnter={() => setDragOverDay(dayDate)}
       onPointerLeave={() => setDragOverDay(null)}
+      onDragOver={(event) => {
+        if (hasScoutDrop && event.dataTransfer.types.includes(SCOUT_DND_MIME)) {
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "copy";
+          if (!scoutOver) setScoutOver(true);
+        }
+      }}
+      onDragLeave={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setScoutOver(false);
+      }}
+      onDrop={(event) => {
+        if (!hasScoutDrop) return;
+        const payload = parseScoutDataTransfer(event.dataTransfer);
+        setScoutOver(false);
+        if (!payload) return;
+        event.preventDefault();
+        onDropScout?.(dayDate, payload);
+      }}
       className={cn(
         "flex h-full min-h-[12rem] flex-col gap-3 rounded-xl border border-border bg-muted/30 p-3",
-        isOver && "border-primary bg-primary/5 ring-2 ring-primary/20"
+        isOver && "border-primary bg-primary/5 ring-2 ring-primary/20",
+        scoutOver && "border-primary bg-primary/5 ring-2 ring-primary/20"
       )}
     >
       <div className="flex items-center justify-between gap-2">

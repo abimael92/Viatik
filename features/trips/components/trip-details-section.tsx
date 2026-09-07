@@ -1,9 +1,10 @@
 "use client";
 
-import { CalendarDays, Camera, MapPin, Pencil, Users, Wallet, X } from "lucide-react";
-import { useState } from "react";
+import { CalendarDays, Camera, MapPin, Pencil, SwatchBook, Users, Wallet, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Heading } from "@/components/ui/heading";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -67,6 +68,9 @@ export function TripDetailsSection({
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [gradientPickerOpen, setGradientPickerOpen] = useState(false);
+  const coverFilePreview = useMemo(() => (coverFile ? URL.createObjectURL(coverFile) : null), [coverFile]);
+  useEffect(() => () => { if (coverFilePreview) URL.revokeObjectURL(coverFilePreview); }, [coverFilePreview]);
 
   const maxEndDate = getMaxEndDate(startDate);
 
@@ -184,10 +188,7 @@ export function TripDetailsSection({
             <Input id="td-name" value={name} maxLength={80} onChange={(event) => setName(event.target.value)} required />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="td-destination">Destination</Label>
-            <DestinationField value={destination} onChange={handleDestinationChange} onPlaceSelect={handlePlaceSelect} />
-          </div>
+          <DestinationField value={destination} onChange={handleDestinationChange} onPlaceSelect={handlePlaceSelect} />
 
           <div className="space-y-2">
             <Label htmlFor="td-description">Description</Label>
@@ -239,39 +240,30 @@ export function TripDetailsSection({
               <Label htmlFor="td-cover">Trip cover</Label>
               <p className="mt-1 text-xs text-muted-foreground">Choose a color preset or upload a photo.</p>
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {TRIP_COVER_GRADIENTS.map((gradient) => {
-                const selected = coverMode === "gradient" && coverGradient === gradient.id;
-                return (
-                  <button
-                    key={gradient.id}
-                    type="button"
-                    aria-pressed={selected}
-                    onClick={() => {
-                      setCoverMode("gradient");
-                      setCoverGradient(gradient.id);
-                      setCoverFile(null);
-                    }}
-                    className={cn(
-                      "relative h-20 overflow-hidden rounded-xl border transition-all duration-200",
-                      gradient.className,
-                      selected
-                        ? "border-viatik-magenta ring-2 ring-viatik-magenta/40 ring-offset-2 ring-offset-background"
-                        : "border-black/5 hover:-translate-y-0.5 hover:shadow-md"
-                    )}
-                  >
-                    <span className="absolute inset-x-2 bottom-2 truncate text-left text-xs font-bold text-white drop-shadow-sm">
-                      {gradient.label}
-                    </span>
-                  </button>
-                );
-              })}
+            <div className="relative h-40 overflow-hidden rounded-xl border bg-muted">
+              {coverMode === "gradient" ? (
+                <button
+                  type="button"
+                  onClick={() => setGradientPickerOpen(true)}
+                  className="absolute inset-0 flex h-full w-full items-center justify-center"
+                >
+                  <span className={cn("absolute inset-0", TRIP_COVER_GRADIENTS.find((g) => g.id === coverGradient)?.className)} />
+                  <span className="relative px-4 text-center text-2xl font-bold text-white drop-shadow">{name.trim() || "Trip name"}</span>
+                </button>
+              ) : coverFile && coverFilePreview ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={coverFilePreview} alt="Cover preview" className="h-full w-full object-cover" />
+              ) : isTripCoverImage(trip.coverImageUrl) ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={trip.coverImageUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">No cover selected</div>
+              )}
             </div>
-            {coverMode === "image" && isTripCoverImage(trip.coverImageUrl) && !coverFile && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={trip.coverImageUrl} alt="" className="h-36 w-full rounded-xl object-cover" />
-            )}
             <div className="flex flex-wrap items-center gap-3">
+              <Button type="button" variant="outline" onClick={() => setGradientPickerOpen(true)}>
+                <SwatchBook className="size-4" /> Choose gradient
+              </Button>
               <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border border-border/60 px-4 text-sm font-semibold transition-colors hover:bg-muted">
                 <Camera className="size-5" /> {coverFile ? "Change photo" : "Upload photo"}
                 <input
@@ -336,7 +328,72 @@ export function TripDetailsSection({
           </dl>
         </>
       )}
+      <GradientPickerModal
+        open={gradientPickerOpen}
+        onOpenChange={setGradientPickerOpen}
+        selected={coverGradient}
+        tripName={name}
+        onSelect={(id) => {
+          setCoverMode("gradient");
+          setCoverGradient(id);
+          setCoverFile(null);
+        }}
+      />
     </div>
+  );
+}
+
+function GradientPickerModal({
+  open,
+  onOpenChange,
+  selected,
+  tripName,
+  onSelect,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  selected: TripCoverGradientId;
+  tripName: string;
+  onSelect: (id: TripCoverGradientId) => void;
+}) {
+  const selectedGradient = TRIP_COVER_GRADIENTS.find((g) => g.id === selected) ?? TRIP_COVER_GRADIENTS[0];
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Choose a cover gradient</DialogTitle>
+          <DialogDescription>Pick a color style for your trip cover.</DialogDescription>
+        </DialogHeader>
+        <div className={cn("relative flex h-40 items-center justify-center overflow-hidden rounded-xl", selectedGradient.className)}>
+          <span className="px-4 text-center text-2xl font-bold text-white drop-shadow">{tripName.trim() || "Trip name"}</span>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          {TRIP_COVER_GRADIENTS.map((gradient) => (
+            <button
+              key={gradient.id}
+              type="button"
+              aria-pressed={selected === gradient.id}
+              onClick={() => onSelect(gradient.id)}
+              className={cn(
+                "relative h-20 overflow-hidden rounded-xl border transition-all duration-200",
+                gradient.className,
+                selected === gradient.id
+                  ? "border-viatik-magenta ring-2 ring-viatik-magenta/40 ring-offset-2 ring-offset-background"
+                  : "border-black/5 hover:-translate-y-0.5 hover:shadow-md"
+              )}
+            >
+              <span className="absolute inset-x-2 bottom-2 truncate text-left text-xs font-bold text-white drop-shadow-sm">
+                {gradient.label}
+              </span>
+            </button>
+          ))}
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button type="button" variant="primary" onClick={() => onOpenChange(false)}>Done</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

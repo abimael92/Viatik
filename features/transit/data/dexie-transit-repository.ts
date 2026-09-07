@@ -67,6 +67,8 @@ export class DexieTransitRepository implements TransitRepository {
       estimatedDeparture: null,
       estimatedArrival: null,
       delayMinutes: null,
+      ticketImage: input.ticketImage ?? null,
+      ticketImageName: input.ticketImageName ?? null,
       createdBy: input.createdBy,
       createdAt: now,
       updatedAt: now,

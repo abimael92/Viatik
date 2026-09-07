@@ -110,7 +110,13 @@ describe("loadTripWeatherForecast", () => {
     const result = await loadTripWeatherForecast(trip, TEST_USER, true);
 
     expect(result.status).toBe("fetched");
-    expect(fetchTripWeatherForecast).toHaveBeenCalledWith(TRIP_ID);
+    expect(fetchTripWeatherForecast).toHaveBeenCalledWith(TRIP_ID, {
+      latitude: trip.latitude,
+      longitude: trip.longitude,
+      timeZone: trip.timeZone,
+      startDate: trip.startDate,
+      endDate: trip.endDate,
+    });
   });
 
   it("returns the stale forecast offline", async () => {
