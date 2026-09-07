@@ -20,7 +20,6 @@ function makeTrip(overrides: Partial<Trip>): Trip {
     adultCount: 1,
     childCount: 0,
     baseCurrency: "EUR",
-    totalBudgetMinor: null,
     createdAt: "2026-01-01T00:00:00Z",
     updatedAt: "2026-01-01T00:00:00Z",
     deletedAt: null,
@@ -31,6 +30,7 @@ function makeTrip(overrides: Partial<Trip>): Trip {
 function input(overrides: Partial<ReadinessInput>): ReadinessInput {
   return {
     trip: makeTrip({}),
+    totalBudgetMinor: null,
     activityCount: 0,
     memberCount: 1,
     travelerCount: 1,
@@ -51,7 +51,8 @@ describe("computeReadiness", () => {
   it("scores 100% and reports no next action when every item is complete", () => {
     const result = computeReadiness(
       input({
-        trip: makeTrip({ startDate: "2026-10-01", endDate: "2026-10-05", totalBudgetMinor: 10000n }),
+        trip: makeTrip({ startDate: "2026-10-01", endDate: "2026-10-05" }),
+        totalBudgetMinor: 10000n,
         activityCount: 3,
         memberCount: 2,
         travelerCount: 2,
@@ -68,7 +69,8 @@ describe("computeReadiness", () => {
   it("scores 50% when only three of six items are complete", () => {
     const result = computeReadiness(
       input({
-        trip: makeTrip({ startDate: "2026-10-01", endDate: "2026-10-05", totalBudgetMinor: 5000n }),
+        trip: makeTrip({ startDate: "2026-10-01", endDate: "2026-10-05" }),
+        totalBudgetMinor: 5000n,
         memberCount: 2,
         travelerCount: 2,
       })
