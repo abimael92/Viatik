@@ -65,7 +65,6 @@ export class DexieTripRepository implements TripRepository {
         adultCount: input.adultCount ?? 1,
         childCount: input.childCount ?? 0,
         baseCurrency: input.baseCurrency ?? "USD",
-        totalBudgetMinor: input.totalBudgetMinor ?? null,
         isPublic: input.isPublic ?? false,
         shareSlug: input.shareSlug ?? null,
         likesCount: input.likesCount ?? 0,

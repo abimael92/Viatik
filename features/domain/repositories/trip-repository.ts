@@ -1,5 +1,4 @@
 import type { Trip } from "@/features/domain/entities";
-import type { MinorUnits } from "@/features/domain/money";
 
 /**
  * Storage-agnostic contract for reading/writing trips.
@@ -37,7 +36,6 @@ export interface NewTrip {
   adultCount?: number;
   childCount?: number;
   baseCurrency?: string;
-  totalBudgetMinor?: MinorUnits | null;
   isPublic?: boolean;
   shareSlug?: string | null;
   likesCount?: number;
