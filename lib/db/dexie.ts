@@ -14,6 +14,7 @@ import type { Poll, PollVote } from "@/features/polls/domain/poll-types";
 import type { CurrencyRate } from "@/features/finance/domain/currency-types";
 import type { TripShareLink } from "@/features/sharing/domain/share-types";
 import type { TransitSegment } from "@/features/transit/domain/transit-types";
+import type { JournalDayEntry } from "@/features/journal/domain/journal-types";
 import type { OutboxMutation, SyncConflict, SyncLease, SyncMetadata } from "@/lib/sync/types";
 
 function migrateMinorUnits(record: Record<string, unknown>, legacyField: string, minorField: string): void {
@@ -78,6 +79,7 @@ export class ViatikDatabase extends Dexie {
   shareLinks!: EntityTable<TripShareLink, "id">;
   /** Local-only live transit segments (flights & trains). */
   transitSegments!: EntityTable<TransitSegment, "id">;
+  journalDayEntries!: EntityTable<JournalDayEntry, "id">;
 
   constructor(name: string) {
     super(name);
@@ -336,6 +338,10 @@ export class ViatikDatabase extends Dexie {
     // cached onto the segment. Indexed by trip, day, mode, and departure time.
     this.version(29).stores({
       transitSegments: "id, tripId, dayDate, mode, scheduledDeparture, [tripId+dayDate], updatedAt, deletedAt",
+    });
+
+    this.version(30).stores({
+      journalDayEntries: "id, tripId, dayDate, [tripId+dayDate], updatedAt",
     });
   }
 }
