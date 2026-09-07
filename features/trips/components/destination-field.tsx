@@ -1,7 +1,7 @@
 "use client";
 
 import { MapPin } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { getPlaceDetails, searchDestinations, type PlaceDetails, type PlaceSuggestion } from "@/app/actions/places";
 import { Input } from "@/components/ui/input";
@@ -25,29 +25,36 @@ export function DestinationField({
   const [internalValue, setInternalValue] = useState(defaultValue);
   const value = isControlled ? controlledValue : internalValue;
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
+  const [selectedPlaceLabel, setSelectedPlaceLabel] = useState<string | null>(controlledValue ?? null);
   const [configured, setConfigured] = useState(true);
   const [pendingPlaceId, setPendingPlaceId] = useState<string | null>(null);
+  const searchVersion = useRef(0);
 
   useEffect(() => {
+    const version = ++searchVersion.current;
     const timer = window.setTimeout(async () => {
-      if (value.trim().length < 2) {
+      if (value.trim().length < 2 || value === selectedPlaceLabel) {
         setSuggestions([]);
         return;
       }
       const result = await searchDestinations(value);
+      if (version !== searchVersion.current) return;
       setConfigured(result.configured);
       setSuggestions(result.suggestions);
     }, 300);
     return () => window.clearTimeout(timer);
-  }, [value]);
+  }, [value, selectedPlaceLabel]);
 
-  function setValue(next: string) {
+  function setValue(next: string, selected = false) {
+    if (!selected) setSelectedPlaceLabel(null);
     if (!isControlled) setInternalValue(next);
     onChange?.(next);
   }
 
   async function handleSelect(suggestion: PlaceSuggestion) {
-    setValue(suggestion.label);
+    searchVersion.current += 1;
+    setSelectedPlaceLabel(suggestion.label);
+    setValue(suggestion.label, true);
     setSuggestions([]);
     if (onPlaceSelect) {
       setPendingPlaceId(suggestion.placeId);
@@ -63,8 +70,8 @@ export function DestinationField({
       {!error && (
         <p id="destination-help" className="text-xs text-muted-foreground">
           {configured
-            ? "Search cities with Google Places, or enter any destination."
-            : "Enter a destination. Google Places will activate after its API key is configured."}
+            ? "Search for a city and select a result to set its weather location."
+            : "Location search is temporarily unavailable."}
         </p>
       )}
       <div className="relative">
