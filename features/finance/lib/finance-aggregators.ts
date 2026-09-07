@@ -1,3 +1,4 @@
+import type { SpendingCategory } from "@/features/domain/categories";
 import type { MinorUnits } from "@/features/domain/money";
 import { toBaseMinorUnits } from "@/features/domain/money";
 
@@ -17,6 +18,8 @@ export interface AggregateExpense {
   exchangeRateToBase: number | null;
   paidBy: string;
   date: string; // ISO date (yyyy-mm-dd)
+  /** Optional spending category used for envelope totals. */
+  category?: SpendingCategory | null;
   shares: Array<{ userId: string; shareAmountMinor: MinorUnits }>;
 }
 
@@ -69,6 +72,35 @@ export function getGroupTotalSpent(expenses: AggregateExpense[], baseCurrency: s
     (sum, expense) => sum + (toBase(expense.amountMinor, expense.currency, expense.exchangeRateToBase, baseCurrency) ?? 0n),
     0n
   );
+}
+
+/**
+ * Total spent within a single spending category, converted to the trip's base
+ * currency. Only expenses tagged with `category` count; unconvertible foreign
+ * expenses are excluded (same guard as `getGroupTotalSpent`).
+ */
+export function getCategoryTotalSpent(
+  expenses: AggregateExpense[],
+  category: SpendingCategory,
+  baseCurrency: string
+): MinorUnits {
+  return expenses.reduce(
+    (sum, expense) =>
+      expense.category === category
+        ? sum + (toBase(expense.amountMinor, expense.currency, expense.exchangeRateToBase, baseCurrency) ?? 0n)
+        : sum,
+    0n
+  );
+}
+
+/**
+ * Budget usage ratio (`spent ÷ total`), or `null` when there is no budget to
+ * measure against. A value below 1.0 is under budget; 1.0 is exactly at; above
+ * 1.0 means the budget has been exceeded.
+ */
+export function getBudgetUsage(spent: MinorUnits, totalBudget: MinorUnits): number | null {
+  if (totalBudget <= 0n) return null;
+  return Number(spent) / Number(totalBudget);
 }
 
 /** A specific user's share of settled expenses, converted to the base currency. */
