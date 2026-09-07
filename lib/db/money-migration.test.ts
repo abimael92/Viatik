@@ -32,10 +32,11 @@ describe("money schema migration", () => {
     const db = new ViatikDatabase(name);
     await db.open();
 
-    // v18 backfills the Phase 2A expense columns with defaults on migration.
-    expect(await db.expenses.get("expense-1")).toEqual({ id: "expense-1", amountMinor: 12345n, exchangeRateToBase: null, categoryId: null, date: "" });
-    expect(await db.expenseShares.get("share-1")).toEqual({ id: "share-1", shareAmountMinor: 4567n, splitType: "equal" });
-    expect(await db.expenseSettlements.get("settlement-1")).toEqual({ id: "settlement-1", amountMinor: 1000n });
+    // v18 backfills the Phase 2A expense columns with defaults on migration,
+    // and v31 renames the free-form category to the typed category/subcategory.
+    expect(await db.expenses.get("expense-1")).toEqual({ id: "expense-1", amountMinor: 12345n, exchangeRateToBase: null, category: null, subcategory: null, date: "" });
+    expect(await db.expenseShares.get("share-1")).toEqual({ id: "share-1", shareAmountMinor: 4567n, splitType: "equal", paidBy: "", settlementStatus: "pending", settledAt: null });
+    expect(await db.expenseSettlements.get("settlement-1")).toEqual({ id: "settlement-1", amountMinor: 1000n, status: "pending", settledAt: null });
     expect((await db.outboxMutations.get("mutation-1"))?.payload).toEqual({ id: "expense-1", amountMinor: 12345n });
     db.close();
   });

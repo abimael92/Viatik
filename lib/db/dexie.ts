@@ -1,6 +1,6 @@
 import Dexie, { type EntityTable } from "dexie";
 
-import type { Activity, Contact, DailyBudgetOverride, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler, UserWallet } from "@/features/domain/entities";
+import type { Activity, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripBudget, TripInvitation, TripMember, TripTraveler, UserWallet } from "@/features/domain/entities";
 import type { TripMedia } from "@/features/domain/entities-media";
 import { MAX_MINOR_UNITS } from "@/features/domain/money";
 import type { VaultEntry, VaultKeyset } from "@/features/vault/domain/vault-types";
@@ -59,7 +59,8 @@ export class ViatikDatabase extends Dexie {
   vaultEntries!: EntityTable<VaultEntry, "id">;
   tripWeatherForecasts!: EntityTable<TripWeatherForecast, "id">;
   userWallets!: EntityTable<UserWallet, "id">;
-  dailyBudgetOverrides!: EntityTable<DailyBudgetOverride, "id">;
+  /** Local-only unified trip budget (not synced via the outbox). */
+  tripBudgets!: EntityTable<TripBudget, "id">;
   /** Local-only mirror of the signed-in user's own profile (not synced). */
   profiles!: EntityTable<LocalProfile, "id">;
   /** Local-only dropped map pins (not synced — device-local annotations). */
@@ -342,6 +343,69 @@ export class ViatikDatabase extends Dexie {
 
     this.version(30).stores({
       journalDayEntries: "id, tripId, dayDate, [tripId+dayDate], updatedAt",
+    });
+
+    // v31: unified money tracker. Consolidates the scattered per-trip budget
+    // fields (`Trip.totalBudgetMinor` + the per-day `dailyBudgetOverrides`
+    // store) into a single `tripBudgets` table (total limit + optional daily
+    // target + per-category allocations), swaps the free-form `categoryId` on
+    // expenses for typed `category`/`subcategory` keys, and adds explicit
+    // settlement tracking (status + settledAt) to expense shares & settlements.
+    this.version(31).stores({
+      dailyBudgetOverrides: null,
+      tripBudgets: "id, tripId, updatedAt, deletedAt",
+      expenses: "id, tripId, activityId, date, category, [tripId+date], updatedAt, deletedAt",
+      expenseShares: "id, expenseId, userId, splitType, settlementStatus, [expenseId+userId]",
+      expenseSettlements: "id, tripId, fromUserId, toUserId, status, updatedAt, deletedAt",
+    }).upgrade(async (transaction) => {
+      const now = new Date().toISOString();
+
+      // Fold each trip's old `totalBudgetMinor` into a `TripBudget`, then drop
+      // the legacy column. Per-day overrides have no direct analogue in the
+      // unified model (they become the single optional daily target), so the
+      // `dailyBudgetOverrides` table is removed as part of the consolidation.
+      const tripRows = await transaction.table<Record<string, unknown>, string>("trips").toArray();
+      const budgets: Array<Record<string, unknown>> = [];
+      for (const row of tripRows) {
+        const raw = row.totalBudgetMinor;
+        let totalBudgetMinor = 0n;
+        if (raw != null) {
+          if (typeof raw === "bigint" && raw >= 0n) totalBudgetMinor = raw;
+          else if (typeof raw === "number" && Number.isSafeInteger(raw) && raw >= 0) totalBudgetMinor = BigInt(raw);
+        }
+        delete row.totalBudgetMinor;
+        budgets.push({
+          id: crypto.randomUUID(),
+          tripId: String(row.id),
+          totalBudgetMinor,
+          dailyTargetMinor: null,
+          categoryAllocations: [],
+          createdBy: String(row.ownerId ?? ""),
+          createdAt: now,
+          updatedAt: now,
+          deletedAt: null,
+        });
+      }
+      if (tripRows.length) await transaction.table<Record<string, unknown>, string>("trips").bulkPut(tripRows);
+      if (budgets.length) await transaction.table<Record<string, unknown>, string>("tripBudgets").bulkPut(budgets);
+
+      // Typed spending categories: legacy free-form category_id strings (e.g.
+      // "Meals") don't map cleanly onto the typed set, so they default to null
+      // and can be re-classified from the UI.
+      await transaction.table("expenses").toCollection().modify((expense: Record<string, unknown>) => {
+        if (expense.category === undefined) expense.category = null;
+        if (expense.subcategory === undefined) expense.subcategory = null;
+        if ("categoryId" in expense) delete expense.categoryId;
+      });
+      await transaction.table("expenseShares").toCollection().modify((share: Record<string, unknown>) => {
+        if (share.paidBy === undefined) share.paidBy = "";
+        if (share.settlementStatus === undefined) share.settlementStatus = "pending";
+        if (share.settledAt === undefined) share.settledAt = null;
+      });
+      await transaction.table("expenseSettlements").toCollection().modify((settlement: Record<string, unknown>) => {
+        if (settlement.status === undefined) settlement.status = "pending";
+        if (settlement.settledAt === undefined) settlement.settledAt = null;
+      });
     });
   }
 }
