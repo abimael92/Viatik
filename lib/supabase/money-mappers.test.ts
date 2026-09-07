@@ -20,7 +20,8 @@ describe("money mappers", () => {
       exchangeRateToBase: null,
       paidBy: "user-1",
       splitType: "equal",
-      categoryId: null,
+      category: null,
+      subcategory: null,
       date: "2026-01-01",
       createdBy: "user-1",
       ...timestamps,
@@ -38,14 +39,14 @@ describe("money mappers", () => {
 
   it("rejects values outside the current remote column capacity", () => {
     const expense = {
-      id: "expense-1", tripId: "trip-1", activityId: null, description: "Too large", amountMinor: 10_000_000_000n, currency: "USD", exchangeRateToBase: null, paidBy: "user-1", splitType: "equal" as const, categoryId: null, date: "2026-01-01", createdBy: "user-1", ...timestamps, deletedAt: null,
+      id: "expense-1", tripId: "trip-1", activityId: null, description: "Too large", amountMinor: 10_000_000_000n, currency: "USD", exchangeRateToBase: null, paidBy: "user-1", splitType: "equal" as const, category: null, subcategory: null, date: "2026-01-01", createdBy: "user-1", ...timestamps, deletedAt: null,
     };
     expect(() => expenseToRow(expense)).toThrow("Invalid remote amount");
   });
 
   it("round-trips share and settlement minor units", () => {
-    const share: ExpenseShare = { id: "share-1", expenseId: "expense-1", userId: "user-1", shareAmountMinor: 5001n, sharePercentage: 50, splitType: "equal", ...timestamps };
-    const settlement: ExpenseSettlement = { id: "settlement-1", tripId: "trip-1", fromUserId: "user-1", toUserId: "user-2", amountMinor: 5001n, currency: "USD", createdBy: "user-1", ...timestamps, deletedAt: null };
+    const share: ExpenseShare = { id: "share-1", expenseId: "expense-1", paidBy: "", userId: "user-1", shareAmountMinor: 5001n, sharePercentage: 50, splitType: "equal", settlementStatus: "pending", settledAt: null, ...timestamps };
+    const settlement: ExpenseSettlement = { id: "settlement-1", tripId: "trip-1", fromUserId: "user-1", toUserId: "user-2", amountMinor: 5001n, currency: "USD", status: "pending", settledAt: null, createdBy: "user-1", ...timestamps, deletedAt: null };
 
     expect(expenseShareToRow(share).share_amount).toBe("5001");
     expect(rowToExpenseShare(expenseShareToRow(share))).toEqual(share);
