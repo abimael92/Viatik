@@ -58,9 +58,14 @@ export function DestinationField({
     setSuggestions([]);
     if (onPlaceSelect) {
       setPendingPlaceId(suggestion.placeId);
-      const details = await getPlaceDetails(suggestion.placeId, suggestion.label);
-      if (details) onPlaceSelect(details);
-      setPendingPlaceId(null);
+      try {
+        const details = await getPlaceDetails(suggestion.placeId, suggestion.label);
+        if (details) onPlaceSelect(details);
+      } finally {
+        // Always re-enable the input, even if the details lookup throws, so the
+        // user is never stuck with a disabled field.
+        setPendingPlaceId(null);
+      }
     }
   }
 
