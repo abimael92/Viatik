@@ -19,11 +19,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { activityRepository } from "@/features/activities/data/dexie-activity-repository";
 import { collaborationRepository } from "@/features/collaboration/data/dexie-collaboration-repository";
-import type { Activity, DailyBudgetOverride, Expense, ExpenseShare, Trip, TripMember, UserWallet } from "@/features/domain/entities";
+import type { Activity, Expense, ExpenseShare, Trip, TripBudget, TripMember, UserWallet } from "@/features/domain/entities";
 import { decimalFromMinorUnits, formatMinorUnits, getCurrencyExponent, parseMinorUnits, type MinorUnits } from "@/features/domain/money";
 import { expenseRepository } from "@/features/expenses/data/dexie-expense-repository";
-import { CurrencyConverterView } from "@/features/finance/components/currency-converter-view";
-import { dailyBudgetOverrideRepository, userWalletRepository } from "@/features/finance/data/dexie-finance-repository";
+import { tripBudgetRepository, userWalletRepository } from "@/features/finance/data/dexie-finance-repository";
 import {
   getDailyPacing,
   getGroupTotalSpent,
@@ -50,19 +49,19 @@ export function FinanceDashboard({
   days: string[];
   canEdit: boolean;
 }) {
-  const [view, setView] = useState<"personal" | "group" | "converter">("personal");
+  const [view, setView] = useState<"personal" | "group">("personal");
   const [expenses, setExpenses] = useState<Expense[] | null>(null);
   const [sharesByExpense, setSharesByExpense] = useState<Record<string, ExpenseShare[]>>({});
   const [activities, setActivities] = useState<Activity[]>([]);
   const [members, setMembers] = useState<TripMember[]>([]);
   const [wallets, setWallets] = useState<UserWallet[]>([]);
-  const [overrides, setOverrides] = useState<DailyBudgetOverride[]>([]);
+  const [budget, setBudget] = useState<TripBudget | undefined>(undefined);
 
   useEffect(() => expenseRepository.watchByTrip(tripId, setExpenses), [tripId]);
   useEffect(() => activityRepository.watchByTrip(tripId, setActivities), [tripId]);
   useEffect(() => collaborationRepository.watchMembers(tripId, setMembers), [tripId]);
   useEffect(() => userWalletRepository.watchByTrip(tripId, setWallets), [tripId]);
-  useEffect(() => dailyBudgetOverrideRepository.watchByTrip(tripId, setOverrides), [tripId]);
+  useEffect(() => tripBudgetRepository.watchByTrip(tripId, setBudget), [tripId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -98,7 +97,9 @@ export function FinanceDashboard({
   const baseCurrency = trip.baseCurrency;
   const today = new Date().toISOString().slice(0, 10);
   const dayCount = days.length || 1;
-  const dayBudget = trip.totalBudgetMinor != null ? trip.totalBudgetMinor / BigInt(dayCount) : 0n;
+  // The unified budget's optional daily target takes precedence over the total
+  // derived per-day pace (total ÷ trip days).
+  const dayBudget = budget?.dailyTargetMinor ?? (budget?.totalBudgetMinor != null ? budget.totalBudgetMinor / BigInt(dayCount) : 0n);
   const memberCount = members.length || 1;
 
   const groupTotal = useMemo(() => getGroupTotalSpent(aggregateExpenses, baseCurrency), [aggregateExpenses, baseCurrency]);
@@ -110,12 +111,12 @@ export function FinanceDashboard({
   const trueLeftover = wallet ? getTrueLeftover(wallet, personalSpent, personalPlanned) : null;
 
   const pacing = useMemo(
-    () => days.map((date) => getDailyPacing(date, aggregateExpenses, dayBudget, overrides.find((o) => o.date === date), baseCurrency)),
-    [days, aggregateExpenses, dayBudget, overrides, baseCurrency]
+    () => days.map((date) => getDailyPacing(date, aggregateExpenses, dayBudget, null, baseCurrency)),
+    [days, aggregateExpenses, dayBudget, baseCurrency]
   );
 
   const spentDays = pacing.filter((p) => p.spent > 0n).length;
-  const totalBudget = trip.totalBudgetMinor;
+  const totalBudget = budget?.totalBudgetMinor ?? null;
 
   return (
     <section className="space-y-6" aria-labelledby="finance-heading">
@@ -125,7 +126,7 @@ export function FinanceDashboard({
           <p className="text-muted-foreground">Private wallet, group spending, and daily pacing.</p>
         </div>
         <div className="flex rounded-full border border-border bg-muted p-1" role="tablist" aria-label="Finance view">
-          {(["personal", "group", "converter"] as const).map((key) => (
+          {(["personal", "group"] as const).map((key) => (
             <button
               key={key}
               role="tab"
@@ -136,15 +137,13 @@ export function FinanceDashboard({
                 view === key ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               )}
             >
-              {key === "personal" ? "My Finances" : key === "group" ? "Group Finances" : "Converter"}
+              {key === "personal" ? "My Finances" : "Group Finances"}
             </button>
           ))}
         </div>
       </div>
 
-      {view === "converter" ? (
-        <CurrencyConverterView trip={trip} />
-      ) : view === "personal" ? (
+      {view === "personal" ? (
         <PersonalView
           tripId={tripId}
           userId={userId}
@@ -163,11 +162,8 @@ export function FinanceDashboard({
           plannedTotal={plannedTotal}
           totalBudget={totalBudget}
           pacing={pacing}
-          overrides={overrides}
           spentDays={spentDays}
           tripDays={days.length}
-          tripId={tripId}
-          canEdit={canEdit}
         />
       )}
 
@@ -228,6 +224,15 @@ function PersonalView({
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="rounded-2xl border bg-card p-4 text-sm text-muted-foreground sm:col-span-2 xl:col-span-4">
+        <p className="font-semibold text-foreground">What you see here</p>
+        <p className="mt-1">
+          <span className="font-medium text-foreground">Starting balance</span> is the cash you set aside for this trip.{" "}
+          <span className="font-medium text-foreground">Actuals (settled)</span> is your share of expenses already recorded.{" "}
+          <span className="font-medium text-foreground">Planned (estimates)</span> is your equal share of upcoming itinerary costs.{" "}
+          <span className="font-medium text-foreground">True Leftover</span> = starting balance − actuals − planned — the honest amount you can still spend.
+        </p>
+      </div>
       <div className="rounded-2xl border bg-card p-5 xl:col-span-2 xl:row-span-2 flex flex-col justify-between">
         <div className="flex items-center justify-between">
           <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground"><PiggyBank className="size-5 text-primary" /> True Leftover</span>
@@ -310,22 +315,16 @@ function GroupView({
   plannedTotal,
   totalBudget,
   pacing,
-  overrides,
   spentDays,
   tripDays,
-  tripId,
-  canEdit,
 }: {
   baseCurrency: string;
   groupTotal: MinorUnits;
   plannedTotal: MinorUnits;
   totalBudget: MinorUnits | null;
   pacing: DailyPacing[];
-  overrides: DailyBudgetOverride[];
   spentDays: number;
   tripDays: number;
-  tripId: string;
-  canEdit: boolean;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -359,27 +358,18 @@ function GroupView({
       <div className="rounded-2xl border bg-card">
         <div className="border-b p-4">
           <h3 className="font-semibold">Daily pacing</h3>
-          <p className="text-sm text-muted-foreground">Tap a day to see its breakdown and set a custom budget.</p>
+          <p className="text-sm text-muted-foreground">Tap a day to see its spent/budget breakdown.</p>
         </div>
         <div className="divide-y">
           {pacing.length === 0 && <div className="p-6 text-center text-sm text-muted-foreground">Set trip dates to see daily pacing.</div>}
           {pacing.map((p) => {
-            const override = overrides.find((o) => o.date === p.date);
             const open = expanded === p.date;
             return (
               <PacingRow
                 key={p.date}
                 pacing={p}
-                override={override}
                 open={open}
-                canEdit={canEdit}
                 onToggle={() => setExpanded(open ? null : p.date)}
-                onSetOverride={async (amount) => {
-                  const parsed = parseMinorUnits(amount, baseCurrency);
-                  if (override) await dailyBudgetOverrideRepository.update(override.id, { customBudgetAmountMinor: parsed });
-                  else await dailyBudgetOverrideRepository.upsert({ id: crypto.randomUUID(), tripId, date: p.date, customBudgetAmountMinor: parsed });
-                }}
-                onClearOverride={override ? () => dailyBudgetOverrideRepository.remove(override.id) : undefined}
               />
             );
           })}
@@ -391,24 +381,13 @@ function GroupView({
 
 function PacingRow({
   pacing,
-  override,
   open,
-  canEdit,
   onToggle,
-  onSetOverride,
-  onClearOverride,
 }: {
   pacing: DailyPacing;
-  override: DailyBudgetOverride | undefined;
   open: boolean;
-  canEdit: boolean;
   onToggle: () => void;
-  onSetOverride: (amount: string) => Promise<void>;
-  onClearOverride: (() => void) | undefined;
 }) {
-  const [overrideInput, setOverrideInput] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-
   const statusStyles: Record<DailyPacing["status"], string> = {
     under: "bg-success/10 text-success",
     over: "bg-destructive/10 text-destructive",
@@ -436,38 +415,6 @@ function PacingRow({
             <MiniStat label="Budget" value={formatMinorUnits(pacing.budget, pacing.currency)} />
             <MiniStat label="Remaining" value={formatMinorUnits(pacing.remaining, pacing.currency)} />
           </div>
-          {canEdit && (
-            <form
-              className="flex items-end gap-2"
-              onSubmit={async (event) => {
-                event.preventDefault();
-                setSaving(true);
-                try {
-                  const value = overrideInput ?? (override ? decimalFromMinorUnits(override.customBudgetAmountMinor, pacing.currency) : "");
-                  await onSetOverride(value);
-                  setOverrideInput(null);
-                } finally {
-                  setSaving(false);
-                }
-              }}
-            >
-              <div className="flex-1 space-y-1">
-                <Label htmlFor={`override-${pacing.date}`}>{override ? "Custom budget" : "Custom budget for this day"}</Label>
-                <Input
-                  id={`override-${pacing.date}`}
-                  name="override"
-                  type="number"
-                  min="0"
-                  step={getCurrencyExponent(pacing.currency) === 0 ? "1" : "0.01"}
-                  value={overrideInput ?? (override ? decimalFromMinorUnits(override.customBudgetAmountMinor, pacing.currency) : "")}
-                  onChange={(event) => setOverrideInput(event.target.value)}
-                  placeholder="Amount"
-                />
-              </div>
-              <Button type="submit" size="sm" disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
-              {onClearOverride && <Button type="button" size="sm" variant="outline" onClick={onClearOverride}>Clear</Button>}
-            </form>
-          )}
         </div>
       )}
     </div>
