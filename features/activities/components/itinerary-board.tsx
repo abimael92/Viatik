@@ -23,6 +23,7 @@ import type { WeatherConflict } from "@/features/weather/domain/weather-conflict
 import { positionBetween } from "@/lib/ordering";
 import { useUiStore } from "@/lib/store/ui-store";
 import { logger } from "@/lib/observability/logger";
+import type { ScoutDndPayload } from "@/features/ai/lib/ai-scout-dnd";
 import { DayColumn } from "@/features/activities/components/day-column";
 import { ActivityCard } from "@/features/activities/components/activity-card";
 
@@ -37,6 +38,8 @@ interface ItineraryBoardProps {
   weatherLoading?: boolean;
   /** Weather conflict per activity id, to badge impacted cards. */
   conflicts?: Record<string, WeatherConflict>;
+  /** Receives a scout suggestion dropped onto a day column. */
+  onDropScout?: (dayDate: string, payload: ScoutDndPayload) => void;
 }
 
 export function ItineraryBoard({
@@ -49,6 +52,7 @@ export function ItineraryBoard({
   warnings,
   weatherLoading,
   conflicts,
+  onDropScout,
 }: ItineraryBoardProps) {
   const db = useDatabase();
   const activities = useLiveQuery(
@@ -198,6 +202,7 @@ export function ItineraryBoard({
             warnings={warnings}
             weatherLoading={weatherLoading}
             conflicts={conflicts}
+            onDropScout={onDropScout}
           />
         ))}
       </div>
