@@ -1,7 +1,8 @@
 "use client";
 
 import { AlertTriangle, LoaderCircle, RefreshCw } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { liveQuery } from "dexie";
 
 import { Badge } from "@/components/ui/badge";
@@ -21,8 +22,18 @@ import { cn } from "@/lib/utils";
 export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
   const sync = useSyncStatus();
   const db = useDatabase();
+  const triggerRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
+  const [triggerRect, setTriggerRect] = useState<DOMRect | null>(null);
   const [queue, setQueue] = useState<OutboxMutation[]>([]);
+
+  // Measure the trigger so the dropdown can be rendered fixed (via a portal)
+  // near it, since the sidebar clips absolutely-positioned children.
+  useEffect(() => {
+    if (!open) return;
+    const el = triggerRef.current;
+    if (el) setTriggerRect(el.getBoundingClientRect());
+  }, [open]);
 
   useEffect(() => {
     const sub = liveQuery(() => db.outboxMutations.toArray()).subscribe({
@@ -89,10 +100,7 @@ export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
   }
 
   return (
-    <div className="relative">
-      {open && (
-        <button type="button" aria-label="Close sync panel" className="fixed inset-0 z-40 cursor-default" onClick={() => setOpen(false)} />
-      )}
+    <div className="relative" ref={triggerRef}>
       <button
         type="button"
         onClick={() => interactive && setOpen((value) => !value)}
@@ -106,10 +114,23 @@ export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
         {renderPill()}
       </button>
 
-      {open && (
+      {/* Portaled to <body> so the overlay + dropdown aren't clipped by the
+          sidebar's overflow-hidden / backdrop-blur. */}
+      {open && createPortal(
+        <button type="button" aria-label="Close sync panel" className="fixed inset-0 z-40 cursor-default" onClick={() => setOpen(false)} />,
+        document.body
+      )}
+      {open && triggerRect && createPortal(
         <div
           role="menu"
-          className="absolute right-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-xl border border-white/10 bg-black/80 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_24px_50px_-12px_rgba(0,0,0,0.6)] backdrop-blur-xl"
+          style={{
+            position: "fixed",
+            top: triggerRect.bottom + 8,
+            left: Math.min(triggerRect.left, Math.max(8, (typeof window !== "undefined" ? window.innerWidth : 1024) - 288 - 8)),
+            zIndex: 50,
+            width: "18rem",
+          }}
+          className="overflow-hidden rounded-xl border border-white/10 bg-black/80 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_24px_50px_-12px_rgba(0,0,0,0.6)] backdrop-blur-xl"
         >
           <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
             <p className="text-[11px] font-bold uppercase tracking-widest text-white/50">Sync queue</p>
@@ -148,7 +169,8 @@ export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
               <RefreshCw className="size-5" /> Retry now
             </Button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
