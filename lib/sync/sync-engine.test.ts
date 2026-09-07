@@ -23,7 +23,7 @@ vi.mock("@/lib/supabase/browser-client", () => ({ getSupabaseBrowserClient: () =
 vi.mock("@/lib/db/dexie", () => ({
   getCurrentDatabase: () => ({
     name: "viatik_user-1",
-    syncConflicts: { add: mocks.conflictAdd },
+    syncConflicts: { add: mocks.conflictAdd, clear: vi.fn().mockResolvedValue(undefined) },
     outboxMutations: { delete: mocks.mutationDelete },
     tripMedia: { where: () => ({ anyOf: () => ({ filter: () => ({ count: vi.fn().mockResolvedValue(0) }) }) }) },
   }),

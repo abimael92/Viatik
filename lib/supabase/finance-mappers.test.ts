@@ -1,12 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import type { DailyBudgetOverride, Expense, ExpenseShare, UserWallet } from "@/features/domain/entities";
+import type { Expense, ExpenseShare, UserWallet } from "@/features/domain/entities";
 import { toBaseMinorUnits } from "@/features/domain/money";
 import {
-  dailyBudgetOverrideToRow,
   expenseShareToRow,
   expenseToRow,
-  rowToDailyBudgetOverride,
   rowToExpense,
   rowToExpenseShare,
   rowToUserWallet,
@@ -38,20 +36,6 @@ describe("finance mappers", () => {
     expect(() => userWalletToRow(wallet)).toThrow("Invalid remote starting_balance");
   });
 
-  it("round-trips a daily budget override", () => {
-    const override: DailyBudgetOverride = {
-      id: "override-1",
-      tripId: "trip-1",
-      date: "2026-09-03",
-      customBudgetAmountMinor: 100000n,
-      ...timestamps,
-    };
-    const row = dailyBudgetOverrideToRow(override);
-    expect(row.custom_budget_amount).toBe("100000");
-    expect(row.date).toBe("2026-09-03");
-    expect(rowToDailyBudgetOverride(row)).toEqual(override);
-  });
-
   it("round-trips an expense with finance metadata and a 'shares' split", () => {
     const expense: Expense = {
       id: "expense-1",
@@ -63,7 +47,8 @@ describe("finance mappers", () => {
       exchangeRateToBase: 0.0067,
       paidBy: "user-1",
       splitType: "shares",
-      categoryId: "meals",
+      category: "food",
+      subcategory: null,
       date: "2026-09-04",
       createdBy: "user-1",
       createdAt: timestamps.createdAt,
@@ -72,7 +57,7 @@ describe("finance mappers", () => {
     };
     const row = expenseToRow(expense);
     expect(row.exchange_rate_to_base).toBe(0.0067);
-    expect(row.category_id).toBe("meals");
+    expect(row.category_id).toBe("food");
     expect(row.expense_date).toBe("2026-09-04");
     expect(row.split_type).toBe("shares");
     expect(rowToExpense(row)).toEqual(expense);
@@ -82,10 +67,13 @@ describe("finance mappers", () => {
     const share: ExpenseShare = {
       id: "share-1",
       expenseId: "expense-1",
+      paidBy: "",
       userId: "user-1",
       shareAmountMinor: 50000n,
       sharePercentage: null,
       splitType: "shares",
+      settlementStatus: "pending",
+      settledAt: null,
       ...timestamps,
     };
     const row = expenseShareToRow(share);
@@ -97,7 +85,7 @@ describe("finance mappers", () => {
     const expense = rowToExpense({ id: "e1", trip_id: "t1", description: "x", amount: "100", currency: "USD", paid_by: "u1", created_at: "2026-09-05T10:00:00.000Z", updated_at: "2026-09-05T10:00:00.000Z" });
     expect(expense.date).toBe("2026-09-05");
     expect(expense.exchangeRateToBase).toBeNull();
-    expect(expense.categoryId).toBeNull();
+    expect(expense.category).toBeNull();
   });
 
   it("converts foreign minor units to base minor units via exchange rate", () => {
