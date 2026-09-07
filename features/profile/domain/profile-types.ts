@@ -18,6 +18,8 @@ export interface LocalProfile {
   emergencyContactPhone: string | null;
   passportIssuingCountry: string | null;
   passportExpiresOn: string | null;
+  /** The user's preferred currency from Settings (used for budgets). */
+  preferredCurrency?: string | null;
   updatedAt: string;
 }
 
