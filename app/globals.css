@@ -20,8 +20,10 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.18 0.02 264);
 
-  /* Primary = Viatik structural blue (active nav, links, icon accents). */
-  --primary: #0ea5e9;
+  /* Primary = Viatik brand magenta (active nav, links, icon accents, and the
+     default button fill). Mirrors the magenta→red CTA gradient's hue so the
+     whole product reads as one brand. */
+  --primary: #a855f7;
   --primary-foreground: #ffffff;
 
   --secondary: oklch(0.7 0.14 180);
@@ -51,8 +53,8 @@
   --side-fg: oklch(0.18 0.02 264);
   --side-muted: oklch(0.45 0.02 264);
   --side-hover: oklch(0.6 0.06 260 / 0.12);
-  --side-active: oklch(0.93 0.04 262);
-  --side-active-fg: #0369a1;
+  --side-active: oklch(0.93 0.05 300);
+  --side-active-fg: #a855f7;
   --side-glow: 0 0 0 1px oklch(0.62 0.18 300 / 0.3), 0 0 18px -4px oklch(0.55 0.2 300 / 0.4);
 
   --radius: 0.75rem;
@@ -69,7 +71,7 @@
   --popover: oklch(0.2 0.015 264);
   --popover-foreground: oklch(0.95 0.005 264);
 
-  --primary: #0ea5e9;
+  --primary: #a855f7;
   --primary-foreground: #ffffff;
 
   --secondary: oklch(0.6 0.12 180);
@@ -148,7 +150,8 @@
    * The V-icon transitions from deep electric blue through magenta to a
    * fiery coral-red particle tip. Reserved usage:
    *   - viatik-blue    structural depth, active sidebars, cool surfaces
-   *   - viatik-magenta focus states, ambient glow, transitions
+   *   - viatik-magenta primary brand color, focus states, ambient glow,
+   *                    transitions (also backs `--primary`)
    *   - viatik-red     the signature particle tip — strictly primary CTAs
    *                    and critical actions
    *   - surface-dark   Raycast/Linear inspired dark productivity canvas
@@ -198,7 +201,7 @@
     --card-foreground: oklch(0.95 0.005 264);
     --popover: oklch(0.2 0.015 264);
     --popover-foreground: oklch(0.95 0.005 264);
-    --primary: #0ea5e9;
+    --primary: #a855f7;
     --primary-foreground: #ffffff;
     --secondary: oklch(0.6 0.12 180);
     --secondary-foreground: oklch(0.95 0.02 180);
