@@ -19,10 +19,11 @@ import { PeoplePanel } from "@/features/collaboration/components/people-panel";
 import { collaborationRepository } from "@/features/collaboration/data/dexie-collaboration-repository";
 import type { Activity, Trip, TripMember } from "@/features/domain/entities";
 import type { TripMedia } from "@/features/domain/entities-media";
-import { ExpensePanel } from "@/features/expenses/components/expense-panel";
-import { SettlementView } from "@/features/expenses/components/settlement-view";
 import { TravelJournalView } from "@/features/journal/components/travel-journal-view";
-import { FinanceDashboard, FinanceSummaryStrip } from "@/features/finance/components/finance-dashboard";
+// import { FinanceSummaryStrip } from "@/features/finance/components/finance-dashboard";
+import { MoneyDashboard } from "@/features/finance/components/money-dashboard";
+// import { FinanceView } from "@/features/finance/components/finance-view";
+import { BudgetSettings } from "@/features/finance/components/budget-settings";
 import { PackingListView } from "@/features/packing/components/packing-list-view";
 import { PollsView } from "@/features/polls/components/polls-view";
 import { ShareModal } from "@/features/sharing/components/share-modal";
@@ -58,8 +59,8 @@ const tabs = ["overview", "itinerary", "map", "money", "photos", "people", "jour
 type Tab = (typeof tabs)[number];
 
 /** Map any tab param (current or legacy/deep-link) onto the current tab + sub-view state. */
-function initWorkspace(initialTab?: string): { tab: Tab; tool: SecondaryTool | null; moneyView: "expenses" | "finance"; journalView: "journal" | "feed" } {
-  const base = { tool: null as SecondaryTool | null, moneyView: "expenses" as const, journalView: "journal" as const };
+function initWorkspace(initialTab?: string): { tab: Tab; tool: SecondaryTool | null; journalView: "journal" | "feed" } {
+  const base = { tool: null as SecondaryTool | null, journalView: "journal" as const };
   if (initialTab && (SECONDARY_TOOLS as readonly string[]).includes(initialTab)) return { ...base, tab: "overview", tool: initialTab as SecondaryTool };
   switch (initialTab) {
     case "overview": return { ...base, tab: "overview" };
@@ -68,8 +69,7 @@ function initWorkspace(initialTab?: string): { tab: Tab; tool: SecondaryTool | n
     case "settings": return { ...base, tab: "settings" };
     case "gallery": case "photos": return { ...base, tab: "photos" };
     case "travelers": case "people": return { ...base, tab: "people" };
-    case "expenses": return { ...base, tab: "money", moneyView: "expenses" };
-    case "finance": return { ...base, tab: "money", moneyView: "finance" };
+    case "expenses": case "finance": return { ...base, tab: "money" };
     case "feed": return { ...base, tab: "journal", journalView: "feed" };
     case "journal": return { ...base, tab: "journal" };
     default: return { ...base, tab: "overview" };
@@ -94,7 +94,6 @@ export function TripWorkspace({
   const [members, setMembers] = useState<TripMember[]>([]);
   const [tab, setTab] = useState<Tab>(init.tab);
   const [overviewTool, setOverviewTool] = useState<SecondaryTool | null>(init.tool);
-  const [moneyView, setMoneyView] = useState<"expenses" | "finance">(init.moneyView);
   const [journalView, setJournalView] = useState<"journal" | "feed">(init.journalView);
   const [activityDialog, setActivityDialog] = useState<ActivityDialogState>(null);
   const [scoutOpen, setScoutOpen] = useState(false);
@@ -149,7 +148,14 @@ export function TripWorkspace({
 
   const weatherWarnings = useMemo(() => (forecast ? deriveWeatherWarnings(forecast.forecast) : []), [forecast]);
 
-  const weatherConflicts = useMemo(() => detectConflicts(activities, forecast?.forecast), [activities, forecast]);
+  // Only flag weather conflicts for activities that actually appear in the
+  // trip's itinerary (within its date range) — otherwise "ghost" activities on
+  // other days would make the banner warn even when the itinerary looks empty.
+  const weatherConflicts = useMemo(() => {
+    if (days.length === 0) return [];
+    const inItinerary = activities.filter((activity) => days.includes(activity.dayDate));
+    return detectConflicts(inItinerary, forecast?.forecast);
+  }, [activities, forecast, days]);
   const conflictsByActivity = useMemo(() => conflictsByActivityId(weatherConflicts), [weatherConflicts]);
 
   useEffect(() => {
@@ -182,7 +188,7 @@ export function TripWorkspace({
     return () => { cancelled = true; };
   }, [trip, userId, canEdit]);
 
-  const handleAddExpense = useCallback(() => { if (canEdit) { setPendingExpense(true); setMoneyView("expenses"); setTab("money"); } }, [canEdit]);
+  const handleAddExpense = useCallback(() => { if (canEdit) { setPendingExpense(true); setTab("money"); } }, [canEdit]);
   const handleAddPhotos = useCallback(() => { if (canEdit) { setPendingPhotos(true); setTab("photos"); } }, [canEdit]);
   // Editing lives inline on the Settings tab (no modal). Opening it from a
   // shortcut bumps `editIntent` so TripDetailsSection remounts in edit mode.
@@ -353,24 +359,19 @@ export function TripWorkspace({
       {tab === "overview" && overviewTool === null && weatherConflicts.length > 0 && (
         <WeatherConflictBanner conflicts={weatherConflicts} onReview={() => setConflictModalOpen(true)} />
       )}
-      {tab === "overview" && overviewTool === null && <Overview trip={trip} userId={userId} activities={activities} mediaCount={media.length} setTab={setTab} setMoneyView={setMoneyView} setJournalView={setJournalView} onOpenTool={setOverviewTool} onAddActivity={() => { if (canEdit) setActivityDialog("new"); }} onAddExpense={handleAddExpense} onAddPhotos={handleAddPhotos} onSetDates={handleSetDates} onAddTransit={() => { if (canEdit) setTransitOpen(true); }} canEdit={canEdit} onError={setError} />}
+      {tab === "overview" && overviewTool === null && <Overview trip={trip} userId={userId} activities={activities} mediaCount={media.length} setTab={setTab} setJournalView={setJournalView} onOpenTool={setOverviewTool} onAddActivity={() => { if (canEdit) setActivityDialog("new"); }} onAddExpense={handleAddExpense} onAddPhotos={handleAddPhotos} onSetDates={handleSetDates} onAddTransit={() => { if (canEdit) setTransitOpen(true); }} canEdit={canEdit} onError={setError} />}
       {tab === "itinerary" && <section className="space-y-5"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><Heading level={2} className="text-2xl font-bold">Itinerary</Heading><p className="text-muted-foreground">See open time, schedule activities, or organize each day.</p></div><div className="flex flex-wrap gap-2"><div className="flex rounded-md border p-0.5"><Button size="sm" variant={itineraryView === "calendar" ? "default" : "ghost"} onClick={() => setItineraryView("calendar")}>Calendar</Button><Button size="sm" variant={itineraryView === "board" ? "default" : "ghost"} onClick={() => setItineraryView("board")}>Board</Button></div>{itineraryView === "board" && <select aria-label="Filter by category" value={category} onChange={(event) => setCategory(event.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm"><option value="all">All categories</option>{Array.from(new Set(activities.map((item) => item.category))).map((item) => <option key={item}>{item}</option>)}</select>}{canEdit && <Button variant="outline" onClick={() => setTransitOpen(true)}><TrainFront className="size-4" />Add transit</Button>}{canEdit && <Button variant="primary" onClick={() => setActivityDialog("new")}><Plus className="size-5" />Activity</Button>}{canEdit && <Button variant="outline" onClick={() => setScoutOpen((open) => !open)} aria-expanded={scoutVisible}><Wand2 className={cn("size-5", scoutVisible ? "text-foreground" : "text-viatik-magenta")} />{scoutVisible ? "Hide Scout" : "Scout Activities"}</Button>}</div></div>{weatherConflicts.length > 0 && <WeatherConflictBanner conflicts={weatherConflicts} onReview={() => setConflictModalOpen(true)} />}<div className="flex items-start gap-4"><div className={cn("min-w-0", scoutVisible ? "flex-1" : "w-full")}>{days.length ? itineraryView === "calendar" ? <WeekCalendar tripId={tripId} days={days} activities={activities} onSelect={openActivity} onCreateActivity={(dayDate, startTime) => setActivityDialog({ draft: { dayDate, startTime } })} forecast={forecast?.forecast} warnings={weatherWarnings} weatherLoading={weatherLoading} conflicts={conflictsByActivity} canEdit={canEdit} /> : <ItineraryBoard tripId={tripId} dayDates={days} category={category} onSelect={openActivity} readOnly={!canEdit} forecast={forecast?.forecast} warnings={weatherWarnings} weatherLoading={weatherLoading} conflicts={conflictsByActivity} onDropScout={handleDropScout} /> : <div className="rounded-2xl border border-dashed p-10 text-center"><Heading level={3} className="text-base font-semibold">{canEdit ? "Add trip dates to build your itinerary" : "Trip dates are not set"}</Heading>{canEdit && <Button variant="link" onClick={handleOpenDetails}>Set dates</Button>}</div>}</div>{scoutVisible && <AiScoutSidebar embedded open onOpenChange={setScoutOpen} trip={trip} tripId={tripId} userId={userId} days={days} activities={activities} canEdit={canEdit} onError={setError} />}</div></section>}
       {tab === "map" && <TripMapView tripId={tripId} userId={userId} trip={trip} canEdit={canEdit} />}
       {tab === "money" && (
-        <div className="space-y-6">
-          <div className="flex w-max rounded-md border p-0.5">
-            <Button size="sm" variant={moneyView === "expenses" ? "default" : "ghost"} onClick={() => setMoneyView("expenses")}>Expenses</Button>
-            <Button size="sm" variant={moneyView === "finance" ? "default" : "ghost"} onClick={() => setMoneyView("finance")}>Finance</Button>
-          </div>
-          {moneyView === "expenses" ? (
-            <div className="space-y-6">
-              <ExpensePanel tripId={tripId} userId={userId} currency={trip.baseCurrency} canEdit={canEdit} autoOpen={pendingExpense} onAutoOpen={() => setPendingExpense(false)} />
-              <SettlementView tripId={tripId} userId={userId} currency={trip.baseCurrency} />
-            </div>
-          ) : (
-            <FinanceDashboard tripId={tripId} userId={userId} trip={trip} days={days} canEdit={canEdit} />
-          )}
-        </div>
+        <MoneyDashboard
+          tripId={tripId}
+          userId={userId}
+          trip={trip}
+          days={days}
+          canEdit={canEdit}
+          autoOpenExpense={pendingExpense}
+          onConsumeAutoOpenExpense={() => setPendingExpense(false)}
+        />
       )}
       {tab === "photos" && <section className="rounded-2xl border bg-card p-5 sm:p-7"><TripGallery tripId={tripId} userId={userId} canEdit={canEdit} autoOpen={pendingPhotos} onAutoOpened={() => setPendingPhotos(false)} /></section>}
       {tab === "people" && <PeoplePanel tripId={tripId} userId={userId} canEdit={canEdit} />}
@@ -387,7 +388,7 @@ export function TripWorkspace({
           )}
         </div>
       )}
-      {tab === "settings" && <section className="space-y-6"><div><Heading level={2} className="text-2xl font-bold">Trip settings</Heading><p className="text-muted-foreground">Manage trip details and access.</p></div><TripDetailsSection key={`${trip.id}-${editIntent}`} trip={trip} userId={userId} canEdit={canEdit} initialEditing={editIntent > 0} />{isOwner && <div className="rounded-2xl border border-destructive/30 bg-card p-5"><Heading level={3} className="text-base font-semibold text-destructive">Delete trip</Heading><p className="mt-1 text-sm text-muted-foreground">The trip is soft-deleted locally and queued for sync.</p><Button className="mt-4" variant="destructive" onClick={async () => { if (window.confirm(`Delete ${trip.name}? This can’t be undone from the app.`)) { await tripRepository.remove(trip.id); router.replace("/trips"); } }}><Trash2 className="size-5" />Delete trip</Button></div>}</section>}
+      {tab === "settings" && <section className="space-y-6"><div><Heading level={2} className="text-2xl font-bold">Trip settings</Heading><p className="text-muted-foreground">Manage trip details, budget, and access.</p></div><TripDetailsSection key={`${trip.id}-${editIntent}`} trip={trip} userId={userId} canEdit={canEdit} initialEditing={editIntent > 0} /><BudgetSettings trip={trip} userId={userId} canEdit={canEdit} />{isOwner && <div className="rounded-2xl border border-destructive/30 bg-card p-5"><Heading level={3} className="text-base font-semibold text-destructive">Delete trip</Heading><p className="mt-1 text-sm text-muted-foreground">The trip is soft-deleted locally and queued for sync.</p><Button className="mt-4" variant="destructive" onClick={async () => { if (window.confirm(`Delete ${trip.name}? This can’t be undone from the app.`)) { await tripRepository.remove(trip.id); router.replace("/trips"); } }}><Trash2 className="size-5" />Delete trip</Button></div>}</section>}
       <ActivityDialog open={activityDialog !== null} state={activityDialog} trip={trip} userId={userId} activities={activities} onClose={() => setActivityDialog(null)} onError={setError} onDelete={handleDeleteActivity} />
 
       <WeatherConflictModal
@@ -418,7 +419,7 @@ export function TripWorkspace({
   );
 }
 
-function Overview({ trip, userId, activities, mediaCount, setTab, setMoneyView, setJournalView, onOpenTool, onAddActivity, onAddExpense, onAddPhotos, onSetDates, onAddTransit, canEdit, onError }: { trip: Trip; userId: string; activities: Activity[]; mediaCount: number; setTab: (tab: Tab) => void; setMoneyView: (view: "expenses" | "finance") => void; setJournalView: (view: "journal" | "feed") => void; onOpenTool: (tool: SecondaryTool) => void; onAddActivity: () => void; onAddExpense: () => void; onAddPhotos: () => void; onSetDates: () => void; onAddTransit: () => void; canEdit: boolean; onError: (message: string) => void }) {
+function Overview({ trip, userId, activities, mediaCount, setTab, setJournalView, onOpenTool, onAddActivity, onAddExpense, onAddPhotos, onSetDates, onAddTransit, canEdit, onError }: { trip: Trip; userId: string; activities: Activity[]; mediaCount: number; setTab: (tab: Tab) => void; setJournalView: (view: "journal" | "feed") => void; onOpenTool: (tool: SecondaryTool) => void; onAddActivity: () => void; onAddExpense: () => void; onAddPhotos: () => void; onSetDates: () => void; onAddTransit: () => void; canEdit: boolean; onError: (message: string) => void }) {
   const { segments } = useTransitSegments(trip.id);
   const transit = segments.filter((segment) => segment.deletedAt === null);
   const [scoutOpen, setScoutOpen] = useState(false);
@@ -450,7 +451,7 @@ function Overview({ trip, userId, activities, mediaCount, setTab, setMoneyView, 
       )}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Stat icon={CalendarDays} label="Activities" value={String(activities.length)} onClick={() => setTab("itinerary")} />
-        <Stat icon={CircleDollarSign} label="Currency" value={trip.baseCurrency} onClick={() => { setMoneyView("finance"); setTab("money"); }} />
+        <Stat icon={CircleDollarSign} label="Currency" value={trip.baseCurrency} onClick={() => setTab("money")} />
         <Stat icon={Users} label="Travelers" value={`${trip.adultCount + trip.childCount} total`} onClick={() => setTab("people")} />
         <Stat icon={Camera} label="Gallery" value={`${mediaCount} photo${mediaCount === 1 ? "" : "s"}`} onClick={() => setTab("photos")} />
       </div>
@@ -463,7 +464,8 @@ function Overview({ trip, userId, activities, mediaCount, setTab, setMoneyView, 
           <ToolCard icon={Lock} title="Secure vault" description="Encrypted documents" onClick={() => onOpenTool("vault")} />
         </div>
       </section>
-      <FinanceSummaryStrip tripId={trip.id} userId={userId} baseCurrency={trip.baseCurrency} />
+      {/* FinanceSummaryStrip temporarily hidden (Group spent / True leftover / Planned). */}
+      {/* <FinanceSummaryStrip tripId={trip.id} userId={userId} baseCurrency={trip.baseCurrency} /> */}
       {transit.length > 0 && (
         <section className="rounded-2xl border bg-card p-5 sm:p-6" aria-labelledby="overview-transit-heading">
           <div className="flex items-center justify-between gap-3">
