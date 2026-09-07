@@ -30,7 +30,7 @@ export async function loadTripWeatherForecast(
   const existing = await weatherRepository.getForecast(trip.id);
   const expectedRevision =
     trip.latitude != null && trip.longitude != null
-      ? buildLocationRevision(trip.latitude, trip.longitude, trip.timeZone)
+      ? buildLocationRevision(trip.latitude, trip.longitude, trip.timeZone, trip.startDate, trip.endDate)
       : null;
 
   if (!expectedRevision) {

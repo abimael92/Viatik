@@ -14,14 +14,22 @@ function getDb(): ViatikDatabase {
 
 const DEFAULT_MAX_AGE_HOURS = 1;
 
-/** Build a revision key from the inputs that affect the forecast result. */
+/**
+ * Build a revision key from the inputs that affect the forecast result. The
+ * date range is included so that changing a trip's dates invalidates any cached
+ * forecast for the old dates (otherwise the strip would show "No data").
+ */
 export function buildLocationRevision(
   latitude: number,
   longitude: number,
-  timeZone: string | null
+  timeZone: string | null,
+  startDate?: string | null,
+  endDate?: string | null
 ): string {
   const coords = `${latitude.toFixed(4)},${longitude.toFixed(4)}`;
-  return timeZone ? `${coords}:${timeZone}` : coords;
+  const base = timeZone ? `${coords}:${timeZone}` : coords;
+  if (!startDate || !endDate) return base;
+  return `${base}:${startDate}:${endDate}`;
 }
 
 export class DexieWeatherRepository implements WeatherForecastRepository {

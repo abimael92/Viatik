@@ -37,7 +37,6 @@ function makeTrip(overrides: Partial<Trip> = {}): Trip {
     adultCount: 2,
     childCount: 0,
     baseCurrency: "USD",
-    totalBudgetMinor: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     deletedAt: null,
@@ -50,7 +49,7 @@ function makeForecast(tripId = TRIP_ID): TripWeatherForecast {
   return {
     id: tripId,
     tripId,
-    locationRevision: `${(35.6762).toFixed(4)},${(139.6503).toFixed(4)}:Asia/Tokyo`,
+    locationRevision: `${(35.6762).toFixed(4)},${(139.6503).toFixed(4)}:Asia/Tokyo:2026-09-01:2026-09-02`,
     fetchedAt: now,
     createdBy: TEST_USER,
     createdAt: now,
@@ -97,11 +96,11 @@ describe("loadTripWeatherForecast", () => {
   it("fetches a new forecast when the location revision changed", async () => {
     const trip = makeTrip({ latitude: 35.7 });
     const stale = makeForecast();
-    stale.locationRevision = `${(35.6762).toFixed(4)},${(139.6503).toFixed(4)}:Asia/Tokyo`;
+    stale.locationRevision = `${(35.6762).toFixed(4)},${(139.6503).toFixed(4)}:Asia/Tokyo:2026-09-01:2026-09-02`;
     await weatherRepository.saveForecast(stale, TEST_USER, true);
 
     const fresh = makeForecast();
-    fresh.locationRevision = `${(35.7).toFixed(4)},${(139.6503).toFixed(4)}:Asia/Tokyo`;
+    fresh.locationRevision = `${(35.7).toFixed(4)},${(139.6503).toFixed(4)}:Asia/Tokyo:2026-09-01:2026-09-02`;
     vi.mocked(fetchTripWeatherForecast).mockResolvedValue({
       success: true,
       forecast: fresh,
