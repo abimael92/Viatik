@@ -3,6 +3,14 @@
  * dependency on Open-Meteo, Dexie, or Supabase row types.
  */
 
+export interface HourlyForecast {
+  times: string[];
+  temperature2m: number[];
+  precipitationProbability: number[];
+  weatherCode: number[];
+  windSpeed10m: number[];
+}
+
 export interface DailyForecast {
   dates: string[]; // ISO yyyy-mm-dd
   temperature2mMax: number[]; // °C
@@ -10,6 +18,7 @@ export interface DailyForecast {
   precipitationSum: number[]; // mm
   weatherCode: number[]; // WMO Weather interpretation codes (WW)
   windSpeed10mMax: number[]; // km/h
+  hourly?: HourlyForecast;
 }
 
 export interface TripWeatherForecast {
