@@ -166,7 +166,7 @@ export function AppShell({
         <div className="relative mt-8">
           <Button
             variant="ghost"
-            className="w-full justify-between rounded-xl border border-side-border bg-side-hover px-3 py-2 text-side-muted hover:bg-side-hover hover:text-side-fg"
+            className="w-full justify-between rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-destructive hover:border-destructive/60 hover:bg-destructive/20 hover:text-destructive"
             onClick={() => signOut()}
             disabled={pending}
           >
