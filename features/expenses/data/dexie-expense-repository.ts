@@ -53,7 +53,8 @@ export class DexieExpenseRepository implements ExpenseRepository {
         exchangeRateToBase: input.exchangeRateToBase ?? null,
         paidBy: input.paidBy,
         splitType: input.splitType,
-        categoryId: input.categoryId ?? null,
+        category: input.category ?? null,
+        subcategory: input.subcategory ?? null,
         date: input.date ?? now.slice(0, 10),
         createdBy: input.createdBy,
         createdAt: now,
@@ -67,10 +68,13 @@ export class DexieExpenseRepository implements ExpenseRepository {
       const shares: ExpenseShare[] = input.shares.map((share) => ({
         id: crypto.randomUUID(),
         expenseId: expense.id,
+        paidBy: expense.paidBy,
         userId: share.userId,
         shareAmountMinor: share.shareAmountMinor,
         sharePercentage: share.sharePercentage,
         splitType: share.splitType ?? expense.splitType,
+        settlementStatus: "pending",
+        settledAt: null,
         createdAt: now,
         updatedAt: now,
       }));
@@ -126,10 +130,13 @@ export class DexieExpenseRepository implements ExpenseRepository {
         return {
           id: previous?.id ?? crypto.randomUUID(),
           expenseId,
+          paidBy: expense.paidBy,
           userId: share.userId,
           shareAmountMinor: share.shareAmountMinor,
           sharePercentage: share.sharePercentage,
           splitType: share.splitType ?? expense.splitType,
+          settlementStatus: previous?.settlementStatus ?? "pending",
+          settledAt: previous?.settledAt ?? null,
           createdAt: previous?.createdAt ?? now,
           updatedAt: now,
         };
@@ -144,6 +151,21 @@ export class DexieExpenseRepository implements ExpenseRepository {
           { tx: ctx, baseUpdatedAt: existingByUser.get(share.userId)?.updatedAt ?? null }
         );
       }
+    });
+  }
+
+  async settleShare(shareId: string): Promise<void> {
+    const db = getDb();
+    return TransactionContext.runInTransaction([db.expenseShares], async (ctx) => {
+      const share = await ctx.table<ExpenseShare>("expenseShares").get(shareId);
+      if (!share || share.settlementStatus === "settled") return;
+      const now = new Date().toISOString();
+      await ctx.table<ExpenseShare>("expenseShares").put({
+        ...share,
+        settlementStatus: "settled",
+        settledAt: now,
+        updatedAt: now,
+      });
     });
   }
 
