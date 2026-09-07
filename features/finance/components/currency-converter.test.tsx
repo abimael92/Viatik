@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Trip } from "@/features/domain/entities";
 import { currencyRateRepository } from "@/features/finance/data/dexie-currency-rate-repository";
-import { CurrencyConverterView } from "@/features/finance/components/currency-converter-view";
+import { CurrencyConverter } from "@/features/finance/components/currency-converter";
 
 if (typeof window !== "undefined") {
   window.matchMedia ??= () => ({ matches: false, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false }) as unknown as MediaQueryList;
@@ -34,7 +34,6 @@ const trip: Trip = {
   adultCount: 2,
   childCount: 0,
   baseCurrency: "USD",
-  totalBudgetMinor: null,
   createdAt: "2026-01-01T00:00:00Z",
   updatedAt: "2026-01-01T00:00:00Z",
   deletedAt: null,
@@ -42,30 +41,14 @@ const trip: Trip = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  // No cached rate → the component falls back to the built-in offline default.
   vi.mocked(currencyRateRepository.getRate).mockResolvedValue(undefined);
 });
 
 afterEach(() => cleanup());
 
-describe("CurrencyConverterView", () => {
-  it("shows destination-specific etiquette", async () => {
-    render(<CurrencyConverterView trip={trip} />);
-
-    expect(await screen.findByText(/Tipping etiquette — Europe/)).toBeTruthy();
-    expect(screen.getByText(/Expected: 5–10%/)).toBeTruthy();
-  });
-
-  it("defaults the tip selector to the destination norm", async () => {
-    render(<CurrencyConverterView trip={trip} />);
-
-    await screen.findByText(/Tipping etiquette — Europe/);
-    const tipInput = screen.getByLabelText("Custom tip percent") as HTMLInputElement;
-    expect(tipInput.value).toBe("5"); // Europe default.
-  });
-
+describe("CurrencyConverter", () => {
   it("converts an amount using the offline default rate", async () => {
-    render(<CurrencyConverterView trip={trip} />);
+    render(<CurrencyConverter trip={trip} />);
 
     // 1 USD = 0.92 EUR via the built-in default table.
     await screen.findByDisplayValue("0.92");
@@ -77,7 +60,7 @@ describe("CurrencyConverterView", () => {
   });
 
   it("persists a custom rate when saved", async () => {
-    render(<CurrencyConverterView trip={trip} />);
+    render(<CurrencyConverter trip={trip} />);
 
     await screen.findByDisplayValue("0.92");
     const rateInput = screen.getByLabelText(/^Rate/);
