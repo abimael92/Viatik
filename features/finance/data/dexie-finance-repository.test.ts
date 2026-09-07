@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { deleteDatabase, getDatabase, setCurrentDatabase, type ViatikDatabase } from "@/lib/db/dexie";
 import { configureSyncUser } from "@/lib/sync/sync-context";
 import { removeMutation } from "@/lib/sync/outbox";
-import { dailyBudgetOverrideRepository, userWalletRepository } from "@/features/finance/data/dexie-finance-repository";
+import { tripBudgetRepository, userWalletRepository } from "@/features/finance/data/dexie-finance-repository";
 
 const TEST_USER = "finance-repo-test-user";
 const TRIP_ID = "00000000-0000-0000-0000-000000000002";
@@ -13,7 +13,7 @@ const TRIP_ID = "00000000-0000-0000-0000-000000000002";
 let db: ViatikDatabase;
 
 async function resetDatabase(): Promise<void> {
-  for (const table of [db.userWallets, db.dailyBudgetOverrides, db.outboxMutations]) {
+  for (const table of [db.userWallets, db.tripBudgets, db.outboxMutations]) {
     await table.clear();
   }
 }
@@ -80,47 +80,64 @@ describe("DexieUserWalletRepository", () => {
   });
 });
 
-describe("DexieDailyBudgetOverrideRepository", () => {
-  it("creates and reads an override by trip and date", async () => {
-    const override = await dailyBudgetOverrideRepository.upsert({
-      id: "override-1",
+describe("DexieTripBudgetRepository", () => {
+  it("creates and reads the unified budget for a trip (local-only, no outbox)", async () => {
+    const budget = await tripBudgetRepository.upsert({
+      id: "budget-1",
       tripId: TRIP_ID,
-      date: "2026-09-03",
-      customBudgetAmountMinor: 75000n,
+      totalBudgetMinor: 1000000n,
+      createdBy: TEST_USER,
     });
 
-    expect(override.date).toBe("2026-09-03");
-    expect(await dailyBudgetOverrideRepository.getByDate(TRIP_ID, "2026-09-03")).toEqual(override);
+    expect(budget.tripId).toBe(TRIP_ID);
+    expect(budget.totalBudgetMinor).toBe(1000000n);
+    expect(budget.dailyTargetMinor).toBeNull();
+    expect(budget.categoryAllocations).toEqual([]);
+    expect(await tripBudgetRepository.getByTrip(TRIP_ID)).toEqual(budget);
 
-    const pending = await db.outboxMutations.where("entityType").equals("dailyBudgetOverride").toArray();
-    expect(pending).toHaveLength(1);
-    expect(pending[0].operation).toBe("insert");
+    // The unified budget is local-only, so no outbox mutation is enqueued.
+    expect(await db.outboxMutations.count()).toBe(0);
   });
 
-  it("updates an existing override and enqueues an update mutation", async () => {
-    await dailyBudgetOverrideRepository.upsert({ id: "override-1", tripId: TRIP_ID, date: "2026-09-03", customBudgetAmountMinor: 75000n });
-    const inserted = await db.outboxMutations.where("entityType").equals("dailyBudgetOverride").first();
-    await removeMutation(inserted!.id);
+  it("upserts in place for an existing trip and stores category allocations", async () => {
+    await tripBudgetRepository.upsert({
+      id: "budget-1",
+      tripId: TRIP_ID,
+      totalBudgetMinor: 1000000n,
+      createdBy: TEST_USER,
+    });
 
-    const updated = await dailyBudgetOverrideRepository.upsert({ id: "ignored-id", tripId: TRIP_ID, date: "2026-09-03", customBudgetAmountMinor: 90000n });
+    const updated = await tripBudgetRepository.upsert({
+      id: "ignored-id",
+      tripId: TRIP_ID,
+      totalBudgetMinor: 1500000n,
+      dailyTargetMinor: 250000n,
+      categoryAllocations: [{ category: "food", allocationMinor: 300000n }],
+      createdBy: TEST_USER,
+    });
 
-    expect(updated.id).toBe("override-1");
-    expect(updated.customBudgetAmountMinor).toBe(90000n);
-    const pending = await db.outboxMutations.where("entityType").equals("dailyBudgetOverride").toArray();
-    expect(pending).toHaveLength(1);
-    expect(pending[0].operation).toBe("update");
+    expect(updated.id).toBe("budget-1");
+    expect(updated.totalBudgetMinor).toBe(1500000n);
+    expect(updated.dailyTargetMinor).toBe(250000n);
+    expect(updated.categoryAllocations).toHaveLength(1);
+    expect(updated.categoryAllocations[0].category).toBe("food");
+    expect(updated.categoryAllocations[0].allocationMinor).toBe(300000n);
+    expect(await db.tripBudgets.where("tripId").equals(TRIP_ID).count()).toBe(1);
   });
 
-  it("removes an override and enqueues a delete mutation", async () => {
-    await dailyBudgetOverrideRepository.upsert({ id: "override-1", tripId: TRIP_ID, date: "2026-09-03", customBudgetAmountMinor: 75000n });
-    const inserted = await db.outboxMutations.where("entityType").equals("dailyBudgetOverride").first();
-    await removeMutation(inserted!.id);
+  it("patches a single field and removes the budget", async () => {
+    const created = await tripBudgetRepository.upsert({
+      id: "budget-1",
+      tripId: TRIP_ID,
+      totalBudgetMinor: 1000000n,
+      createdBy: TEST_USER,
+    });
 
-    await dailyBudgetOverrideRepository.remove("override-1");
+    const patched = await tripBudgetRepository.update(created.id, { dailyTargetMinor: 200000n });
+    expect(patched.dailyTargetMinor).toBe(200000n);
+    expect(patched.totalBudgetMinor).toBe(1000000n);
 
-    expect(await dailyBudgetOverrideRepository.getByDate(TRIP_ID, "2026-09-03")).toBeUndefined();
-    const pending = await db.outboxMutations.where("entityType").equals("dailyBudgetOverride").toArray();
-    expect(pending).toHaveLength(1);
-    expect(pending[0].operation).toBe("delete");
+    await tripBudgetRepository.remove(created.id);
+    expect(await tripBudgetRepository.getByTrip(TRIP_ID)).toBeUndefined();
   });
 });
