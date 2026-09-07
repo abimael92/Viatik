@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import type { MinorUnits } from "@/features/domain/money";
 import {
+  getBudgetUsage,
+  getCategoryTotalSpent,
   getDailyPacing,
   getGroupTotalSpent,
   getPersonalLeftover,
@@ -45,6 +47,47 @@ describe("getGroupTotalSpent", () => {
   it("excludes foreign expenses without a usable exchange rate", () => {
     const total = getGroupTotalSpent([expense({ amountMinor: 10000n, currency: "JPY", exchangeRateToBase: null })], BASE);
     expect(total).toBe(0n);
+  });
+});
+
+describe("getCategoryTotalSpent", () => {
+  it("sums only expenses in the matching category", () => {
+    const items: AggregateExpense[] = [
+      expense({ amountMinor: 10000n, currency: "USD", category: "food" }),
+      expense({ amountMinor: 5000n, currency: "USD", category: "transport" }),
+      expense({ amountMinor: 2000n, currency: "USD" }), // uncategorized
+    ];
+    expect(getCategoryTotalSpent(items, "food", BASE)).toBe(10000n);
+    expect(getCategoryTotalSpent(items, "transport", BASE)).toBe(5000n);
+    expect(getCategoryTotalSpent(items, "stay", BASE)).toBe(0n);
+  });
+
+  it("converts foreign expenses in the category to base currency", () => {
+    const items: AggregateExpense[] = [
+      expense({ amountMinor: 10000n, currency: "JPY", exchangeRateToBase: 0.0067, category: "food" }),
+      expense({ amountMinor: 2000n, currency: "USD", category: "food" }),
+    ];
+    // 10000 JPY * 0.0067 = 67.00 USD = 6700 + 2000 = 8700 USD minor
+    expect(getCategoryTotalSpent(items, "food", BASE)).toBe(8700n);
+  });
+
+  it("excludes unconvertible foreign expenses in the category", () => {
+    const items: AggregateExpense[] = [
+      expense({ amountMinor: 10000n, currency: "JPY", exchangeRateToBase: null, category: "food" }),
+    ];
+    expect(getCategoryTotalSpent(items, "food", BASE)).toBe(0n);
+  });
+});
+
+describe("getBudgetUsage", () => {
+  it("returns the spent/total ratio", () => {
+    expect(getBudgetUsage(5000n, 10000n)).toBe(0.5);
+    expect(getBudgetUsage(8000n, 10000n)).toBe(0.8);
+    expect(getBudgetUsage(12000n, 10000n)).toBe(1.2);
+  });
+
+  it("returns null when there is no budget to measure against", () => {
+    expect(getBudgetUsage(5000n, 0n)).toBeNull();
   });
 });
 
