@@ -17,7 +17,8 @@ export type FetchTripWeatherForecastResult =
  * membership is verified before any external API call is made.
  */
 export async function fetchTripWeatherForecast(
-  tripId: string
+  tripId: string,
+  local?: { latitude: number; longitude: number; timeZone: string | null; startDate: string; endDate: string }
 ): Promise<FetchTripWeatherForecastResult> {
   try {
     const supabase = await createClient();
@@ -44,27 +45,22 @@ export async function fetchTripWeatherForecast(
       return { success: false, error: "Trip not found." };
     }
 
-    if (trip.latitude == null || trip.longitude == null) {
+    const latitude = local?.latitude ?? (trip.latitude == null ? null : Number(trip.latitude));
+    const longitude = local?.longitude ?? (trip.longitude == null ? null : Number(trip.longitude));
+    const startDate = local?.startDate ?? (trip.start_date ? String(trip.start_date) : null);
+    const endDate = local?.endDate ?? (trip.end_date ? String(trip.end_date) : null);
+    const timeZone = local?.timeZone ?? (trip.time_zone ? String(trip.time_zone) : null);
+    if (latitude == null || longitude == null) {
       return { success: false, error: "Set a destination with coordinates first." };
     }
-    if (!trip.start_date || !trip.end_date) {
+    if (!startDate || !endDate) {
       return { success: false, error: "Set trip dates first." };
     }
 
-    const forecastData = await provider.fetchForecast({
-      latitude: Number(trip.latitude),
-      longitude: Number(trip.longitude),
-      startDate: String(trip.start_date),
-      endDate: String(trip.end_date),
-      timeZone: trip.time_zone ? String(trip.time_zone) : null,
-    });
+    const forecastData = await provider.fetchForecast({ latitude, longitude, startDate, endDate, timeZone });
 
     const now = new Date().toISOString();
-    const locationRevision = buildLocationRevision(
-      Number(trip.latitude),
-      Number(trip.longitude),
-      trip.time_zone ? String(trip.time_zone) : null
-    );
+    const locationRevision = buildLocationRevision(latitude, longitude, timeZone);
 
     const forecast: TripWeatherForecast = {
       id: tripId,
