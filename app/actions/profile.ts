@@ -16,7 +16,7 @@ export async function getMyProfile(): Promise<LocalProfile | null> {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "full_name, avatar_url, avatar_seed, phone, emergency_contact_name, emergency_contact_relationship, emergency_contact_phone, passport_issuing_country, passport_expires_on, updated_at"
+      "full_name, avatar_url, avatar_seed, phone, emergency_contact_name, emergency_contact_relationship, emergency_contact_phone, passport_issuing_country, passport_expires_on, preferred_currency, updated_at"
     )
     .eq("id", data.user.id)
     .maybeSingle();
@@ -34,6 +34,7 @@ export async function getMyProfile(): Promise<LocalProfile | null> {
     emergencyContactPhone: profile.emergency_contact_phone ?? null,
     passportIssuingCountry: profile.passport_issuing_country ?? null,
     passportExpiresOn: profile.passport_expires_on ?? null,
+    preferredCurrency: profile.preferred_currency ?? null,
     updatedAt: profile.updated_at ?? new Date().toISOString(),
   };
 }
