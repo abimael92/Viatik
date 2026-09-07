@@ -142,6 +142,12 @@ export function CommandPalette() {
         setView("cheatsheet");
         return;
       }
+      // The single-key navigation shortcuts are only meaningful inside the
+      // palette ("C" = create trip, "G T/C/S" = go to). Keeping them gated on
+      // the palette being open stops a stray keypress on a normal page (e.g. the
+      // trip workspace) from hijacking navigation and sending the user back to
+      // /trips while they're just clicking around.
+      if (!open) return;
       // Sequential G → T / C / S navigation.
       if (event.key.toLowerCase() === "g") {
         const onNext = (e: KeyboardEvent) => {
@@ -163,7 +169,7 @@ export function CommandPalette() {
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [router]);
+  }, [router, open]);
 
   if (view === null) return null;
 
