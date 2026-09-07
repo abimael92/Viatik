@@ -1,12 +1,21 @@
 "use client";
 
-import { Activity as ActivityIcon, BookOpen, Camera, CircleDollarSign, CalendarDays, Footprints } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import { Activity as ActivityIcon, BookOpen, Camera, ChevronDown, ChevronUp, CircleDollarSign, CalendarDays, Expand, Footprints, Pencil, Plus } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import imageCompression from "browser-image-compression";
 
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Heading } from "@/components/ui/heading";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import type { Activity, Expense } from "@/features/domain/entities";
 import type { TripMedia } from "@/features/domain/entities-media";
-import { formatMinorUnits, type CurrencyCode } from "@/features/domain/money";
+import { expenseRepository } from "@/features/expenses/data/dexie-expense-repository";
+import { mediaRepository } from "@/features/media/data/dexie-media-repository";
+import { formatMinorUnits, parseMinorUnits, type CurrencyCode } from "@/features/domain/money";
+import { journalRepository } from "@/features/journal/data/dexie-journal-repository";
+import type { JournalDayEntry } from "@/features/journal/domain/journal-types";
 import { useTravelJournal } from "@/features/journal/lib/use-travel-journal";
 import type { JournalDay } from "@/features/journal/lib/journal-aggregator";
 
@@ -18,16 +27,24 @@ import type { JournalDay } from "@/features/journal/lib/journal-aggregator";
  */
 export function TravelJournalView({
   tripId,
+  userId,
   baseCurrency,
   startDate,
   endDate,
+  canEdit = false,
 }: {
   tripId: string;
+  userId: string;
   baseCurrency: CurrencyCode;
   startDate: string | null;
   endDate: string | null;
+  canEdit?: boolean;
 }) {
   const { loading, days, summary } = useTravelJournal(tripId, baseCurrency, startDate, endDate);
+  const [entries, setEntries] = useState<JournalDayEntry[]>([]);
+  useEffect(() => journalRepository.watchByTrip(tripId, setEntries), [tripId]);
+  const entriesByDate = useMemo(() => new Map(entries.map((entry) => [entry.dayDate, entry])), [entries]);
+  const timelineDays = useMemo(() => fillTripDays(days, startDate, endDate), [days, startDate, endDate]);
 
   return (
     <section aria-labelledby="journal-heading" className="space-y-6">
@@ -53,7 +70,7 @@ export function TravelJournalView({
             <div key={item} className="h-40 animate-pulse rounded-2xl border bg-card" />
           ))}
         </div>
-      ) : days.length === 0 ? (
+      ) : timelineDays.length === 0 ? (
         <div className="rounded-2xl border border-dashed p-10 text-center">
           <BookOpen className="mx-auto size-8 text-muted-foreground" />
           <Heading level={3} className="mt-3 text-base font-semibold">
@@ -65,7 +82,7 @@ export function TravelJournalView({
         </div>
       ) : (
         <ol className="relative space-y-6 border-l-2 border-border pl-5">
-          {days.map((day) => (
+          {timelineDays.map((day) => (
             <li key={day.date} className="relative">
               <span
                 aria-hidden
@@ -73,7 +90,7 @@ export function TravelJournalView({
               >
                 <span className="size-1.5 rounded-full bg-current" />
               </span>
-              <JournalDayCard day={day} baseCurrency={baseCurrency} />
+              <JournalDayCard day={day} tripId={tripId} userId={userId} canEdit={canEdit} baseCurrency={baseCurrency} experience={entriesByDate.get(day.date)?.experience ?? ""} onSaveExperience={(experience) => journalRepository.save(tripId, day.date, experience)} />
             </li>
           ))}
         </ol>
@@ -134,7 +151,8 @@ function TripReplayCard({
   );
 }
 
-function JournalDayCard({ day, baseCurrency }: { day: JournalDay; baseCurrency: CurrencyCode }) {
+function JournalDayCard({ day, tripId, userId, canEdit, baseCurrency, experience, onSaveExperience }: { day: JournalDay; tripId: string; userId: string; canEdit: boolean; baseCurrency: CurrencyCode; experience: string; onSaveExperience: (experience: string) => Promise<unknown> }) {
+  const [editing, setEditing] = useState(false);
   const title = formatJournalDate(day.date);
 
   return (
@@ -142,7 +160,7 @@ function JournalDayCard({ day, baseCurrency }: { day: JournalDay; baseCurrency: 
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <h3 className="text-sm font-bold">{title}</h3>
         <span className="text-xs text-muted-foreground">{day.date}</span>
-        <span className="ml-auto flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        <span className="ml-auto flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
           {day.photoCount > 0 && (
             <span className="flex items-center gap-1">
               <Camera className="size-3.5" aria-hidden />
@@ -161,16 +179,24 @@ function JournalDayCard({ day, baseCurrency }: { day: JournalDay; baseCurrency: 
               {formatMinorUnits(day.totalSpentMinor, baseCurrency)}
             </span>
           )}
+          {canEdit && (
+            <Button type="button" variant={editing ? "default" : "outline"} size="sm" onClick={() => setEditing((value) => !value)}>
+              <Pencil className="size-4" /> {editing ? "Done" : "Edit"}
+            </Button>
+          )}
         </span>
       </div>
 
-      {day.photos.length > 0 && (
-        <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
-          {day.photos.slice(0, 8).map((photo) => (
-            <PhotoThumb key={photo.id} photo={photo} />
-          ))}
+      <DayExperience key={experience} value={experience} dayDate={day.date} editing={editing} onSave={onSaveExperience} />
+
+      {editing && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <AddExpenseControl tripId={tripId} userId={userId} day={day.date} currency={baseCurrency} />
+          <AddPhotoControl tripId={tripId} userId={userId} day={day.date} />
         </div>
       )}
+
+      {day.photos.length > 0 && <DayPhotoGallery photos={day.photos} dayDate={day.date} />}
 
       {day.activities.length > 0 && (
         <ul className="mt-3 space-y-2">
@@ -189,6 +215,116 @@ function JournalDayCard({ day, baseCurrency }: { day: JournalDay; baseCurrency: 
       )}
     </div>
   );
+}
+
+function DayExperience({ value, dayDate, editing, onSave }: { value: string; dayDate: string; editing: boolean; onSave: (value: string) => Promise<unknown> }) {
+  const [text, setText] = useState(value);
+  const [saved, setSaved] = useState(true);
+  if (!editing) {
+    return value.trim() ? (
+      <p className="mt-4 whitespace-pre-wrap rounded-lg bg-muted/40 p-3 text-sm">{value}</p>
+    ) : (
+      <p className="mt-4 text-sm text-muted-foreground">No notes for this day yet.</p>
+    );
+  }
+  return (
+    <div className="mt-4 space-y-1.5">
+      <div className="flex items-center justify-between gap-3">
+        <label htmlFor={`journal-experience-${dayDate}`} className="text-sm font-semibold">How was your day?</label>
+        <span className="text-xs text-muted-foreground" aria-live="polite">{saved ? "Saved offline" : "Unsaved"}</span>
+      </div>
+      <textarea id={`journal-experience-${dayDate}`} value={text} onChange={(event) => { setText(event.target.value); setSaved(false); }} onBlur={() => { if (!saved) void onSave(text).then(() => setSaved(true)); }} rows={4} maxLength={4000} placeholder="Describe what you experienced, favorite moments, places, food, and anything you want to remember…" className="w-full resize-y rounded-lg border bg-background px-3 py-2 text-sm outline-none transition focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring" />
+    </div>
+  );
+}
+
+function AddExpenseControl({ tripId, userId, day, currency }: { tripId: string; userId: string; day: string; currency: CurrencyCode }) {
+  const [description, setDescription] = useState("");
+  const [amount, setAmount] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!description.trim() || !amount) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const amountMinor = parseMinorUnits(amount, currency);
+      await expenseRepository.create({
+        id: crypto.randomUUID(),
+        tripId,
+        description: description.trim(),
+        amountMinor,
+        currency,
+        paidBy: userId,
+        splitType: "equal",
+        date: day,
+        createdBy: userId,
+        shares: [{ userId, shareAmountMinor: amountMinor, sharePercentage: null, splitType: "equal" }],
+      });
+      setDescription("");
+      setAmount("");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to add expense.");
+    } finally {
+      setSaving(false);
+    }
+  }
+  return (
+    <form onSubmit={submit} className="flex flex-wrap items-end gap-2 rounded-lg border bg-muted/40 p-2">
+      <div className="space-y-1">
+        <Label htmlFor={`journal-expense-${day}`} className="text-xs">Expense</Label>
+        <Input id={`journal-expense-${day}`} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="e.g. Dinner" className="h-9 w-40" />
+      </div>
+      <div className="space-y-1">
+        <Label htmlFor={`journal-amount-${day}`} className="text-xs">Amount</Label>
+        <Input id={`journal-amount-${day}`} value={amount} onChange={(event) => setAmount(event.target.value)} placeholder={`0.00 ${currency}`} inputMode="decimal" className="h-9 w-28" />
+      </div>
+      <Button type="submit" size="sm" disabled={saving || !description.trim() || !amount}>{saving ? "…" : <Plus className="size-4" />}Add</Button>
+      {error && <p className="w-full text-xs text-destructive">{error}</p>}
+    </form>
+  );
+}
+
+function AddPhotoControl({ tripId, userId, day }: { tripId: string; userId: string; day: string }) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function handleFile(file: File | null) {
+    if (!file) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const compressed = await imageCompression(file, { maxSizeMB: 2, maxWidthOrHeight: 2000, useWebWorker: true });
+      await mediaRepository.create({ id: crypto.randomUUID(), tripId, takenAt: day, blob: compressed, createdBy: userId });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to add photo.");
+    } finally {
+      setSaving(false);
+    }
+  }
+  return (
+    <div>
+      <label className="inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-md border border-border/60 px-3 text-sm font-semibold transition-colors hover:bg-muted">
+        <Camera className="size-4" /> {saving ? "Adding…" : "Add photo"}
+        <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={saving} onChange={(event) => { void handleFile(event.target.files?.[0] ?? null); event.target.value = ""; }} />
+      </label>
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
+
+function fillTripDays(days: JournalDay[], startDate: string | null, endDate: string | null): JournalDay[] {
+  if (!startDate || !endDate || endDate < startDate) return days;
+  const byDate = new Map(days.map((day) => [day.date, day]));
+  const result: JournalDay[] = [];
+  const current = new Date(`${startDate}T12:00:00`);
+  const finish = new Date(`${endDate}T12:00:00`);
+  while (current <= finish && result.length < 60) {
+    const date = current.toISOString().slice(0, 10);
+    result.push(byDate.get(date) ?? { date, activities: [], expenses: [], photos: [], totalSpentMinor: 0n, activityCount: 0, photoCount: 0, expenseCount: 0 });
+    current.setDate(current.getDate() + 1);
+  }
+  return result;
 }
 
 function ActivityRow({ activity }: { activity: Activity }) {
@@ -213,6 +349,41 @@ function ExpenseRow({ expense }: { expense: Expense }) {
         {formatMinorUnits(expense.amountMinor, expense.currency)}
       </span>
     </li>
+  );
+}
+
+function DayPhotoGallery({ photos, dayDate }: { photos: TripMedia[]; dayDate: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  return (
+    <div className="mt-3 border-t border-border pt-3">
+      <div className="flex items-center justify-between gap-3">
+        <Button type="button" variant="ghost" size="sm" onClick={() => setExpanded((value) => !value)} aria-expanded={expanded}>
+          {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+          {expanded ? "Hide photos" : `Show photos (${photos.length})`}
+        </Button>
+        <Button type="button" variant="outline" size="sm" onClick={() => setModalOpen(true)}>
+          <Expand className="size-4" />View all
+        </Button>
+      </div>
+      {expanded && (
+        <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
+          {photos.slice(0, 8).map((photo) => <PhotoThumb key={photo.id} photo={photo} />)}
+          {photos.length > 8 && <button type="button" onClick={() => setModalOpen(true)} className="grid aspect-square place-items-center rounded-lg border bg-muted text-sm font-semibold text-muted-foreground hover:text-foreground">+{photos.length - 8} more</button>}
+        </div>
+      )}
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Photos from {formatJournalDate(dayDate)}</DialogTitle>
+            <DialogDescription>{photos.length} {photos.length === 1 ? "photo" : "photos"} uploaded for this day.</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {photos.map((photo) => <PhotoThumb key={photo.id} photo={photo} />)}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
 
