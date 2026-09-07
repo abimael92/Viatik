@@ -7,6 +7,7 @@ import type { VaultEntry } from "@/features/vault/domain/vault-types";
 import { activityRepository } from "@/features/activities/data/dexie-activity-repository";
 import { collaborationRepository } from "@/features/collaboration/data/dexie-collaboration-repository";
 import { contactRepository } from "@/features/contacts/data/dexie-contact-repository";
+import { tripBudgetRepository } from "@/features/finance/data/dexie-finance-repository";
 import { tripRepository } from "@/features/trips/data/dexie-trip-repository";
 import { vaultRepository } from "@/features/vault/data/dexie-vault-repository";
 import { buildTimeline, pickPrimaryTrips, todayKey, type TimelineItem } from "@/features/trips/lib/home-trips";
@@ -36,6 +37,7 @@ export function useHomeData(ownerId: string): HomeData {
   const [members, setMembers] = useState<TripMember[]>([]);
   const [vaultEntries, setVaultEntries] = useState<VaultEntry[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [totalBudgetMinor, setTotalBudgetMinor] = useState<bigint | null>(null);
 
   useEffect(() => tripRepository.watchAll(setTrips), []);
 
@@ -49,10 +51,14 @@ export function useHomeData(ownerId: string): HomeData {
     const unsubscribeActivities = activityRepository.watchByTrip(primaryTripId, setActivities);
     const unsubscribeMembers = collaborationRepository.watchMembers(primaryTripId, setMembers);
     const unsubscribeVault = vaultRepository.watchEntries(primaryTripId, ownerId, setVaultEntries);
+    const unsubscribeBudget = tripBudgetRepository.watchByTrip(primaryTripId, (budget) =>
+      setTotalBudgetMinor(budget?.totalBudgetMinor ?? null)
+    );
     return () => {
       unsubscribeActivities();
       unsubscribeMembers();
       unsubscribeVault();
+      unsubscribeBudget();
     };
   }, [primaryTripId, ownerId]);
 
@@ -61,13 +67,14 @@ export function useHomeData(ownerId: string): HomeData {
     const travelerCount = (primaryTrip.adultCount ?? 0) + (primaryTrip.childCount ?? 0);
     return computeReadiness({
       trip: primaryTrip,
+      totalBudgetMinor,
       activityCount: activities.filter((activity) => activity.deletedAt === null).length,
       memberCount: members.length,
       travelerCount,
       vaultEntryCount: vaultEntries.length,
       passportOnFile: contacts.some((contact) => Boolean(contact.passportExpiresOn)),
     });
-  }, [primaryTrip, activities, members, vaultEntries, contacts]);
+  }, [primaryTrip, totalBudgetMinor, activities, members, vaultEntries, contacts]);
 
   const timeline = useMemo<TimelineItem[]>(
     () =>

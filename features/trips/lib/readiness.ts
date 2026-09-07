@@ -1,4 +1,5 @@
 import type { Trip } from "@/features/domain/entities";
+import type { MinorUnits } from "@/features/domain/money";
 
 export type ReadinessStatus = "complete" | "missing";
 
@@ -24,6 +25,8 @@ export interface TripReadiness {
 
 export interface ReadinessInput {
   trip: Trip;
+  /** Total trip budget in the trip's base currency (minor units), or `null` if unset. */
+  totalBudgetMinor: MinorUnits | null;
   activityCount: number;
   memberCount: number;
   travelerCount: number;
@@ -41,11 +44,11 @@ const TRAVELERS_TAB = "travelers" as const;
  * about the trip.
  */
 export function computeReadiness(input: ReadinessInput): TripReadiness {
-  const { trip, activityCount, memberCount, travelerCount, vaultEntryCount, passportOnFile } = input;
+  const { trip, totalBudgetMinor, activityCount, memberCount, travelerCount, vaultEntryCount, passportOnFile } = input;
 
   const datesSet = Boolean(trip.startDate && trip.endDate);
   const crewConfirmed = memberCount > 1 || travelerCount > 1;
-  const budgetSet = trip.totalBudgetMinor !== null && trip.totalBudgetMinor > 0;
+  const budgetSet = totalBudgetMinor !== null && totalBudgetMinor > 0;
 
   const items: ReadinessItem[] = [
     {

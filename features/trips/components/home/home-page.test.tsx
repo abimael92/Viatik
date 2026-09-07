@@ -68,7 +68,6 @@ function makeTrip(overrides: Partial<Trip>): Trip {
     adultCount: 2,
     childCount: 0,
     baseCurrency: "EUR",
-    totalBudgetMinor: null,
     createdAt: "2026-01-01T00:00:00Z",
     updatedAt: "2026-01-01T00:00:00Z",
     deletedAt: null,
