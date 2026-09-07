@@ -58,6 +58,8 @@ export interface TransitSegment {
   estimatedArrival: string | null;
   /** Delay in minutes versus the published schedule (>= 0). */
   delayMinutes: number | null;
+  ticketImage?: Blob | null;
+  ticketImageName?: string | null;
   createdBy: string;
   createdAt: string; // ISO datetime
   updatedAt: string; // ISO datetime
@@ -79,6 +81,8 @@ export interface NewTransitSegment {
   destination?: string | null;
   scheduledDeparture: string;
   scheduledArrival?: string | null;
+  ticketImage?: Blob | null;
+  ticketImageName?: string | null;
   createdBy: string;
 }
 
