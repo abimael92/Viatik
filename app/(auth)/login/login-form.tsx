@@ -11,6 +11,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 
+// Number of digits in the sign-in OTP. Matches Supabase's email OTP length
+// (GOTRUE_MAILER_OTP_LENGTH). Keep the grid-cols-* class in sync with this.
+const OTP_LENGTH = 8;
+
 type LoginFormProps = {
   mode?: "login" | "register";
   next?: string;
@@ -40,7 +44,7 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
   const refs = useRef<Array<HTMLInputElement | null>>([]);
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
-  const [digits, setDigits] = useState(["", "", "", "", "", ""]);
+  const [digits, setDigits] = useState<string[]>(() => Array.from({ length: OTP_LENGTH }, () => ""));
   const [sent, setSent] = useState(false);
   const [message, setMessage] = useState<string | null>(initialError ?? null);
   const [cooldown, setCooldown] = useState(0);
@@ -121,7 +125,7 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
   }
 
   function verifyCode(code = digits.join("")) {
-    if (code.length !== 6) return setMessage("Enter the complete 6-digit code.");
+    if (code.length !== OTP_LENGTH) return setMessage(`Enter the complete ${OTP_LENGTH}-digit code.`);
     verifyEmail(code);
   }
 
@@ -130,22 +134,22 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
     const nextDigits = [...digits];
     nextDigits[index] = digit;
     setDigits(nextDigits);
-    if (digit && index < 5) refs.current[index + 1]?.focus();
+    if (digit && index < OTP_LENGTH - 1) refs.current[index + 1]?.focus();
   }
 
   function handleKeyDown(index: number, event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Backspace" && !digits[index] && index > 0) refs.current[index - 1]?.focus();
     if (event.key === "ArrowLeft" && index > 0) refs.current[index - 1]?.focus();
-    if (event.key === "ArrowRight" && index < 5) refs.current[index + 1]?.focus();
+    if (event.key === "ArrowRight" && index < OTP_LENGTH - 1) refs.current[index + 1]?.focus();
   }
 
   function handlePaste(event: ClipboardEvent<HTMLDivElement>) {
-    const value = event.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    const value = event.clipboardData.getData("text").replace(/\D/g, "").slice(0, OTP_LENGTH);
     if (!value) return;
     event.preventDefault();
-    const nextDigits = Array.from({ length: 6 }, (_, index) => value[index] ?? "");
+    const nextDigits = Array.from({ length: OTP_LENGTH }, (_, index) => value[index] ?? "");
     setDigits(nextDigits);
-    refs.current[Math.min(value.length, 5)]?.focus();
+    refs.current[Math.min(value.length, OTP_LENGTH - 1)]?.focus();
   }
 
   if (sent) {
@@ -154,11 +158,11 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
         <div>
           <p className="mb-2 text-sm font-semibold text-primary">{mode === "register" ? "Create your account" : "Sign in to your account"}</p>
           <h1 className="text-3xl font-bold tracking-tight">Check your email</h1>
-          <p className="mt-2 text-muted-foreground">Enter the 6-digit code sent to {maskEmail(email)}.</p>
+          <p className="mt-2 text-muted-foreground">Enter the {OTP_LENGTH}-digit code sent to {maskEmail(email)}.</p>
         </div>
         <div className="space-y-3">
           <Label id="code-label">Verification code</Label>
-          <div role="group" aria-labelledby="code-label" onPaste={handlePaste} className="grid grid-cols-6 gap-2">
+          <div role="group" aria-labelledby="code-label" onPaste={handlePaste} className="grid grid-cols-8 gap-1.5 sm:gap-2">
             {digits.map((digit, index) => (
               <Input
                 key={index}
@@ -186,7 +190,7 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
           <button type="button" className="font-semibold text-primary disabled:text-muted-foreground" disabled={pending || cooldown > 0} onClick={requestCode}>
             {cooldown ? `Resend code in ${formatCooldown(cooldown)}` : "Resend code"}
           </button>
-          <button type="button" className="text-muted-foreground hover:text-foreground" onClick={() => { setSent(false); setDigits(["", "", "", "", "", ""]); setMessage(null); }}>
+          <button type="button" className="text-muted-foreground hover:text-foreground" onClick={() => { setSent(false); setDigits(Array.from({ length: OTP_LENGTH }, () => "")); setMessage(null); }}>
             Use a different email
           </button>
         </div>
@@ -237,7 +241,7 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
           <p className="text-center text-xs text-muted-foreground">Use a passkey already registered with your Viatik account.</p>
         </div>
       )}
-      <p className="text-center text-sm text-muted-foreground">{mode === "register" ? "We’ll verify your email, then help you finish your profile. No password needed." : "We’ll send a secure 6-digit code. This will not create a new account."}</p>
+      <p className="text-center text-sm text-muted-foreground">{mode === "register" ? "We’ll verify your email, then help you finish your profile. No password needed." : `We’ll send a secure ${OTP_LENGTH}-digit code. This will not create a new account.`}</p>
       {mode === "login" && process.env.NODE_ENV === "development" && (
         <div className="border-t pt-5">
           <Button type="button" variant="outline" className="w-full" disabled={pending} onClick={openDevelopmentAccount}>Open development account</Button>
