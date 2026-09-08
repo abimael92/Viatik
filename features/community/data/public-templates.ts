@@ -74,7 +74,6 @@ function buildSource(spec: TemplateSpec): TripCloneSource {
     adultCount: 2,
     childCount: 0,
     baseCurrency: spec.baseCurrency,
-    totalBudgetMinor: null,
     isPublic: true,
     shareSlug: `${spec.id}-template`,
     likesCount: spec.likes,

@@ -78,9 +78,11 @@ export function SharedTripFeed({
           ))}
         </div>
       ) : visible.length === 0 ? (
-        <div className="rounded-2xl border border-dashed p-10 text-center">
-          <Rss className="mx-auto size-8 text-muted-foreground" aria-hidden />
-          <Heading level={3} className="mt-3 text-base font-semibold">
+        <div className="rounded-2xl border border-dashed bg-linear-to-b from-card to-muted/30 p-10 text-center">
+          <span className="mx-auto grid size-12 place-items-center rounded-full bg-primary/10 text-primary">
+            <Rss className="size-6" aria-hidden />
+          </span>
+          <Heading level={3} className="mt-4 text-base font-semibold">
             No activity yet
           </Heading>
           <p className="mt-1 text-sm text-muted-foreground">{emptyMessage}</p>

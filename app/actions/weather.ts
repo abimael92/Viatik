@@ -60,7 +60,7 @@ export async function fetchTripWeatherForecast(
     const forecastData = await provider.fetchForecast({ latitude, longitude, startDate, endDate, timeZone });
 
     const now = new Date().toISOString();
-    const locationRevision = buildLocationRevision(latitude, longitude, timeZone);
+    const locationRevision = buildLocationRevision(latitude, longitude, timeZone, startDate, endDate);
 
     const forecast: TripWeatherForecast = {
       id: tripId,
@@ -85,7 +85,15 @@ export async function fetchTripWeatherForecast(
   }
 }
 
-function buildLocationRevision(latitude: number, longitude: number, timeZone: string | null): string {
+function buildLocationRevision(
+  latitude: number,
+  longitude: number,
+  timeZone: string | null,
+  startDate: string | null,
+  endDate: string | null
+): string {
   const coords = `${latitude.toFixed(4)},${longitude.toFixed(4)}`;
-  return timeZone ? `${coords}:${timeZone}` : coords;
+  const base = timeZone ? `${coords}:${timeZone}` : coords;
+  if (!startDate || !endDate) return base;
+  return `${base}:${startDate}:${endDate}`;
 }

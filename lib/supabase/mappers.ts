@@ -1,4 +1,5 @@
-import type { Activity, Connection, ConnectionRemoteStatus, ConnectionSnapshot, ConnectionStatus, Contact, DailyBudgetOverride, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler, UserWallet } from "@/features/domain/entities";
+import type { Activity, Connection, ConnectionRemoteStatus, ConnectionSnapshot, ConnectionStatus, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler, UserWallet } from "@/features/domain/entities";
+import { isSpendingCategory, type SpendingCategory, type SpendingSubcategory } from "@/features/domain/categories";
 import type { TripMedia } from "@/features/domain/entities-media";
 import { MAX_MINOR_UNITS, type MinorUnits } from "@/features/domain/money";
 import { getSyncUser } from "@/lib/sync/sync-context";
@@ -43,7 +44,6 @@ export function tripToRow(trip: Trip): Record<string, unknown> {
     adult_count: trip.adultCount,
     child_count: trip.childCount,
     base_currency: trip.baseCurrency,
-    total_budget: trip.totalBudgetMinor == null ? null : minorUnitsToRemote(trip.totalBudgetMinor, "total_budget"),
     created_at: trip.createdAt,
     updated_at: trip.updatedAt,
     deleted_at: trip.deletedAt,
@@ -67,7 +67,6 @@ export function rowToTrip(row: Record<string, unknown>): Trip {
     adultCount: row.adult_count == null ? 1 : Number(row.adult_count),
     childCount: row.child_count == null ? 0 : Number(row.child_count),
     baseCurrency: row.base_currency == null ? "USD" : String(row.base_currency),
-    totalBudgetMinor: row.total_budget == null ? null : minorUnitsFromRemote(row.total_budget, "total_budget"),
     // Community fields are local-only (never persisted remotely); default on read.
     isPublic: false,
     shareSlug: null,
@@ -135,7 +134,9 @@ export function expenseToRow(expense: Expense): Record<string, unknown> {
     exchange_rate_to_base: expense.exchangeRateToBase,
     paid_by: expense.paidBy,
     split_type: expense.splitType,
-    category_id: expense.categoryId,
+    // The remote `category_id` column is reused to carry the typed category key;
+    // `subcategory` is a local-only field with no remote counterpart.
+    category_id: expense.category,
     expense_date: expense.date,
     created_by: expense.createdBy,
     created_at: expense.createdAt,
@@ -155,7 +156,10 @@ export function rowToExpense(row: Record<string, unknown>): Expense {
     exchangeRateToBase: row.exchange_rate_to_base == null ? null : Number(row.exchange_rate_to_base),
     paidBy: String(row.paid_by),
     splitType: (row.split_type == null ? "equal" : String(row.split_type)) as Expense["splitType"],
-    categoryId: row.category_id == null ? null : String(row.category_id),
+    category: (isSpendingCategory(row.category_id) ? row.category_id : null) as SpendingCategory | null,
+    // Subcategories are local-only and not persisted remotely, so they default
+    // to null on a remote read (re-classifiable from the UI).
+    subcategory: null as SpendingSubcategory | null,
     date: row.expense_date == null ? String(row.created_at).slice(0, 10) : String(row.expense_date),
     createdBy: String(row.created_by),
     createdAt: String(row.created_at),
@@ -181,10 +185,14 @@ export function rowToExpenseShare(row: Record<string, unknown>): ExpenseShare {
   return {
     id: String(row.id),
     expenseId: String(row.expense_id),
+    // Settlement bookkeeping is local-only; default it on a remote read.
+    paidBy: "",
     userId: String(row.user_id),
     shareAmountMinor: minorUnitsFromRemote(row.share_amount, "share_amount"),
     sharePercentage: row.share_percentage == null ? null : Number(row.share_percentage),
     splitType: (row.split_type == null ? "equal" : String(row.split_type)) as ExpenseShare["splitType"],
+    settlementStatus: "pending",
+    settledAt: null,
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
   };
@@ -214,28 +222,6 @@ export function rowToUserWallet(row: Record<string, unknown>): UserWallet {
   };
 }
 
-export function dailyBudgetOverrideToRow(override: DailyBudgetOverride): Record<string, unknown> {
-  return {
-    id: override.id,
-    trip_id: override.tripId,
-    date: override.date,
-    custom_budget_amount: minorUnitsToRemote(override.customBudgetAmountMinor, "custom_budget_amount"),
-    created_at: override.createdAt,
-    updated_at: override.updatedAt,
-  };
-}
-
-export function rowToDailyBudgetOverride(row: Record<string, unknown>): DailyBudgetOverride {
-  return {
-    id: String(row.id),
-    tripId: String(row.trip_id),
-    date: String(row.date),
-    customBudgetAmountMinor: minorUnitsFromRemote(row.custom_budget_amount, "custom_budget_amount"),
-    createdAt: String(row.created_at),
-    updatedAt: String(row.updated_at),
-  };
-}
-
 export function tripMemberToRow(member: TripMember): Record<string, unknown> {
   return { id: member.id, trip_id: member.tripId, user_id: member.userId, role: member.role, invited_by: member.invitedBy, joined_at: member.joinedAt, created_at: member.createdAt, updated_at: member.updatedAt };
 }
@@ -255,10 +241,11 @@ export function rowToMedia(row: Record<string, unknown>): TripMedia {
   return { id: String(row.id), tripId: String(row.trip_id), activityId: row.activity_id == null ? null : String(row.activity_id), caption: row.caption == null ? null : String(row.caption), blob: null, storagePath: String(row.storage_path), uploadedUrl: null, signedUrlExpiresAt: null, contentType: String(row.content_type), byteSize: Number(row.byte_size), createdBy: String(row.created_by), uploadStatus: "uploaded", uploadProgress: 100, uploadError: null, uploadAttempts: 0, nextUploadAt: null, createdAt: String(row.created_at), updatedAt: String(row.updated_at), deletedAt: row.deleted_at == null ? null : String(row.deleted_at) };
 }
 export function settlementToRow(settlement: ExpenseSettlement): Record<string, unknown> {
+  // `status`/`settledAt` are local-only (no remote columns), so they are not sent.
   return { id: settlement.id, trip_id: settlement.tripId, from_user_id: settlement.fromUserId, to_user_id: settlement.toUserId, amount: minorUnitsToRemote(settlement.amountMinor, "amount"), currency: settlement.currency, created_by: settlement.createdBy, created_at: settlement.createdAt, updated_at: settlement.updatedAt, deleted_at: settlement.deletedAt };
 }
 export function rowToSettlement(row: Record<string, unknown>): ExpenseSettlement {
-  return { id: String(row.id), tripId: String(row.trip_id), fromUserId: String(row.from_user_id), toUserId: String(row.to_user_id), amountMinor: minorUnitsFromRemote(row.amount, "amount"), currency: String(row.currency), createdBy: String(row.created_by), createdAt: String(row.created_at), updatedAt: String(row.updated_at), deletedAt: row.deleted_at == null ? null : String(row.deleted_at) };
+  return { id: String(row.id), tripId: String(row.trip_id), fromUserId: String(row.from_user_id), toUserId: String(row.to_user_id), amountMinor: minorUnitsFromRemote(row.amount, "amount"), currency: String(row.currency), status: "pending", settledAt: null, createdBy: String(row.created_by), createdAt: String(row.created_at), updatedAt: String(row.updated_at), deletedAt: row.deleted_at == null ? null : String(row.deleted_at) };
 }
 export function contactToRow(contact: Contact): Record<string, unknown> {
   return { id: contact.id, owner_id: contact.ownerId, full_name: contact.fullName, avatar_url: contact.avatarUrl, avatar_seed: contact.avatarSeed, email: contact.email, phone: contact.phone, relationship: contact.relationship, traveler_type: contact.travelerType, birth_date: contact.birthDate, notes: contact.notes, linked_profile_id: contact.linkedProfileId, linked_avatar_url: contact.linkedAvatarUrl, linked_handle: contact.linkedHandle, emergency_contact_name: contact.emergencyContactName, emergency_contact_relationship: contact.emergencyContactRelationship, emergency_contact_phone: contact.emergencyContactPhone, dietary_restrictions: contact.dietaryRestrictions, allergies: contact.allergies, passport_issuing_country: contact.passportIssuingCountry, passport_expires_on: contact.passportExpiresOn, preferred_currency: contact.preferredCurrency, preferred_language: contact.preferredLanguage, created_at: contact.createdAt, updated_at: contact.updatedAt, deleted_at: contact.deletedAt };

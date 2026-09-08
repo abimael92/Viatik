@@ -1,6 +1,6 @@
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import { getCurrentDatabase, type ViatikDatabase } from "@/lib/db/dexie";
-import type { Activity, Connection, Contact, DailyBudgetOverride, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler, UserWallet } from "@/features/domain/entities";
+import type { Activity, Connection, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler, UserWallet } from "@/features/domain/entities";
 import type { TripMedia } from "@/features/domain/entities-media";
 import type { VaultEntry, VaultKeyset } from "@/features/vault/domain/vault-types";
 import type { TripWeatherForecast } from "@/features/weather/domain/weather-types";
@@ -30,7 +30,6 @@ import {
   connectionToRow,
   tripTravelerToRow,
   userWalletToRow,
-  dailyBudgetOverrideToRow,
   vaultEntryToRow,
   vaultKeysetToRow,
   tripWeatherForecastToRow,
@@ -123,7 +122,6 @@ function mutationPayloadToRow(mutation: OutboxMutation): Record<string, unknown>
     case "vaultEntry": return vaultEntryToRow(mutation.payload as unknown as VaultEntry);
     case "tripWeatherForecast": return tripWeatherForecastToRow(mutation.payload as unknown as TripWeatherForecast);
     case "userWallet": return userWalletToRow(mutation.payload as unknown as UserWallet);
-    case "dailyBudgetOverride": return dailyBudgetOverrideToRow(mutation.payload as unknown as DailyBudgetOverride);
     case "tripShareLink": return shareLinkToRow(mutation.payload as unknown as TripShareLink);
   }
 }
@@ -357,6 +355,10 @@ async function syncOnce(context?: SyncExecutionContext): Promise<void> {
   context?.signal.throwIfAborted();
   await pullRemoteChanges(lastSyncAt === null, context?.signal);
   context?.signal.throwIfAborted();
+  // Conflicts are auto-resolved during sync (remote wins); clear the historical
+  // records so the status pill only reflects actionable conflicts, not a running
+  // total of every conflict that ever happened.
+  await getDb().syncConflicts.clear();
 
   const duration = Date.now() - startTime;
   syncDurations.push(duration);

@@ -1,5 +1,17 @@
-import type { ExpenseShare, ExpenseSplitType } from "@/features/domain/entities";
+import type { ExpenseSplitType } from "@/features/domain/entities";
 import type { MinorUnits } from "@/features/domain/money";
+
+/**
+ * A share as produced by the split engines — the payer and settlement bookkeeping
+ * (`paidBy`, `settlementStatus`, `settledAt`) is filled in by the repository when
+ * the share is persisted, so the pure calculator stays focused on amounts.
+ */
+export interface CalculatedExpenseShare {
+  userId: string;
+  shareAmountMinor: MinorUnits;
+  sharePercentage: number | null;
+  splitType: ExpenseSplitType;
+}
 
 /**
  * Money is represented in the smallest currency unit (e.g. cents) as an
@@ -22,7 +34,7 @@ export interface SplitInput {
 }
 
 export interface SplitResult {
-  shares: Array<Omit<ExpenseShare, "id" | "expenseId" | "createdAt" | "updatedAt">>;
+  shares: CalculatedExpenseShare[];
   /** Sum of assigned shares in cents. Always exactly equals `totalMinor`. */
   assignedTotal: MinorUnits;
 }
