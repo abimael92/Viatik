@@ -79,7 +79,7 @@ export function AppShell({
             {active && (
               <span
                 aria-hidden
-                className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-linear-to-b from-viatik-blue to-viatik-magenta shadow-[0_0_10px_rgba(168,85,247,0.8)]"
+                className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-linear-to-b from-viatik-magenta to-viatik-red shadow-[0_0_10px_rgba(244,63,94,0.7)]"
               />
             )}
             <IconTile aria-hidden className="size-9 text-inherit">
@@ -208,9 +208,37 @@ export function AppShell({
         </div>
       )}
 
+      {/* Mobile bottom tab bar — keeps the main nav always reachable on small screens. */}
+      <nav
+        aria-label="Main navigation (mobile)"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-side-border bg-side pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden"
+      >
+        <div className="grid grid-cols-5">
+          {links.map(({ href, label, icon: Icon }) => {
+            const active = pathname === href || pathname.startsWith(`${href}/`);
+            return (
+              <Link
+                key={href}
+                href={href}
+                onClick={() => setMenuOpen(false)}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "flex min-h-14 flex-col items-center justify-center gap-1 py-2 text-[11px] font-semibold tracking-tight",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-viatik-magenta",
+                  active ? "text-primary" : "text-side-muted hover:text-side-fg"
+                )}
+              >
+                <Icon className="size-6" />
+                {label}
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
+
       <main
         id="main-content"
-        className="mx-auto min-h-dvh max-w-7xl px-4 py-6 sm:px-6 lg:ml-64 lg:px-8 lg:py-10"
+        className="mx-auto min-h-dvh max-w-7xl px-4 pb-24 pt-6 sm:px-6 lg:ml-64 lg:px-8 lg:py-10"
       >
         {children}
       </main>

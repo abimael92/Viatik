@@ -1,6 +1,7 @@
 "use client";
 
-import { Check, Clock, GripVertical, Loader2, MapPin, Plus, RefreshCw, TrainFront, Wand2, X } from "lucide-react";
+import { Check, Clock, GripVertical, Loader2, MapPin, Plus, RefreshCw, TrainFront, X } from "lucide-react";
+import Image from "next/image";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -188,11 +189,11 @@ export function AiScoutSidebar({
   const header = (
     <header className="flex items-start justify-between gap-3 border-b border-border p-5">
       <div className="flex items-center gap-3">
-        <span className="grid size-10 place-items-center rounded-xl bg-linear-to-r from-viatik-magenta to-viatik-red text-white">
-          <Wand2 className="size-5" aria-hidden />
+        <span className="grid size-24 place-items-center overflow-hidden ">
+          <Image src="/Scout.png" alt="Scout the fox" width={66} height={66} className="size-11 object-contain object-center" />
         </span>
         <div>
-          <h2 className="font-semibold">Scout Activities</h2>
+          <h2 className="font-semibold">Scout AI</h2>
           <p className="text-sm text-muted-foreground">
             Ideas for {trip.destination || "your trip"}
             {dateLabel ? ` · ${dateLabel}` : ""}
@@ -293,7 +294,7 @@ export function AiScoutSidebar({
       <aside
         role="dialog"
         aria-label="AI Activity Scout"
-        className="flex h-[min(80vh,40rem)] max-h-[calc(100vh-6rem)] w-full max-w-sm shrink-0 flex-col overflow-hidden rounded-2xl border border-border/60 bg-background shadow-lg"
+        className="flex h-[min(80vh,40rem)] max-h-[calc(100vh-6rem)] w-full max-w-sm shrink-0 flex-col overflow-hidden rounded-2xl border border-border/60 bg-fuchsia-100/20 shadow-lg ring-2 ring-viatik-magenta/40"
       >
         {header}
         {body}
