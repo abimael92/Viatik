@@ -1,5 +1,6 @@
 "use client";
 
+import { CalendarDays } from "lucide-react";
 import { useMemo, useCallback } from "react";
 import {
   DndContext,
@@ -168,8 +169,11 @@ export function ItineraryBoard({
 
   if (totalVisible === 0) {
     return (
-      <div className="rounded-2xl border border-dashed p-10 text-center" role="status">
-        <h3 className="font-semibold">
+      <div className="rounded-2xl border border-dashed bg-linear-to-b from-card to-muted/30 p-10 text-center" role="status">
+        <span className="mx-auto grid size-12 place-items-center rounded-full bg-primary/10 text-primary">
+          <CalendarDays className="size-6" aria-hidden />
+        </span>
+        <h3 className="mt-4 font-semibold">
           {category === "all" ? "No activities yet" : "No matching activities"}
         </h3>
         <p className="mt-1 text-sm text-muted-foreground">
