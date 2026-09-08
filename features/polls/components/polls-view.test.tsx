@@ -41,7 +41,6 @@ const trip: Trip = {
   adultCount: 2,
   childCount: 0,
   baseCurrency: "USD",
-  totalBudgetMinor: null,
   createdAt: "2026-01-01T00:00:00Z",
   updatedAt: "2026-01-01T00:00:00Z",
   deletedAt: null,

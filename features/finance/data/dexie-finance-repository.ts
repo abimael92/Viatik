@@ -2,12 +2,13 @@ import { liveQuery } from "dexie";
 
 import { getCurrentDatabase, type ViatikDatabase } from "@/lib/db/dexie";
 import { TransactionContext } from "@/lib/db/transaction-context";
-import type { DailyBudgetOverride, UserWallet } from "@/features/domain/entities";
-import type {
-  DailyBudgetOverrideRepository,
-  NewDailyBudgetOverride,
-  NewUserWallet,
-  UserWalletRepository,
+import type { TripBudget, UserWallet } from "@/features/domain/entities";
+import {
+  allocationToEntity,
+  type NewTripBudget,
+  type NewUserWallet,
+  type TripBudgetRepository,
+  type UserWalletRepository,
 } from "@/features/domain/repositories/finance-repository";
 import { append } from "@/lib/sync/outbox-transactional";
 import { logger } from "@/lib/observability/logger";
@@ -96,78 +97,86 @@ export class DexieUserWalletRepository implements UserWalletRepository {
   }
 }
 
-/** Dexie-backed implementation of `DailyBudgetOverrideRepository`. */
-export class DexieDailyBudgetOverrideRepository implements DailyBudgetOverrideRepository {
-  async listByTrip(tripId: string): Promise<DailyBudgetOverride[]> {
-    return getDb().dailyBudgetOverrides.where("tripId").equals(tripId).toArray();
+/**
+ * Dexie-backed implementation of `TripBudgetRepository`. The unified trip
+ * budget is local-only (not synced via the outbox), so writes never enqueue a
+ * remote mutation — consistent with other device-local stores.
+ */
+export class DexieTripBudgetRepository implements TripBudgetRepository {
+  async getByTrip(tripId: string): Promise<TripBudget | undefined> {
+    return getDb().tripBudgets.where("tripId").equals(tripId).first();
   }
 
-  async getByDate(tripId: string, date: string): Promise<DailyBudgetOverride | undefined> {
-    return getDb().dailyBudgetOverrides.where("[tripId+date]").equals([tripId, date]).first();
-  }
-
-  watchByTrip(tripId: string, onChange: (overrides: DailyBudgetOverride[]) => void): () => void {
-    const subscription = liveQuery(() => this.listByTrip(tripId)).subscribe({ next: onChange });
+  watchByTrip(tripId: string, onChange: (budget: TripBudget | undefined) => void): () => void {
+    const subscription = liveQuery(() => this.getByTrip(tripId)).subscribe({ next: onChange });
     return () => subscription.unsubscribe();
   }
 
-  async upsert(input: NewDailyBudgetOverride): Promise<DailyBudgetOverride> {
+  async upsert(input: NewTripBudget): Promise<TripBudget> {
     const db = getDb();
-    return TransactionContext.runInTransaction([db.dailyBudgetOverrides], async (ctx) => {
+    return TransactionContext.runInTransaction([db.tripBudgets], async (ctx) => {
       const now = new Date().toISOString();
       const existing = await ctx
-        .table<DailyBudgetOverride>("dailyBudgetOverrides")
-        .where("[tripId+date]")
-        .equals([input.tripId, input.date])
+        .table<TripBudget>("tripBudgets")
+        .where("tripId")
+        .equals(input.tripId)
         .first();
+      const categoryAllocations = (input.categoryAllocations ?? []).map((allocation) =>
+        allocationToEntity(allocation, now)
+      );
       if (existing) {
-        const updated: DailyBudgetOverride = {
+        const updated: TripBudget = {
           ...existing,
-          customBudgetAmountMinor: input.customBudgetAmountMinor,
+          totalBudgetMinor: input.totalBudgetMinor,
+          dailyTargetMinor: input.dailyTargetMinor ?? null,
+          categoryAllocations,
           updatedAt: now,
         };
-        await ctx.table<DailyBudgetOverride>("dailyBudgetOverrides").put(updated);
-        await append("dailyBudgetOverride", "update", updated, { tx: ctx, baseUpdatedAt: existing.updatedAt });
+        await ctx.table<TripBudget>("tripBudgets").put(updated);
         return updated;
       }
-      const override: DailyBudgetOverride = {
+      const budget: TripBudget = {
         id: input.id,
         tripId: input.tripId,
-        date: input.date,
-        customBudgetAmountMinor: input.customBudgetAmountMinor,
+        totalBudgetMinor: input.totalBudgetMinor,
+        dailyTargetMinor: input.dailyTargetMinor ?? null,
+        categoryAllocations,
+        createdBy: input.createdBy,
         createdAt: now,
         updatedAt: now,
+        deletedAt: null,
       };
-      await ctx.table<DailyBudgetOverride>("dailyBudgetOverrides").add(override);
-      await append("dailyBudgetOverride", "insert", override, { tx: ctx, baseUpdatedAt: null });
-      return override;
+      await ctx.table<TripBudget>("tripBudgets").add(budget);
+      return budget;
     });
   }
 
-  async update(id: string, patch: Partial<Omit<DailyBudgetOverride, "id" | "tripId" | "date">>): Promise<DailyBudgetOverride> {
+  async update(id: string, patch: Partial<Omit<TripBudget, "id" | "tripId">>): Promise<TripBudget> {
     const db = getDb();
-    return TransactionContext.runInTransaction([db.dailyBudgetOverrides], async (ctx) => {
-      const previous = await ctx.table<DailyBudgetOverride>("dailyBudgetOverrides").get(id);
-      if (!previous) throw new Error(`Daily budget override ${id} not found before update`);
+    return TransactionContext.runInTransaction([db.tripBudgets], async (ctx) => {
+      const previous = await ctx.table<TripBudget>("tripBudgets").get(id);
+      if (!previous) throw new Error(`Trip budget ${id} not found before update`);
       const updatedAt = new Date().toISOString();
-      await ctx.table<DailyBudgetOverride>("dailyBudgetOverrides").update(id, { ...patch, updatedAt });
-      const override = await ctx.table<DailyBudgetOverride>("dailyBudgetOverrides").get(id);
-      if (!override) throw new Error(`Daily budget override ${id} not found after update`);
-      await append("dailyBudgetOverride", "update", override, { tx: ctx, baseUpdatedAt: previous.updatedAt });
-      return override;
+      const effective = { ...patch, updatedAt };
+      if (effective.categoryAllocations) {
+        effective.categoryAllocations = effective.categoryAllocations.map((allocation) => allocationToEntity(allocation, updatedAt));
+      }
+      await ctx.table<TripBudget>("tripBudgets").update(id, effective);
+      const budget = await ctx.table<TripBudget>("tripBudgets").get(id);
+      if (!budget) throw new Error(`Trip budget ${id} not found after update`);
+      return budget;
     });
   }
 
   async remove(id: string): Promise<void> {
     const db = getDb();
-    return TransactionContext.runInTransaction([db.dailyBudgetOverrides], async (ctx) => {
-      const override = await ctx.table<DailyBudgetOverride>("dailyBudgetOverrides").get(id);
-      if (!override) return;
-      await ctx.table<DailyBudgetOverride>("dailyBudgetOverrides").delete(id);
-      await append("dailyBudgetOverride", "delete", { id, tripId: override.tripId, updatedAt: override.updatedAt }, { tx: ctx, baseUpdatedAt: override.updatedAt });
+    return TransactionContext.runInTransaction([db.tripBudgets], async (ctx) => {
+      const budget = await ctx.table<TripBudget>("tripBudgets").get(id);
+      if (!budget) return;
+      await ctx.table<TripBudget>("tripBudgets").delete(id);
     });
   }
 }
 
 export const userWalletRepository = new DexieUserWalletRepository();
-export const dailyBudgetOverrideRepository = new DexieDailyBudgetOverrideRepository();
+export const tripBudgetRepository = new DexieTripBudgetRepository();

@@ -20,7 +20,6 @@ function makeSource(overrides: Partial<Trip> = {}): TripCloneSource {
     adultCount: 2,
     childCount: 0,
     baseCurrency: "USD",
-    totalBudgetMinor: 800000n,
     isPublic: true,
     shareSlug: "kyoto-spring",
     likesCount: 1234,
@@ -77,7 +76,8 @@ function makeSource(overrides: Partial<Trip> = {}): TripCloneSource {
     exchangeRateToBase: 0.0067,
     paidBy: "member-9",
     splitType: "equal",
-    categoryId: "Meals",
+    category: "food",
+    subcategory: "restaurants",
     date: "2026-04-06",
     createdBy: "author-1",
     createdAt: "2026-01-01T00:00:00.000Z",
@@ -88,20 +88,26 @@ function makeSource(overrides: Partial<Trip> = {}): TripCloneSource {
   const shareA: ExpenseShare = {
     id: "share-1",
     expenseId: expense.id,
+    paidBy: expense.paidBy,
     userId: "member-9",
     shareAmountMinor: 2000n,
     sharePercentage: 50,
     splitType: "equal",
+    settlementStatus: "pending",
+    settledAt: null,
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
   };
   const shareB: ExpenseShare = {
     id: "share-2",
     expenseId: expense.id,
+    paidBy: expense.paidBy,
     userId: "member-10",
     shareAmountMinor: 2000n,
     sharePercentage: 50,
     splitType: "equal",
+    settlementStatus: "pending",
+    settledAt: null,
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
   };
@@ -207,7 +213,6 @@ describe("buildTripClone", () => {
     expect(result.trip.name).toBe("My Kyoto Plan");
     expect(result.trip.destination).toBe("Kyoto, Japan");
     expect(result.trip.startDate).toBe("2026-04-05");
-    expect(result.trip.totalBudgetMinor).toBe(800000n);
   });
 
   it("defaults the copy name to '<name> (copy)'", () => {
