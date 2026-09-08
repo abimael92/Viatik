@@ -103,11 +103,11 @@ export async function sendEmailOtp(
 export async function verifyEmailOtp(email: string, token: string): Promise<ActionResult<{ userId: string; onboarded: boolean }>> {
   const normalizedEmail = normalizeEmail(email);
   if (!isValidEmail(normalizedEmail)) return { success: false, error: "Enter a valid email address." };
-  // Development registrations verify with a magic-link token instead of a
-  // 6-digit code (no email is sent, so no OTP exists). The token form is only
+  // Development registrations verify with a magic-link token instead of an
+  // 8-digit code (no email is sent, so no OTP exists). The token form is only
   // accepted outside of production.
-  const isDevToken = process.env.NODE_ENV === "development" && !/^\d{6}$/.test(token);
-  if (!isDevToken && !/^\d{6}$/.test(token)) return { success: false, error: "Enter the complete 6-digit code." };
+  const isDevToken = process.env.NODE_ENV === "development" && !/^\d{8}$/.test(token);
+  if (!isDevToken && !/^\d{8}$/.test(token)) return { success: false, error: "Enter the complete 8-digit code." };
 
   try {
     const supabase = await createClient();

@@ -89,12 +89,12 @@ describe("verifyEmailOtp", () => {
     expect(mocks.verifyOtp).toHaveBeenCalledWith({ token_hash: "dev-token", type: "magiclink" });
   });
 
-  it("production: rejects anything that is not a 6-digit code", async () => {
+  it("production: rejects anything that is not an 8-digit code", async () => {
     vi.stubEnv("NODE_ENV", "production");
 
     const result = await verifyEmailOtp("a@b.com", "dev-token");
 
-    expect(result).toEqual({ success: false, error: "Enter the complete 6-digit code." });
+    expect(result).toEqual({ success: false, error: "Enter the complete 8-digit code." });
     expect(mocks.verifyOtp).not.toHaveBeenCalled();
   });
 });
