@@ -86,9 +86,18 @@ The application is built for:
 - Validate that exact splits reconcile with the source amount and percentage splits total 100%.
 - Keep expense changes local-first and synchronize them through the same outbox pipeline.
 
+### Trip productivity toolkit
+
+- Ask Scout, Viatik's travel buddy, for itinerary ideas — online, or through a deterministic offline heuristic engine.
+- Track passport and visa expiry alongside other essential travel documents.
+- Add packing lists and transit legs, and run quick polls with your travelers.
+- Get per-day weather forecasts and surface conflicts with planned outdoor activities.
+- Keep a shared trip journal and photo gallery for the moments worth remembering.
+- Store essential documents in a secure, offline-friendly vault.
+
 ### Security and privacy
 
-- Passkey/WebAuthn authentication with an OTP fallback through Supabase Auth.
+- Email and password sign-in with passkey (WebAuthn) and one-time-code fallbacks through Supabase Auth.
 - Secure cookie-based sessions with server-side authentication checks.
 - Strict Supabase Row-Level Security for profiles, trips, memberships, expenses, contacts, travelers, and media.
 - Owner/editor/viewer authorization enforced at the database boundary, not only in the UI.
@@ -178,7 +187,7 @@ Next.js Server Components are used for server-only access, protected route shell
 | Local persistence | Dexie.js / IndexedDB | Device-local domain source of truth and durable outbox |
 | Local reactivity | dexie-react-hooks | Reactive UI updates from local database changes |
 | Remote database | Supabase PostgreSQL | Shared persistence, migrations, RPCs, and RLS |
-| Authentication | Supabase Auth, WebAuthn/Passkeys, OTP | Secure passwordless authentication and fallback access |
+| Authentication | Supabase Auth, password, WebAuthn/Passkeys, OTP | Secure email/password sign-in with passkey and one-time-code fallbacks |
 | Remote files | Supabase Storage | Trip covers, avatars, photos, and shared media |
 | Collaboration | Supabase Realtime | Remote change events reconciled into Dexie |
 | UI state | Zustand | Ephemeral UI-only state; never domain persistence |
@@ -188,6 +197,12 @@ Next.js Server Components are used for server-only access, protected route shell
 | Testing | Vitest, Testing Library | Unit, integration, domain, repository, and component tests |
 | Browser testing | Playwright | End-to-end and offline browser scenarios |
 | Quality | ESLint, Prettier, TypeScript | Static analysis, formatting, and type safety |
+
+### Design language
+
+- Brand gradient from Viatik Blue (`#0ea5e9`) through Brand Magenta (`#a855f7`) to Viatik Red (`#f43f5e`).
+- Dark surface and navy surfaces for the app shell, with a semantic light/dark theme.
+- Geist Sans and Geist Mono typefaces, with brand tokens defined in `app/globals.css`.
 
 ## Project Structure
 
@@ -205,14 +220,24 @@ Viatik/
 │   └── ui/
 ├── features/
 │   ├── domain/                  # Pure entities and repository interfaces; no I/O
-│   ├── activities/
-│   │   ├── components/          # Itinerary board, day columns, cards, calendar
-│   │   └── data/                # Dexie activity repository and tests
+│   ├── activities/              # Itinerary board, day columns, cards, calendar
+│   ├── ai/                      # AI activity Scout (online + offline engines)
 │   ├── collaboration/           # Member UI and collaboration repository
 │   ├── contacts/                # Private contacts and trip traveler workflows
+│   ├── emergency/               # Emergency contact and safety details
 │   ├── expenses/                # Expense UI, repository, split and balance engine
+│   ├── feed/                    # Shared trip feed
+│   ├── finance/                 # Budgets, planned estimates, money hub
+│   ├── health/                  # Passport/visa and document tracking
+│   ├── journal/                 # Trip journal
+│   ├── maps/                    # Trip map view
 │   ├── media/                   # Local media repository and upload metadata
-│   └── trips/                   # Dashboard, workspace, gallery, trip repository
+│   ├── packing/                 # Packing lists
+│   ├── polls/                   # Traveler polls
+│   ├── transit/                 # Transit legs
+│   ├── trips/                   # Dashboard, workspace, gallery, trip repository
+│   ├── vault/                   # Secure offline document vault
+│   └── weather/                 # Per-day forecasts and conflict warnings
 ├── lib/
 │   ├── db/                      # Dexie schema, database lifecycle, transactions
 │   ├── observability/            # Redacted structured logging and diagnostics
@@ -269,25 +294,55 @@ supabase --version
 docker --version
 ```
 
-### Clone and install
+### One-command setup
+
+After cloning, a single command bootstraps the whole offline-first stack —
+installs dependencies, creates `.env.local`, starts local Supabase in Docker,
+and regenerates the TypeScript types:
 
 ```bash
 git clone https://github.com/abimael92/Viatik.git
 cd Viatik
-pnpm install
+pnpm run setup
 ```
 
-### Configure environment variables
+`pnpm run setup` runs [`bin/setup.sh`](bin/setup.sh), which:
 
-Create a local environment file from the checked-in example:
+1. Verifies `pnpm` and a running Docker daemon.
+2. Runs `pnpm install`.
+3. Creates `.env.local`:
+   - If a committed [`.env.encrypted`](./.env.encrypted) is present, unlocks it with the team password (`pnpm run secrets:unlock`).
+   - Otherwise copies the blank `.env.example` to `.env.local`.
+   - Skipped entirely if `.env.local` already exists — never overwritten.
+4. Runs `npx supabase start` (spins up local DB, Studio, Auth, Storage, Realtime and applies all migrations).
+5. Regenerates TypeScript definitions into `lib/supabase/database.types.ts`.
+
+The script is idempotent, so re-running it is safe. If there is no committed
+`.env.encrypted`, setup proceeds without prompting.
+
+### Manual setup (reference)
+
+The one-command setup performs each of the following steps for you. They are
+documented here for troubleshooting or for finer-grained control.
+
+#### Configure environment variables
+
+If a committed encrypted environment (`.env.encrypted`) exists, unlock it with
+the team password:
+
+```bash
+pnpm run secrets:unlock
+```
+
+Otherwise, create a local environment file from the checked-in example:
 
 ```bash
 cp .env.example .env.local
 ```
 
-Fill in the values in `.env.local`. Never commit this file or place service-role credentials in client code. See [Configuration](#configuration) for the required variables.
+Fill in the values in `.env.local`. Never commit this file or place service-role credentials in client code. See [Configuration](#configuration) for the required variables and [Shared environment variables](#shared-environment-variables) for how the encrypted file is managed.
 
-### Start local Supabase
+#### Start local Supabase
 
 If the repository has not been initialized for the Supabase CLI on your machine, initialize it once:
 
@@ -353,6 +408,42 @@ The checked-in [`.env.example`](./.env.example) documents the available variable
 | `GOOGLE_MAPS_API_KEY` | Optional | Server only | Destination autocomplete through Places API |
 
 Environment validation is centralized in `env.mjs`. Public variables are explicitly prefixed with `NEXT_PUBLIC_`; private variables must remain server-only.
+
+### Shared environment variables
+
+Real environment values (service-role keys, session secrets, third-party API
+keys) are **never committed** as plaintext. Instead, the repository ships an
+encrypted copy of the environment that any collaborator can unlock locally with
+a single shared team password.
+
+- **`.env.local`** — real secrets, only on a developer's machine. Strictly gitignored.
+- **`.env.encrypted`** — committed. Contains the same variables encrypted with **AES-256-GCM**; the key is derived from the team password with **PBKDF2-HMAC-SHA256** (600,000 iterations) and a fresh random salt/IV on every lock. Safe to share.
+
+Managed through the [`bin/secrets.mjs`](bin/secrets.mjs) script
+(`node` built-ins only, no dependencies):
+
+```bash
+pnpm run secrets:lock    # .env.local        -> .env.encrypted (commit this)
+pnpm run secrets:unlock  # .env.encrypted    -> .env.local     (gitignored)
+```
+
+Workflow:
+
+- **Onboarding** — `pnpm run setup` (or `pnpm run secrets:unlock`) prompts for the team password once and writes `.env.local`. It never overwrites an existing `.env.local`.
+- **Updating shared secrets** — edit `.env.local`, then `pnpm run secrets:lock` to refresh `.env.encrypted`, and commit the updated `.env.encrypted`. Teammates re-run `pnpm run secrets:unlock` to pull the change.
+- **Unlocking again** — delete `.env.local` and re-unlock, or force an overwrite with `pnpm run secrets:unlock --force`.
+- **Wrong password** — rejected by the AES-GCM authentication tag; nothing is written.
+
+Passwords are entered with terminal masking (never echoed) and are never
+stored. For CI or scripting, the password can be supplied via the
+`SECRETS_PASSWORD` environment variable, e.g.
+`SECRETS_PASSWORD=… pnpm run secrets:lock`.
+
+> **Security notes** — the strength of this scheme is capped by the team
+> password, so choose a long, shared, and well-guarded one. `.env.encrypted`
+> does not hide *variable names*, only values, and it is rotation-dependent:
+> rotate the team password (or update a leaked secret) by re-locking. Use
+> `--force` with care, as it overwrites local secrets.
 
 ## Testing Strategy
 
@@ -442,6 +533,9 @@ Viatik follows a specification-first, test-driven workflow:
 
 | Command | Purpose |
 |---|---|
+| `pnpm run setup` | One-command bootstrap: deps, `.env.local`, local Supabase, types |
+| `pnpm run secrets:lock` | Encrypt `.env.local` → `.env.encrypted` (commit this) |
+| `pnpm run secrets:unlock` | Decrypt `.env.encrypted` → `.env.local` |
 | `pnpm dev` | Start the Next.js development server |
 | `pnpm test` | Run Vitest unit and integration tests |
 | `pnpm test:e2e` | Run Playwright browser tests |
