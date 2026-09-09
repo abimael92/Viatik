@@ -308,7 +308,7 @@ export async function developmentLogin(): Promise<ActionResult<{ onboarded: bool
   if (process.env.NODE_ENV !== "development") return { success: false, error: "Development login is unavailable." };
 
   try {
-    const email = "abimael1992g@gmail.com";
+    const email = "dev@example.com";
     const serviceClient = getServiceClient();
     const { data, error } = await serviceClient.auth.admin.generateLink({ type: "magiclink", email });
     if (error || !data.properties.hashed_token) return { success: false, error: "The development account could not be opened." };
