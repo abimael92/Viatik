@@ -14,6 +14,8 @@ vi.mock("@/app/actions/auth", () => ({
   developmentLogin: vi.fn(),
   sendEmailOtp: vi.fn(),
   verifyEmailOtp: vi.fn(),
+  loginWithPassword: vi.fn(),
+  registerWithPassword: vi.fn(),
 }));
 vi.mock("@/lib/supabase/browser-client", () => ({
   getSupabaseBrowserClient: () => ({
