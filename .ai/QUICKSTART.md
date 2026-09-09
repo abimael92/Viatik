@@ -1,6 +1,16 @@
-# [PROJECT_NAME] AI-Agent Quick Start
+# Viatik AI-Agent Quick Start
 
 Use this guide when working with AI agents in this repository. It is designed for fast, repeatable feature work and bug fixes.
+
+## Environment Setup
+
+New collaborators (and agents) should bootstrap the local stack with a single command before doing any work:
+
+```bash
+pnpm run setup
+```
+
+This installs dependencies, creates `.env.local` from `.env.example` (never overwriting an existing one), starts local Supabase in Docker (`npx supabase start`), and regenerates the TypeScript definitions into `lib/supabase/database.types.ts`. Verify the stack is healthy before running tests that touch Supabase.
 
 ## Before You Start
 
@@ -19,7 +29,7 @@ The complete rules live in [`constitution.md`](./constitution.md). Agent respons
 Tell the Main Agent what you need and identify whether it is a feature, bug, refactor, or security review.
 
 ```text
-Act as the Main Agent for [PROJECT_NAME]. I need help with a [FEATURE / BUG / REFACTOR / SECURITY REVIEW]. Do not write code yet. First inspect the repository rules and summarize the work needed.
+Act as the Main Agent for Viatik. I need help with a [FEATURE / BUG / REFACTOR / SECURITY REVIEW]. Do not write code yet. First inspect the repository rules and summarize the work needed.
 ```
 
 ### Step 2: Read the required context
@@ -67,7 +77,7 @@ Run the relevant checks, review the diff, update the spec or bug ledger, and rep
 ### Prompt: Start a feature
 
 ```text
-Act as the Main Agent. I want to add [FEATURE_NAME] to [PROJECT_NAME].
+Act as the Main Agent. I want to add [FEATURE_NAME] to Viatik.
 
 Do not write code yet. Read .ai/constitution.md, .ai/AGENTS.md, the repository AGENTS.md, README.md, package.json, and relevant existing code. Then:
 1. Summarize the current architecture and related implementation.
@@ -123,7 +133,7 @@ TRACE → ANALYZE → PROPOSE → GENERATE → VERIFY → LOG
 ### Prompt: Investigate a bug
 
 ```text
-Act as the Main Agent. Investigate this bug in [PROJECT_NAME]:
+Act as the Main Agent. Investigate this bug in Viatik:
 
 Observed problem: [WHAT HAPPENED]
 Expected behavior: [WHAT SHOULD HAPPEN]
@@ -165,7 +175,7 @@ Confirm the original reproduction passes, test adjacent boundary cases, inspect 
 ### Prompt: Run a security review
 
 ```text
-Act as the Security Agent. Review [SCOPE] in [PROJECT_NAME].
+Act as the Security Agent. Review [SCOPE] in Viatik.
 
 Read .ai/constitution.md, .ai/AGENTS.md, the relevant feature spec or bug report, repository rules, changed files, migrations, and tests. Check authentication, authorization, RLS, input validation, output encoding, secrets, logging, uploads, dependency risk, injection, XSS, CSRF, SSRF, data leakage, and denial-of-service risks as applicable.
 
@@ -182,6 +192,12 @@ Do not expose secrets or sensitive user data. Return:
 ## 5. Common Commands — Copy-Paste Ready Prompts
 
 Use the repository's actual scripts from `package.json`. For this project, common commands include:
+
+### Bootstrap the environment
+
+```bash
+pnpm run setup
+```
 
 ### Inspect before changing
 

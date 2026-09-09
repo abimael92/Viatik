@@ -1,6 +1,6 @@
 # Bug Report: [BUG_TITLE]
 
-**Project:** [PROJECT_NAME]  
+**Project:** Viatik  
 **Reporter:** [REPORTER]  
 **Status:** [Open | Investigating | Fix In Progress | Ready for QA | Resolved | Won't Fix]  
 **Date reported:** [YYYY-MM-DD]  

@@ -550,6 +550,6 @@ Viatik follows a specification-first, test-driven workflow:
 
 Viatik is released under the **MIT License**.
 
-Copyright (c) 2026 Abimael Garcia
+Copyright (c) 2026 Viatik-team26!
 
 Add the standard MIT license text to a root-level `LICENSE` file before publishing a production release.
