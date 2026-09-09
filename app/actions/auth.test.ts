@@ -3,12 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   generateLink: vi.fn(),
   signInWithOtp: vi.fn(),
+  signUp: vi.fn(),
   verifyOtp: vi.fn(),
   maybeSingle: vi.fn(),
+  headersGet: vi.fn<(name: string) => string | null>(() => null),
 }));
 
 vi.mock("next/headers", () => ({
-  headers: () => ({ get: () => null }),
+  headers: () => ({ get: mocks.headersGet }),
 }));
 
 vi.mock("@/lib/observability/logger", () => ({
@@ -16,19 +18,25 @@ vi.mock("@/lib/observability/logger", () => ({
 }));
 
 vi.mock("@/lib/supabase/service-client", () => ({
-  getServiceClient: () => ({ auth: { admin: { generateLink: mocks.generateLink } } }),
+  getServiceClient: () => ({
+    auth: { admin: { generateLink: mocks.generateLink } },
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({ eq: vi.fn(() => ({ maybeSingle: mocks.maybeSingle })) })),
+      upsert: vi.fn(),
+    })),
+  }),
 }));
 
 vi.mock("@/lib/supabase/server-client", () => ({
   createClient: () => ({
-    auth: { signInWithOtp: mocks.signInWithOtp, verifyOtp: mocks.verifyOtp },
+    auth: { signInWithOtp: mocks.signInWithOtp, signUp: mocks.signUp, verifyOtp: mocks.verifyOtp },
     from: vi.fn(() => ({
       select: vi.fn(() => ({ eq: vi.fn(() => ({ maybeSingle: mocks.maybeSingle })) })),
     })),
   }),
 }));
 
-import { sendEmailOtp, verifyEmailOtp } from "@/app/actions/auth";
+import { registerWithPassword, sendEmailOtp, verifyEmailOtp } from "@/app/actions/auth";
 
 const OTP_RESULT = {
   data: { user: { id: "user-1" }, session: { access_token: "token" } },
@@ -96,5 +104,36 @@ describe("verifyEmailOtp", () => {
 
     expect(result).toEqual({ success: false, error: "Enter the complete 8-digit code." });
     expect(mocks.verifyOtp).not.toHaveBeenCalled();
+  });
+});
+
+describe("registerWithPassword", () => {
+  it("routes the email confirmation link through /auth/confirm so the code can be exchanged", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    mocks.headersGet.mockReturnValue("https://viatik-six.vercel.app");
+    mocks.signUp.mockResolvedValue({ data: { user: { id: "user-1" }, session: null }, error: null });
+
+    const result = await registerWithPassword(
+      "New@Example.com",
+      "Str0ngPass!9",
+      "Jane Doe",
+      "+1 555 012 3456",
+      "1990-01-01"
+    );
+
+    expect(result).toEqual({ success: true, data: { confirmRequired: true } });
+    expect(mocks.signUp).toHaveBeenCalledWith({
+      email: "new@example.com",
+      password: "Str0ngPass!9",
+      options: {
+        emailRedirectTo: "https://viatik-six.vercel.app/auth/confirm?next=%2Ftrips",
+        data: {
+          full_name: "Jane Doe",
+          phone: "+1 555 012 3456",
+          birth_date: "1990-01-01",
+          onboarding_required: false,
+        },
+      },
+    });
   });
 });
