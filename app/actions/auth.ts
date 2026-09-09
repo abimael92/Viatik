@@ -229,10 +229,19 @@ export async function registerWithPassword(
 
   try {
     const supabase = await createClient();
+    const requestHeaders = await headers();
+    const origin = requestHeaders.get("origin");
+    // Route the email confirmation link through /auth/confirm so the one-time
+    // code can be exchanged for a session. Without this, Supabase redirects to
+    // the site root and the user lands on an error page.
+    const emailRedirectTo = origin
+      ? `${origin}/auth/confirm?next=${encodeURIComponent("/trips")}`
+      : undefined;
     const { data, error } = await supabase.auth.signUp({
       email: normalizedEmail,
       password,
       options: {
+        emailRedirectTo,
         data: {
           full_name: normalizedName,
           phone: phone.trim(),
