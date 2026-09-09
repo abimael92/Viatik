@@ -23,6 +23,9 @@ blob-report/
 .env.test.local
 .env.production.local
 !.env.example
+# The encrypted environment file is safe to share — it holds no plaintext
+# secrets and is intentionally committed so teammates can unlock it locally.
+!.env.encrypted
 
 # Supabase local state
 supabase/.temp/

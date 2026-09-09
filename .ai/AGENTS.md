@@ -1,4 +1,4 @@
-# [PROJECT_NAME] AI Agent Roles
+# Viatik AI Agent Roles
 
 **Read first:** [`llms.txt`](./llms.txt), then [`constitution.md`](./constitution.md).  
 **Applies to:** Every agent operating in this repository.
