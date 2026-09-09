@@ -10,11 +10,19 @@ build/
 # TypeScript caches
 *.tsbuildinfo
 
+# Build/tool caches
+.turbo/
+.cache/
+.vite/
+.next/cache/
+
 # Test and coverage output
 playwright-report/
 test-results/
 coverage/
 blob-report/
+# Playwright MCP live-session snapshots (may capture real logged-in names)
+.playwright-mcp/
 
 # Environment variables and local secrets
 .env
