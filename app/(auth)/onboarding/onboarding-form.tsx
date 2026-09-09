@@ -89,6 +89,12 @@ export function OnboardingForm({ email, next, initialName = "" }: { email: strin
       const name = values.fullName.trim();
       if (name.length < 2) errors.fullName = "Enter at least 2 characters.";
       else if (name.length > 60) errors.fullName = "Use no more than 60 characters.";
+      const phoneDigits = values.phone.replace(/\D/g, "");
+      if (!phoneDigits || phoneDigits.length < 7) errors.phone = "Enter a valid phone number.";
+    }
+    if (targetStep === 3) {
+      if (!values.birthDate) errors.birthDate = "Enter your date of birth.";
+      else if (new Date(values.birthDate) > new Date()) errors.birthDate = "Date of birth can't be in the future.";
     }
     return errors;
   }
@@ -132,8 +138,8 @@ export function OnboardingForm({ email, next, initialName = "" }: { email: strin
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (values.fullName.trim().length < 2) {
-      const errors = { fullName: "Enter a display name with at least 2 characters." };
+    const errors = { ...validateStep(1), ...validateStep(3) };
+    if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       focusFirstError(errors);
       return;
@@ -167,7 +173,7 @@ export function OnboardingForm({ email, next, initialName = "" }: { email: strin
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">One last step</p>
         <h1 className="mt-3 text-3xl font-bold tracking-tight">Make Viatik yours</h1>
         <p className="mt-2 text-muted-foreground">
-          Only your name is required — the rest is optional and stays private to you.
+          Your name and phone are required — the rest is optional and stays private to you.
         </p>
       </div>
 
@@ -189,7 +195,7 @@ export function OnboardingForm({ email, next, initialName = "" }: { email: strin
             onChange={(event) => setField("fullName", event.target.value)}
             error={fieldErrors.fullName}
             autoComplete="name"
-            placeholder="Alex Morgan"
+            placeholder="John Doe"
             required
             autoFocus
           />
@@ -202,7 +208,9 @@ export function OnboardingForm({ email, next, initialName = "" }: { email: strin
             value={values.phone}
             onChange={(event) => setField("phone", event.target.value)}
             placeholder="+1 555 012 3456"
-            helper="Optional · used for account recovery and shared trip details."
+            helper="Used for account recovery and shared trip details."
+            required
+            error={fieldErrors.phone}
           />
         </div>
       )}
@@ -221,7 +229,7 @@ export function OnboardingForm({ email, next, initialName = "" }: { email: strin
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Contact name" name="emergencyContactName" value={values.emergencyContactName} onChange={(event) => setField("emergencyContactName", event.target.value)} placeholder="Taylor Rivera" />
+            <Field label="Contact name" name="emergencyContactName" value={values.emergencyContactName} onChange={(event) => setField("emergencyContactName", event.target.value)} placeholder="Jane Doe" />
             <Field label="Relationship" name="emergencyContactRelationship" value={values.emergencyContactRelationship} onChange={(event) => setField("emergencyContactRelationship", event.target.value)} placeholder="Parent, partner, friend…" />
             <Field label="Emergency phone" name="emergencyContactPhone" type="tel" inputMode="tel" value={values.emergencyContactPhone} onChange={(event) => setField("emergencyContactPhone", event.target.value)} placeholder="+1 555 012 3456" />
           </div>
@@ -242,7 +250,7 @@ export function OnboardingForm({ email, next, initialName = "" }: { email: strin
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Date of birth" name="birthDate" type="date" value={values.birthDate} onChange={(event) => setField("birthDate", event.target.value)} max={new Date().toISOString().slice(0, 10)} />
+            <Field label="Date of birth" name="birthDate" type="date" value={values.birthDate} onChange={(event) => setField("birthDate", event.target.value)} max={new Date().toISOString().slice(0, 10)} required error={fieldErrors.birthDate} />
             <Field label="Preferred language" name="preferredLanguage" value={values.preferredLanguage} onChange={(event) => setField("preferredLanguage", event.target.value)} placeholder="English" maxLength={35} />
             <SelectField label="Preferred currency" name="preferredCurrency" value={values.preferredCurrency} onChange={(event) => setField("preferredCurrency", event.target.value)}>
               <option value="">Not specified</option>
