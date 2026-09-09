@@ -53,13 +53,13 @@ describe("sendEmailOtp", () => {
       error: null,
     });
 
-    const result = await sendEmailOtp("A@B.com", true, "Alice");
+    const result = await sendEmailOtp("A@B.com", true, "Alice", "1234567");
 
     expect(result).toEqual({ success: true, data: { devTokenHash: "dev-token" } });
     expect(mocks.generateLink).toHaveBeenCalledWith({
       type: "magiclink",
       email: "a@b.com",
-      options: { data: { full_name: "Alice", onboarding_required: true } },
+      options: { data: { full_name: "Alice", phone: "1234567", onboarding_required: false } },
     });
     // No email is sent, so the OTP path must not run.
     expect(mocks.signInWithOtp).not.toHaveBeenCalled();
@@ -69,7 +69,7 @@ describe("sendEmailOtp", () => {
     vi.stubEnv("NODE_ENV", "production");
     mocks.signInWithOtp.mockResolvedValue({ data: { user: null }, error: null });
 
-    const result = await sendEmailOtp("a@b.com", true, "Alice");
+    const result = await sendEmailOtp("a@b.com", true, "Alice", "1234567");
 
     expect(result).toEqual({ success: true, data: {} });
     expect(mocks.signInWithOtp).toHaveBeenCalled();
