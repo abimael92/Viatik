@@ -1,7 +1,7 @@
 # Feature Specification: AI Activity Scout
 
 **Project:** Viatik
-**Owner:** abimael.garcia
+**Owner:** Abimael Garcia
 **Status:** In Progress
 **Created:** 2026-09-06
 **Updated:** 2026-09-06

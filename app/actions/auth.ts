@@ -229,10 +229,19 @@ export async function registerWithPassword(
 
   try {
     const supabase = await createClient();
+    const requestHeaders = await headers();
+    const origin = requestHeaders.get("origin");
+    // Route the email confirmation link through /auth/confirm so the one-time
+    // code can be exchanged for a session. Without this, Supabase redirects to
+    // the site root and the user lands on an error page.
+    const emailRedirectTo = origin
+      ? `${origin}/auth/confirm?next=${encodeURIComponent("/trips")}`
+      : undefined;
     const { data, error } = await supabase.auth.signUp({
       email: normalizedEmail,
       password,
       options: {
+        emailRedirectTo,
         data: {
           full_name: normalizedName,
           phone: phone.trim(),
@@ -308,7 +317,7 @@ export async function developmentLogin(): Promise<ActionResult<{ onboarded: bool
   if (process.env.NODE_ENV !== "development") return { success: false, error: "Development login is unavailable." };
 
   try {
-    const email = "abimael1992g@gmail.com";
+    const email = "dev@example.com";
     const serviceClient = getServiceClient();
     const { data, error } = await serviceClient.auth.admin.generateLink({ type: "magiclink", email });
     if (error || !data.properties.hashed_token) return { success: false, error: "The development account could not be opened." };
