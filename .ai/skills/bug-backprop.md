@@ -1,6 +1,6 @@
 # Bug Backpropagation Protocol
 
-**Project:** [PROJECT_NAME]  
+**Project:** Viatik  
 **Purpose:** Turn every confirmed bug into a tested fix and, when appropriate, a durable specification rule.  
 **Required reading:** [`../constitution.md`](../constitution.md), [`../AGENTS.md`](../AGENTS.md), and [`../specs/bug-ledger.md`](../specs/bug-ledger.md)  
 **Bug report template:** [`../templates/bug-report.md`](../templates/bug-report.md)  

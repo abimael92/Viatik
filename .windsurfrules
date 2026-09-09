@@ -1,0 +1,16 @@
+# Viatik AI System Prompt & Rules
+
+🚨 **STOP. BEFORE YOU PROPOSE ARCHITECTURE OR WRITE CODE, YOU MUST DO THE FOLLOWING:** 🚨
+
+1. Read `.ai/llms.txt` to understand the AI documentation framework and workflow pipeline.
+2. Read `.ai/constitution.md` to understand the absolute laws and procedures of this codebase.
+
+## CRITICAL ARCHITECTURE INVARIANTS (ABSOLUTE LAW)
+* **Local-First:** Dexie is the local domain source of truth. 
+* **Sync Target:** Supabase is strictly the remote synchronization and authorization target. 
+* **No Direct Remote Queries:** UI components and features MUST NEVER query or write to Supabase domain tables directly.
+* **Money Math:** All financial calculations MUST use minor units (`bigint`) to prevent floating-point errors.
+
+Do not assume standard Next.js / Supabase patterns. This is an offline-first, local-first application. You must route all optimistic writes through the local Dexie repositories and the outbox transactional engine. 
+
+Acknowledge these rules by reading the specified files before proceeding with any user request.

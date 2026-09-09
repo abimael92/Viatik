@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "setup": "bash bin/setup.sh",
+    "secrets:lock": "node bin/secrets.mjs lock",
+    "secrets:unlock": "node bin/secrets.mjs unlock",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
