@@ -20,7 +20,6 @@ import { fileURLToPath } from 'node:url';
 const ALGORITHM = 'aes-256-gcm';
 const KEY_LEN = 32; // 256-bit key
 const IV_LEN = 12; // 96-bit IV recommended for GCM
-const AUTH_TAG_LEN = 16; // 128-bit GCM tag
 const SALT_LEN = 16;
 const ITERATIONS = 600_000; // OWASP recommendation for PBKDF2-HMAC-SHA256
 const DIGEST = 'sha256';
