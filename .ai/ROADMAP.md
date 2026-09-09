@@ -1,4 +1,4 @@
-# [PROJECT_NAME] Product Roadmap
+# Viatik Product Roadmap
 
 **Purpose:** Record the MVP must-haves, deferred V2 good-to-haves, and the highest-risk architecture challenges to mitigate while coding.
 **Governance:** [`constitution.md`](./constitution.md) and [`AGENTS.md`](./AGENTS.md)

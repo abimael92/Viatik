@@ -1,4 +1,4 @@
-# [PROJECT_NAME] Bug Ledger
+# Viatik Bug Ledger
 
 **Purpose:** Record confirmed bugs, their root causes, and the durable invariants added to prevent recurrence.  
 **Framework entry point:** [`../llms.txt`](../llms.txt)  

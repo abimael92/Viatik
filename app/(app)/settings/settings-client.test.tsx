@@ -62,6 +62,8 @@ describe("native passkey registration", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
     fireEvent.change(screen.getByLabelText("Full name"), { target: { value: "Alicia" } });
+    fireEvent.change(screen.getByLabelText("Phone"), { target: { value: "+1 555 0100" } });
+    fireEvent.change(screen.getByLabelText("Date of birth"), { target: { value: "1990-01-01" } });
     fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
 
     await waitFor(() => expect(mocks.updateProfileDetails).toHaveBeenCalled());

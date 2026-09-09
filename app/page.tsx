@@ -8,6 +8,8 @@ import {
   CloudOff,
   MapPinned,
   Receipt,
+  ShieldCheck,
+  Sparkles,
   Users,
   Zap,
 } from "lucide-react";
@@ -31,12 +33,22 @@ const features = [
   {
     icon: Receipt,
     title: "Share expenses",
-    text: "Record group costs and keep the money conversation simple.",
+    text: "Split group costs in any currency and stay on budget together.",
   },
   {
     icon: Camera,
     title: "Keep the memories",
     text: "Save trip photos beside the places and moments that made them special.",
+  },
+  {
+    icon: Sparkles,
+    title: "Ask Scout",
+    text: "Get itinerary ideas from Viatik's travel buddy, even when you're offline.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Keep documents ready",
+    text: "Track passport and visa expiry so nothing lapses before you fly.",
   },
 ];
 
@@ -56,7 +68,7 @@ export default function Home() {
               Less coordination. More adventure.
             </h2>
           </div>
-          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {features.map(({ icon: Icon, title, text }) => (
               <article key={title} className="rounded-2xl border bg-card p-6">
                 <IconTile className="size-11 rounded-xl">
@@ -176,8 +188,8 @@ function HeroSection() {
             One shared plan for every unforgettable trip.
           </h1>
           <p className="mt-7 max-w-xl text-lg leading-8 text-muted-foreground sm:text-xl">
-            Build itineraries, organize group expenses, and keep every traveler in sync—even when
-            you’re offline.
+            Build itineraries, split expenses in any currency, track passports and visas, and keep
+            every traveler in sync—even when you’re offline.
           </p>
           <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Button
@@ -266,11 +278,11 @@ function ProductPreview() {
                 <Receipt className="size-5" />
                 Group budget
               </div>
-              <p className="mt-4 text-2xl font-semibold tracking-tight">€428</p>
+              <p className="mt-4 text-2xl font-semibold tracking-tight">$428</p>
               <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
                 <div className="h-full w-[62%] rounded-full bg-primary" />
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">62% of €690 planned</p>
+              <p className="mt-2 text-xs text-muted-foreground">62% of $690 planned</p>
             </section>
 
             <section className="rounded-2xl border border-border/60 bg-background/65 p-4" aria-label="Trip collaborators">
