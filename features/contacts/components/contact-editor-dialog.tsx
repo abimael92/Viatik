@@ -416,7 +416,7 @@ function ContactForm({
                   name="emergencyContactName"
                   value={values.emergencyContactName}
                   onChange={(event) => setField("emergencyContactName", event.target.value)}
-                  placeholder="Taylor Rivera"
+                  placeholder="Jane Doe"
                 />
                 <Field
                   label="Relationship to traveler"

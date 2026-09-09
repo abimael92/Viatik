@@ -313,11 +313,11 @@ function ProfileEditForm({
       </div>
       <div className="space-y-2">
         <Label htmlFor="settings-phone">Phone</Label>
-        <Input id="settings-phone" type="tel" inputMode="tel" autoComplete="tel" value={values.phone} onChange={(event) => setField("phone", event.target.value)} placeholder="+1 555 012 3456" />
+        <Input id="settings-phone" type="tel" inputMode="tel" autoComplete="tel" value={values.phone} onChange={(event) => setField("phone", event.target.value)} placeholder="+1 555 012 3456" required />
       </div>
       <div className="space-y-2">
         <Label htmlFor="settings-birthDate">Date of birth</Label>
-        <Input id="settings-birthDate" type="date" value={values.birthDate} onChange={(event) => setField("birthDate", event.target.value)} max={new Date().toISOString().slice(0, 10)} />
+        <Input id="settings-birthDate" type="date" value={values.birthDate} onChange={(event) => setField("birthDate", event.target.value)} max={new Date().toISOString().slice(0, 10)} required />
       </div>
       <div className="space-y-2">
         <Label htmlFor="settings-preferredCurrency">Preferred currency</Label>
@@ -345,7 +345,7 @@ function ProfileEditForm({
       </div>
       <div className="space-y-2">
         <Label htmlFor="settings-emergencyContactName">Emergency contact name</Label>
-        <Input id="settings-emergencyContactName" value={values.emergencyContactName} onChange={(event) => setField("emergencyContactName", event.target.value)} placeholder="Taylor Rivera" />
+        <Input id="settings-emergencyContactName" value={values.emergencyContactName} onChange={(event) => setField("emergencyContactName", event.target.value)} placeholder="Jane Doe" />
       </div>
       <div className="space-y-2">
         <Label htmlFor="settings-emergencyContactRelationship">Emergency relationship</Label>
