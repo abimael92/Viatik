@@ -1,10 +1,10 @@
 # Feature Specification: AI Activity Scout
 
 **Project:** Viatik
-**Owner:** Abimael Garcia
-**Status:** In Progress
+**Owner:** Abimael Garcia (abimael.garcia)
+**Status:** Complete
 **Created:** 2026-09-06
-**Updated:** 2026-09-06
+**Updated:** 2026-09-10
 **Related work:** Supersedes `ai-trip-builder.md` enhance/create modal flows
 
 > Read [`../constitution.md`](../constitution.md) and [`../AGENTS.md`](../AGENTS.md) before completing this template. The framework entry point is [`../llms.txt`](../llms.txt). Record resulting bug invariants in [`../specs/bug-ledger.md`](../specs/bug-ledger.md), and use [`bug-report.md`](./bug-report.md) for defects discovered during delivery.
@@ -117,45 +117,45 @@ All criteria must be objectively testable.
 
 ### Functional
 
-- [ ] A prompt or preset produces a structured list of suggestion cards with
+- [x] A prompt or preset produces a structured list of suggestion cards with
       title, category, description, duration, time-of-day, and transit note.
-- [ ] Suggestions are destination-aware (different pools for Kyoto vs. Rome vs.
+- [x] Suggestions are destination-aware (different pools for Kyoto vs. Rome vs.
       a generic city), deterministic offline.
-- [ ] "+ Add to Day" writes a valid `Activity` to the selected day at the
+- [x] "+ Add to Day" writes a valid `Activity` to the selected day at the
       recommended time/category/location without disturbing existing activities.
-- [ ] Malformed/oversized input is normalized or rejected with a clear error,
+- [x] Malformed/oversized input is normalized or rejected with a clear error,
       never persisted as bad data.
-- [ ] Loading, empty, offline, and provider-failure states are handled in the UI.
+- [x] Loading, empty, offline, and provider-failure states are handled in the UI.
 
 ### Authorization and security
 
-- [ ] Adding an activity is gated by the trip's edit role (reuses existing
+- [x] Adding an activity is gated by the trip's edit role (reuses existing
       `canEdit` in the workspace); the drawer is hidden for view-only members.
-- [ ] Untrusted prompt and LLM output are validated and length-capped; no raw HTML.
-- [ ] The API key is server-side only and is never logged or returned to the client.
-- [ ] No secrets or sensitive data in code, logs, or responses.
+- [x] Untrusted prompt and LLM output are validated and length-capped; no raw HTML.
+- [x] The API key is server-side only and is never logged or returned to the client.
+- [x] No secrets or sensitive data in code, logs, or responses.
 
 ### Reliability and offline behavior
 
-- [ ] Generation works fully offline via the heuristic (no network dependency).
-- [ ] The LLM path, when configured, falls back to the heuristic on any failure.
-- [ ] Writes use the repository's transaction (outbox + feed) unchanged; refresh
+- [x] Generation works fully offline via the heuristic (no network dependency).
+- [x] The LLM path, when configured, falls back to the heuristic on any failure.
+- [x] Writes use the repository's transaction (outbox + feed) unchanged; refresh
       does not lose durable writes.
 
 ### Accessibility and UX
 
-- [ ] The drawer is keyboard/touch reachable with labelled controls and
+- [x] The drawer is keyboard/touch reachable with labelled controls and
       `aria-live` status regions.
-- [ ] Buttons meet touch-target sizing; focus-visible rings are present.
-- [ ] The drawer animates with `prefers-reduced-motion` respected and is
+- [x] Buttons meet touch-target sizing; focus-visible rings are present.
+- [x] The drawer animates with `prefers-reduced-motion` respected and is
       responsive on supported viewports.
 
 ### Verification
 
-- [ ] Unit tests added for the offline generator, validator, and provider
+- [x] Unit tests added for the offline generator, validator, and provider
       fallback.
-- [ ] Typecheck, lint, and the unit test suite pass.
-- [ ] QA/security review is documented in the completion notes.
+- [x] Typecheck, lint, and the unit test suite pass.
+- [x] QA/security review is documented in the completion notes.
 
 ## Implementation Plan
 
@@ -197,6 +197,22 @@ All criteria must be objectively testable.
   - `pnpm test` — PASS, 595 tests across 80 files (21 new AI scout engine tests).
   - `pnpm lint` — PASS, 0 errors / 0 warnings.
   - `pnpm build` — PASS, production build compiles and prerenders all 17 routes.
-- **Bug-ledger updates:** `Not applicable` (no confirmed bugs).
+- **Itinerary-tab integration (B1):** The Scout AI drawer mounts from two entry
+  points with a single shared source of truth. In `trip-workspace.tsx`:
+  - Itinerary tab renders the drawer **embedded** (side-by-side with the board)
+    via `AiScoutSidebar embedded`, collapsing the board to `flex-1`.
+  - Overview "Quick actions" renders the **modal** variant.
+  - Both share the workspace-level `scoutOpen` state (the Overview previously
+    kept a second, disconnected local `scoutOpen`); lifted to `TripWorkspace`
+    and passed down via `scoutOpen` / `onScoutOpenChange` so the UI stays DRY
+    and consistent.
+  - Regression test `features/trips/components/__tests__/trip-workspace.test.tsx`
+    (3 cases) verifies the embedded mount/toggle and the overview modal mount.
+- **Bug-ledger updates:**
+  - `ai-activity-scout.md` — closed out (status Complete; all acceptance
+    criteria met).
+  - `bug-ledger.md` — no new durable invariant for the itinerary integration
+    (it was a DRY/rendering defect, not a durable system rule); the P0 profiles
+    RLS invariant was added separately.
 - **Follow-up work:** Optional budget/transit suggestions; optional pinned LLM
   vendor behind the `ScoutProvider` interface.

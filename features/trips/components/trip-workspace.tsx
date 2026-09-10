@@ -360,7 +360,7 @@ export function TripWorkspace({
       {tab === "overview" && overviewTool === null && weatherConflicts.length > 0 && (
         <WeatherConflictBanner conflicts={weatherConflicts} onReview={() => setConflictModalOpen(true)} />
       )}
-      {tab === "overview" && overviewTool === null && <Overview trip={trip} userId={userId} activities={activities} mediaCount={media.length} setTab={setTab} setJournalView={setJournalView} onOpenTool={setOverviewTool} onAddActivity={() => { if (canEdit) setActivityDialog("new"); }} onAddExpense={handleAddExpense} onAddPhotos={handleAddPhotos} onSetDates={handleSetDates} onAddTransit={() => { if (canEdit) setTransitOpen(true); }} canEdit={canEdit} onError={setError} />}
+      {tab === "overview" && overviewTool === null && <Overview trip={trip} userId={userId} activities={activities} mediaCount={media.length} setTab={setTab} setJournalView={setJournalView} onOpenTool={setOverviewTool} onAddActivity={() => { if (canEdit) setActivityDialog("new"); }} onAddExpense={handleAddExpense} onAddPhotos={handleAddPhotos} onSetDates={handleSetDates} onAddTransit={() => { if (canEdit) setTransitOpen(true); }} canEdit={canEdit} scoutOpen={scoutOpen} onScoutOpenChange={setScoutOpen} onError={setError} />}
       {tab === "itinerary" && <section className="space-y-5"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><Heading level={2} className="text-2xl font-bold">Itinerary</Heading><p className="text-muted-foreground">See open time, schedule activities, or organize each day.</p></div><div className="flex flex-wrap gap-2"><div className="flex rounded-md border p-0.5"><Button size="sm" variant={itineraryView === "calendar" ? "default" : "ghost"} onClick={() => setItineraryView("calendar")}>Calendar</Button>
         <Button size="sm" variant={itineraryView === "board" ? "default" : "ghost"} onClick={() => setItineraryView("board")}>Board</Button></div>{itineraryView === "board" && <select aria-label="Filter by category" value={category} onChange={(event) => setCategory(event.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm"><option value="all">All categories</option>{Array.from(new Set(activities.map((item) => item.category))).map((item) => <option key={item}>{item}</option>)}</select>}{canEdit && <Button variant="outline" onClick={() => setTransitOpen(true)}><TrainFront className="size-4" />Add transit</Button>}{canEdit && <Button variant="primary" onClick={() => setActivityDialog("new")}><Plus className="size-5" />Activity</Button>}{canEdit && <Button variant="outline" onClick={() => setScoutOpen((open) => !open)} aria-expanded={scoutVisible} className="h-11 gap-1 border-transparent bg-linear-to-r from-viatik-blue via-viatik-magenta to-viatik-red px-3 text-white shadow-[0_4px_14px_rgba(168,85,247,0.35)] hover:border-transparent hover:opacity-90"><Image src="/scout_icon.png" alt="Scout the fox" width={40} height={40} className="size-10 shrink-0 object-contain object-center" />{scoutVisible ? "Bye Scout" : "Scout AI"}</Button>}</div></div>{weatherConflicts.length > 0 && <WeatherConflictBanner conflicts={weatherConflicts} onReview={() => setConflictModalOpen(true)} />}<div className="flex items-start gap-4"><div className={cn("min-w-0", scoutVisible ? "flex-1" : "w-full")}>{days.length ? itineraryView === "calendar" ? <WeekCalendar tripId={tripId} days={days} activities={activities} onSelect={openActivity} onCreateActivity={(dayDate, startTime) => setActivityDialog({ draft: { dayDate, startTime } })} forecast={forecast?.forecast} warnings={weatherWarnings} weatherLoading={weatherLoading} conflicts={conflictsByActivity} canEdit={canEdit} /> : <ItineraryBoard tripId={tripId} dayDates={days} category={category} onSelect={openActivity} readOnly={!canEdit} forecast={forecast?.forecast} warnings={weatherWarnings} weatherLoading={weatherLoading} conflicts={conflictsByActivity} onDropScout={handleDropScout} /> : <div className="rounded-2xl border border-dashed bg-linear-to-b from-card to-muted/30 p-10 text-center"><Heading level={3} className="text-base font-semibold">{canEdit ? "Add trip dates to build your itinerary" : "Trip dates are not set"}</Heading>{canEdit && <Button variant="link" onClick={handleOpenDetails}>Set dates</Button>}</div>}</div>{scoutVisible && <AiScoutSidebar embedded open onOpenChange={setScoutOpen} trip={trip} tripId={tripId} userId={userId} days={days} activities={activities} canEdit={canEdit} onError={setError} />}</div></section>}
       {tab === "map" && <TripMapView tripId={tripId} userId={userId} trip={trip} canEdit={canEdit} />}
@@ -421,10 +421,9 @@ export function TripWorkspace({
   );
 }
 
-function Overview({ trip, userId, activities, mediaCount, setTab, setJournalView, onOpenTool, onAddActivity, onAddExpense, onAddPhotos, onSetDates, onAddTransit, canEdit, onError }: { trip: Trip; userId: string; activities: Activity[]; mediaCount: number; setTab: (tab: Tab) => void; setJournalView: (view: "journal" | "feed") => void; onOpenTool: (tool: SecondaryTool) => void; onAddActivity: () => void; onAddExpense: () => void; onAddPhotos: () => void; onSetDates: () => void; onAddTransit: () => void; canEdit: boolean; onError: (message: string) => void }) {
+function Overview({ trip, userId, activities, mediaCount, setTab, setJournalView, onOpenTool, onAddActivity, onAddExpense, onAddPhotos, onSetDates, onAddTransit, canEdit, scoutOpen, onScoutOpenChange, onError }: { trip: Trip; userId: string; activities: Activity[]; mediaCount: number; setTab: (tab: Tab) => void; setJournalView: (view: "journal" | "feed") => void; onOpenTool: (tool: SecondaryTool) => void; onAddActivity: () => void; onAddExpense: () => void; onAddPhotos: () => void; onSetDates: () => void; onAddTransit: () => void; canEdit: boolean; scoutOpen: boolean; onScoutOpenChange: (open: boolean) => void; onError: (message: string) => void }) {
   const { segments } = useTransitSegments(trip.id);
   const transit = segments.filter((segment) => segment.deletedAt === null);
-  const [scoutOpen, setScoutOpen] = useState(false);
   const days = dateRange(trip.startDate, trip.endDate);
   return (
     <div className="space-y-6">
@@ -499,7 +498,7 @@ function Overview({ trip, userId, activities, mediaCount, setTab, setJournalView
             <Button variant="outline" onClick={onAddExpense}>Add expense</Button>
             <Button variant="outline" onClick={onAddPhotos}>Add photos</Button>
             <Button variant="outline" onClick={onAddTransit}><TrainFront className="size-4" />Add transit</Button>
-            <Button variant="outline" onClick={() => setScoutOpen(true)} className="h-11 gap-1 border-transparent bg-linear-to-r from-viatik-blue via-viatik-magenta to-viatik-red px-3 text-white shadow-[0_4px_14px_rgba(168,85,247,0.35)] hover:border-transparent hover:opacity-90">
+            <Button variant="outline" onClick={() => onScoutOpenChange(true)} className="h-11 gap-1 border-transparent bg-linear-to-r from-viatik-blue via-viatik-magenta to-viatik-red px-3 text-white shadow-[0_4px_14px_rgba(168,85,247,0.35)] hover:border-transparent hover:opacity-90">
               <Image src="/scout_icon.png" alt="Scout the fox" width={40} height={40} className="size-10 shrink-0 object-contain object-center" />Scout AI</Button>
           </div>
         </div>
@@ -507,7 +506,7 @@ function Overview({ trip, userId, activities, mediaCount, setTab, setJournalView
       <AiScoutSidebar
         modal
         open={scoutOpen}
-        onOpenChange={setScoutOpen}
+        onOpenChange={onScoutOpenChange}
         trip={trip}
         tripId={trip.id}
         userId={userId}
