@@ -19,9 +19,9 @@ import { cn } from "@/lib/utils";
 
 const links = [
   { href: "/home", label: "Home", icon: Home },
-  { href: "/community", label: "Community", icon: Compass },
   { href: "/trips", label: "Trips", icon: Map },
   { href: "/contacts", label: "Contacts", icon: ContactRound },
+  { href: "/community", label: "Community", icon: Compass, comingSoon: true },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -55,9 +55,45 @@ export function AppShell({
     });
   }
 
+  const navLinkClasses = (active: boolean) =>
+    cn(
+      // Theme-aware glass nav: brand-magenta glow on the active item.
+      // Tighter optical tracking + semibold gives an authored, compact
+      // label; active item reads in brand foreground, inactive in muted.
+      "relative flex min-h-11 items-center gap-3 rounded-lg px-3 text-[15px] tracking-tight transition-all",
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-viatik-magenta",
+      active
+        ? "font-bold bg-side-active text-side-active-fg shadow-[var(--side-glow)]"
+        : "font-semibold text-side-muted hover:bg-side-hover hover:text-side-fg"
+    );
+
+  const navIcon = (Icon: (typeof links)[number]["icon"]) => (
+    <IconTile aria-hidden className="size-9 text-inherit">
+      <Icon className="size-6" />
+    </IconTile>
+  );
+
   const navigation = (
     <nav aria-label="Main navigation" className="space-y-1">
-      {links.map(({ href, label, icon: Icon }) => {
+      {links.map(({ href, label, icon: Icon, comingSoon }) => {
+        if (comingSoon) {
+          return (
+            <button
+              key={href}
+              type="button"
+              disabled
+              title="Coming soon"
+              aria-disabled="true"
+              className={cn(navLinkClasses(false), "cursor-not-allowed opacity-60")}
+            >
+              {navIcon(Icon)}
+              {label}
+              <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Soon
+              </span>
+            </button>
+          );
+        }
         const active = pathname === href || pathname.startsWith(`${href}/`);
         return (
           <Link
@@ -65,16 +101,7 @@ export function AppShell({
             href={href}
             onClick={() => setMenuOpen(false)}
             aria-current={active ? "page" : undefined}
-            className={cn(
-              // Theme-aware glass nav: brand-magenta glow on the active item.
-              // Tighter optical tracking + semibold gives an authored, compact
-              // label; active item reads in brand foreground, inactive in muted.
-              "relative flex min-h-11 items-center gap-3 rounded-lg px-3 text-[15px] tracking-tight transition-all",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-viatik-magenta",
-              active
-                ? "font-bold bg-side-active text-side-active-fg shadow-[var(--side-glow)]"
-                : "font-semibold text-side-muted hover:bg-side-hover hover:text-side-fg"
-            )}
+            className={navLinkClasses(active)}
           >
             {active && (
               <span
@@ -82,9 +109,7 @@ export function AppShell({
                 className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-linear-to-b from-viatik-magenta to-viatik-red shadow-[0_0_10px_rgba(244,63,94,0.7)]"
               />
             )}
-            <IconTile aria-hidden className="size-9 text-inherit">
-              <Icon className="size-6" />
-            </IconTile>
+            {navIcon(Icon)}
             {label}
           </Link>
         );
@@ -149,7 +174,7 @@ export function AppShell({
         />
         {/* Top: brand row — logo image untouched, theme toggle sits beside the app name. */}
         <div className="relative flex items-center justify-between gap-2">
-          <Link href="/trips" className="flex items-center gap-3 text-xl font-bold text-side-fg">
+          <Link href="/home" className="flex items-center gap-3 text-xl font-bold text-side-fg">
             <Image src="/viatik-logo.png" alt="" width={44} height={44} priority className="size-11 object-contain" />
             Viatik
           </Link>
@@ -178,7 +203,7 @@ export function AppShell({
 
       {/* Glass mobile header — pinned on scroll. */}
       <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-side-border bg-side px-4 backdrop-blur-xl lg:hidden">
-        <Link href="/trips" className="flex items-center gap-2 font-bold text-side-fg">
+        <Link href="/home" className="flex items-center gap-2 font-bold text-side-fg">
           <Image src="/viatik-logo.png" alt="" width={36} height={36} priority className="size-9 object-contain" />
           Viatik
         </Link>
@@ -214,19 +239,29 @@ export function AppShell({
         className="fixed inset-x-0 bottom-0 z-40 border-t border-side-border bg-side pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden"
       >
         <div className="grid grid-cols-5">
-          {links.map(({ href, label, icon: Icon }) => {
+          {links.map(({ href, label, icon: Icon, comingSoon }) => {
             const active = pathname === href || pathname.startsWith(`${href}/`);
+            const cls = cn(
+              "flex min-h-14 flex-col items-center justify-center gap-1 py-2 text-[11px] font-semibold tracking-tight",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-viatik-magenta",
+              active ? "text-primary" : "text-side-muted hover:text-side-fg",
+              comingSoon && "cursor-not-allowed opacity-50"
+            );
+            if (comingSoon) {
+              return (
+                <button key={href} type="button" disabled title="Coming soon" aria-disabled="true" className={cls}>
+                  <Icon className="size-6" />
+                  {label}
+                </button>
+              );
+            }
             return (
               <Link
                 key={href}
                 href={href}
                 onClick={() => setMenuOpen(false)}
                 aria-current={active ? "page" : undefined}
-                className={cn(
-                  "flex min-h-14 flex-col items-center justify-center gap-1 py-2 text-[11px] font-semibold tracking-tight",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-viatik-magenta",
-                  active ? "text-primary" : "text-side-muted hover:text-side-fg"
-                )}
+                className={cls}
               >
                 <Icon className="size-6" />
                 {label}
