@@ -407,6 +407,24 @@ export class ViatikDatabase extends Dexie {
         if (settlement.settledAt === undefined) settlement.settledAt = null;
       });
     });
+
+    // v32: trip lifecycle. Adds an explicit status (planned | active |
+    // completed | cancelled) with optional startedAt/completedAt timestamps.
+    // Backfills existing rows: a trip whose end date has already passed
+    // becomes "completed"; everything else stays "planned". The date-derived
+    // fallback in resolveTripStatus covers in-flight nuance without ever
+    // flipping the stored status automatically.
+    this.version(32).stores({}).upgrade(async (transaction) => {
+      const today = new Date().toISOString().slice(0, 10);
+      await transaction.table("trips").toCollection().modify((trip: Record<string, unknown>) => {
+        if (trip.status === undefined) {
+          trip.status =
+            trip.endDate && typeof trip.endDate === "string" && trip.endDate < today ? "completed" : "planned";
+          trip.startedAt = trip.startedAt ?? null;
+          trip.completedAt = trip.completedAt ?? null;
+        }
+      });
+    });
   }
 }
 
