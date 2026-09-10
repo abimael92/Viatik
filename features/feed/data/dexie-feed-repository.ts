@@ -15,6 +15,10 @@ export interface FeedRepository {
   listByTrip(tripId: string): Promise<TripFeedItem[]>;
   /** Live query: emits the trip's feed (newest first) and again on change. */
   watchByTrip(tripId: string, onChange: (items: TripFeedItem[]) => void): () => void;
+  /** All feed items across every trip, newest first (for the Trips library). */
+  listAll(): Promise<TripFeedItem[]>;
+  /** Live query: emits the whole feed (newest first) and again on change. */
+  watchAll(onChange: (items: TripFeedItem[]) => void): () => void;
   /** Persist a feed entry outside of an existing transaction (rarely used). */
   log(item: TripFeedItem): Promise<string>;
 }
@@ -35,6 +39,16 @@ export class DexieFeedRepository implements FeedRepository {
 
   watchByTrip(tripId: string, onChange: (items: TripFeedItem[]) => void): () => void {
     const subscription = liveQuery(() => this.listByTrip(tripId)).subscribe({ next: onChange });
+    return () => subscription.unsubscribe();
+  }
+
+  async listAll(): Promise<TripFeedItem[]> {
+    const items = await getDb().feedItems.toCollection().sortBy("createdAt");
+    return items.reverse();
+  }
+
+  watchAll(onChange: (items: TripFeedItem[]) => void): () => void {
+    const subscription = liveQuery(() => this.listAll()).subscribe({ next: onChange });
     return () => subscription.unsubscribe();
   }
 
