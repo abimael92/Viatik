@@ -6,11 +6,11 @@ import {
   AlertCircle,
   CalendarClock,
   CalendarDays,
-  Cloud,
-  CloudOff,
+  Flag,
   Map,
   MapPin,
   Minus,
+  Play,
   Plus,
   Search,
   Upload,
@@ -32,7 +32,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Heading } from "@/components/ui/heading";
-import { Collapsible } from "@/components/ui/collapsible";
+import { daysUntil, isTripActive, isTripEnded, todayKey } from "@/features/trips/lib/home-trips";
+import { resolveTripStatus } from "@/features/trips/lib/trip-status";
+import { tripReadinessSummary } from "@/features/trips/lib/readiness";
+import { SuggestionsDrawer } from "@/features/community/components/suggestions-drawer";
 import {
   Dialog,
   DialogContent,
@@ -91,13 +94,32 @@ export function TripDashboard({ userId }: { userId: string }) {
     );
   }, [query, trips]);
 
-  const today = new Date().toISOString().slice(0, 10);
-  const upcoming = filtered
-    .filter((trip) => !trip.endDate || trip.endDate >= today)
+  const [tab, setTab] = useState<"upcoming" | "past">("upcoming");
+
+  const active = filtered
+    .filter((trip) => isTripActive(trip))
     .sort((a, b) => (a.startDate ?? "9999").localeCompare(b.startDate ?? "9999"));
-  const recent = filtered
-    .filter((trip) => trip.endDate && trip.endDate < today)
+  const upcoming = filtered
+    .filter((trip) => resolveTripStatus(trip) === "planned")
+    .sort((a, b) => (a.startDate ?? "9999").localeCompare(b.startDate ?? "9999"));
+  const past = filtered
+    .filter((trip) => isTripEnded(trip))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+
+  function startTrip(id: string) {
+    setError(null);
+    void tripRepository.startTrip(id).catch((cause) =>
+      setError(cause instanceof Error ? cause.message : "Unable to start trip")
+    );
+  }
+
+  function endTrip(id: string) {
+    setError(null);
+    if (!window.confirm("End this trip? It will move to Past Trips.")) return;
+    void tripRepository.endTrip(id).catch((cause) =>
+      setError(cause instanceof Error ? cause.message : "Unable to end trip")
+    );
+  }
 
   return (
     <div className="space-y-10">
@@ -126,8 +148,10 @@ export function TripDashboard({ userId }: { userId: string }) {
 
       <MetricsRow
         sync={sync}
+        nextTrip={upcoming[0] ?? null}
+        hasActiveTrip={active.length > 0}
         upcomingCount={upcoming.length}
-        recentCount={recent.length}
+        pastCount={past.length}
       />
 
       {invitations.some((invitation) => invitation.status === "pending") && (
@@ -197,7 +221,7 @@ export function TripDashboard({ userId }: { userId: string }) {
       {trips === null ? (
         <TripSkeleton />
       ) : trips.length === 0 ? (
-        <EmptyTrips onCreate={() => setCreating(true)} />
+        <EmptyTrips onCreate={() => setCreating(true)} userId={userId} />
       ) : filtered.length === 0 ? (
         <div className="rounded-2xl border border-dashed p-10 text-center">
           <Heading level={2} className="text-base font-semibold">No trips match “{query}”</Heading>
@@ -207,11 +231,34 @@ export function TripDashboard({ userId }: { userId: string }) {
         </div>
       ) : (
         <>
-          <TripSection title="Upcoming trips" trips={upcoming} bento />
-          {recent.length > 0 && (
-            <Collapsible id="recent-trips" title="Recent trips" badge={<span className="text-xs text-muted-foreground">{recent.length}</span>}>
-              <TripSection title="Recent trips" trips={recent} />
-            </Collapsible>
+          <SegmentedTabs
+            tab={tab}
+            onChange={setTab}
+            upcomingCount={active.length + upcoming.length}
+            pastCount={past.length}
+          />
+          {tab === "upcoming" ? (
+            <>
+              {active.length > 0 && (
+                <TripSection
+                  title="Active trips"
+                  trips={active}
+                  bento
+                  onStart={startTrip}
+                  onEnd={endTrip}
+                />
+              )}
+              <TripSection
+                title="Upcoming trips"
+                trips={upcoming}
+                onStart={startTrip}
+                onEnd={endTrip}
+              />
+            </>
+          ) : past.length > 0 ? (
+            <TripSection title="Past trips" trips={past} ended />
+          ) : (
+            <EmptyPastTrips onViewUpcoming={() => setTab("upcoming")} />
           )}
         </>
       )}
@@ -227,7 +274,21 @@ export function TripDashboard({ userId }: { userId: string }) {
   );
 }
 
-function TripSection({ title, trips, bento = false }: { title: string; trips: Trip[]; bento?: boolean }) {
+function TripSection({
+  title,
+  trips,
+  bento = false,
+  ended = false,
+  onStart,
+  onEnd,
+}: {
+  title: string;
+  trips: Trip[];
+  bento?: boolean;
+  ended?: boolean;
+  onStart?: (id: string) => void;
+  onEnd?: (id: string) => void;
+}) {
   if (!trips.length) return null;
   const headingId = title.replaceAll(" ", "-").toLowerCase();
   return (
@@ -245,7 +306,7 @@ function TripSection({ title, trips, bento = false }: { title: string; trips: Tr
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25, delay: Math.min(index * 0.05, 0.25) }}
           >
-            <TripCard trip={trip} featured={bento && index === 0} />
+            <TripCard trip={trip} featured={bento && index === 0} ended={ended} onStart={onStart} onEnd={onEnd} />
           </motion.div>
         ))}
       </div>
@@ -253,66 +314,137 @@ function TripSection({ title, trips, bento = false }: { title: string; trips: Tr
   );
 }
 
-function TripCard({ trip, featured = false }: { trip: Trip; featured?: boolean }) {
+function TripCard({
+  trip,
+  featured = false,
+  ended = false,
+  onStart,
+  onEnd,
+}: {
+  trip: Trip;
+  featured?: boolean;
+  ended?: boolean;
+  onStart?: (id: string) => void;
+  onEnd?: (id: string) => void;
+}) {
   const coverGradient = getTripCoverGradient(trip.coverImageUrl);
   const hasCoverImage = isTripCoverImage(trip.coverImageUrl);
+  const status = resolveTripStatus(trip);
+  const readyToStart = trip.startDate != null && trip.startDate <= todayKey(new Date());
+  const readiness = tripReadinessSummary(trip);
+  const readinessDot =
+    readiness.label === "Ready"
+      ? "bg-emerald-500"
+      : readiness.label === "Almost ready"
+        ? "bg-amber-500"
+        : "bg-red-500";
 
   return (
-    <Link
-      href={`/trips/${trip.id}`}
+    <div
       className={cn(
         "group flex h-full flex-col overflow-hidden rounded-2xl border border-border/60 bg-card/70 shadow-sm backdrop-blur-md",
-        "transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        "transition hover:-translate-y-0.5 hover:shadow-md",
+        ended && "opacity-75"
       )}
     >
-      <div className="relative aspect-36/10 shrink-0">
-        <div
-          className={cn(
-            "absolute inset-0",
-            !hasCoverImage && (coverGradient?.className ?? "bg-linear-to-br from-sky-500 via-blue-500 to-violet-600")
-          )}
-          style={
-            hasCoverImage
-              ? {
-                  backgroundImage: `url(${trip.coverImageUrl})`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
-                }
-              : undefined
-          }
-        />
-        <div className="absolute inset-0 grid place-items-center p-4">
-          <p className={cn("text-center font-bold leading-tight text-white drop-shadow", featured ? "text-3xl" : "text-2xl")}>
-            {trip.name}
-          </p>
-        </div>
-      </div>
-      <div className="flex flex-1 flex-col gap-3 p-4">
-        <div className="flex items-start justify-between gap-3">
-          <Heading level={3} className={cn("font-semibold group-hover:text-viatik-magenta", featured ? "text-xl" : "text-lg")}>
-            {trip.name}
-          </Heading>
-          <TripCountdown trip={trip} />
-        </div>
-        <div className="space-y-1.5 text-sm text-muted-foreground">
-          {trip.destination && (
-            <p className="flex items-center gap-2">
-              <MapPin className="size-4 shrink-0 text-viatik-magenta" aria-hidden />
-              <span className="truncate">{trip.destination}</span>
+      <Link
+        href={`/trips/${trip.id}`}
+        className="flex flex-1 flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <div className="relative aspect-36/10 shrink-0">
+          <div
+            className={cn(
+              "absolute inset-0",
+              !hasCoverImage && (coverGradient?.className ?? "bg-linear-to-br from-sky-500 via-blue-500 to-violet-600")
+            )}
+            style={
+              hasCoverImage
+                ? {
+                    backgroundImage: `url(${trip.coverImageUrl})`,
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                  }
+                : undefined
+            }
+          />
+          <div className="absolute inset-0 grid place-items-center p-4">
+            <p className={cn("text-center font-bold leading-tight text-white drop-shadow", featured ? "text-3xl" : "text-2xl")}>
+              {trip.name}
             </p>
-          )}
-          <p className="flex items-center gap-2">
-            <CalendarDays className="size-4 shrink-0 text-viatik-magenta" aria-hidden />
-            {formatDateRange(trip)}
-          </p>
+          </div>
         </div>
-      </div>
-    </Link>
+        <div className="flex flex-1 flex-col gap-3 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <Heading level={3} className={cn("font-semibold group-hover:text-viatik-magenta", featured ? "text-xl" : "text-lg")}>
+              {trip.name}
+            </Heading>
+            <TripCountdown trip={trip} />
+          </div>
+          <div className="space-y-1.5 text-sm text-muted-foreground">
+            {trip.destination && (
+              <p className="flex items-center gap-2">
+                <MapPin className="size-4 shrink-0 text-viatik-magenta" aria-hidden />
+                <span className="truncate">{trip.destination}</span>
+              </p>
+            )}
+            <p className="flex items-center gap-2">
+              <CalendarDays className="size-4 shrink-0 text-viatik-magenta" aria-hidden />
+              {formatDateRange(trip)}
+            </p>
+            {!ended && (
+              <p className="flex items-center gap-1.5 text-xs text-muted-foreground" title={readiness.label}>
+                <span className={cn("size-2 rounded-full", readinessDot)} aria-hidden />
+                {readiness.score}% ready
+              </p>
+            )}
+          </div>
+        </div>
+      </Link>
+
+      {!ended && (
+        <div className="flex flex-wrap gap-2 border-t border-border/50 px-4 py-3">
+          {status === "active" ? (
+            onEnd ? (
+              <Button variant="outline" size="sm" onClick={() => onEnd(trip.id)}>
+                <Flag className="size-4" aria-hidden />
+                End trip
+              </Button>
+            ) : null
+          ) : readyToStart ? (
+            onStart ? (
+              <Button variant="primary" size="sm" onClick={() => onStart(trip.id)}>
+                <Play className="size-4" aria-hidden />
+                Start trip
+              </Button>
+            ) : null
+          ) : null}
+        </div>
+      )}
+    </div>
   );
 }
 
-/** Small label showing how long until the trip, shown in the trip card. */
+/** "Day X of Y" for a trip currently underway, e.g. "Day 2 of 5". */
+function activeDayLabel(trip: Trip): string {
+  const start = trip.startDate ? new Date(`${trip.startDate}T00:00:00`).setHours(0, 0, 0, 0) : null;
+  const now = new Date().setHours(0, 0, 0, 0);
+  if (start == null) return "In progress";
+  const day = Math.max(1, Math.round((now - start) / 86_400_000) + 1);
+  if (trip.endDate) {
+    const end = new Date(`${trip.endDate}T00:00:00`).setHours(0, 0, 0, 0);
+    const total = Math.max(1, Math.round((end - start) / 86_400_000) + 1);
+    return `Day ${day} of ${total}`;
+  }
+  return `Day ${day}`;
+}
+
+/** Small label showing the trip lifecycle state, shown in the trip card. */
 function TripCountdown({ trip }: { trip: Trip }) {
+  const status = resolveTripStatus(trip);
+  if (status === "completed") return <TripCountdownPill>Ended</TripCountdownPill>;
+  if (status === "cancelled") return <TripCountdownPill>Cancelled</TripCountdownPill>;
+  if (status === "active") return <TripCountdownPill accent>{activeDayLabel(trip)}</TripCountdownPill>;
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   if (!trip.startDate) return null;
@@ -320,7 +452,7 @@ function TripCountdown({ trip }: { trip: Trip }) {
   const start = new Date(`${trip.startDate}T00:00:00`);
   const diffDays = Math.round((start.getTime() - today.getTime()) / 86_400_000);
 
-  if (diffDays < 0) return <TripCountdownPill>In progress</TripCountdownPill>;
+  if (diffDays < 0) return <TripCountdownPill>Ready to start</TripCountdownPill>;
   if (diffDays === 0) return <TripCountdownPill accent>Today</TripCountdownPill>;
   if (diffDays === 1) return <TripCountdownPill accent>Tomorrow</TripCountdownPill>;
   return <TripCountdownPill accent>{diffDays} days to go</TripCountdownPill>;
@@ -341,46 +473,41 @@ function TripCountdownPill({ children, accent = false }: { children: React.React
 
 function MetricsRow({
   sync,
+  nextTrip,
+  hasActiveTrip,
   upcomingCount,
-  recentCount,
+  pastCount,
 }: {
   sync: ReturnType<typeof useSyncStatus>;
+  nextTrip: Trip | null;
+  hasActiveTrip: boolean;
   upcomingCount: number;
-  recentCount: number;
+  pastCount: number;
 }) {
-  const OfflineIcon = sync.isOnline ? Cloud : CloudOff;
+  const days = nextTrip?.startDate ? daysUntil(nextTrip.startDate) : null;
+  const value = hasActiveTrip ? "Now" : days === null ? "—" : days === 0 ? "Today" : String(days);
+  const subtitle = hasActiveTrip
+    ? "Trip in progress"
+    : nextTrip
+      ? `until ${nextTrip.destination ?? nextTrip.name}`
+      : "No upcoming trips";
+
   return (
-    <section aria-label="Trip overview" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <section aria-label="Trip overview" className="grid gap-4 sm:grid-cols-2">
       <Card glass className="p-5">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-sm text-muted-foreground">Upcoming trips</p>
-            <p className="mt-1 text-3xl font-bold tracking-tight">{upcomingCount}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{recentCount} completed in the past</p>
+            <p className="text-sm text-muted-foreground">Days to next trip</p>
+            <p className="mt-1 text-3xl font-bold tracking-tight">{value}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {subtitle} · {upcomingCount} upcoming · {pastCount} in the past
+            </p>
           </div>
           <CalendarClock className="size-6 shrink-0 text-viatik-blue" aria-hidden />
         </div>
       </Card>
 
       <Card glass className="p-5">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-sm text-muted-foreground">Offline ready</p>
-            <p className="mt-1 text-3xl font-bold tracking-tight">
-              {sync.isOnline ? "Online" : "Ready"}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {sync.isOnline ? "Changes sync to the cloud" : "Saved locally for later"}
-            </p>
-          </div>
-          <OfflineIcon
-            className={cn("size-6 shrink-0", sync.isOnline ? "text-success" : "text-muted-foreground")}
-            aria-hidden
-          />
-        </div>
-      </Card>
-
-      <Card glass className="p-5 sm:col-span-2 xl:col-span-1">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-sm text-muted-foreground">Pending changes</p>
@@ -1402,19 +1529,81 @@ function NamedTravelersSection({
   );
 }
 
-function EmptyTrips({ onCreate }: { onCreate: () => void }) {
+function EmptyTrips({ onCreate, userId }: { onCreate: () => void; userId: string }) {
+  return (
+    <>
+      <div className="rounded-2xl border border-dashed bg-card px-6 py-16 pb-36 text-center">
+        <div className="mx-auto grid size-14 place-items-center rounded-full bg-viatik-magenta/10 text-viatik-magenta">
+          <Map className="size-7" />
+        </div>
+        <Heading level={2} className="mt-5 text-xl font-semibold">Your next trip starts here</Heading>
+        <p className="mx-auto mt-2 max-w-md text-muted-foreground">
+          Create a shared space for your itinerary, expenses, and favorite moments — or pull
+          inspiration from the community below.
+        </p>
+        <Button className="mt-6" onClick={onCreate}>
+          <Plus className="size-5" />
+          Create your first trip
+        </Button>
+      </div>
+      {/* Community inspiration when there are no trips yet. */}
+      <SuggestionsDrawer userId={userId} />
+    </>
+  );
+}
+
+function SegmentedTabs({
+  tab,
+  onChange,
+  upcomingCount,
+  pastCount,
+}: {
+  tab: "upcoming" | "past";
+  onChange: (tab: "upcoming" | "past") => void;
+  upcomingCount: number;
+  pastCount: number;
+}) {
+  const base =
+    "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  const selected = "border border-border bg-card text-foreground shadow-sm";
+  const idle = "text-muted-foreground hover:text-foreground";
+
+  return (
+    <div role="tablist" aria-label="Trips" className="inline-flex gap-1 rounded-xl border bg-muted/40 p-1">
+      <button
+        role="tab"
+        aria-selected={tab === "upcoming"}
+        className={cn(base, tab === "upcoming" ? selected : idle)}
+        onClick={() => onChange("upcoming")}
+      >
+        Upcoming &amp; Active
+        <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs">{upcomingCount}</span>
+      </button>
+      <button
+        role="tab"
+        aria-selected={tab === "past"}
+        className={cn(base, tab === "past" ? selected : idle)}
+        onClick={() => onChange("past")}
+      >
+        Past Trips
+        <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs">{pastCount}</span>
+      </button>
+    </div>
+  );
+}
+
+function EmptyPastTrips({ onViewUpcoming }: { onViewUpcoming: () => void }) {
   return (
     <div className="rounded-2xl border border-dashed bg-card px-6 py-16 text-center">
-      <div className="mx-auto grid size-14 place-items-center rounded-full bg-viatik-magenta/10 text-viatik-magenta">
-        <Map className="size-7" />
+      <div className="mx-auto grid size-14 place-items-center rounded-full bg-muted text-muted-foreground">
+        <CalendarDays className="size-7" />
       </div>
-      <Heading level={2} className="mt-5 text-xl font-semibold">Your next trip starts here</Heading>
+      <Heading level={2} className="mt-5 text-xl font-semibold">No past trips yet</Heading>
       <p className="mx-auto mt-2 max-w-md text-muted-foreground">
-        Create a shared space for your itinerary, expenses, and favorite moments.
+        Trips you end or cancel will appear here.
       </p>
-      <Button className="mt-6" onClick={onCreate}>
-        <Plus className="size-5" />
-        Create your first trip
+      <Button className="mt-6" variant="outline" onClick={onViewUpcoming}>
+        View upcoming trips
       </Button>
     </div>
   );

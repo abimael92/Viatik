@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/server-client";
 export default async function OnboardingPage({ searchParams }: { searchParams: Promise<{ next?: string; setup?: string }> }) {
   const [{ next, setup }, supabase] = await Promise.all([searchParams, createClient()]);
   const { data: authData } = await supabase.auth.getUser();
-  if (!authData.user) redirect(`/login?next=${encodeURIComponent(next ?? "/trips")}`);
+  if (!authData.user) redirect(`/login?next=${encodeURIComponent(next ?? "/home")}`);
 
   const destination = next?.startsWith("/") && !next.startsWith("//") ? next : "/trips";
 

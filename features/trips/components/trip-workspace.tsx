@@ -83,10 +83,12 @@ export function TripWorkspace({
   tripId,
   userId,
   initialTab = "overview",
+  initialMoneyToolsOpen = false,
 }: {
   tripId: string;
   userId: string;
   initialTab?: string;
+  initialMoneyToolsOpen?: boolean;
 }) {
   const router = useRouter();
   const init = initWorkspace(initialTab);
@@ -372,6 +374,7 @@ export function TripWorkspace({
           days={days}
           canEdit={canEdit}
           autoOpenExpense={pendingExpense}
+          autoOpenTools={initialMoneyToolsOpen}
           onConsumeAutoOpenExpense={() => setPendingExpense(false)}
         />
       )}

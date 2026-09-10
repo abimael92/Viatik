@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { deleteDatabase, getDatabase, setCurrentDatabase, type ViatikDatabase } from "@/lib/db/dexie";
 import { configureSyncUser } from "@/lib/sync/sync-context";
+import type { Trip } from "@/features/domain/entities";
 import { tripRepository } from "@/features/trips/data/dexie-trip-repository";
 
 const TEST_USER = "trip-duration-test-user";
@@ -128,6 +129,9 @@ describe("DexieTripRepository trip duration limit", () => {
       timeZone: null,
       startDate: "2026-01-01",
       endDate: "2026-05-01",
+      status: "planned",
+      startedAt: null,
+      completedAt: null,
       coverImageUrl: null,
       adultCount: 1,
       childCount: 0,
@@ -139,5 +143,60 @@ describe("DexieTripRepository trip duration limit", () => {
 
     const updated = await tripRepository.update("trip-legacy", { name: "Legacy Trip Updated" });
     expect(updated.name).toBe("Legacy Trip Updated");
+  });
+});
+
+describe("DexieTripRepository lifecycle", () => {
+  async function createPlanned(): Promise<Trip> {
+    return tripRepository.create({
+      id: crypto.randomUUID(),
+      ownerId: TEST_USER,
+      name: "Lifecycle Trip",
+      startDate: "2026-09-01",
+      endDate: "2026-09-10",
+    });
+  }
+
+  it("creates trips as planned with no lifecycle timestamps", async () => {
+    const trip = await createPlanned();
+    expect(trip.status).toBe("planned");
+    expect(trip.startedAt).toBeNull();
+    expect(trip.completedAt).toBeNull();
+  });
+
+  it("startTrip sets status active and stamps startedAt", async () => {
+    const trip = await createPlanned();
+    const started = await tripRepository.startTrip(trip.id);
+
+    expect(started.status).toBe("active");
+    expect(started.startedAt).not.toBeNull();
+    expect(started.completedAt).toBeNull();
+
+    const stored = await db.trips.get(trip.id);
+    expect(stored?.status).toBe("active");
+    expect(stored?.startedAt).not.toBeNull();
+  });
+
+  it("endTrip sets status completed and stamps completedAt", async () => {
+    const trip = await createPlanned();
+    const ended = await tripRepository.endTrip(trip.id);
+
+    expect(ended.status).toBe("completed");
+    expect(ended.completedAt).not.toBeNull();
+
+    const stored = await db.trips.get(trip.id);
+    expect(stored?.status).toBe("completed");
+    expect(stored?.completedAt).not.toBeNull();
+  });
+
+  it("cancelTrip sets status cancelled and stamps completedAt", async () => {
+    const trip = await createPlanned();
+    const cancelled = await tripRepository.cancelTrip(trip.id);
+
+    expect(cancelled.status).toBe("cancelled");
+    expect(cancelled.completedAt).not.toBeNull();
+
+    const stored = await db.trips.get(trip.id);
+    expect(stored?.status).toBe("cancelled");
   });
 });

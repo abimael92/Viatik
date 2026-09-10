@@ -161,13 +161,15 @@ export function SettingsClient({
                       {copied ? "Copied" : "Copy"}
                     </Button>
                   </div>
-                  <div className="mt-4 flex items-center gap-4">
-                    <div className="rounded-lg border bg-white p-2" aria-hidden>
-                      <QRCode value={viatikQrPayload(viatikId)} size={120} />
+                  <div className="mt-5 flex flex-col items-start gap-3">
+                    <div className="rounded-xl border bg-white p-3 shadow-sm" aria-hidden>
+                      <QRCode value={viatikQrPayload(viatikId)} size={180} />
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Friends can scan this code to link you instantly. Only your public name,
-                      avatar, handle, and preferences are shared.
+                    <p className="max-w-sm text-xs leading-5 text-muted-foreground">
+                      <span className="block">Friends can scan this code to link you instantly.</span>
+                      <span className="block">
+                        Only your public name, avatar, handle, and preferences are shared.
+                      </span>
                     </p>
                   </div>
                 </div>

@@ -1,4 +1,4 @@
-import type { Activity, Connection, ConnectionRemoteStatus, ConnectionSnapshot, ConnectionStatus, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler, UserWallet } from "@/features/domain/entities";
+import type { Activity, Connection, ConnectionRemoteStatus, ConnectionSnapshot, ConnectionStatus, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripStatus, TripTraveler, UserWallet } from "@/features/domain/entities";
 import { isSpendingCategory, type SpendingCategory, type SpendingSubcategory } from "@/features/domain/categories";
 import type { TripMedia } from "@/features/domain/entities-media";
 import { MAX_MINOR_UNITS, type MinorUnits } from "@/features/domain/money";
@@ -40,6 +40,9 @@ export function tripToRow(trip: Trip): Record<string, unknown> {
     time_zone: trip.timeZone,
     start_date: trip.startDate,
     end_date: trip.endDate,
+    status: trip.status,
+    started_at: trip.startedAt,
+    completed_at: trip.completedAt,
     cover_image_url: trip.coverImageUrl,
     adult_count: trip.adultCount,
     child_count: trip.childCount,
@@ -63,6 +66,9 @@ export function rowToTrip(row: Record<string, unknown>): Trip {
     timeZone: row.time_zone == null ? null : String(row.time_zone),
     startDate: row.start_date == null ? null : String(row.start_date),
     endDate: row.end_date == null ? null : String(row.end_date),
+    status: (row.status ?? "planned") as TripStatus,
+    startedAt: row.started_at == null ? null : String(row.started_at),
+    completedAt: row.completed_at == null ? null : String(row.completed_at),
     coverImageUrl: row.cover_image_url == null ? null : String(row.cover_image_url),
     adultCount: row.adult_count == null ? 1 : Number(row.adult_count),
     childCount: row.child_count == null ? 0 : Number(row.child_count),

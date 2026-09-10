@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Trip } from "@/features/domain/entities";
-import { computeReadiness, type ReadinessInput } from "@/features/trips/lib/readiness";
+import { computeReadiness, tripReadinessSummary, type ReadinessInput } from "@/features/trips/lib/readiness";
 
 function makeTrip(overrides: Partial<Trip>): Trip {
   return {
@@ -16,6 +16,9 @@ function makeTrip(overrides: Partial<Trip>): Trip {
     timeZone: null,
     startDate: null,
     endDate: null,
+    status: "planned",
+    startedAt: null,
+    completedAt: null,
     coverImageUrl: null,
     adultCount: 1,
     childCount: 0,
@@ -94,5 +97,21 @@ describe("computeReadiness", () => {
 
     const withPassport = computeReadiness(input({ passportOnFile: true }));
     expect(withPassport.items.find((item) => item.key === "passport")?.status).toBe("complete");
+  });
+});
+
+describe("tripReadinessSummary", () => {
+  it("scores a fully-dated, described trip highly", () => {
+    const result = tripReadinessSummary(
+      makeTrip({ startDate: "2026-10-01", endDate: "2026-10-05", description: "Trip", destination: "Kyoto" })
+    );
+    expect(result.score).toBe(100);
+    expect(result.label).toBe("Ready");
+  });
+
+  it("scores a trip missing its dates and description lower", () => {
+    const result = tripReadinessSummary(makeTrip({ destination: null, description: null }));
+    expect(result.score).toBe(40);
+    expect(result.label).toBe("Almost ready");
   });
 });
