@@ -23,6 +23,32 @@ export interface TripReadiness {
   nextAction: ReadinessItem | null;
 }
 
+export interface TripReadinessSummary {
+  score: number;
+  label: "Ready" | "Almost ready" | "Needs attention";
+}
+
+/**
+ * Lightweight at-a-glance readiness for a library card. Unlike the full
+ * `computeReadiness` (which needs budget/activity/member/vault queries), this
+ * derives a score purely from trip-level fields so it can be shown cheaply on
+ * every card without per-trip live queries.
+ */
+export function tripReadinessSummary(trip: Trip): TripReadinessSummary {
+  const checks = [
+    Boolean(trip.startDate && trip.endDate),
+    Boolean(trip.destination),
+    Boolean(trip.description),
+    (trip.adultCount ?? 0) + (trip.childCount ?? 0) > 0,
+    Boolean(trip.baseCurrency),
+  ];
+  const completed = checks.filter(Boolean).length;
+  const score = Math.round((completed / checks.length) * 100);
+  const label: TripReadinessSummary["label"] =
+    score >= 80 ? "Ready" : score >= 40 ? "Almost ready" : "Needs attention";
+  return { score, label };
+}
+
 export interface ReadinessInput {
   trip: Trip;
   /** Total trip budget in the trip's base currency (minor units), or `null` if unset. */
