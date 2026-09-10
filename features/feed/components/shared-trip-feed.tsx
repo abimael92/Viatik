@@ -38,12 +38,14 @@ export function SharedTripFeed({
   userId,
   limit,
   className,
+  heading = "Trip Feed",
   emptyMessage = "No activity yet. Add a photo, expense, or activity to kick things off.",
 }: {
   tripId: string;
   userId: string;
   limit?: number;
   className?: string;
+  heading?: string;
   emptyMessage?: string;
 }) {
   const { loading, items, profiles } = useSharedTripFeed(tripId, userId);
@@ -57,7 +59,7 @@ export function SharedTripFeed({
         </span>
         <div>
           <Heading level={2} id="feed-heading" className="text-xl font-bold">
-            Trip Feed
+            {heading}
           </Heading>
           <p className="text-sm text-muted-foreground">
             What everyone’s been up to on this trip.
@@ -104,7 +106,7 @@ export function SharedTripFeed({
   );
 }
 
-function FeedRow({ item, currentUserId, profile }: { item: TripFeedItem; currentUserId: string; profile?: FeedActorProfile }) {
+export function FeedRow({ item, currentUserId, profile }: { item: TripFeedItem; currentUserId: string; profile?: FeedActorProfile }) {
   const style = ENTITY_STYLE[item.entityType] ?? ENTITY_STYLE.activity;
   const Icon = style.icon;
   const actorLabel = item.actorId === currentUserId ? "You" : profile?.name ?? resolveActorLabel(item.actorId, currentUserId);
