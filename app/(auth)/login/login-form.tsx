@@ -30,7 +30,7 @@ type LoginFormProps = {
 };
 
 function safeNext(value?: string) {
-  return value?.startsWith("/") && !value.startsWith("//") ? value : "/trips";
+  return value?.startsWith("/") && !value.startsWith("//") ? value : "/home";
 }
 
 function maskEmail(email: string) {

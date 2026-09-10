@@ -56,7 +56,7 @@ export async function sendEmailOtp(
     const requestHeaders = await headers();
     const origin = requestHeaders.get("origin");
     const emailRedirectTo = origin
-      ? `${origin}/auth/confirm?next=${encodeURIComponent("/trips")}`
+      ? `${origin}/auth/confirm?next=${encodeURIComponent("/home")}`
       : undefined;
     const { error } = await supabase.auth.signInWithOtp({
       email: normalizedEmail,
@@ -235,7 +235,7 @@ export async function registerWithPassword(
     // code can be exchanged for a session. Without this, Supabase redirects to
     // the site root and the user lands on an error page.
     const emailRedirectTo = origin
-      ? `${origin}/auth/confirm?next=${encodeURIComponent("/trips")}`
+      ? `${origin}/auth/confirm?next=${encodeURIComponent("/home")}`
       : undefined;
     const { data, error } = await supabase.auth.signUp({
       email: normalizedEmail,
