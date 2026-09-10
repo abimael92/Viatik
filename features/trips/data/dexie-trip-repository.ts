@@ -61,6 +61,9 @@ export class DexieTripRepository implements TripRepository {
         timeZone: input.timeZone ?? null,
         startDate: input.startDate ?? null,
         endDate: input.endDate ?? null,
+        status: input.status ?? "planned",
+        startedAt: input.startedAt ?? null,
+        completedAt: input.completedAt ?? null,
         coverImageUrl: input.coverImageUrl ?? null,
         adultCount: input.adultCount ?? 1,
         childCount: input.childCount ?? 0,
@@ -127,6 +130,18 @@ export class DexieTripRepository implements TripRepository {
       await append("trip", "update", updated, { tx: ctx, baseUpdatedAt: trip.updatedAt });
       logger.debug("Trip deleted locally", { tripId: id });
     });
+  }
+
+  startTrip(id: string): Promise<Trip> {
+    return this.update(id, { status: "active", startedAt: new Date().toISOString() });
+  }
+
+  endTrip(id: string): Promise<Trip> {
+    return this.update(id, { status: "completed", completedAt: new Date().toISOString() });
+  }
+
+  cancelTrip(id: string): Promise<Trip> {
+    return this.update(id, { status: "cancelled", completedAt: new Date().toISOString() });
   }
 }
 
