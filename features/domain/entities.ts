@@ -37,6 +37,8 @@ export interface ProfileSummary {
   email: string | null;
 }
 
+export type TripStatus = "planned" | "active" | "completed" | "cancelled";
+
 export interface Trip {
   id: string;
   ownerId: string;
@@ -49,6 +51,9 @@ export interface Trip {
   timeZone: string | null;
   startDate: string | null; // ISO date (yyyy-mm-dd)
   endDate: string | null; // ISO date (yyyy-mm-dd)
+  status: TripStatus; // explicit lifecycle state (planned | active | completed | cancelled)
+  startedAt: string | null; // ISO datetime when the trip was started
+  completedAt: string | null; // ISO datetime when the trip was ended or cancelled
   coverImageUrl: string | null;
   adultCount: number;
   childCount: number;

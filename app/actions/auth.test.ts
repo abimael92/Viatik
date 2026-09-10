@@ -126,7 +126,7 @@ describe("registerWithPassword", () => {
       email: "new@example.com",
       password: "Str0ngPass!9",
       options: {
-        emailRedirectTo: "https://viatik-six.vercel.app/auth/confirm?next=%2Ftrips",
+        emailRedirectTo: "https://viatik-six.vercel.app/auth/confirm?next=%2Fhome",
         data: {
           full_name: "Jane Doe",
           phone: "+1 555 012 3456",

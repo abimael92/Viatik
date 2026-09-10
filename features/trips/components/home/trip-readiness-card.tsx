@@ -23,9 +23,6 @@ export function TripReadinessCard({
       <div className="flex items-end justify-between gap-4">
         <div>
           <h2 className="text-base font-semibold">Trip readiness</h2>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            {readiness.completed} of {readiness.total} essentials covered
-          </p>
         </div>
         <p className="text-3xl font-bold tabular-nums tracking-tight">{readiness.score}%</p>
       </div>
@@ -38,6 +35,7 @@ export function TripReadinessCard({
         aria-label="Trip readiness"
         className="mt-4 h-2 overflow-hidden rounded-full bg-muted"
       >
+
         <div
           className={cn(
             "h-full rounded-full transition-[width] duration-500",
@@ -45,6 +43,9 @@ export function TripReadinessCard({
           )}
           style={{ width: `${readiness.score}%` }}
         />
+        <p className="mt-0.5 text-sm text-muted-foreground">
+            {readiness.completed} of {readiness.total} essentials covered
+          </p>
       </div>
 
       <ul className="mt-5 space-y-2">

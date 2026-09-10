@@ -10,7 +10,7 @@ import { contactRepository } from "@/features/contacts/data/dexie-contact-reposi
 import { tripBudgetRepository } from "@/features/finance/data/dexie-finance-repository";
 import { tripRepository } from "@/features/trips/data/dexie-trip-repository";
 import { vaultRepository } from "@/features/vault/data/dexie-vault-repository";
-import { buildTimeline, pickPrimaryTrips, todayKey, type TimelineItem } from "@/features/trips/lib/home-trips";
+import { buildTimeline, isTripEnded, pickPrimaryTrips, todayKey, type TimelineItem } from "@/features/trips/lib/home-trips";
 import { computeReadiness, type TripReadiness } from "@/features/trips/lib/readiness";
 
 export interface HomeData {
@@ -20,9 +20,13 @@ export interface HomeData {
   primaryTrip: Trip | null;
   activeTrip: Trip | null;
   nextTrip: Trip | null;
+  /** Planned trips that start today or later, excluding the hero trip. */
+  upNext: Trip[];
   readiness: TripReadiness | null;
   timeline: TimelineItem[];
   hasAnyTrip: boolean;
+  /** True when at least one trip is completed or cancelled. */
+  hasEndedTrips: boolean;
 }
 
 /**
@@ -43,7 +47,10 @@ export function useHomeData(ownerId: string): HomeData {
 
   useEffect(() => contactRepository.watch(ownerId, setContacts), [ownerId]);
 
-  const { primaryTrip, activeTrip, nextTrip } = useMemo(() => pickPrimaryTrips(trips ?? []), [trips]);
+  const { primaryTrip, activeTrip, nextTrip, upNext } = useMemo(
+    () => pickPrimaryTrips(trips ?? []),
+    [trips]
+  );
   const primaryTripId = primaryTrip?.id ?? null;
 
   useEffect(() => {
@@ -94,8 +101,10 @@ export function useHomeData(ownerId: string): HomeData {
     primaryTrip,
     activeTrip,
     nextTrip,
+    upNext,
     readiness,
     timeline,
     hasAnyTrip: (trips ?? []).length > 0,
+    hasEndedTrips: (trips ?? []).some((trip) => isTripEnded(trip)),
   };
 }

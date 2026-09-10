@@ -18,6 +18,12 @@ export interface TripRepository {
   update(id: string, patch: Partial<Omit<Trip, "id">>): Promise<Trip>;
   /** Soft delete — sets `deletedAt`, does not remove the row. */
   remove(id: string): Promise<void>;
+  /** Mark a trip as underway: `status = "active"`, stamps `startedAt`. */
+  startTrip(id: string): Promise<Trip>;
+  /** Mark a trip as finished: `status = "completed"`, stamps `completedAt`. */
+  endTrip(id: string): Promise<Trip>;
+  /** Mark a trip as cancelled: `status = "cancelled"`, stamps `completedAt`. */
+  cancelTrip(id: string): Promise<Trip>;
 }
 
 export interface NewTrip {
@@ -32,6 +38,9 @@ export interface NewTrip {
   timeZone?: string | null;
   startDate?: string | null;
   endDate?: string | null;
+  status?: import("@/features/domain/entities").TripStatus;
+  startedAt?: string | null;
+  completedAt?: string | null;
   coverImageUrl?: string | null;
   adultCount?: number;
   childCount?: number;

@@ -16,6 +16,9 @@ function makeTrip(overrides: Partial<Trip>): Trip {
     timeZone: null,
     startDate: null,
     endDate: null,
+    status: "planned",
+    startedAt: null,
+    completedAt: null,
     coverImageUrl: null,
     adultCount: 2,
     childCount: 0,
@@ -83,6 +86,41 @@ describe("pickPrimaryTrips", () => {
     const undated = makeTrip({ id: "undated" });
     expect(pickPrimaryTrips([undated], today).primaryTrip).toBeNull();
     expect(pickPrimaryTrips([], today).primaryTrip).toBeNull();
+  });
+
+  it("excludes completed and cancelled trips entirely", () => {
+    const completed = makeTrip({ id: "done", status: "completed", startDate: "2026-08-01", endDate: "2026-08-05" });
+    const cancelled = makeTrip({ id: "cancelled", status: "cancelled", startDate: "2026-08-01", endDate: "2026-08-05" });
+    const upcoming = makeTrip({ id: "upcoming", startDate: "2026-10-01", endDate: "2026-10-05" });
+
+    const result = pickPrimaryTrips([completed, cancelled, upcoming], today);
+
+    expect(result.primaryTrip?.id).toBe("upcoming");
+    expect(result.activeTrip).toBeNull();
+    expect(result.nextTrip?.id).toBe("upcoming");
+    expect(result.upNext.map((t) => t.id)).toEqual([]);
+  });
+
+  it("returns other planned trips in upNext sorted by start date, excluding the hero", () => {
+    const hero = makeTrip({ id: "hero", startDate: "2026-10-01", endDate: "2026-10-05" });
+    const later = makeTrip({ id: "later", startDate: "2026-12-01" });
+    const soon = makeTrip({ id: "soon", startDate: "2026-11-01" });
+
+    const result = pickPrimaryTrips([hero, later, soon], today);
+
+    expect(result.primaryTrip?.id).toBe("hero");
+    expect(result.upNext.map((t) => t.id)).toEqual(["soon", "later"]);
+  });
+
+  it("populates upNext with planned trips even when a trip is active", () => {
+    const active = makeTrip({ id: "active", startDate: "2026-09-02", endDate: "2026-09-10" });
+    const later = makeTrip({ id: "later", startDate: "2026-11-01" });
+
+    const result = pickPrimaryTrips([active, later], today);
+
+    expect(result.primaryTrip?.id).toBe("active");
+    expect(result.activeTrip?.id).toBe("active");
+    expect(result.upNext.map((t) => t.id)).toEqual(["later"]);
   });
 });
 

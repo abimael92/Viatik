@@ -70,6 +70,9 @@ const trip: Trip = {
   timeZone: null,
   startDate: "2026-06-01",
   endDate: "2026-06-08",
+  status: "planned",
+  startedAt: null,
+  completedAt: null,
   coverImageUrl: null,
   adultCount: 2,
   childCount: 0,
@@ -177,6 +180,12 @@ describe("MoneyDashboard (Budget tab)", () => {
     expect(screen.getByText("USD")).toBeTruthy();
     fireEvent.click(swap);
     expect(screen.getByText("MXN")).toBeTruthy();
+  });
+
+  it("opens the money tools modal from a deep-link intent", () => {
+    render(<MoneyDashboard tripId={trip.id} userId="user-1" trip={trip} days={["2026-06-01"]} canEdit autoOpenTools />);
+    expect(screen.getByRole("dialog", { name: "Money tools" })).toBeTruthy();
+    expect(screen.getByLabelText("Amount")).toBeTruthy();
   });
 
   it("opens the money tools modal and switches between converter and tip tabs", () => {

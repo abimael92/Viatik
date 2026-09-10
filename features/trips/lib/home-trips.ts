@@ -1,4 +1,5 @@
 import type { Activity, Trip } from "@/features/domain/entities";
+import { resolveTripStatus } from "@/features/trips/lib/trip-status";
 
 export const DAY_MS = 86_400_000;
 
@@ -21,9 +22,19 @@ export function daysUntil(date: string, today: Date = new Date()): number {
 }
 
 export function isTripActive(trip: Trip, today: Date = new Date()): boolean {
-  if (!trip.startDate || !trip.endDate) return false;
-  const day = todayKey(today);
-  return trip.startDate <= day && trip.endDate >= day;
+  return resolveTripStatus(trip, today) === "active";
+}
+
+/** A trip is "ended" when it is `completed` or `cancelled`. */
+export function isTripEnded(trip: Trip, today: Date = new Date()): boolean {
+  const status = resolveTripStatus(trip, today);
+  return status === "completed" || status === "cancelled";
+}
+
+/** A trip is "upcoming" when it is planned and starts today or later. */
+export function isTripUpcoming(trip: Trip, today: Date = new Date()): boolean {
+  if (resolveTripStatus(trip, today) !== "planned") return false;
+  return trip.startDate !== null && daysUntil(trip.startDate, today) >= 0;
 }
 
 /** Human countdown for the hero, e.g. "14 days left" or "Today". */
@@ -37,23 +48,31 @@ export function formatCountdown(startDate: string, today: Date = new Date()): st
 export interface PrimaryTripSelection {
   /** The trip to feature in the hero: the active trip, else the nearest upcoming. */
   primaryTrip: Trip | null;
-  /** The trip currently underway (today between its dates), if any. */
+  /** The trip currently underway, if any. */
   activeTrip: Trip | null;
   /** The nearest upcoming trip with a start date, if any. */
   nextTrip: Trip | null;
+  /**
+   * Planned trips that start today or later, excluding the hero trip. Rendered
+   * as the "Up Next" rail — and only when the hero is in the planned state.
+   */
+  upNext: Trip[];
 }
 
 /**
  * Picks the hero trip and the active/upcoming split from the user's trips.
- * Trips without a start date sort last and are ignored for "upcoming".
+ * Ended trips (completed/cancelled) are excluded entirely. A trip is "active"
+ * when its resolved status is active; otherwise the nearest upcoming planned
+ * trip becomes the hero. Trips without a start date are ignored for "upcoming".
  */
 export function pickPrimaryTrips(trips: Trip[], today: Date = new Date()): PrimaryTripSelection {
-  const dated = trips.filter((trip) => trip.startDate !== null);
-  dated.sort((a, b) => a.startDate!.localeCompare(b.startDate!));
-  const activeTrip = dated.find((trip) => isTripActive(trip, today)) ?? null;
-  const nextTrip =
-    dated.find((trip) => !isTripActive(trip, today) && daysUntil(trip.startDate!, today) >= 0) ?? null;
-  return { primaryTrip: activeTrip ?? nextTrip, activeTrip, nextTrip };
+  const activeTrip = trips.find((trip) => isTripActive(trip, today)) ?? null;
+  const upcoming = trips
+    .filter((trip) => isTripUpcoming(trip, today))
+    .sort((a, b) => a.startDate!.localeCompare(b.startDate!));
+  const primaryTrip = activeTrip ?? upcoming[0] ?? null;
+  const upNext = upcoming.filter((trip) => trip.id !== primaryTrip?.id);
+  return { primaryTrip, activeTrip, nextTrip: upcoming[0] ?? null, upNext };
 }
 
 export interface TimelineItem {

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Calculator, Receipt, Plus, ShieldAlert, ShieldCheck, UserPlus, type LucideIcon } from "lucide-react";
+import { ContactRound, Plus, ShieldAlert, ShieldCheck, UserPlus, Wrench, type LucideIcon } from "lucide-react";
 
 import { EmergencyCenter } from "@/features/emergency/components/emergency-center";
 import type { Trip } from "@/features/domain/entities";
@@ -13,6 +13,8 @@ interface QuickAction {
   description: string;
   href: string;
   icon: LucideIcon;
+  /** Only show when there is a trip (hidden on Home when no trip exists). */
+  requiresTrip?: boolean;
 }
 
 /**
@@ -23,12 +25,14 @@ interface QuickAction {
 export function QuickActionHub({ userId, primaryTrip }: { userId: string; primaryTrip: Trip | null }) {
   const tripFallback = "/trips";
   const actions: QuickAction[] = [
+
     {
-      key: "expense",
-      label: "Add expense",
-      description: "Log a shared cost",
-      href: primaryTrip ? tripTabPath(primaryTrip.id, "expenses") : tripFallback,
-      icon: Receipt,
+      key: "money-tools",
+      label: "Money tools",
+      description: "Convert currency & split tips",
+      href: primaryTrip ? `${tripTabPath(primaryTrip.id, "finance")}&action=money-tools` : tripFallback,
+      icon: Wrench,
+      requiresTrip: true,
     },
     {
       key: "new-trip",
@@ -36,6 +40,7 @@ export function QuickActionHub({ userId, primaryTrip }: { userId: string; primar
       description: "Start planning",
       href: tripFallback,
       icon: Plus,
+      requiresTrip: true,
     },
     {
       key: "vault",
@@ -43,6 +48,7 @@ export function QuickActionHub({ userId, primaryTrip }: { userId: string; primar
       description: "Secure documents",
       href: primaryTrip ? tripTabPath(primaryTrip.id, "vault") : tripFallback,
       icon: ShieldCheck,
+      requiresTrip: true,
     },
     {
       key: "invite",
@@ -52,16 +58,16 @@ export function QuickActionHub({ userId, primaryTrip }: { userId: string; primar
       icon: UserPlus,
     },
     {
-      key: "converter",
-      label: "Currency & tips",
-      description: "Convert & tip fast",
-      href: primaryTrip ? tripTabPath(primaryTrip.id, "finance") : tripFallback,
-      icon: Calculator,
+      key: "contact",
+      label: "Add contact",
+      description: "Save a traveler",
+      href: "/contacts",
+      icon: ContactRound,
     },
   ];
 
   return (
-    <section aria-label="Quick actions" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <section aria-label="Quick actions" className="flex flex-wrap justify-center gap-3">
       <EmergencyCenter
         ownerId={userId}
         tripId={primaryTrip?.id ?? null}
@@ -71,7 +77,7 @@ export function QuickActionHub({ userId, primaryTrip }: { userId: string; primar
           <button
             type="button"
             onClick={open}
-            className="group flex items-center gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-left transition-colors hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="group flex w-full items-center gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-left transition-colors hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:w-[calc(50%-0.375rem)] lg:w-[calc(25%-0.5625rem)]"
           >
             <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-destructive/10 text-destructive transition-transform group-hover:scale-105">
               <ShieldAlert className="size-5" aria-hidden />
@@ -83,11 +89,13 @@ export function QuickActionHub({ userId, primaryTrip }: { userId: string; primar
           </button>
         )}
       />
-      {actions.map(({ key, label, description, href, icon: Icon }) => (
+      {actions
+        .filter((action) => !action.requiresTrip || primaryTrip)
+        .map(({ key, label, description, href, icon: Icon }) => (
         <Link
           key={key}
           href={href}
-          className="group flex items-center gap-3 rounded-2xl border bg-card p-4 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="group flex w-full items-center gap-3 rounded-2xl border bg-card p-4 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:w-[calc(50%-0.375rem)] lg:w-[calc(25%-0.5625rem)]"
         >
           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary transition-transform group-hover:scale-105">
             <Icon className="size-5" aria-hidden />
