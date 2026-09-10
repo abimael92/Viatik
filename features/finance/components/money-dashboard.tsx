@@ -123,6 +123,7 @@ export function MoneyDashboard({
   days,
   canEdit,
   autoOpenExpense = false,
+  autoOpenTools = false,
   onConsumeAutoOpenExpense,
 }: {
   tripId: string;
@@ -131,6 +132,7 @@ export function MoneyDashboard({
   days: string[];
   canEdit: boolean;
   autoOpenExpense?: boolean;
+  autoOpenTools?: boolean;
   onConsumeAutoOpenExpense?: () => void;
 }) {
   const baseCurrency = trip.baseCurrency || "USD";
@@ -144,7 +146,7 @@ export function MoneyDashboard({
   const { balances } = useSettlement(tripId, baseCurrency);
 
   const [addOpen, setAddOpen] = useState(false);
-  const [toolsOpen, setToolsOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(autoOpenTools);
   const [toolsTab, setToolsTab] = useState<"converter" | "tip">("converter");
 
   // A budget of zero (or unset) means "no budget yet" — avoid treating a 0 cap
