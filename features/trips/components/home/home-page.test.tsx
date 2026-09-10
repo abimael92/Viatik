@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { Activity, Contact, Trip, TripMember } from "@/features/domain/entities";
@@ -64,6 +64,9 @@ function makeTrip(overrides: Partial<Trip>): Trip {
     timeZone: null,
     startDate: null,
     endDate: null,
+    status: "planned",
+    startedAt: null,
+    completedAt: null,
     coverImageUrl: null,
     adultCount: 2,
     childCount: 0,
@@ -121,11 +124,11 @@ describe("HomePage", () => {
   });
 
   it("composes the hero, readiness, timeline, and quick actions for a trip", () => {
-    // An "active" trip: today falls within its (single-day) date range.
+    // An explicitly started trip: operational content is visible only after Start.
     const today = new Date().toISOString().slice(0, 10);
     render(<HomePage userId="owner-1" />);
     // Setting trips first registers the activities/members/vault subscriptions.
-    act(() => state.trips?.([makeTrip({ startDate: today, endDate: today })]));
+    act(() => state.trips?.([makeTrip({ startDate: today, endDate: today, status: "active" })]));
     act(() => {
       state.activities?.([makeActivity({ dayDate: today })]);
       state.members?.([{ id: "m1", tripId: "trip-1", userId: "owner-1", role: "owner", invitedBy: null, joinedAt: "2026-01-01T00:00:00Z", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }]);
@@ -133,9 +136,10 @@ describe("HomePage", () => {
       state.contacts?.([{ id: "c1", ownerId: "owner-1", fullName: "Alice", passportExpiresOn: "2030-05-01" } as Contact]);
     });
 
-    // Hero destination + countdown (active trip, today)
+    // Hero destination + active mode (active trip, today) with an End-trip action
     expect(screen.getByRole("heading", { name: "Lisbon, Portugal" })).toBeTruthy();
-    expect(screen.getByText("Today")).toBeTruthy();
+    expect(screen.getByText(/Active/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /End trip/ })).toBeTruthy();
 
     // Readiness: dates + itinerary + crew + passport complete, budget + docs missing => 4/6
     expect(screen.getByText("4 of 6 essentials covered")).toBeTruthy();
@@ -146,7 +150,8 @@ describe("HomePage", () => {
     expect(screen.getByText("Lunch at Prado")).toBeTruthy();
 
     // Quick actions
-    expect(screen.getByText("Add expense")).toBeTruthy();
+    const moneyTools = screen.getByRole("link", { name: /Money tools/ });
+    expect(moneyTools.getAttribute("href")).toBe("/trips/trip-1?tab=finance&action=money-tools");
     expect(screen.getByText("Trip vault")).toBeTruthy();
     // Emergency Center quick action is prominent and present.
     expect(screen.getByText("Emergency")).toBeTruthy();
@@ -159,14 +164,44 @@ describe("HomePage", () => {
 
     expect(screen.getByRole("heading", { name: "Lisbon, Portugal" })).toBeTruthy();
     expect(screen.getByText(/days left/)).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Up next in Lisbon, Portugal" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Start trip/ })).toBeNull();
+    expect(screen.getByRole("button", { name: /More options/ })).toBeTruthy();
+    expect(screen.getByText("Start becomes available 7 days before departure.")).toBeTruthy();
+    // The itinerary is hidden until the trip is started.
+    expect(screen.queryByRole("heading", { name: "Up next in Lisbon, Portugal" })).toBeNull();
+  });
+
+  it("offers Start trip seven days before departure", () => {
+    const start = new Date();
+    start.setUTCDate(start.getUTCDate() + 7);
+    const startDate = start.toISOString().slice(0, 10);
+    render(<HomePage userId="owner-1" />);
+    act(() => state.trips?.([makeTrip({ startDate, endDate: startDate, status: "planned" })]));
+
+    expect(screen.getByRole("button", { name: /Start trip/ })).toBeTruthy();
+  });
+
+  it("hides itinerary and recent activity on a planned trip but keeps quick actions", () => {
+    const today = new Date().toISOString().slice(0, 10);
+    render(<HomePage userId="owner-1" />);
+    act(() => state.trips?.([makeTrip({ startDate: today, endDate: today, status: "planned" })]));
+
+    // Itinerary and recent activity are hidden until the trip is started.
+    expect(screen.queryByRole("heading", { name: "Up next in Lisbon, Portugal" })).toBeNull();
+    expect(screen.queryByText("Recent activity")).toBeNull();
+
+    // Quick actions stay visible.
+    expect(screen.getByText("Money tools")).toBeTruthy();
+    expect(screen.getByText("Emergency")).toBeTruthy();
+    expect(screen.getByText("Add contact")).toBeTruthy();
   });
 
   it("deep-links missing readiness items to the trip management tab", () => {
     render(<HomePage userId="owner-1" />);
     act(() => state.trips?.([makeTrip({ startDate: "2026-09-04", endDate: "2026-09-10" })]));
 
-    // "Budget planned" is missing and should deep-link to the finance tab.
+    // The checklist is collapsed by default; open it, then verify the deep link.
+    fireEvent.click(screen.getByRole("button", { name: "View checklist" }));
     const budgetLink = screen.getByRole("link", { name: /Budget planned/ });
     expect(budgetLink.getAttribute("href")).toBe("/trips/trip-1?tab=finance");
   });
