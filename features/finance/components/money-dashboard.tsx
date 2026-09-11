@@ -6,6 +6,7 @@ import {
   Car,
   Check,
   CircleDollarSign,
+  Download,
   Landmark,
   Pencil,
   Plus,
@@ -31,7 +32,7 @@ import {
   SPENDING_CATEGORY_LABELS,
   type SpendingCategory,
 } from "@/features/domain/categories";
-import type { Trip, TripBudget } from "@/features/domain/entities";
+import type { Trip, TripBudget, Expense } from "@/features/domain/entities";
 import {
   decimalFromMinorUnits,
   formatMinorUnits,
@@ -41,6 +42,8 @@ import {
 import { ExpensePanel } from "@/features/expenses/components/expense-panel";
 import { SettlementView } from "@/features/expenses/components/settlement-view";
 import { useSettlement } from "@/features/expenses/lib/use-settlement";
+import { expenseRepository } from "@/features/expenses/data/dexie-expense-repository";
+import { downloadExpensesCsv } from "@/features/expenses/lib/export-csv";
 import { CurrencyConverter } from "@/features/finance/components/currency-converter";
 import { TipSplitCalculator } from "@/features/finance/components/tip-calculator";
 import { currencyRateRepository } from "@/features/finance/data/dexie-currency-rate-repository";
@@ -145,9 +148,13 @@ export function MoneyDashboard({
   const { budget, totalSpent } = useTripSpending(tripId, baseCurrency);
   const { balances } = useSettlement(tripId, baseCurrency);
 
+  const [expenses, setExpenses] = useState<Expense[] | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(autoOpenTools);
   const [toolsTab, setToolsTab] = useState<"converter" | "tip">("converter");
+
+  // Watch expenses for CSV export
+  useEffect(() => expenseRepository.watchByTrip(tripId, setExpenses), [tripId]);
 
   // A budget of zero (or unset) means "no budget yet" — avoid treating a 0 cap
   // as a budget that is already exceeded.
@@ -184,12 +191,23 @@ export function MoneyDashboard({
         personalStanding={personalStanding}
       />
 
-      {/* Toolbar: money tools + primary action */}
+      {/* Toolbar: money tools + primary action + export */}
       <div className="flex items-center justify-between gap-3">
-        <Button variant="outline" onClick={() => setToolsOpen(true)}>
-          <Wrench className="size-4" />
-          Money tools
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setToolsOpen(true)}>
+            <Wrench className="size-4" />
+            Money tools
+          </Button>
+          {expenses && expenses.length > 0 && (
+            <Button
+              variant="outline"
+              onClick={() => downloadExpensesCsv(expenses.filter((e) => e.deletedAt === null))}
+            >
+              <Download className="size-4" />
+              Export CSV
+            </Button>
+          )}
+        </div>
         {canEdit && (
           <Button
             size="lg"
