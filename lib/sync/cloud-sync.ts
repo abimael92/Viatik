@@ -80,6 +80,37 @@ async function applyRemote(entityType: OutboxEntityType, store: typeof tableDefi
   const pending = await getDb().outboxMutations.where("entityType").equals(entityType).and((mutation) => mutation.entityId === entity.id).last();
   signal?.throwIfAborted();
   const remoteUpdatedAt = "updatedAt" in entity ? entity.updatedAt : new Date().toISOString();
+  
+  // Protection: If local entity has a non-null startedAt (trip was started), 
+  // don't let remote overwrite it with null. This prevents "unstarting" a trip
+  // due to race conditions between local start and remote sync.
+  if (
+    entityType === "trip" &&
+    previous &&
+    "startedAt" in previous &&
+    previous.startedAt != null &&
+    "startedAt" in entity &&
+    entity.startedAt == null
+  ) {
+    logger.debug("Preserving local startedAt, ignoring remote null", { tripId: entity.id });
+    // Keep the local startedAt by merging it into the remote entity
+    entity = { ...entity, startedAt: previous.startedAt };
+  }
+  
+  // Similar protection for completedAt - don't let remote overwrite a completed
+  // trip with null completedAt (prevents "unending" a trip)
+  if (
+    entityType === "trip" &&
+    previous &&
+    "completedAt" in previous &&
+    previous.completedAt != null &&
+    "completedAt" in entity &&
+    entity.completedAt == null
+  ) {
+    logger.debug("Preserving local completedAt, ignoring remote null", { tripId: entity.id });
+    entity = { ...entity, completedAt: previous.completedAt };
+  }
+  
   if (pending && pending.mutatedAt >= remoteUpdatedAt) return;
   if (pending) {
     signal?.throwIfAborted();
