@@ -20,7 +20,7 @@ import { tripRepository } from "@/features/trips/data/dexie-trip-repository";
 import { useHomeData } from "@/features/trips/components/home/use-home-data";
 import { HomeSkeleton } from "@/features/trips/components/home/home-skeleton";
 import { TripCountdownHero } from "@/features/trips/components/home/trip-countdown-hero";
-import { UpcomingTimelineSnippet } from "@/features/trips/components/home/upcoming-timeline-snippet";
+import { LiveTimelineHud } from "@/features/trips/components/home/live-timeline-hud";
 import { QuickActionHub } from "@/features/trips/components/home/quick-action-hub";
 import { SuggestionsDrawer } from "@/features/community/components/suggestions-drawer";
 
@@ -95,7 +95,7 @@ export function HomePage({ userId }: { userId: string }) {
               <>
                 <DocumentRiskBanner userId={userId} destination={primaryTrip.destination} travelDate={primaryTrip.startDate} />
 
-                <UpcomingTimelineSnippet trip={primaryTrip} items={timeline} active />
+                <LiveTimelineHud trip={primaryTrip} items={timeline} active userId={userId} />
 
                 <section className="rounded-2xl border bg-card p-5 sm:p-6">
                   <SharedTripFeed
@@ -169,7 +169,7 @@ export function HomePage({ userId }: { userId: string }) {
           </DialogContent>
         </Dialog>
       </div>
-      {primaryTrip && <SuggestionsDrawer userId={userId} />}
+      {primaryTrip && !isActive && <SuggestionsDrawer userId={userId} />}
     </>
   );
 }
