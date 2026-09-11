@@ -297,16 +297,16 @@ function TripSection({
         {title}
       </Heading>
       {/* Asymmetrical bento grid: the first card is featured and spans two columns. */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className={cn("grid gap-4", trips.length === 1 ? "grid-cols-1" : trips.length === 2 ? "sm:grid-cols-2" : "sm:grid-cols-2 xl:grid-cols-3")}>
         {trips.map((trip, index) => (
           <motion.div
             key={trip.id}
-            className={cn(bento && index === 0 && "sm:col-span-2 xl:col-span-2")}
+            className={cn(bento && trips.length === 1 && index === 0 && "sm:col-span-2 xl:col-span-2")}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25, delay: Math.min(index * 0.05, 0.25) }}
           >
-            <TripCard trip={trip} featured={bento && index === 0} ended={ended} onStart={onStart} onEnd={onEnd} />
+            <TripCard trip={trip} featured={bento && trips.length === 1 && index === 0} ended={ended} onStart={onStart} onEnd={onEnd} />
           </motion.div>
         ))}
       </div>
