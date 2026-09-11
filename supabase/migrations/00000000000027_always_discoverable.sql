@@ -67,7 +67,7 @@ on conflict (profile_id) do update set
   preferred_language = excluded.preferred_language,
   updated_at = now();
 
--- Rate-limited lookup now returns any profile with a matching Viatik ID or UUID.
+-- Rate-limited lookup now returns any profile with a matching Viatik ID.
 -- The return type is unchanged, but the discoverability filter is removed.
 drop function if exists public.lookup_profile_for_linking(text);
 create or replace function public.lookup_profile_for_linking(p_identifier text)
@@ -96,9 +96,9 @@ begin
     raise exception 'Authentication required' using errcode = '42501';
   end if;
 
-  -- Accept both Viatik IDs (VTK-...) and raw UUIDs
-  v_id := trim(p_identifier);
-  if v_id !~ '^VTK-[0-9A-F]{16}$' and v_id !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' then
+  -- Canonical Viatik ID only; reject raw profile UUIDs and malformed input.
+  v_id := upper(trim(p_identifier));
+  if v_id !~ '^VTK-[0-9A-F]{16}$' then
     raise exception 'Invalid Viatik ID' using errcode = '22023';
   end if;
 
@@ -129,8 +129,7 @@ begin
     pd.profile_id, pd.viatik_id, pd.display_name, pd.avatar_url, pd.avatar_seed,
     pd.public_handle, pd.preferred_currency, pd.preferred_language
   from public.profile_directory pd
-  where pd.viatik_id = upper(v_id)
-     or pd.profile_id::text = lower(v_id)
+  where pd.viatik_id = v_id
   limit 1;
 end;
 $$;

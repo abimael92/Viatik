@@ -1,10 +1,11 @@
 "use client";
 
 import { QrCode, UserPlus, UserRoundSearch } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
+import { useToast } from "@/components/ui/toast";
 import { AddContactCommandBar } from "@/features/contacts/components/AddContactCommandBar";
 import { ContactEditorDialog } from "@/features/contacts/components/contact-editor-dialog";
 import { ContactRequestInbox } from "@/features/contacts/components/ContactRequestInbox";
@@ -19,8 +20,34 @@ export function ContactsPanel({ userId, ownProfile }: { userId: string; ownProfi
   const [adding, setAdding] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+  const prevContactsRef = useRef<Contact[]>([]);
 
-  useEffect(() => contactRepository.watch(userId, setContacts), [userId]);
+  useEffect(() => {
+    const unsub = contactRepository.watch(userId, (newContacts) => {
+      // Detect newly accepted outbound requests
+      const prev = prevContactsRef.current;
+      for (const contact of newContacts) {
+        const old = prev.find((c) => c.id === contact.id);
+        if (
+          old &&
+          old.connectionStatus === "pending" &&
+          old.connectionDirection === "outbound" &&
+          contact.connectionStatus === "accepted" &&
+          contact.connectionDirection === null
+        ) {
+          toast({
+            title: "Connection accepted",
+            description: `${contact.fullName} accepted your request. You're now connected.`,
+            variant: "success",
+          });
+        }
+      }
+      prevContactsRef.current = newContacts;
+      setContacts(newContacts);
+    });
+    return unsub;
+  }, [userId, toast]);
 
   async function remove(contact: Contact) {
     setError(null);
