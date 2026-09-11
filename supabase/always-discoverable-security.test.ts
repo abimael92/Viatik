@@ -27,7 +27,7 @@ describe("always discoverable migration", () => {
     expect(migration).not.toContain("delete from public.profile_directory where profile_id = new.id");
   });
 
-  it("keeps the lookup authenticated, rate-limited, and accepts Viatik IDs or UUIDs", () => {
+  it("keeps the lookup authenticated, rate-limited, and canonical-ID only", () => {
     expect(lookupBody).toContain("security definer");
     expect(lookupBody).toContain("v_uid uuid := auth.uid()");
     expect(lookupBody).toContain("if v_uid is null");
@@ -36,13 +36,12 @@ describe("always discoverable migration", () => {
     expect(lookupBody).toContain("raise exception 'rate limit exceeded. try again later.' using errcode = '42900'");
     expect(lookupBody).toContain("v_max constant integer := 30");
     expect(lookupBody).toContain("if v_id !~ '^vtk-[0-9a-f]{16}$'");
-    expect(lookupBody).toContain("and v_id !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'");
   });
 
-  it("looks up any profile by Viatik ID or UUID without a discoverability filter", () => {
+  it("looks up any profile by Viatik ID without a discoverability filter", () => {
     expect(lookupBody).toContain("from public.profile_directory pd");
-    expect(lookupBody).toContain("pd.viatik_id = upper(v_id)");
-    expect(lookupBody).toContain("pd.profile_id::text = lower(v_id)");
+    expect(lookupBody).toContain("pd.viatik_id = v_id");
+    expect(lookupBody).not.toContain("pd.profile_id::text = lower(v_id)");
     expect(lookupBody).not.toContain("pd.discoverable");
     expect(lookupBody).not.toMatch(/from public\.profiles\b/);
   });
