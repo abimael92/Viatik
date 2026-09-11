@@ -10,7 +10,7 @@ import { contactRepository } from "@/features/contacts/data/dexie-contact-reposi
 import { tripBudgetRepository } from "@/features/finance/data/dexie-finance-repository";
 import { tripRepository } from "@/features/trips/data/dexie-trip-repository";
 import { vaultRepository } from "@/features/vault/data/dexie-vault-repository";
-import { buildTimeline, isTripEnded, pickPrimaryTrips, todayKey, type TimelineItem } from "@/features/trips/lib/home-trips";
+import { buildTimeline, isTripEnded, pickPrimaryTrips, todayKeyInZone, type TimelineItem } from "@/features/trips/lib/home-trips";
 import { computeReadiness, type TripReadiness } from "@/features/trips/lib/readiness";
 
 export interface HomeData {
@@ -88,8 +88,8 @@ export function useHomeData(ownerId: string): HomeData {
       primaryTrip
         ? buildTimeline(activities, {
             scope: activeTrip ? "today" : "upcoming",
-            today: todayKey(),
-            limit: 3,
+            today: todayKeyInZone(primaryTrip.timeZone),
+            limit: Number.MAX_SAFE_INTEGER,
           })
         : [],
     [primaryTrip, activeTrip, activities]

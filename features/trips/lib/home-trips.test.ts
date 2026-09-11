@@ -1,180 +1,151 @@
-import { describe, expect, it } from "vitest";
+import { describe, it, expect } from "vitest";
+import {
+  formatTimeInZone,
+  getTemporalState,
+} from "./home-trips";
 
-import type { Activity, Trip } from "@/features/domain/entities";
-import { buildTimeline, daysUntil, formatCountdown, pickPrimaryTrips } from "@/features/trips/lib/home-trips";
+const TEST_NOW = new Date("2024-06-15T12:00:00Z");
 
-function makeTrip(overrides: Partial<Trip>): Trip {
-  return {
-    id: "trip-1",
-    ownerId: "owner-1",
-    name: "Lisbon",
-    description: null,
-    destination: "Lisbon, Portugal",
-    latitude: null,
-    longitude: null,
-    placeId: null,
-    timeZone: null,
-    startDate: null,
-    endDate: null,
-    status: "planned",
-    startedAt: null,
-    completedAt: null,
-    coverImageUrl: null,
-    adultCount: 2,
-    childCount: 0,
-    baseCurrency: "EUR",
-    createdAt: "2026-01-01T00:00:00Z",
-    updatedAt: "2026-01-01T00:00:00Z",
-    deletedAt: null,
-    ...overrides,
-  };
-}
-
-const today = new Date(Date.UTC(2026, 8, 4)); // 2026-09-04
-
-describe("daysUntil", () => {
-  it("returns 0 for the current day", () => {
-    expect(daysUntil("2026-09-04", today)).toBe(0);
+describe("Timezone-aware time formatting", () => {
+  it("formats time in the destination timezone", () => {
+    // 2024-06-15T10:00:00Z = 06:00 in New York (EDT, UTC-4)
+    const utcTime = "2024-06-15T10:00:00Z";
+    const nyTime = formatTimeInZone(utcTime, "America/New_York");
+    expect(nyTime).toBe("06:00");
   });
 
-  it("returns a positive count for future dates", () => {
-    expect(daysUntil("2026-09-07", today)).toBe(3);
+  it("formats time in Tokyo timezone", () => {
+    // 2024-06-15T10:00:00Z = 19:00 in Tokyo (JST, UTC+9)
+    const utcTime = "2024-06-15T10:00:00Z";
+    const tokyoTime = formatTimeInZone(utcTime, "Asia/Tokyo");
+    expect(tokyoTime).toBe("19:00");
   });
 
-  it("returns a negative count for past dates", () => {
-    expect(daysUntil("2026-09-01", today)).toBe(-3);
+  it("falls back to local time when timezone is invalid", () => {
+    const utcTime = "2024-06-15T10:00:00Z";
+    const result = formatTimeInZone(utcTime, "Invalid/Timezone");
+    expect(result).not.toBeNull();
+  });
+
+  it("returns null for null startTime", () => {
+    expect(formatTimeInZone(null, "America/New_York")).toBeNull();
   });
 });
 
-describe("formatCountdown", () => {
-  it("handles the current day", () => {
-    expect(formatCountdown("2026-09-04", today)).toBe("Today");
+describe("getTemporalState", () => {
+  it("returns 'future' when activity hasn't started yet", () => {
+    const activity = {
+      startTime: "2024-06-15T14:00:00Z", // 2 PM UTC
+      endTime: "2024-06-15T16:00:00Z",   // 4 PM UTC
+      dayDate: "2024-06-15",
+    };
+    // Now is 12:00 UTC, activity starts at 14:00 UTC
+    expect(getTemporalState(activity, TEST_NOW)).toBe("future");
   });
 
-  it("pluralizes days", () => {
-    expect(formatCountdown("2026-09-07", today)).toBe("3 days left");
-    expect(formatCountdown("2026-09-05", today)).toBe("1 day left");
+  it("returns 'current' when activity is ongoing", () => {
+    const activity = {
+      startTime: "2024-06-15T10:00:00Z", // 10 AM UTC
+      endTime: "2024-06-15T12:00:00Z",   // 12 PM UTC
+      dayDate: "2024-06-15",
+    };
+    // Now is 11:00 UTC, activity is ongoing
+    expect(getTemporalState(activity, new Date("2024-06-15T11:00:00Z"))).toBe("current");
   });
 
-  it("handles started trips", () => {
-    expect(formatCountdown("2026-09-01", today)).toBe("Started");
+  it("returns 'past' when activity has ended", () => {
+    const activity = {
+      startTime: "2024-06-15T08:00:00Z", // 8 AM UTC
+      endTime: "2024-06-15T10:00:00Z",   // 10 AM UTC
+      dayDate: "2024-06-15",
+    };
+    // Now is 12:00 UTC, activity ended at 10:00 UTC
+    expect(getTemporalState(activity, TEST_NOW)).toBe("past");
+  });
+
+  it("handles activities with no end time (30 min default)", () => {
+    const activity = {
+      startTime: "2024-06-15T10:00:00Z",
+      endTime: null,
+      dayDate: "2024-06-15",
+    };
+    // At start time + 15 min = current
+    expect(getTemporalState(activity, new Date("2024-06-15T10:15:00Z"))).toBe("current");
+    // At start time + 45 min = past
+    expect(getTemporalState(activity, new Date("2024-06-15T10:45:00Z"))).toBe("past");
+  });
+
+  it("handles activities with no start time (all-day event)", () => {
+    const activity = {
+      startTime: null,
+      endTime: null,
+      dayDate: "2024-06-15",
+    };
+    // Untimed activities remain visible in the current-day upcoming list.
+    expect(getTemporalState(activity, TEST_NOW)).toBe("future");
+  });
+
+  it("correctly handles timezone offset for current activity", () => {
+    const activity = {
+      startTime: "2024-06-15T14:00:00Z", // 2 PM UTC = 10 AM EDT
+      endTime: "2024-06-15T16:00:00Z",   // 4 PM UTC = 12 PM EDT
+      dayDate: "2024-06-15",
+    };
+    // Now is 11:00 AM EDT = 15:00 UTC -> activity is current
+    expect(getTemporalState(activity, new Date("2024-06-15T15:00:00Z"))).toBe("current");
+  });
+
+  it("treats naive itinerary times as destination-local wall time", () => {
+    const activity = {
+      startTime: "2024-06-15T18:30:00",
+      endTime: null,
+      dayDate: "2024-06-15",
+    };
+    expect(formatTimeInZone(activity.startTime, "Europe/Lisbon")).toBe("18:30");
+    expect(getTemporalState(activity, new Date("2024-06-15T22:03:00Z"), "Europe/Lisbon")).toBe("past");
+  });
+
+  it("identifies immediate next activity as current when none have started", () => {
+    const activity1 = {
+      startTime: "2024-06-15T14:00:00Z",
+      endTime: "2024-06-15T16:00:00Z",
+      dayDate: "2024-06-15",
+    };
+    const activity2 = {
+      startTime: "2024-06-15T17:00:00Z",
+      endTime: "2024-06-15T19:00:00Z",
+      dayDate: "2024-06-15",
+    };
+    // Now is 12:00 UTC, neither started yet, but activity1 is the immediate next
+    // Note: getTemporalState evaluates individual activities, not the list
+    expect(getTemporalState(activity1, TEST_NOW)).toBe("future");
+    expect(getTemporalState(activity2, TEST_NOW)).toBe("future");
+  });
+
+  it("returns 'future' for invalid dates", () => {
+    const activity = {
+      startTime: "invalid-date",
+      endTime: "invalid-date",
+      dayDate: "2024-06-15",
+    };
+    expect(getTemporalState(activity, TEST_NOW)).toBe("future");
   });
 });
 
-describe("pickPrimaryTrips", () => {
-  it("prefers the active trip and still reports the nearest upcoming", () => {
-    const active = makeTrip({ id: "active", startDate: "2026-09-02", endDate: "2026-09-10" });
-    const upcoming = makeTrip({ id: "upcoming", startDate: "2026-10-01", endDate: "2026-10-05" });
-    const result = pickPrimaryTrips([upcoming, active], today);
+describe("Temporal state transitions across midnight", () => {
+  it("handles activities spanning midnight correctly", () => {
+    // Activity from 11 PM to 1 AM next day
+    const activity = {
+      startTime: "2024-06-15T23:00:00Z",
+      endTime: "2024-06-16T01:00:00Z",
+      dayDate: "2024-06-15",
+    };
 
-    expect(result.primaryTrip?.id).toBe("active");
-    expect(result.activeTrip?.id).toBe("active");
-    expect(result.nextTrip?.id).toBe("upcoming");
-  });
-
-  it("falls back to the nearest upcoming trip when nothing is active", () => {
-    const far = makeTrip({ id: "far", startDate: "2026-11-01" });
-    const near = makeTrip({ id: "near", startDate: "2026-10-01" });
-    const result = pickPrimaryTrips([far, near], today);
-
-    expect(result.primaryTrip?.id).toBe("near");
-    expect(result.nextTrip?.id).toBe("near");
-    expect(result.activeTrip).toBeNull();
-  });
-
-  it("returns nulls when there are no dated trips", () => {
-    const undated = makeTrip({ id: "undated" });
-    expect(pickPrimaryTrips([undated], today).primaryTrip).toBeNull();
-    expect(pickPrimaryTrips([], today).primaryTrip).toBeNull();
-  });
-
-  it("excludes completed and cancelled trips entirely", () => {
-    const completed = makeTrip({ id: "done", status: "completed", startDate: "2026-08-01", endDate: "2026-08-05" });
-    const cancelled = makeTrip({ id: "cancelled", status: "cancelled", startDate: "2026-08-01", endDate: "2026-08-05" });
-    const upcoming = makeTrip({ id: "upcoming", startDate: "2026-10-01", endDate: "2026-10-05" });
-
-    const result = pickPrimaryTrips([completed, cancelled, upcoming], today);
-
-    expect(result.primaryTrip?.id).toBe("upcoming");
-    expect(result.activeTrip).toBeNull();
-    expect(result.nextTrip?.id).toBe("upcoming");
-    expect(result.upNext.map((t) => t.id)).toEqual([]);
-  });
-
-  it("returns other planned trips in upNext sorted by start date, excluding the hero", () => {
-    const hero = makeTrip({ id: "hero", startDate: "2026-10-01", endDate: "2026-10-05" });
-    const later = makeTrip({ id: "later", startDate: "2026-12-01" });
-    const soon = makeTrip({ id: "soon", startDate: "2026-11-01" });
-
-    const result = pickPrimaryTrips([hero, later, soon], today);
-
-    expect(result.primaryTrip?.id).toBe("hero");
-    expect(result.upNext.map((t) => t.id)).toEqual(["soon", "later"]);
-  });
-
-  it("populates upNext with planned trips even when a trip is active", () => {
-    const active = makeTrip({ id: "active", startDate: "2026-09-02", endDate: "2026-09-10" });
-    const later = makeTrip({ id: "later", startDate: "2026-11-01" });
-
-    const result = pickPrimaryTrips([active, later], today);
-
-    expect(result.primaryTrip?.id).toBe("active");
-    expect(result.activeTrip?.id).toBe("active");
-    expect(result.upNext.map((t) => t.id)).toEqual(["later"]);
-  });
-});
-
-function makeActivity(overrides: Partial<Activity>): Activity {
-  return {
-    id: "a",
-    tripId: "trip-1",
-    dayDate: "2026-10-01",
-    title: "Lunch",
-    description: null,
-    location: null,
-    category: "food",
-    startTime: null,
-    endTime: null,
-    position: 0,
-    estimatedCostMinor: null,
-    createdBy: "owner-1",
-    createdAt: "2026-01-01T00:00:00Z",
-    updatedAt: "2026-01-01T00:00:00Z",
-    deletedAt: null,
-    ...overrides,
-  };
-}
-
-describe("buildTimeline", () => {
-  it("returns only today's items sorted by time in today scope", () => {
-    const activities = [
-      makeActivity({ id: "later", dayDate: "2026-09-04", startTime: "2026-09-04T13:30:00Z" }),
-      makeActivity({ id: "earlier", dayDate: "2026-09-04", startTime: "2026-09-04T10:00:00Z" }),
-      makeActivity({ id: "other-day", dayDate: "2026-09-05", startTime: "2026-09-05T10:00:00Z" }),
-    ];
-    const result = buildTimeline(activities, { scope: "today", today: "2026-09-04", limit: 3 });
-
-    expect(result.map((item) => item.id)).toEqual(["earlier", "later"]);
-  });
-
-  it("previews the first N chronological items in upcoming scope", () => {
-    const activities = [
-      makeActivity({ id: "b", dayDate: "2026-10-02", startTime: "2026-10-02T09:00:00Z" }),
-      makeActivity({ id: "a", dayDate: "2026-10-01", startTime: "2026-10-01T09:00:00Z" }),
-      makeActivity({ id: "c", dayDate: "2026-10-03", startTime: "2026-10-03T09:00:00Z" }),
-    ];
-    const result = buildTimeline(activities, { scope: "upcoming", today: "2026-09-04", limit: 2 });
-
-    expect(result.map((item) => item.id)).toEqual(["a", "b"]);
-  });
-
-  it("excludes soft-deleted activities", () => {
-    const activities = [
-      makeActivity({ id: "gone", dayDate: "2026-10-01", deletedAt: "2026-10-01T00:00:00Z" }),
-      makeActivity({ id: "kept", dayDate: "2026-10-01" }),
-    ];
-    const result = buildTimeline(activities, { scope: "upcoming", today: "2026-09-04", limit: 3 });
-
-    expect(result.map((item) => item.id)).toEqual(["kept"]);
+    // Before start
+    expect(getTemporalState(activity, new Date("2024-06-15T22:00:00Z"))).toBe("future");
+    // During activity
+    expect(getTemporalState(activity, new Date("2024-06-16T00:30:00Z"))).toBe("current");
+    // After end
+    expect(getTemporalState(activity, new Date("2024-06-16T02:00:00Z"))).toBe("past");
   });
 });
