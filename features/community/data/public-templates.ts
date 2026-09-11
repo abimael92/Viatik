@@ -44,6 +44,7 @@ interface TemplateSpec {
   forks: number;
   gradient: string;
   baseCurrency: string;
+  timeZone: string;
   tags: string[];
   startDate: string; // yyyy-mm-dd
   durationDays: number;
@@ -67,7 +68,7 @@ function buildSource(spec: TemplateSpec): TripCloneSource {
     latitude: null,
     longitude: null,
     placeId: null,
-    timeZone: null,
+    timeZone: spec.timeZone,
     startDate: spec.startDate,
     endDate: addDays(spec.startDate, spec.durationDays - 1),
     status: "planned",
@@ -126,6 +127,7 @@ const SPECS: TemplateSpec[] = [
     forks: 412,
     gradient: "bg-linear-to-br from-pink-400 via-rose-500 to-red-600",
     baseCurrency: "USD",
+    timeZone: "Asia/Tokyo",
     tags: ["culture", "food", "slow-travel"],
     startDate: "2026-04-05",
     durationDays: 5,
@@ -166,6 +168,7 @@ const SPECS: TemplateSpec[] = [
     forks: 355,
     gradient: "bg-linear-to-br from-amber-400 via-orange-500 to-rose-600",
     baseCurrency: "EUR",
+    timeZone: "Europe/Lisbon",
     tags: ["city", "food", "weekend"],
     startDate: "2026-05-18",
     durationDays: 3,
@@ -198,6 +201,7 @@ const SPECS: TemplateSpec[] = [
     forks: 867,
     gradient: "bg-linear-to-br from-emerald-400 via-teal-500 to-sky-600",
     baseCurrency: "USD",
+    timeZone: "America/Punta_Arenas",
     tags: ["adventure", "outdoors", "trekking"],
     startDate: "2026-11-02",
     durationDays: 6,
@@ -237,6 +241,7 @@ const SPECS: TemplateSpec[] = [
     forks: 512,
     gradient: "bg-linear-to-br from-fuchsia-500 via-purple-500 to-indigo-600",
     baseCurrency: "USD",
+    timeZone: "Asia/Tokyo",
     tags: ["food", "city", "nightlife"],
     startDate: "2026-06-12",
     durationDays: 4,
