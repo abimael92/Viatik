@@ -27,9 +27,12 @@ export class DexieCollaborationRepository implements CollaborationRepository {
 
   async listProfiles(userIds: string[]): Promise<ProfileSummary[]> {
     if (!userIds.length || typeof navigator === "undefined" || !navigator.onLine) return [];
-    const { data, error } = await getSupabaseBrowserClient().from("profiles").select("id, full_name, avatar_url").in("id", userIds);
+    // Read collaborator identity through the safe `get_profile_public_data` RPC
+    // (migration 37) which returns only public columns for the caller + shared-trip
+    // members. Reading `profiles` directly is now self-only for RLS.
+    const { data, error } = await getSupabaseBrowserClient().rpc("get_profile_public_data", { p_ids: userIds });
     if (error) throw new Error(error.message);
-    return (data ?? []).map((profile) => ({ id: String(profile.id), fullName: profile.full_name == null ? null : String(profile.full_name), avatarUrl: profile.avatar_url == null ? null : String(profile.avatar_url), email: null }));
+    return (data ?? []).map((profile: { id: string; full_name: string | null; avatar_url: string | null }) => ({ id: String(profile.id), fullName: profile.full_name == null ? null : String(profile.full_name), avatarUrl: profile.avatar_url == null ? null : String(profile.avatar_url), email: null }));
   }
 
   listInvitations(tripId?: string): Promise<TripInvitation[]> {
