@@ -27,6 +27,25 @@ The MVP is considered production-ready only when a traveler can complete all of 
 - **Zustand holds only ephemeral UI state.**
 - **Security, offline behavior, and accessibility are release requirements.**
 
+## V1 Shipped (Post-MVP)
+
+These features were deferred to V2 but have already been implemented and shipped:
+
+### Collaboration
+- Trip activity feed (`SharedTripFeed` component with real-time updates).
+
+### Planning and itinerary
+- Weather forecasts attached to activities (full weather integration with `TripWeatherStrip`, `WeatherConflictBanner`, per-day forecasts, and conflict warnings).
+- Trip templates (`public-templates.ts` with community templates and suggestions drawer).
+- Automatic itinerary suggestions and AI itinerary drafts (AI Activity Scout slide-over drawer with structured output).
+
+### Core rules
+- **Dexie (IndexedDB) is the local domain source of truth.**
+- **Supabase is the remote synchronization target.**
+- **UI components never query the remote database directly.**
+- **Zustand holds only ephemeral UI state.**
+- **Security, offline behavior, and accessibility are release requirements.**
+
 ## V2 Good-to-Haves (Deferred)
 
 Defer this work until the local data model, sync engine, permission system, and core itinerary flows are stable.
@@ -39,15 +58,12 @@ Defer this work until the local data model, sync engine, permission system, and 
 - Mentions and notifications.
 - Push/email notification preferences.
 - Granular per-section or per-day permissions.
-- Trip activity feed.
 
 ### Planning and itinerary
 
 - Calendar integration and ICS export.
-- Automatic itinerary suggestions.
 - Travel-time-aware scheduling and route optimization.
 - Reservation reminders and countdowns.
-- Weather forecasts attached to activities.
 - Trip templates and import from bookings.
 - Public read-only itinerary links.
 - Time-zone-aware itinerary display.
@@ -86,7 +102,6 @@ Defer this work until the local data model, sync engine, permission system, and 
 
 ### Intelligence
 
-- AI itinerary drafts and categorization.
 - Natural-language expense entry.
 - Trip summarization and packing recommendations.
 - Privacy controls and data minimization before any AI features.

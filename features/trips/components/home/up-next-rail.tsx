@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
 import type { Trip } from "@/features/domain/entities";
 import { formatCountdown, tripTabPath } from "@/features/trips/lib/home-trips";
+import { cn } from "@/lib/utils";
 
 /**
  * Compact "Up Next" rail shown on Home only when the hero trip is planned.
@@ -25,7 +26,7 @@ export function UpNextRail({ trips, today }: { trips: Trip[]; today: Date }) {
           <Link href="/trips">View all trips</Link>
         </Button>
       </div>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className={cn("mt-4 grid gap-3", trips.length === 1 ? "grid-cols-1" : trips.length === 2 ? "sm:grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-3")}>
         {trips.map((trip) => (
           <Link
             key={trip.id}
