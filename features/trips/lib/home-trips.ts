@@ -13,6 +13,17 @@ export function todayKey(date: Date = new Date()): string {
   return date.toISOString().slice(0, 10);
 }
 
+export function todayKeyInZone(timeZone: string | null | undefined, date: Date = new Date()): string {
+  if (!timeZone) return todayKey(date);
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone }).formatToParts(date);
+    const value = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? "";
+    return `${value("year")}-${value("month")}-${value("day")}`;
+  } catch {
+    return todayKey(date);
+  }
+}
+
 /** Whole days from `today` until the given `yyyy-mm-dd` date (negative = past). */
 export function daysUntil(date: string, today: Date = new Date()): number {
   const [y, m, d] = date.split("-").map(Number);
@@ -83,6 +94,12 @@ export interface TimelineItem {
   timeLabel: string | null;
   location: string | null;
   category: string;
+  /** ISO datetime string for the activity start (used for timezone-aware formatting). */
+  startTime?: string | null;
+  /** ISO datetime string for the activity end. */
+  endTime?: string | null;
+  /** Trip ID for deep-linking. */
+  tripId?: string;
 }
 
 function timeLabel(startTime: string | null): string | null {
@@ -90,6 +107,70 @@ function timeLabel(startTime: string | null): string | null {
   const date = new Date(startTime);
   if (Number.isNaN(date.getTime())) return null;
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+}
+
+/** Timezone-aware time formatter — returns HH:MM in the destination's timezone. */
+export function formatTimeInZone(startTime: string | null, timeZone?: string | null): string | null {
+  if (!startTime) return null;
+  if (!/(?:Z|[+-]\d{2}:\d{2})$/.test(startTime)) {
+    const match = startTime.match(/T(\d{2}):(\d{2})/);
+    return match ? `${match[1]}:${match[2]}` : null;
+  }
+  const date = new Date(startTime);
+  if (Number.isNaN(date.getTime())) return null;
+  try {
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: timeZone ?? undefined });
+  } catch {
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+  }
+}
+
+export function activityDateTime(value: string, dayDate: string, timeZone?: string | null): Date {
+  const normalized = value.slice(0, 10) === dayDate ? value : `${dayDate}${value.slice(10)}`;
+  if (/(?:Z|[+-]\d{2}:\d{2})$/.test(normalized) || !timeZone) return new Date(normalized);
+  const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?/);
+  if (!match) return new Date(NaN);
+  const desired = Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5]), Number(match[6] ?? 0));
+  let instant = desired;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const parts = new Intl.DateTimeFormat("en-US", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23", timeZone }).formatToParts(new Date(instant));
+    const part = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find((item) => item.type === type)?.value ?? 0);
+    const represented = Date.UTC(part("year"), part("month") - 1, part("day"), part("hour"), part("minute"), part("second"));
+    instant += desired - represented;
+  }
+  return new Date(instant);
+}
+
+/** Temporal state of an activity relative to `now`. */
+export type TemporalState = "past" | "current" | "future";
+
+/**
+ * Determine if an activity is `past`, `current`, or `future` relative to `now`.
+ * - `current`: the immediate next activity that has started but not yet ended,
+ *   or the very next activity if none have started yet.
+ * - `past`: activities that have already ended (or started without end time, 30 min after start).
+ * - `future`: everything else.
+ */
+export function getTemporalState(
+  activity: { startTime: string | null; endTime?: string | null; dayDate: string },
+  now: Date,
+  timeZone?: string | null
+): TemporalState {
+  if (!activity.startTime) return "future";
+  const start = activityDateTime(activity.startTime, activity.dayDate, timeZone);
+  if (Number.isNaN(start.getTime())) return "future";
+
+  const originalStart = new Date(activity.startTime);
+  const originalEnd = activity.endTime ? new Date(activity.endTime) : null;
+  const explicitDuration = originalEnd && !Number.isNaN(originalEnd.getTime()) && !Number.isNaN(originalStart.getTime())
+    ? originalEnd.getTime() - originalStart.getTime()
+    : null;
+  const end = new Date(start.getTime() + (explicitDuration && explicitDuration > 0 ? explicitDuration : 30 * 60 * 1000));
+  if (Number.isNaN(end.getTime())) return "future";
+
+  if (now < start) return "future";
+  if (now >= end) return "past";
+  return "current";
 }
 
 /**
@@ -121,5 +202,8 @@ export function buildTimeline(
     timeLabel: timeLabel(activity.startTime),
     location: activity.location,
     category: activity.category,
+    startTime: activity.startTime,
+    endTime: activity.endTime,
+    tripId: activity.tripId,
   }));
 }

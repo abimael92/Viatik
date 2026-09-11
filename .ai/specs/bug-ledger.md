@@ -59,6 +59,7 @@ When skipping, record `None — incidental issue` in the bug report or related s
 | Date | Bug | Root Cause | Fix |
 |---|---|---|---|
 | [YYYY-MM-DD] | [Short bug description and link to report] | [Underlying technical cause and invariant/spec decision] | [COMMIT_SHA, PR link, or `Pending`] |
+| 2026-09-10 | P0: `profiles` RLS exposed PII to any authenticated user sharing a trip. The `profiles_select_self_or_shared_trip` policy let trip collaborators select the FULL `profiles` row, leaking `phone`, `birth_date`, `passport_issuing_country`, `passport_expires_on`, `allergies`, `dietary_restrictions`, and `emergency_contact_*`. | **Invariant:** Direct reads of `public.profiles` are limited to the row owner (`auth.uid() = id`) via RLS. Collaborator identity (name/avatar/handle/preferences) is served only through a security-definer RPC (`get_profile_public_data(uuid[])`) that returns an explicit allow-list of safe, public columns, sourced from the sanitized `profile_directory`, and gated to the caller plus users sharing a non-deleted trip. Sensitive profile columns are never readable by another authenticated user. | migration `00000000000037_fix_profiles_rls.sql`; repository switched `listProfiles` to the RPC; regression test `supabase/profiles-rls-security.test.ts`. |
 
 ## Entry Quality Checklist
 
