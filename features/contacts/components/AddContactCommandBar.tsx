@@ -53,11 +53,23 @@ export function AddContactCommandBar({
       return;
     }
     setStatus("looking");
-    debounceRef.current = setTimeout(() => void resolve(value), 350);
+    debounceRef.current = setTimeout(() => {
+      resolve(value).catch((err) => {
+        if (value !== query) return; // stale response
+        setProfile(null);
+        setStatus("not_found");
+        setError(err instanceof Error ? err.message : "We couldn't look up that Viatik ID right now.");
+      });
+    }, 350);
   }
 
   async function resolve(value: string) {
-    const result = await lookupViatikProfile(value);
+    // Add a timeout to prevent hanging forever
+    const timeoutMs = 10000;
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Lookup timed out. Please try again.")), timeoutMs)
+    );
+    const result = await Promise.race([lookupViatikProfile(value), timeoutPromise]);
     if (value !== query) return; // stale response
     if (!result.success) {
       setProfile(null);
