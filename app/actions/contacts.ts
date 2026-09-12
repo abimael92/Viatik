@@ -18,11 +18,23 @@ export async function lookupViatikProfile(value: string): Promise<ProfileLookupR
     const supabase = await createClient();
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) return { success: false, error: "Sign in again before linking a contact." };
-    const { data, error } = await supabase.rpc("lookup_profile_for_linking", { p_identifier: viatikId });
+
+    // Add a timeout to the RPC call to prevent hanging
+    const timeoutMs = 8000;
+    const rpcPromise = supabase.rpc("lookup_profile_for_linking", { p_identifier: viatikId });
+    const timeoutPromise = new Promise<{ data: null; error: { code: string; message: string } }>((_, reject) =>
+      setTimeout(() => reject(new Error("RPC timeout")), timeoutMs)
+    );
+
+    const { data, error } = await Promise.race([rpcPromise, timeoutPromise]);
+
     if (error) {
       logger.warn("Unable to look up Viatik profile", { code: error.code });
       if (error.code === "42900" || error.message.toLowerCase().includes("rate limit")) {
         return { success: false, error: "Too many lookups. Wait a moment and try again." };
+      }
+      if (error.message?.includes("timeout") || error.message?.includes("RPC timeout")) {
+        return { success: false, error: "The lookup took too long. Please try again." };
       }
       return { success: false, error: "We couldn't look up that Viatik ID right now." };
     }
@@ -31,6 +43,9 @@ export async function lookupViatikProfile(value: string): Promise<ProfileLookupR
     return { success: true, profile: mapProfileDirectoryRow(row as Record<string, unknown>) };
   } catch (error) {
     logger.error("Unexpected Viatik profile lookup error", error instanceof Error ? error : new Error(String(error)));
+    if (error instanceof Error && error.message?.includes("timeout")) {
+      return { success: false, error: "The lookup took too long. Please try again." };
+    }
     return { success: false, error: "We couldn't look up that Viatik ID right now." };
   }
 }

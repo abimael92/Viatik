@@ -11,8 +11,8 @@ describe("Viatik ID parsing", () => {
     expect(parseViatikId(`https://viatik.app/p/${id}?source=qr`)).toBe(id);
   });
 
-  it("accepts profile UUIDs", () => {
-    expect(parseViatikId("0193f6a2-5c80-4d1a-8f47-81b5e667f72a")).toBe("0193f6a2-5c80-4d1a-8f47-81b5e667f72a");
+  it("rejects profile UUIDs (only Viatik IDs allowed)", () => {
+    expect(parseViatikId("0193f6a2-5c80-4d1a-8f47-81b5e667f72a")).toBeNull();
   });
 
   it("rejects untrusted or malformed payloads", () => {

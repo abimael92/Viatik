@@ -41,6 +41,7 @@ describe("always discoverable migration", () => {
   it("looks up any profile by Viatik ID without a discoverability filter", () => {
     expect(lookupBody).toContain("from public.profile_directory pd");
     expect(lookupBody).toContain("pd.viatik_id = v_id");
+    expect(lookupBody).not.toContain("pd.profile_id::text = lower(v_id)");
     expect(lookupBody).not.toContain("pd.discoverable");
     expect(lookupBody).not.toMatch(/from public\.profiles\b/);
   });
