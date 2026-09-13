@@ -65,8 +65,8 @@ describe("ContactRequestInbox", () => {
       />
     );
 
-    const contactsTab = screen.getByRole("tab", { name: "Contacts" });
-    const requestsTab = screen.getByRole("tab", { name: "Requests, 1 pending" });
+    const contactsTab = screen.getByRole("tab", { name: "My Contacts" });
+    const requestsTab = screen.getByRole("tab", { name: "Friend Requests, 1 pending" });
     expect(contactsTab.getAttribute("aria-selected")).toBe("true");
     expect(within(requestsTab).getByText("1")).toBeTruthy();
     expect(screen.getByText("Manual Person")).toBeTruthy();
@@ -76,8 +76,8 @@ describe("ContactRequestInbox", () => {
 
     fireEvent.click(requestsTab);
 
-    const inboundHeading = screen.getByRole("heading", { name: "Needs Action" });
-    const outboundHeading = screen.getByRole("heading", { name: "Sent" });
+    const inboundHeading = screen.getByRole("heading", { name: "Pending" });
+    const outboundHeading = screen.getByRole("heading", { name: "Requests" });
     expect(inboundHeading.compareDocumentPosition(outboundHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByText("Incoming Person")).toBeTruthy();
     expect(screen.getByText("Sent Person")).toBeTruthy();

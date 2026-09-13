@@ -51,8 +51,8 @@ export function ContactRequestInbox({
       <div className="flex rounded-xl border border-border/40 bg-muted/40 p-1 sm:w-fit" role="tablist" aria-label="Contacts views">
         {(
           [
-            { key: "contacts", label: "Contacts" },
-            { key: "requests", label: "Requests" },
+            { key: "contacts", label: "My Contacts" },
+            { key: "requests", label: "Friend Requests" },
           ] as const
         ).map(({ key, label }) => (
           <button
@@ -60,7 +60,7 @@ export function ContactRequestInbox({
             type="button"
             role="tab"
             aria-selected={tab === key}
-            aria-label={key === "requests" && inbound.length ? `Requests, ${inbound.length} pending` : label}
+            aria-label={key === "requests" && inbound.length ? `Friend Requests, ${inbound.length} pending` : label}
             onClick={() => setTab(key)}
             className={cn(
               "flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] sm:flex-none",
@@ -83,7 +83,7 @@ export function ContactRequestInbox({
             {established.map((contact) => (
               <div
                 key={contact.id}
-                className="flex items-center gap-4 rounded-xl p-3 transition-colors hover:bg-muted/50"
+                className="flex items-center justify-between gap-4 rounded-xl border-b p-3 transition-colors last:border-0 hover:bg-muted/50"
               >
                 <UserAvatar
                   seed={contact.avatarSeed}
@@ -117,7 +117,7 @@ export function ContactRequestInbox({
         <div>
           {inbound.length > 0 && (
             <section>
-              <h3 className="mb-3 mt-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Needs Action</h3>
+              <h3 className="mb-3 mt-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Pending</h3>
               <div className="space-y-1">
                 {inbound.map((contact) => (
                   <div key={contact.id} className="flex items-center gap-4 rounded-xl p-3">
@@ -154,7 +154,7 @@ export function ContactRequestInbox({
           )}
           {outbound.length > 0 && (
             <section>
-              <h3 className="mb-3 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sent</h3>
+              <h3 className="mb-3 mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Requests</h3>
               <div className="space-y-1">
                 {outbound.map((contact) => (
                   <div key={contact.id} className="flex items-center gap-4 rounded-xl p-3">
@@ -168,7 +168,7 @@ export function ContactRequestInbox({
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{contact.fullName}</p>
                       <p className="truncate text-xs text-muted-foreground">
-                        Sent {relativeTime(contact.createdAt)}
+                        Request sent {relativeTime(contact.createdAt)}
                       </p>
                     </div>
                     <Button
