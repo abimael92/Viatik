@@ -71,6 +71,15 @@ function makeTrip(overrides: Partial<Trip>): Trip {
     adultCount: 2,
     childCount: 0,
     baseCurrency: "EUR",
+    createdBy: "owner-1",
+    updatedBy: "owner-1",
+    deletedBy: null,
+    restoredAt: null,
+    restoredBy: null,
+    cancelledAt: null,
+    statusChangedAt: "2026-01-01T00:00:00Z",
+    statusChangedBy: "owner-1",
+    version: 1,
     createdAt: "2026-01-01T00:00:00Z",
     updatedAt: "2026-01-01T00:00:00Z",
     deletedAt: null,
@@ -131,7 +140,7 @@ describe("HomePage", () => {
     act(() => state.trips?.([makeTrip({ startDate: today, endDate: today, status: "active" })]));
     act(() => {
       state.activities?.([makeActivity({ dayDate: today })]);
-      state.members?.([{ id: "m1", tripId: "trip-1", userId: "owner-1", role: "owner", invitedBy: null, joinedAt: "2026-01-01T00:00:00Z", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }]);
+      state.members?.([{ id: "m1", tripId: "trip-1", userId: "owner-1", role: "owner", invitedBy: null, joinedAt: "2026-01-01T00:00:00Z", roleChangedAt: null, roleChangedBy: null, removedAt: null, removedBy: null, version: 1, createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }]);
       state.vault?.([]);
       state.contacts?.([{ id: "c1", ownerId: "owner-1", fullName: "Alice", passportExpiresOn: "2030-05-01" } as Contact]);
     });
