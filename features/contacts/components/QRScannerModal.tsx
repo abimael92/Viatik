@@ -35,11 +35,13 @@ export function QRScannerModal({
   onOpenChange,
   userId,
   ownProfile,
+  embedded = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   userId: string;
   ownProfile: CurrentPublicProfile;
+  embedded?: boolean;
 }) {
   const [view, setView] = useState<View>("scan");
   const [error, setError] = useState<string | null>(null);
@@ -174,29 +176,40 @@ export function QRScannerModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 backdrop-blur-2xl sm:items-center sm:p-6"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Connect by QR code"
-      onClick={(event) => event.target === event.currentTarget && dismiss()}
+      className={cn(
+        embedded
+          ? "w-full"
+          : "fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 backdrop-blur-2xl sm:items-center sm:p-6"
+      )}
+      role={embedded ? undefined : "dialog"}
+      aria-modal={embedded ? undefined : "true"}
+      aria-label={embedded ? undefined : "Connect by QR code"}
+      onClick={(event) => !embedded && event.target === event.currentTarget && dismiss()}
     >
-      <section className="w-full max-w-md overflow-hidden rounded-t-3xl border border-border/40 bg-background/80 shadow-2xl shadow-black/20 backdrop-blur-2xl transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] sm:rounded-3xl">
-        <header className="flex items-center justify-between px-5 pt-5">
-          <div className="flex items-center gap-2">
-            <QrCode className="size-5 text-primary" />
-            <h2 className="text-lg font-semibold">Connect with QR</h2>
-          </div>
-          <button
-            type="button"
-            onClick={dismiss}
-            aria-label="Close"
-            className="grid size-11 place-items-center rounded-full border border-border/40 text-muted-foreground transition-colors hover:bg-accent"
-          >
-            <X className="size-5" />
-          </button>
-        </header>
+      <section className={cn(
+        "w-full overflow-hidden",
+        embedded
+          ? "mx-auto max-w-md"
+          : "max-w-md rounded-t-3xl border border-border/40 bg-background/80 shadow-2xl shadow-black/20 backdrop-blur-2xl transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] sm:rounded-3xl"
+      )}>
+        {!embedded && (
+          <header className="flex items-center justify-between px-5 pt-5">
+            <div className="flex items-center gap-2">
+              <QrCode className="size-5 text-primary" />
+              <h2 className="text-lg font-semibold">Connect with QR</h2>
+            </div>
+            <button
+              type="button"
+              onClick={dismiss}
+              aria-label="Close"
+              className="grid size-11 place-items-center rounded-full border border-border/40 text-muted-foreground transition-colors hover:bg-accent"
+            >
+              <X className="size-5" />
+            </button>
+          </header>
+        )}
 
-        <div className="px-5 pt-4">
+        <div className={embedded ? "pb-4" : "px-5 pt-4"}>
           <div className="flex rounded-xl border border-border/40 bg-muted/40 p-1">
             {(["scan", "code"] as View[]).map((v) => (
               <button
@@ -215,12 +228,15 @@ export function QRScannerModal({
           </div>
         </div>
 
-        <div className="p-5">
+        <div className={embedded ? "pb-2" : "p-5"}>
           {view === "scan" ? (
             result?.success ? (
               <ConnectedState result={result} />
             ) : scanning ? (
-              <div className="relative aspect-square overflow-hidden rounded-3xl border border-border/40 bg-black">
+              <div className={cn(
+                "relative aspect-square overflow-hidden border border-border/40 bg-black",
+                embedded ? "rounded-2xl" : "rounded-3xl"
+              )}>
                 <video ref={videoRef} muted playsInline className="size-full object-cover" />
                 <ScanFrame />
               </div>
@@ -228,7 +244,10 @@ export function QRScannerModal({
               <button
                 type="button"
                 onClick={() => void startScanner()}
-                className="flex min-h-72 w-full flex-col items-center justify-center gap-3 rounded-3xl border border-dashed border-border/60 text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+                className={cn(
+                  "flex min-h-72 w-full flex-col items-center justify-center gap-3 border border-dashed border-border/60 text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground",
+                  embedded ? "rounded-2xl" : "rounded-3xl"
+                )}
               >
                 <Camera className="size-8" />
                 <span className="text-sm font-semibold">Start camera</span>
@@ -260,9 +279,11 @@ export function QRScannerModal({
 
           {error && <p role="alert" className="mt-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
 
-          <Button type="button" variant="outline" className="mt-4 min-h-11 w-full" onClick={dismiss}>
-            Done
-          </Button>
+          {!embedded && (
+            <Button type="button" variant="outline" className="mt-4 min-h-11 w-full" onClick={dismiss}>
+              Done
+            </Button>
+          )}
         </div>
       </section>
     </div>
