@@ -24,6 +24,11 @@ describe("money mappers", () => {
       subcategory: null,
       date: "2026-01-01",
       createdBy: "user-1",
+      updatedBy: null,
+      deletedBy: null,
+      restoredAt: null,
+      restoredBy: null,
+      version: 1,
       ...timestamps,
       deletedAt: null,
     };
@@ -45,8 +50,8 @@ describe("money mappers", () => {
   });
 
   it("round-trips share and settlement minor units", () => {
-    const share: ExpenseShare = { id: "share-1", expenseId: "expense-1", paidBy: "", userId: "user-1", shareAmountMinor: 5001n, sharePercentage: 50, splitType: "equal", settlementStatus: "pending", settledAt: null, ...timestamps };
-    const settlement: ExpenseSettlement = { id: "settlement-1", tripId: "trip-1", fromUserId: "user-1", toUserId: "user-2", amountMinor: 5001n, currency: "USD", status: "pending", settledAt: null, createdBy: "user-1", ...timestamps, deletedAt: null };
+    const share: ExpenseShare = { id: "share-1", expenseId: "expense-1", paidBy: "", userId: "user-1", shareAmountMinor: 5001n, sharePercentage: 50, splitType: "equal", settlementStatus: "pending", settledAt: null, settledBy: null, statusChangedAt: null, statusChangedBy: null, updatedBy: null, deletedBy: null, restoredAt: null, restoredBy: null, version: 1, ...timestamps };
+    const settlement: ExpenseSettlement = { id: "settlement-1", tripId: "trip-1", fromUserId: "user-1", toUserId: "user-2", amountMinor: 5001n, currency: "USD", status: "pending", settledAt: null, settledBy: null, statusChangedAt: null, statusChangedBy: null, updatedBy: null, deletedBy: null, restoredAt: null, restoredBy: null, version: 1, createdBy: "user-1", ...timestamps, deletedAt: null };
 
     expect(expenseShareToRow(share).share_amount).toBe("5001");
     expect(rowToExpenseShare(expenseShareToRow(share))).toEqual(share);
