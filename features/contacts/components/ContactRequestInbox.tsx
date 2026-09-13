@@ -47,7 +47,7 @@ export function ContactRequestInbox({
   }
 
   return (
-    <div className="mx-auto w-full max-w-2xl space-y-4">
+    <div className="space-y-4">
       <div className="flex rounded-xl border border-border/40 bg-muted/40 p-1 sm:w-fit" role="tablist" aria-label="Contacts views">
         {(
           [
@@ -79,7 +79,7 @@ export function ContactRequestInbox({
 
       {tab === "contacts" ? (
         established.length ? (
-          <div className="space-y-1">
+          <div className="space-y-1 rounded-2xl border bg-card p-5 sm:p-6">
             {established.map((contact) => (
               <div
                 key={contact.id}
@@ -114,10 +114,10 @@ export function ContactRequestInbox({
           <EmptyState icon={<Users className="size-8" />} title="No contacts yet" subtitle="Add someone to start planning together." />
         )
       ) : inbound.length || outbound.length ? (
-        <div>
+        <div className="rounded-2xl border bg-card p-5 sm:p-6">
           {inbound.length > 0 && (
             <section>
-              <h3 className="mb-3 mt-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Pending</h3>
+              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Pending</h3>
               <div className="space-y-1">
                 {inbound.map((contact) => (
                   <div key={contact.id} className="flex items-center gap-4 rounded-xl p-3">
