@@ -14,6 +14,14 @@ const connection: Connection = {
   status: "pending",
   requesterSnapshot,
   recipientSnapshot,
+  statusChangedAt: null,
+  statusChangedBy: null,
+  acceptedAt: null,
+  acceptedBy: null,
+  blockedAt: null,
+  blockedBy: null,
+  version: 1,
+  source: "legacy",
   createdAt: "2026-01-01T00:00:00Z",
   updatedAt: "2026-01-02T00:00:00Z",
 };
@@ -27,6 +35,14 @@ const row = {
   recipient_snapshot: { profile_id: "user-bob", display_name: "Bob", viatik_id: "VTK-BBBB", avatar_url: null, avatar_seed: "adventurer|bob", public_handle: "bob" },
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-02T00:00:00Z",
+  status_changed_at: "2026-01-02T00:00:00Z",
+  status_changed_by: "user-bob",
+  accepted_at: "2026-01-02T00:00:00Z",
+  accepted_by: "user-bob",
+  blocked_at: null,
+  blocked_by: null,
+  version: 2,
+  source: "viatik_id_request",
 };
 
 describe("connection mappers", () => {
@@ -35,6 +51,30 @@ describe("connection mappers", () => {
 
   it("round-trips a connection through the CAS row shape", () => {
     expect(rowToConnection(connectionToRow(connection))).toEqual(connection);
+  });
+
+  it("maps connection lifecycle metadata in both directions", () => {
+    const mapped = rowToConnection(row);
+    expect(mapped).toMatchObject({
+      statusChangedAt: "2026-01-02T00:00:00Z",
+      statusChangedBy: "user-bob",
+      acceptedAt: "2026-01-02T00:00:00Z",
+      acceptedBy: "user-bob",
+      blockedAt: null,
+      blockedBy: null,
+      version: 2,
+      source: "viatik_id_request",
+    });
+    expect(connectionToRow(mapped)).toMatchObject({
+      status_changed_at: "2026-01-02T00:00:00Z",
+      status_changed_by: "user-bob",
+      accepted_at: "2026-01-02T00:00:00Z",
+      accepted_by: "user-bob",
+      blocked_at: null,
+      blocked_by: null,
+      version: 2,
+      source: "viatik_id_request",
+    });
   });
 
   it("materializes an inbound pending contact from the counterpart snapshot", () => {
