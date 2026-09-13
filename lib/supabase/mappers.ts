@@ -1,4 +1,4 @@
-import type { Activity, Connection, ConnectionRemoteStatus, ConnectionSnapshot, ConnectionStatus, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripStatus, TripTraveler, UserWallet } from "@/features/domain/entities";
+import type { Activity, Connection, ConnectionRemoteStatus, ConnectionSnapshot, ConnectionSource, ConnectionStatus, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripStatus, TripTraveler, UserWallet } from "@/features/domain/entities";
 import { isSpendingCategory, type SpendingCategory, type SpendingSubcategory } from "@/features/domain/categories";
 import type { TripMedia } from "@/features/domain/entities-media";
 import { MAX_MINOR_UNITS, type MinorUnits } from "@/features/domain/money";
@@ -43,10 +43,19 @@ export function tripToRow(trip: Trip): Record<string, unknown> {
     status: trip.status,
     started_at: trip.startedAt,
     completed_at: trip.completedAt,
+    cancelled_at: trip.cancelledAt,
     cover_image_url: trip.coverImageUrl,
     adult_count: trip.adultCount,
     child_count: trip.childCount,
     base_currency: trip.baseCurrency,
+    created_by: trip.createdBy,
+    updated_by: trip.updatedBy,
+    deleted_by: trip.deletedBy,
+    restored_at: trip.restoredAt,
+    restored_by: trip.restoredBy,
+    status_changed_at: trip.statusChangedAt,
+    status_changed_by: trip.statusChangedBy,
+    version: trip.version,
     created_at: trip.createdAt,
     updated_at: trip.updatedAt,
     deleted_at: trip.deletedAt,
@@ -69,10 +78,19 @@ export function rowToTrip(row: Record<string, unknown>): Trip {
     status: (row.status ?? "planned") as TripStatus,
     startedAt: row.started_at == null ? null : String(row.started_at),
     completedAt: row.completed_at == null ? null : String(row.completed_at),
+    cancelledAt: row.cancelled_at == null ? null : String(row.cancelled_at),
     coverImageUrl: row.cover_image_url == null ? null : String(row.cover_image_url),
     adultCount: row.adult_count == null ? 1 : Number(row.adult_count),
     childCount: row.child_count == null ? 0 : Number(row.child_count),
     baseCurrency: row.base_currency == null ? "USD" : String(row.base_currency),
+    createdBy: String(row.created_by),
+    updatedBy: row.updated_by == null ? null : String(row.updated_by),
+    deletedBy: row.deleted_by == null ? null : String(row.deleted_by),
+    restoredAt: row.restored_at == null ? null : String(row.restored_at),
+    restoredBy: row.restored_by == null ? null : String(row.restored_by),
+    statusChangedAt: row.status_changed_at == null ? null : String(row.status_changed_at),
+    statusChangedBy: row.status_changed_by == null ? null : String(row.status_changed_by),
+    version: Number(row.version ?? 1),
     // Community fields are local-only (never persisted remotely); default on read.
     isPublic: false,
     shareSlug: null,
@@ -145,6 +163,11 @@ export function expenseToRow(expense: Expense): Record<string, unknown> {
     category_id: expense.category,
     expense_date: expense.date,
     created_by: expense.createdBy,
+    updated_by: expense.updatedBy,
+    deleted_by: expense.deletedBy,
+    restored_at: expense.restoredAt,
+    restored_by: expense.restoredBy,
+    version: expense.version,
     created_at: expense.createdAt,
     updated_at: expense.updatedAt,
     deleted_at: expense.deletedAt,
@@ -163,11 +186,14 @@ export function rowToExpense(row: Record<string, unknown>): Expense {
     paidBy: String(row.paid_by),
     splitType: (row.split_type == null ? "equal" : String(row.split_type)) as Expense["splitType"],
     category: (isSpendingCategory(row.category_id) ? row.category_id : null) as SpendingCategory | null,
-    // Subcategories are local-only and not persisted remotely, so they default
-    // to null on a remote read (re-classifiable from the UI).
     subcategory: null as SpendingSubcategory | null,
     date: row.expense_date == null ? String(row.created_at).slice(0, 10) : String(row.expense_date),
     createdBy: String(row.created_by),
+    updatedBy: row.updated_by == null ? null : String(row.updated_by),
+    deletedBy: row.deleted_by == null ? null : String(row.deleted_by),
+    restoredAt: row.restored_at == null ? null : String(row.restored_at),
+    restoredBy: row.restored_by == null ? null : String(row.restored_by),
+    version: Number(row.version ?? 1),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
     deletedAt: row.deleted_at == null ? null : String(row.deleted_at),
@@ -182,6 +208,11 @@ export function expenseShareToRow(share: ExpenseShare): Record<string, unknown> 
     share_amount: minorUnitsToRemote(share.shareAmountMinor, "share_amount"),
     share_percentage: share.sharePercentage,
     split_type: share.splitType,
+    updated_by: share.updatedBy,
+    deleted_by: share.deletedBy,
+    restored_at: share.restoredAt,
+    restored_by: share.restoredBy,
+    version: share.version,
     created_at: share.createdAt,
     updated_at: share.updatedAt,
   };
@@ -191,14 +222,21 @@ export function rowToExpenseShare(row: Record<string, unknown>): ExpenseShare {
   return {
     id: String(row.id),
     expenseId: String(row.expense_id),
-    // Settlement bookkeeping is local-only; default it on a remote read.
     paidBy: "",
     userId: String(row.user_id),
     shareAmountMinor: minorUnitsFromRemote(row.share_amount, "share_amount"),
     sharePercentage: row.share_percentage == null ? null : Number(row.share_percentage),
     splitType: (row.split_type == null ? "equal" : String(row.split_type)) as ExpenseShare["splitType"],
     settlementStatus: "pending",
-    settledAt: null,
+    settledAt: row.settled_at == null ? null : String(row.settled_at),
+    settledBy: row.settled_by == null ? null : String(row.settled_by),
+    statusChangedAt: row.status_changed_at == null ? null : String(row.status_changed_at),
+    statusChangedBy: row.status_changed_by == null ? null : String(row.status_changed_by),
+    updatedBy: row.updated_by == null ? null : String(row.updated_by),
+    deletedBy: row.deleted_by == null ? null : String(row.deleted_by),
+    restoredAt: row.restored_at == null ? null : String(row.restored_at),
+    restoredBy: row.restored_by == null ? null : String(row.restored_by),
+    version: Number(row.version ?? 1),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
   };
@@ -211,6 +249,7 @@ export function userWalletToRow(wallet: UserWallet): Record<string, unknown> {
     user_id: wallet.userId,
     starting_balance: minorUnitsToRemote(wallet.startingBalanceMinor, "starting_balance"),
     currency: wallet.currency,
+    version: wallet.version,
     created_at: wallet.createdAt,
     updated_at: wallet.updatedAt,
   };
@@ -223,41 +262,41 @@ export function rowToUserWallet(row: Record<string, unknown>): UserWallet {
     userId: String(row.user_id),
     startingBalanceMinor: minorUnitsFromRemote(row.starting_balance, "starting_balance"),
     currency: String(row.currency),
+    version: Number(row.version ?? 1),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
   };
 }
 
 export function tripMemberToRow(member: TripMember): Record<string, unknown> {
-  return { id: member.id, trip_id: member.tripId, user_id: member.userId, role: member.role, invited_by: member.invitedBy, joined_at: member.joinedAt, created_at: member.createdAt, updated_at: member.updatedAt };
+  return { id: member.id, trip_id: member.tripId, user_id: member.userId, role: member.role, invited_by: member.invitedBy, joined_at: member.joinedAt, role_changed_at: member.roleChangedAt, role_changed_by: member.roleChangedBy, removed_at: member.removedAt, removed_by: member.removedBy, version: member.version, created_at: member.createdAt, updated_at: member.updatedAt };
 }
 export function rowToTripMember(row: Record<string, unknown>): TripMember {
-  return { id: String(row.id), tripId: String(row.trip_id), userId: String(row.user_id), role: String(row.role) as TripMember["role"], invitedBy: row.invited_by == null ? null : String(row.invited_by), joinedAt: String(row.joined_at), createdAt: String(row.created_at), updatedAt: String(row.updated_at) };
+  return { id: String(row.id), tripId: String(row.trip_id), userId: String(row.user_id), role: String(row.role) as TripMember["role"], invitedBy: row.invited_by == null ? null : String(row.invited_by), joinedAt: String(row.joined_at), roleChangedAt: row.role_changed_at == null ? null : String(row.role_changed_at), roleChangedBy: row.role_changed_by == null ? null : String(row.role_changed_by), removedAt: row.removed_at == null ? null : String(row.removed_at), removedBy: row.removed_by == null ? null : String(row.removed_by), version: Number(row.version ?? 1), createdAt: String(row.created_at), updatedAt: String(row.updated_at) };
 }
 export function invitationToRow(invitation: TripInvitation): Record<string, unknown> {
-  return { id: invitation.id, trip_id: invitation.tripId, email: invitation.email, role: invitation.role, status: invitation.status, invited_by: invitation.invitedBy, invited_user_id: invitation.invitedUserId, expires_at: invitation.expiresAt, created_at: invitation.createdAt, updated_at: invitation.updatedAt };
+  return { id: invitation.id, trip_id: invitation.tripId, email: invitation.email, role: invitation.role, status: invitation.status, invited_by: invitation.invitedBy, invited_user_id: invitation.invitedUserId, expires_at: invitation.expiresAt, status_changed_at: invitation.statusChangedAt, status_changed_by: invitation.statusChangedBy, accepted_at: invitation.acceptedAt, accepted_by: invitation.acceptedBy, rejected_at: invitation.rejectedAt, rejected_by: invitation.rejectedBy, revoked_at: invitation.revokedAt, revoked_by: invitation.revokedBy, version: invitation.version, created_at: invitation.createdAt, updated_at: invitation.updatedAt };
 }
 export function rowToInvitation(row: Record<string, unknown>): TripInvitation {
-  return { id: String(row.id), tripId: String(row.trip_id), email: String(row.email), role: String(row.role) as TripInvitation["role"], status: String(row.status) as TripInvitation["status"], invitedBy: String(row.invited_by), invitedUserId: row.invited_user_id == null ? null : String(row.invited_user_id), expiresAt: String(row.expires_at), createdAt: String(row.created_at), updatedAt: String(row.updated_at) };
+  return { id: String(row.id), tripId: String(row.trip_id), email: String(row.email), role: String(row.role) as TripInvitation["role"], status: String(row.status) as TripInvitation["status"], invitedBy: String(row.invited_by), invitedUserId: row.invited_user_id == null ? null : String(row.invited_user_id), expiresAt: String(row.expires_at), statusChangedAt: row.status_changed_at == null ? null : String(row.status_changed_at), statusChangedBy: row.status_changed_by == null ? null : String(row.status_changed_by), acceptedAt: row.accepted_at == null ? null : String(row.accepted_at), acceptedBy: row.accepted_by == null ? null : String(row.accepted_by), rejectedAt: row.rejected_at == null ? null : String(row.rejected_at), rejectedBy: row.rejected_by == null ? null : String(row.rejected_by), revokedAt: row.revoked_at == null ? null : String(row.revoked_at), revokedBy: row.revoked_by == null ? null : String(row.revoked_by), version: Number(row.version ?? 1), createdAt: String(row.created_at), updatedAt: String(row.updated_at) };
 }
 export function mediaToRow(media: TripMedia): Record<string, unknown> {
-  return { id: media.id, trip_id: media.tripId, activity_id: media.activityId, caption: media.caption, storage_path: media.storagePath, content_type: media.contentType, byte_size: media.byteSize, created_by: media.createdBy, created_at: media.createdAt, updated_at: media.updatedAt, deleted_at: media.deletedAt };
+  return { id: media.id, trip_id: media.tripId, activity_id: media.activityId, caption: media.caption, storage_path: media.storagePath, content_type: media.contentType, byte_size: media.byteSize, created_by: media.createdBy, updated_by: media.updatedBy, deleted_by: media.deletedBy, restored_at: media.restoredAt, restored_by: media.restoredBy, version: media.version, created_at: media.createdAt, updated_at: media.updatedAt, deleted_at: media.deletedAt };
 }
 export function rowToMedia(row: Record<string, unknown>): TripMedia {
-  return { id: String(row.id), tripId: String(row.trip_id), activityId: row.activity_id == null ? null : String(row.activity_id), caption: row.caption == null ? null : String(row.caption), blob: null, storagePath: String(row.storage_path), uploadedUrl: null, signedUrlExpiresAt: null, contentType: String(row.content_type), byteSize: Number(row.byte_size), createdBy: String(row.created_by), uploadStatus: "uploaded", uploadProgress: 100, uploadError: null, uploadAttempts: 0, nextUploadAt: null, createdAt: String(row.created_at), updatedAt: String(row.updated_at), deletedAt: row.deleted_at == null ? null : String(row.deleted_at) };
+  return { id: String(row.id), tripId: String(row.trip_id), activityId: row.activity_id == null ? null : String(row.activity_id), caption: row.caption == null ? null : String(row.caption), blob: null, storagePath: String(row.storage_path), uploadedUrl: null, signedUrlExpiresAt: null, contentType: String(row.content_type), byteSize: Number(row.byte_size), createdBy: String(row.created_by), updatedBy: row.updated_by == null ? null : String(row.updated_by), deletedBy: row.deleted_by == null ? null : String(row.deleted_by), restoredAt: row.restored_at == null ? null : String(row.restored_at), restoredBy: row.restored_by == null ? null : String(row.restored_by), version: Number(row.version ?? 1), createdAt: String(row.created_at), updatedAt: String(row.updated_at), deletedAt: row.deleted_at == null ? null : String(row.deleted_at) };
 }
 export function settlementToRow(settlement: ExpenseSettlement): Record<string, unknown> {
-  // `status`/`settledAt` are local-only (no remote columns), so they are not sent.
-  return { id: settlement.id, trip_id: settlement.tripId, from_user_id: settlement.fromUserId, to_user_id: settlement.toUserId, amount: minorUnitsToRemote(settlement.amountMinor, "amount"), currency: settlement.currency, created_by: settlement.createdBy, created_at: settlement.createdAt, updated_at: settlement.updatedAt, deleted_at: settlement.deletedAt };
+  return { id: settlement.id, trip_id: settlement.tripId, from_user_id: settlement.fromUserId, to_user_id: settlement.toUserId, amount: minorUnitsToRemote(settlement.amountMinor, "amount"), currency: settlement.currency, created_by: settlement.createdBy, updated_by: settlement.updatedBy, deleted_by: settlement.deletedBy, restored_at: settlement.restoredAt, restored_by: settlement.restoredBy, version: settlement.version, created_at: settlement.createdAt, updated_at: settlement.updatedAt, deleted_at: settlement.deletedAt };
 }
 export function rowToSettlement(row: Record<string, unknown>): ExpenseSettlement {
-  return { id: String(row.id), tripId: String(row.trip_id), fromUserId: String(row.from_user_id), toUserId: String(row.to_user_id), amountMinor: minorUnitsFromRemote(row.amount, "amount"), currency: String(row.currency), status: "pending", settledAt: null, createdBy: String(row.created_by), createdAt: String(row.created_at), updatedAt: String(row.updated_at), deletedAt: row.deleted_at == null ? null : String(row.deleted_at) };
+  return { id: String(row.id), tripId: String(row.trip_id), fromUserId: String(row.from_user_id), toUserId: String(row.to_user_id), amountMinor: minorUnitsFromRemote(row.amount, "amount"), currency: String(row.currency), status: "pending", settledAt: row.settled_at == null ? null : String(row.settled_at), settledBy: row.settled_by == null ? null : String(row.settled_by), statusChangedAt: row.status_changed_at == null ? null : String(row.status_changed_at), statusChangedBy: row.status_changed_by == null ? null : String(row.status_changed_by), updatedBy: row.updated_by == null ? null : String(row.updated_by), deletedBy: row.deleted_by == null ? null : String(row.deleted_by), restoredAt: row.restored_at == null ? null : String(row.restored_at), restoredBy: row.restored_by == null ? null : String(row.restored_by), version: Number(row.version ?? 1), createdBy: String(row.created_by), createdAt: String(row.created_at), updatedAt: String(row.updated_at), deletedAt: row.deleted_at == null ? null : String(row.deleted_at) };
 }
 export function contactToRow(contact: Contact): Record<string, unknown> {
-  return { id: contact.id, owner_id: contact.ownerId, full_name: contact.fullName, avatar_url: contact.avatarUrl, avatar_seed: contact.avatarSeed, email: contact.email, phone: contact.phone, relationship: contact.relationship, traveler_type: contact.travelerType, birth_date: contact.birthDate, notes: contact.notes, linked_profile_id: contact.linkedProfileId, linked_avatar_url: contact.linkedAvatarUrl, linked_handle: contact.linkedHandle, emergency_contact_name: contact.emergencyContactName, emergency_contact_relationship: contact.emergencyContactRelationship, emergency_contact_phone: contact.emergencyContactPhone, dietary_restrictions: contact.dietaryRestrictions, allergies: contact.allergies, passport_issuing_country: contact.passportIssuingCountry, passport_expires_on: contact.passportExpiresOn, preferred_currency: contact.preferredCurrency, preferred_language: contact.preferredLanguage, created_at: contact.createdAt, updated_at: contact.updatedAt, deleted_at: contact.deletedAt };
+  return { id: contact.id, owner_id: contact.ownerId, full_name: contact.fullName, avatar_url: contact.avatarUrl, avatar_seed: contact.avatarSeed, email: contact.email, phone: contact.phone, relationship: contact.relationship, traveler_type: contact.travelerType, birth_date: contact.birthDate, notes: contact.notes, linked_profile_id: contact.linkedProfileId, linked_avatar_url: contact.linkedAvatarUrl, linked_handle: contact.linkedHandle, emergency_contact_name: contact.emergencyContactName, emergency_contact_relationship: contact.emergencyContactRelationship, emergency_contact_phone: contact.emergencyContactPhone, dietary_restrictions: contact.dietaryRestrictions, allergies: contact.allergies, passport_issuing_country: contact.passportIssuingCountry, passport_expires_on: contact.passportExpiresOn, preferred_currency: contact.preferredCurrency, preferred_language: contact.preferredLanguage, updated_by: contact.updatedBy, deleted_by: contact.deletedBy, restored_at: contact.restoredAt, restored_by: contact.restoredBy, version: contact.version, created_at: contact.createdAt, updated_at: contact.updatedAt, deleted_at: contact.deletedAt };
 }
 export function rowToContact(row: Record<string, unknown>): Contact {
-  return { id: String(row.id), ownerId: String(row.owner_id), fullName: String(row.full_name), avatarUrl: row.avatar_url == null ? null : String(row.avatar_url), avatarSeed: row.avatar_seed == null ? null : String(row.avatar_seed), email: row.email == null ? null : String(row.email), phone: row.phone == null ? null : String(row.phone), relationship: (row.relationship ?? "other") as Contact["relationship"], travelerType: (row.traveler_type ?? "adult") as Contact["travelerType"], birthDate: row.birth_date == null ? null : String(row.birth_date), notes: row.notes == null ? null : String(row.notes), linkedProfileId: row.linked_profile_id == null ? null : String(row.linked_profile_id), linkedAvatarUrl: row.linked_avatar_url == null ? null : String(row.linked_avatar_url), linkedHandle: row.linked_handle == null ? null : String(row.linked_handle), connectionId: row.connection_id == null ? null : String(row.connection_id), connectionStatus: (row.connection_status ?? "unverified_offline") as ConnectionStatus, connectionDirection: row.connection_direction == null ? null : (row.connection_direction as Contact["connectionDirection"]), emergencyContactName: row.emergency_contact_name == null ? null : String(row.emergency_contact_name), emergencyContactRelationship: row.emergency_contact_relationship == null ? null : String(row.emergency_contact_relationship), emergencyContactPhone: row.emergency_contact_phone == null ? null : String(row.emergency_contact_phone), dietaryRestrictions: Array.isArray(row.dietary_restrictions) ? row.dietary_restrictions.map(String) : [], allergies: Array.isArray(row.allergies) ? row.allergies.map(String) : [], passportIssuingCountry: row.passport_issuing_country == null ? null : String(row.passport_issuing_country), passportExpiresOn: row.passport_expires_on == null ? null : String(row.passport_expires_on), preferredCurrency: row.preferred_currency == null ? null : String(row.preferred_currency), preferredLanguage: row.preferred_language == null ? null : String(row.preferred_language), createdAt: String(row.created_at), updatedAt: String(row.updated_at), deletedAt: row.deleted_at == null ? null : String(row.deleted_at) };
+  return { id: String(row.id), ownerId: String(row.owner_id), fullName: String(row.full_name), avatarUrl: row.avatar_url == null ? null : String(row.avatar_url), avatarSeed: row.avatar_seed == null ? null : String(row.avatar_seed), email: row.email == null ? null : String(row.email), phone: row.phone == null ? null : String(row.phone), relationship: (row.relationship ?? "other") as Contact["relationship"], travelerType: (row.traveler_type ?? "adult") as Contact["travelerType"], birthDate: row.birth_date == null ? null : String(row.birth_date), notes: row.notes == null ? null : String(row.notes), linkedProfileId: row.linked_profile_id == null ? null : String(row.linked_profile_id), linkedAvatarUrl: row.linked_avatar_url == null ? null : String(row.linked_avatar_url), linkedHandle: row.linked_handle == null ? null : String(row.linked_handle), connectionId: row.connection_id == null ? null : String(row.connection_id), connectionStatus: (row.connection_status ?? "unverified_offline") as ConnectionStatus, connectionDirection: row.connection_direction == null ? null : (row.connection_direction as Contact["connectionDirection"]), emergencyContactName: row.emergency_contact_name == null ? null : String(row.emergency_contact_name), emergencyContactRelationship: row.emergency_contact_relationship == null ? null : String(row.emergency_contact_relationship), emergencyContactPhone: row.emergency_contact_phone == null ? null : String(row.emergency_contact_phone), dietaryRestrictions: Array.isArray(row.dietary_restrictions) ? row.dietary_restrictions.map(String) : [], allergies: Array.isArray(row.allergies) ? row.allergies.map(String) : [], passportIssuingCountry: row.passport_issuing_country == null ? null : String(row.passport_issuing_country), passportExpiresOn: row.passport_expires_on == null ? null : String(row.passport_expires_on), preferredCurrency: row.preferred_currency == null ? null : String(row.preferred_currency), preferredLanguage: row.preferred_language == null ? null : String(row.preferred_language), updatedBy: row.updated_by == null ? null : String(row.updated_by), deletedBy: row.deleted_by == null ? null : String(row.deleted_by), restoredAt: row.restored_at == null ? null : String(row.restored_at), restoredBy: row.restored_by == null ? null : String(row.restored_by), version: Number(row.version ?? 1), createdAt: String(row.created_at), updatedAt: String(row.updated_at), deletedAt: row.deleted_at == null ? null : String(row.deleted_at) };
 }
 function snapshotFromRemote(value: unknown): ConnectionSnapshot {
   const snap = (value ?? {}) as Record<string, unknown>;
@@ -280,6 +319,14 @@ export function connectionToRow(conn: Connection): Record<string, unknown> {
     status: conn.status,
     requester_snapshot: conn.requesterSnapshot,
     recipient_snapshot: conn.recipientSnapshot,
+    status_changed_at: conn.statusChangedAt ?? null,
+    status_changed_by: conn.statusChangedBy ?? null,
+    accepted_at: conn.acceptedAt ?? null,
+    accepted_by: conn.acceptedBy ?? null,
+    blocked_at: conn.blockedAt ?? null,
+    blocked_by: conn.blockedBy ?? null,
+    version: conn.version ?? 1,
+    source: conn.source ?? "legacy",
     created_at: conn.createdAt,
     updated_at: conn.updatedAt,
   };
@@ -294,6 +341,14 @@ export function rowToConnection(row: Record<string, unknown>): Connection {
     status: (row.status ?? "pending") as ConnectionRemoteStatus,
     requesterSnapshot: snapshotFromRemote(row.requester_snapshot),
     recipientSnapshot: snapshotFromRemote(row.recipient_snapshot),
+    statusChangedAt: row.status_changed_at == null ? null : String(row.status_changed_at),
+    statusChangedBy: row.status_changed_by == null ? null : String(row.status_changed_by),
+    acceptedAt: row.accepted_at == null ? null : String(row.accepted_at),
+    acceptedBy: row.accepted_by == null ? null : String(row.accepted_by),
+    blockedAt: row.blocked_at == null ? null : String(row.blocked_at),
+    blockedBy: row.blocked_by == null ? null : String(row.blocked_by),
+    version: Number(row.version ?? 1),
+    source: (row.source ?? "legacy") as ConnectionSource,
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
   };
@@ -354,10 +409,10 @@ export function rowToConnectionContact(row: Record<string, unknown>): Contact {
 }
 
 export function tripTravelerToRow(traveler: TripTraveler): Record<string, unknown> {
-  return { id: traveler.id, trip_id: traveler.tripId, contact_id: traveler.contactId, display_name: traveler.displayName, traveler_type: traveler.travelerType, created_by: traveler.createdBy, created_at: traveler.createdAt, updated_at: traveler.updatedAt, deleted_at: traveler.deletedAt };
+  return { id: traveler.id, trip_id: traveler.tripId, contact_id: traveler.contactId, display_name: traveler.displayName, traveler_type: traveler.travelerType, created_by: traveler.createdBy, updated_by: traveler.updatedBy, deleted_by: traveler.deletedBy, restored_at: traveler.restoredAt, restored_by: traveler.restoredBy, version: traveler.version, created_at: traveler.createdAt, updated_at: traveler.updatedAt, deleted_at: traveler.deletedAt };
 }
 export function rowToTripTraveler(row: Record<string, unknown>): TripTraveler {
-  return { id: String(row.id), tripId: String(row.trip_id), contactId: String(row.contact_id), displayName: String(row.display_name), travelerType: String(row.traveler_type) as TripTraveler["travelerType"], createdBy: String(row.created_by), createdAt: String(row.created_at), updatedAt: String(row.updated_at), deletedAt: row.deleted_at == null ? null : String(row.deleted_at) };
+  return { id: String(row.id), tripId: String(row.trip_id), contactId: String(row.contact_id), displayName: String(row.display_name), travelerType: String(row.traveler_type) as TripTraveler["travelerType"], createdBy: String(row.created_by), updatedBy: row.updated_by == null ? null : String(row.updated_by), deletedBy: row.deleted_by == null ? null : String(row.deleted_by), restoredAt: row.restored_at == null ? null : String(row.restored_at), restoredBy: row.restored_by == null ? null : String(row.restored_by), version: Number(row.version ?? 1), createdAt: String(row.created_at), updatedAt: String(row.updated_at), deletedAt: row.deleted_at == null ? null : String(row.deleted_at) };
 }
 
 export function vaultKeysetToRow(keyset: VaultKeyset): Record<string, unknown> {
