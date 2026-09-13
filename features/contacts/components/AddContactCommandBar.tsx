@@ -32,6 +32,7 @@ export function AddContactCommandBar({
   const [sending, setSending] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const queryRef = useRef("");
 
   const ownSnapshot = useMemo(() => profileToConnectionSnapshot(ownProfile), [ownProfile]);
 
@@ -44,6 +45,7 @@ export function AddContactCommandBar({
   }, []);
 
   function onQueryChange(value: string) {
+    queryRef.current = value;
     setQuery(value);
     setError(null);
     setProfile(null);
@@ -55,7 +57,7 @@ export function AddContactCommandBar({
     setStatus("looking");
     debounceRef.current = setTimeout(() => {
       resolve(value).catch((err) => {
-        if (value !== query) return; // stale response
+        if (value !== queryRef.current) return; // stale response
         setProfile(null);
         setStatus("not_found");
         setError(err instanceof Error ? err.message : "We couldn't look up that Viatik ID right now.");
@@ -70,7 +72,7 @@ export function AddContactCommandBar({
       setTimeout(() => reject(new Error("Lookup timed out. Please try again.")), timeoutMs)
     );
     const result = await Promise.race([lookupViatikProfile(value), timeoutPromise]);
-    if (value !== query) return; // stale response
+    if (value !== queryRef.current) return; // stale response
     if (!result.success) {
       setProfile(null);
       setStatus("not_found");
