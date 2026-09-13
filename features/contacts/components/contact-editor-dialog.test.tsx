@@ -85,4 +85,42 @@ describe("ContactEditorDialog", () => {
     expect(within(dialog).getByRole("button", { name: "Save contact" })).toBeTruthy();
     expect(within(dialog).queryByRole("button", { name: "Next" })).toBeNull();
   });
+
+  it("preserves manual form state while switching add methods", () => {
+    render(
+      <ContactEditorDialog
+        open
+        userId="user-1"
+        ownProfile={{ profileId: "user-1", fullName: "Alex Morgan" }}
+        onOpenChange={vi.fn()}
+      />
+    );
+
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("heading", { name: "Add Contact" })).toBeTruthy();
+
+    fireEvent.change(within(dialog).getByLabelText("Full name"), {
+      target: { value: "Jordan Rivera" },
+    });
+    fireEvent.mouseDown(within(dialog).getByRole("tab", { name: "Viatik ID" }), {
+      button: 0,
+      ctrlKey: false,
+    });
+    fireEvent.change(within(dialog).getByPlaceholderText(/Enter their Viatik ID/), {
+      target: { value: "VTK-EF50869B9DF94913" },
+    });
+    expect((within(dialog).getByRole("button", { name: "Search" }) as HTMLButtonElement).disabled).toBe(false);
+
+    fireEvent.mouseDown(within(dialog).getByRole("tab", { name: "Scan QR" }), {
+      button: 0,
+      ctrlKey: false,
+    });
+    expect(within(dialog).getByRole("button", { name: "Start camera" })).toBeTruthy();
+
+    fireEvent.mouseDown(within(dialog).getByRole("tab", { name: "Manual" }), {
+      button: 0,
+      ctrlKey: false,
+    });
+    expect((within(dialog).getByLabelText("Full name") as HTMLInputElement).value).toBe("Jordan Rivera");
+  });
 });
