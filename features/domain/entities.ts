@@ -28,6 +28,15 @@ export interface TripInvitation {
   expiresAt: string;
   createdAt: string;
   updatedAt: string;
+  statusChangedAt: string;
+  statusChangedBy: string;
+  acceptedAt: string | null;
+  acceptedBy: string | null;
+  rejectedAt: string | null;
+  rejectedBy: string | null;
+  revokedAt: string | null;
+  revokedBy: string | null;
+  version: number;
 }
 
 export interface ProfileSummary {
@@ -54,10 +63,19 @@ export interface Trip {
   status: TripStatus; // explicit lifecycle state (planned | active | completed | cancelled)
   startedAt: string | null; // ISO datetime when the trip was started
   completedAt: string | null; // ISO datetime when the trip was ended or cancelled
+  cancelledAt: string | null; // ISO datetime when the trip was cancelled
   coverImageUrl: string | null;
   adultCount: number;
   childCount: number;
   baseCurrency: string;
+  createdBy: string;
+  updatedBy: string;
+  deletedBy: string | null;
+  restoredAt: string | null;
+  restoredBy: string | null;
+  statusChangedAt: string;
+  statusChangedBy: string;
+  version: number;
   /**
    * Community / public-template fields (offline-first, local-only). Not synced
    * to the shared `trips` table — these describe a trip as a browsable public
@@ -80,6 +98,11 @@ export interface TripMember {
   role: TripMemberRole;
   invitedBy: string | null;
   joinedAt: string;
+  roleChangedAt: string | null;
+  roleChangedBy: string | null;
+  removedAt: string | null;
+  removedBy: string | null;
+  version: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -102,6 +125,11 @@ export interface Activity {
   /** Planned/estimated cost in the trip's base currency (minor units), used for "planned" budget pacing. */
   estimatedCostMinor: MinorUnits | null;
   createdBy: string;
+  updatedBy?: string | null;
+  deletedBy?: string | null;
+  restoredAt?: string | null;
+  restoredBy?: string | null;
+  version?: number;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
@@ -125,6 +153,11 @@ export interface Expense {
   /** ISO date (yyyy-mm-dd) the expense occurred, distinct from `createdAt`. */
   date: string;
   createdBy: string;
+  updatedBy?: string | null;
+  deletedBy?: string | null;
+  restoredAt?: string | null;
+  restoredBy?: string | null;
+  version?: number;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
@@ -146,6 +179,14 @@ export interface ExpenseShare {
   settlementStatus: SettlementStatus;
   /** ISO datetime when this split was settled, or `null` while it is still pending. */
   settledAt: string | null;
+  settledBy?: string | null;
+  statusChangedAt?: string | null;
+  statusChangedBy?: string | null;
+  updatedBy?: string | null;
+  deletedBy?: string | null;
+  restoredAt?: string | null;
+  restoredBy?: string | null;
+  version?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -160,6 +201,7 @@ export interface UserWallet {
   userId: string;
   startingBalanceMinor: MinorUnits;
   currency: CurrencyCode;
+  version: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -182,6 +224,14 @@ export interface ExpenseSettlement {
   status: SettlementStatus;
   /** ISO datetime the debt was settled, or `null` while it is still pending. */
   settledAt: string | null;
+  settledBy?: string | null;
+  statusChangedAt?: string | null;
+  statusChangedBy?: string | null;
+  updatedBy?: string | null;
+  deletedBy?: string | null;
+  restoredAt?: string | null;
+  restoredBy?: string | null;
+  version?: number;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -257,6 +307,7 @@ export interface ConnectionSnapshot {
 
 /** The remote `connections.status` enum (authoritative edge state). */
 export type ConnectionRemoteStatus = "pending" | "accepted" | "blocked";
+export type ConnectionSource = "viatik_id_request" | "qr_scan" | "legacy";
 
 /**
  * The remote mutual connection edge (request/accept graph). Local representation
@@ -270,6 +321,14 @@ export interface Connection {
   status: ConnectionRemoteStatus;
   requesterSnapshot: ConnectionSnapshot;
   recipientSnapshot: ConnectionSnapshot;
+  statusChangedAt?: string | null;
+  statusChangedBy?: string | null;
+  acceptedAt?: string | null;
+  acceptedBy?: string | null;
+  blockedAt?: string | null;
+  blockedBy?: string | null;
+  version?: number;
+  source?: ConnectionSource | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -313,6 +372,11 @@ export interface Contact {
   passportExpiresOn: string | null;
   preferredCurrency: string | null;
   preferredLanguage: string | null;
+  updatedBy?: string | null;
+  deletedBy?: string | null;
+  restoredAt?: string | null;
+  restoredBy?: string | null;
+  version?: number;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
@@ -327,6 +391,11 @@ export interface TripTraveler {
   displayName: string;
   travelerType: TravelerType;
   createdBy: string;
+  updatedBy?: string | null;
+  deletedBy?: string | null;
+  restoredAt?: string | null;
+  restoredBy?: string | null;
+  version?: number;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
