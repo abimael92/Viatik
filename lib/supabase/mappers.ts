@@ -84,12 +84,12 @@ export function rowToTrip(row: Record<string, unknown>): Trip {
     childCount: row.child_count == null ? 0 : Number(row.child_count),
     baseCurrency: row.base_currency == null ? "USD" : String(row.base_currency),
     createdBy: String(row.created_by),
-    updatedBy: row.updated_by == null ? null : String(row.updated_by),
+    updatedBy: String(row.updated_by),
     deletedBy: row.deleted_by == null ? null : String(row.deleted_by),
     restoredAt: row.restored_at == null ? null : String(row.restored_at),
     restoredBy: row.restored_by == null ? null : String(row.restored_by),
-    statusChangedAt: row.status_changed_at == null ? null : String(row.status_changed_at),
-    statusChangedBy: row.status_changed_by == null ? null : String(row.status_changed_by),
+    statusChangedAt: String(row.status_changed_at),
+    statusChangedBy: String(row.status_changed_by),
     version: Number(row.version ?? 1),
     // Community fields are local-only (never persisted remotely); default on read.
     isPublic: false,
@@ -278,13 +278,16 @@ export function invitationToRow(invitation: TripInvitation): Record<string, unkn
   return { id: invitation.id, trip_id: invitation.tripId, email: invitation.email, role: invitation.role, status: invitation.status, invited_by: invitation.invitedBy, invited_user_id: invitation.invitedUserId, expires_at: invitation.expiresAt, status_changed_at: invitation.statusChangedAt, status_changed_by: invitation.statusChangedBy, accepted_at: invitation.acceptedAt, accepted_by: invitation.acceptedBy, rejected_at: invitation.rejectedAt, rejected_by: invitation.rejectedBy, revoked_at: invitation.revokedAt, revoked_by: invitation.revokedBy, version: invitation.version, created_at: invitation.createdAt, updated_at: invitation.updatedAt };
 }
 export function rowToInvitation(row: Record<string, unknown>): TripInvitation {
-  return { id: String(row.id), tripId: String(row.trip_id), email: String(row.email), role: String(row.role) as TripInvitation["role"], status: String(row.status) as TripInvitation["status"], invitedBy: String(row.invited_by), invitedUserId: row.invited_user_id == null ? null : String(row.invited_user_id), expiresAt: String(row.expires_at), statusChangedAt: row.status_changed_at == null ? null : String(row.status_changed_at), statusChangedBy: row.status_changed_by == null ? null : String(row.status_changed_by), acceptedAt: row.accepted_at == null ? null : String(row.accepted_at), acceptedBy: row.accepted_by == null ? null : String(row.accepted_by), rejectedAt: row.rejected_at == null ? null : String(row.rejected_at), rejectedBy: row.rejected_by == null ? null : String(row.rejected_by), revokedAt: row.revoked_at == null ? null : String(row.revoked_at), revokedBy: row.revoked_by == null ? null : String(row.revoked_by), version: Number(row.version ?? 1), createdAt: String(row.created_at), updatedAt: String(row.updated_at) };
+  return { id: String(row.id), tripId: String(row.trip_id), email: String(row.email), role: String(row.role) as TripInvitation["role"], status: String(row.status) as TripInvitation["status"], invitedBy: String(row.invited_by), invitedUserId: row.invited_user_id == null ? null : String(row.invited_user_id), expiresAt: String(row.expires_at), statusChangedAt: String(row.status_changed_at), statusChangedBy: String(row.status_changed_by), acceptedAt: row.accepted_at == null ? null : String(row.accepted_at), acceptedBy: row.accepted_by == null ? null : String(row.accepted_by), rejectedAt: row.rejected_at == null ? null : String(row.rejected_at), rejectedBy: row.rejected_by == null ? null : String(row.rejected_by), revokedAt: row.revoked_at == null ? null : String(row.revoked_at), revokedBy: row.revoked_by == null ? null : String(row.revoked_by), version: Number(row.version ?? 1), createdAt: String(row.created_at), updatedAt: String(row.updated_at) };
 }
 export function mediaToRow(media: TripMedia): Record<string, unknown> {
   return { id: media.id, trip_id: media.tripId, activity_id: media.activityId, caption: media.caption, storage_path: media.storagePath, content_type: media.contentType, byte_size: media.byteSize, created_by: media.createdBy, updated_by: media.updatedBy, deleted_by: media.deletedBy, restored_at: media.restoredAt, restored_by: media.restoredBy, version: media.version, created_at: media.createdAt, updated_at: media.updatedAt, deleted_at: media.deletedAt };
 }
 export function rowToMedia(row: Record<string, unknown>): TripMedia {
-  return { id: String(row.id), tripId: String(row.trip_id), activityId: row.activity_id == null ? null : String(row.activity_id), caption: row.caption == null ? null : String(row.caption), blob: null, storagePath: String(row.storage_path), uploadedUrl: null, signedUrlExpiresAt: null, contentType: String(row.content_type), byteSize: Number(row.byte_size), createdBy: String(row.created_by), updatedBy: row.updated_by == null ? null : String(row.updated_by), deletedBy: row.deleted_by == null ? null : String(row.deleted_by), restoredAt: row.restored_at == null ? null : String(row.restored_at), restoredBy: row.restored_by == null ? null : String(row.restored_by), version: Number(row.version ?? 1), createdAt: String(row.created_at), updatedAt: String(row.updated_at), deletedAt: row.deleted_at == null ? null : String(row.deleted_at) };
+  return { id: String(row.id), tripId: String(row.trip_id), activityId: row.activity_id == null ? null : String(row.activity_id), caption: row.caption == null ? null : String(row.caption), blob: null, storagePath: String(row.storage_path), uploadedUrl: null, signedUrlExpiresAt: null, contentType: String(row.content_type), byteSize: Number(row.byte_size), createdBy: String(row.created_by), updatedBy: String(row.updated_by), deletedBy: row.deleted_by == null ? null : String(row.deleted_by), restoredAt: row.restored_at == null ? null : String(row.restored_at), restoredBy: row.restored_by == null ? null : String(row.restored_by), version: Number(row.version ?? 1), 
+    // Rows fetched from Supabase are already synced; there is no local upload queue state to restore.
+    uploadStatus: "uploaded", uploadProgress: 100, uploadError: null, uploadAttempts: 0, nextUploadAt: null,
+    createdAt: String(row.created_at), updatedAt: String(row.updated_at), deletedAt: row.deleted_at == null ? null : String(row.deleted_at) };
 }
 export function settlementToRow(settlement: ExpenseSettlement): Record<string, unknown> {
   return { id: settlement.id, trip_id: settlement.tripId, from_user_id: settlement.fromUserId, to_user_id: settlement.toUserId, amount: minorUnitsToRemote(settlement.amountMinor, "amount"), currency: settlement.currency, created_by: settlement.createdBy, updated_by: settlement.updatedBy, deleted_by: settlement.deletedBy, restored_at: settlement.restoredAt, restored_by: settlement.restoredBy, version: settlement.version, created_at: settlement.createdAt, updated_at: settlement.updatedAt, deleted_at: settlement.deletedAt };

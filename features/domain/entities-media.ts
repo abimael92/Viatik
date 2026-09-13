@@ -26,6 +26,11 @@ export interface TripMedia {
   contentType: string;
   byteSize: number;
   createdBy: string;
+  updatedBy: string;
+  deletedBy: string | null;
+  restoredAt: string | null;
+  restoredBy: string | null;
+  version: number;
   uploadStatus: MediaUploadStatus;
   uploadProgress: number;
   uploadError: string | null;
