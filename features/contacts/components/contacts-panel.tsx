@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
 import { useToast } from "@/components/ui/toast";
+import { ContactDetailsDialog } from "@/features/contacts/components/contact-details-dialog";
 import { ContactEditorDialog } from "@/features/contacts/components/contact-editor-dialog";
 import { ContactRequestInbox } from "@/features/contacts/components/ContactRequestInbox";
 import { contactRepository } from "@/features/contacts/data/dexie-contact-repository";
@@ -15,6 +16,7 @@ import type { Contact } from "@/features/domain/entities";
 export function ContactsPanel({ userId, ownProfile }: { userId: string; ownProfile: CurrentPublicProfile }) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [editing, setEditing] = useState<Contact | null | undefined>(undefined);
+  const [viewing, setViewing] = useState<Contact | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const prevContactsRef = useRef<Contact[]>([]);
@@ -75,8 +77,19 @@ export function ContactsPanel({ userId, ownProfile }: { userId: string; ownProfi
       <ContactRequestInbox
         ownerId={userId}
         contacts={contacts}
+        onView={(contact) => setViewing(contact)}
         onEdit={(contact) => setEditing(contact)}
         onRemove={(contact) => void remove(contact)}
+      />
+
+      <ContactDetailsDialog
+        open={viewing !== null}
+        contact={viewing}
+        onOpenChange={(open) => !open && setViewing(null)}
+        onEdit={(contact) => {
+          setViewing(null);
+          setEditing(contact);
+        }}
       />
 
       <ContactEditorDialog

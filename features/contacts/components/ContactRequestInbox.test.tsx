@@ -76,12 +76,36 @@ describe("ContactRequestInbox", () => {
 
     fireEvent.click(requestsTab);
 
-    const inboundHeading = screen.getByRole("heading", { name: "Pending" });
-    const outboundHeading = screen.getByRole("heading", { name: "Requests" });
+    const inboundHeading = screen.getByRole("heading", { name: "Pending Requests" });
+    const outboundHeading = screen.getByRole("heading", { name: "Sent Requests" });
     expect(inboundHeading.compareDocumentPosition(outboundHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByText("Incoming Person")).toBeTruthy();
     expect(screen.getByText("Sent Person")).toBeTruthy();
     expect(screen.queryByText("Manual Person")).toBeNull();
     expect(screen.queryByText("Connected Person")).toBeNull();
+  });
+
+  it("calls onView when clicking or pressing Enter on a contact card", () => {
+    const onView = vi.fn();
+    const testContact = contact("manual", "Manual Person", "unverified_offline", null);
+
+    render(
+      <ContactRequestInbox
+        ownerId="owner-1"
+        contacts={[testContact]}
+        onView={onView}
+        onEdit={vi.fn()}
+        onRemove={vi.fn()}
+      />
+    );
+
+    // Clicking contact card triggers onView
+    const card = screen.getByRole("button", { name: /View details for Manual Person/i });
+    fireEvent.click(card);
+    expect(onView).toHaveBeenCalledWith(testContact);
+
+    // Pressing Enter on card triggers onView
+    fireEvent.keyDown(card, { key: "Enter" });
+    expect(onView).toHaveBeenCalledTimes(2);
   });
 });
