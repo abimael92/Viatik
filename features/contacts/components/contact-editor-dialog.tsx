@@ -1,9 +1,10 @@
 "use client";
 
-import { CalendarDays, ContactRound, Mail, ShieldCheck, UserRound } from "lucide-react";
+import { CalendarDays, ContactRound, Mail, ShieldCheck, Sparkles, UserRound } from "lucide-react";
 import { useState } from "react";
 
 import { AvatarPicker, fileToDataUrl, type AvatarChange } from "@/components/ui/avatar-picker";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { AddContactCommandBar } from "@/features/contacts/components/AddContactCommandBar";
 import { QRScannerModal } from "@/features/contacts/components/QRScannerModal";
 import { contactRepository } from "@/features/contacts/data/dexie-contact-repository";
@@ -132,6 +134,7 @@ function ContactForm({
 }) {
   const operation = contact ? "edit" : "create";
   const unified = !contact && !attachToTrip && Boolean(ownProfile);
+  const isLinkedToViatik = Boolean(contact?.linkedProfileId);
   const [activeMethod, setActiveMethod] = useState("manual");
   const [step, setStep] = useState(1);
   const [error, setError] = useState<string | null>(null);
@@ -299,12 +302,12 @@ function ContactForm({
   }
 
   const manualForm = (
-    <form onSubmit={submit} className="space-y-6 px-6 pb-6 pt-6">
+    <form onSubmit={submit} className="space-y-6 px-4 pb-6 pt-5 sm:px-6 sm:pb-6 sm:pt-6">
         <StepHeader step={step} onNavigate={handleStepNavigate} />
 
         {step === 1 && (
           <div className="space-y-6">
-            <div className="flex gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm">
+            <div className="flex gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3.5 sm:p-4 text-sm">
               <ShieldCheck className="mt-0.5 size-5 shrink-0 text-primary" />
               <div>
                 <p className="font-semibold">Private by default</p>
@@ -319,13 +322,37 @@ function ContactForm({
               title="Identity"
               description="The details used to recognize this traveler across your trips."
             >
-              <AvatarPicker
-                seed={values.avatarSeed}
-                src={values.avatarUrl}
-                name={values.fullName}
-                onChange={handleAvatarChange}
-                uploadHint="Optional · randomize a playful avatar or upload a photo."
-              />
+              {isLinkedToViatik ? (
+                <div className="flex items-center gap-3 sm:gap-4 rounded-xl border border-primary/20 bg-primary/5 p-3.5 sm:p-4">
+                  <UserAvatar
+                    seed={values.avatarSeed}
+                    src={contact?.linkedAvatarUrl ?? values.avatarUrl}
+                    name={values.fullName}
+                    size="lg"
+                    className="size-12 sm:size-16 shrink-0 ring-2 ring-primary/30"
+                  />
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                      <span className="text-sm font-semibold truncate">{values.fullName}</span>
+                      <Badge variant="default" className="gap-1 text-[10px] font-semibold py-0.5 px-2">
+                        <Sparkles className="size-3" />
+                        {contact?.linkedHandle ? `@${contact.linkedHandle}` : "Viatik Account"}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Profile photo and full name are managed by the linked Viatik account and cannot be modified.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <AvatarPicker
+                  seed={values.avatarSeed}
+                  src={values.avatarUrl}
+                  name={values.fullName}
+                  onChange={handleAvatarChange}
+                  uploadHint="Optional · randomize a playful avatar or upload a photo."
+                />
+              )}
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field
                   label="Full name"
@@ -334,9 +361,14 @@ function ContactForm({
                   onChange={(event) => setField("fullName", event.target.value)}
                   error={fieldErrors.fullName}
                   placeholder="Jordan Rivera"
-                  helper="Required · shown to trip collaborators."
+                  disabled={isLinkedToViatik}
+                  helper={
+                    isLinkedToViatik
+                      ? "Managed by Viatik account · read-only."
+                      : "Required · shown to trip collaborators."
+                  }
                   required
-                  autoFocus
+                  autoFocus={!isLinkedToViatik}
                 />
                 <SelectField
                   label="Relationship"
@@ -626,16 +658,16 @@ function ContactForm({
   );
 
   const header = (
-    <DialogHeader className="border-b bg-muted/30 px-6 pb-5 pt-6 text-left">
+    <DialogHeader className="border-b bg-muted/30 px-4 pb-4 pt-5 sm:px-6 sm:pb-5 sm:pt-6 text-left">
       <div className="flex items-start gap-3">
-        <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+        <span className="grid size-10 sm:size-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
           <ContactRound className="size-5" />
         </span>
-        <div className="space-y-1.5">
+        <div className="space-y-1 sm:space-y-1.5">
           <DialogTitle>
             {contact ? "Edit contact" : attachToTrip ? "Add someone new" : "Add Contact"}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-xs sm:text-sm">
             {contact
               ? "Keep their reusable travel profile and private details up to date."
               : unified
@@ -655,7 +687,7 @@ function ContactForm({
   );
 
   return (
-    <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto p-0">
+    <DialogContent className="max-h-[90dvh] max-w-2xl overflow-y-auto p-0">
       {unified && ownProfile ? (
         <Tabs value={activeMethod} onValueChange={setActiveMethod} className="w-full">
           {header}
@@ -666,7 +698,7 @@ function ContactForm({
           >
             {manualForm}
           </TabsContent>
-          <TabsContent value="viatik-id" className="mt-0 px-6 pb-6 pt-6">
+          <TabsContent value="viatik-id" className="mt-0 px-4 pb-6 pt-5 sm:px-6 sm:pb-6 sm:pt-6">
             <AddContactCommandBar
               open
               embedded
@@ -676,7 +708,7 @@ function ContactForm({
               onOpenScanner={() => setActiveMethod("scan-qr")}
             />
           </TabsContent>
-          <TabsContent value="scan-qr" className="mt-0 px-6 pb-6 pt-6">
+          <TabsContent value="scan-qr" className="mt-0 px-4 pb-6 pt-5 sm:px-6 sm:pb-6 sm:pt-6">
             <QRScannerModal
               open
               embedded
