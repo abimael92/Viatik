@@ -1,4 +1,4 @@
-# [PROJECT_NAME] AI Development Constitution
+# Viatik AI Development Constitution
 
 **Status:** Non-negotiable project policy  
 **Applies to:** Every human and AI contributor, including all agents defined in [`AGENTS.md`](./AGENTS.md)  
@@ -6,7 +6,7 @@
 
 ## Purpose
 
-This constitution defines the minimum engineering standard for [PROJECT_NAME]. It is read before any planning, design, implementation, review, or release work. The framework is reusable, but project-specific constraints must be recorded in [PROJECT_NAME]'s repository rules and feature specifications.
+This constitution defines the minimum engineering standard for Viatik. It is read before any planning, design, implementation, review, or release work. The framework is reusable, but project-specific constraints must be recorded in Viatik's repository rules and feature specifications.
 
 ## Non-Negotiable Rules
 
@@ -79,7 +79,11 @@ AI agents have no exception to this constitution. Every agent must:
 
 ## Change Control
 
-Any proposal to relax a rule requires an explicit written decision by [PROJECT_OWNER_OR_TEAM] and must be recorded in the relevant specification or architecture decision record. Convenience, schedule pressure, or agent limitations are not sufficient reasons to bypass this constitution.
+Any proposal to relax a rule requires an explicit written decision by the Viatik maintainers and must be recorded in the relevant specification or architecture decision record. Convenience, schedule pressure, or agent limitations are not sufficient reasons to bypass this constitution.
+
+## Metadata Invariant
+
+Every new table or schema change must implement the Viatik Tiered Metadata Strategy (Level A/B/C). Migrations must be strictly additive. Use `version` for optimistic concurrency. Safely backfill missing legacy actors with UUID '0fb843db-9c96-4021-92f8-f143ddd3efe8' and missing dates with the current timestamp to prevent conflicts.
 
 ## Required Reading
 

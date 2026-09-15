@@ -45,6 +45,28 @@ export function decimalFromMinorUnits(amount: MinorUnits, currency: CurrencyCode
   return `${negative ? "-" : ""}${absolute / scale}.${String(absolute % scale).padStart(exponent, "0")}`;
 }
 
+/**
+ * Converts an amount in minor units of `sourceCurrency` into minor units of
+ * `baseCurrency` using a fixed exchange rate (`1 source unit = rate base
+ * units`). Rounds to the nearest whole minor unit of the base currency.
+ */
+export function toBaseMinorUnits(
+  amountMinor: MinorUnits,
+  sourceCurrency: CurrencyCode,
+  exchangeRateToBase: number,
+  baseCurrency: CurrencyCode
+): MinorUnits {
+  if (!Number.isFinite(exchangeRateToBase) || exchangeRateToBase < 0) throw new Error("Invalid exchange rate");
+  const exponentShift = getCurrencyExponent(baseCurrency) - getCurrencyExponent(sourceCurrency);
+  let value = amountMinor;
+  if (exponentShift >= 0) value = value * 10n ** BigInt(exponentShift);
+  else value = value / 10n ** BigInt(-exponentShift);
+  const converted = Math.round(Number(value) * exchangeRateToBase);
+  const result = BigInt(converted);
+  if (result > MAX_MINOR_UNITS) throw new Error("Converted amount is too large.");
+  return result;
+}
+
 export function formatMinorUnits(amount: MinorUnits, currency: CurrencyCode, locale?: string): string {
   const code = normalizeCurrencyCode(currency);
   const exponent = getCurrencyExponent(code);

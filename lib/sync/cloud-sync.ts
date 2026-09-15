@@ -1,6 +1,6 @@
 import type { RealtimeChannel, RealtimePostgresChangesPayload, SupabaseClient } from "@supabase/supabase-js";
 
-import type { Activity, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler } from "@/features/domain/entities";
+import type { Activity, ActivityPersonalBudget, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler, UserWallet } from "@/features/domain/entities";
 import type { TripMedia } from "@/features/domain/entities-media";
 import type { VaultEntry, VaultKeyset } from "@/features/vault/domain/vault-types";
 import type { TripWeatherForecast } from "@/features/weather/domain/weather-types";
@@ -43,11 +43,13 @@ const tableDefinitions = [
   { table: "trip_members", entityType: "tripMember" as const, map: rowToTripMember, store: "tripMembers" as const },
   { table: "trip_invitations", entityType: "invitation" as const, map: rowToInvitation, store: "tripInvitations" as const },
   { table: "activities", entityType: "activity" as const, map: rowToActivity, store: "activities" as const },
+  { table: "activity_personal_budgets", entityType: "activityPersonalBudget" as const, map: rowToActivityPersonalBudget, store: "activityPersonalBudgets" as const },
   { table: "expenses", entityType: "expense" as const, map: rowToExpense, store: "expenses" as const },
   { table: "expense_shares", entityType: "expenseShare" as const, map: rowToExpenseShare, store: "expenseShares" as const },
   { table: "trip_media", entityType: "media" as const, map: rowToMedia, store: "tripMedia" as const },
   { table: "expense_settlements", entityType: "settlement" as const, map: rowToSettlement, store: "expenseSettlements" as const },
   { table: "contacts", entityType: "contact" as const, map: rowToContact, store: "contacts" as const },
+  { table: "connections", entityType: "connectionRequest" as const, map: rowToConnectionContact, store: "contacts" as const },
   { table: "trip_travelers", entityType: "tripTraveler" as const, map: rowToTripTraveler, store: "tripTravelers" as const },
   { table: "vault_keysets", entityType: "vaultKeyset" as const, map: rowToVaultKeyset, store: "vaultKeysets" as const },
   { table: "vault_entries", entityType: "vaultEntry" as const, map: rowToVaultEntry, store: "vaultEntries" as const },
@@ -66,9 +68,42 @@ async function signedMediaUrl(client: SupabaseClient, entity: RemoteEntity, sign
 
 async function applyRemote(entityType: OutboxEntityType, store: typeof tableDefinitions[number]["store"], entity: RemoteEntity, client: SupabaseClient, signal?: AbortSignal): Promise<void> {
   signal?.throwIfAborted();
+  const storeTable = getDb().table(store);
+  const previous = typeof storeTable.get === "function" ? await storeTable.get(entity.id) as RemoteEntity | undefined : undefined;
   const pending = await getDb().outboxMutations.where("entityType").equals(entityType).and((mutation) => mutation.entityId === entity.id).last();
   signal?.throwIfAborted();
   const remoteUpdatedAt = "updatedAt" in entity ? entity.updatedAt : new Date().toISOString();
+  
+  // Protection: If local entity has a non-null startedAt (trip was started), 
+  // don't let remote overwrite it with null. This prevents "unstarting" a trip
+  // due to race conditions between local start and remote sync.
+  if (
+    entityType === "trip" &&
+    previous &&
+    "startedAt" in previous &&
+    previous.startedAt != null &&
+    "startedAt" in entity &&
+    entity.startedAt == null
+  ) {
+    logger.debug("Preserving local startedAt, ignoring remote null", { tripId: entity.id });
+    // Keep the local startedAt by merging it into the remote entity
+    entity = { ...entity, startedAt: previous.startedAt };
+  }
+  
+  // Similar protection for completedAt - don't let remote overwrite a completed
+  // trip with null completedAt (prevents "unending" a trip)
+  if (
+    entityType === "trip" &&
+    previous &&
+    "completedAt" in previous &&
+    previous.completedAt != null &&
+    "completedAt" in entity &&
+    entity.completedAt == null
+  ) {
+    logger.debug("Preserving local completedAt, ignoring remote null", { tripId: entity.id });
+    entity = { ...entity, completedAt: previous.completedAt };
+  }
+  
   if (pending && pending.mutatedAt >= remoteUpdatedAt) return;
   if (pending) {
     signal?.throwIfAborted();
@@ -81,6 +116,50 @@ async function applyRemote(entityType: OutboxEntityType, store: typeof tableDefi
   signal?.throwIfAborted();
   await getDb().table(store).put(hydrated);
   signal?.throwIfAborted();
+  if (!pending) await emitRemoteFeedItem(entityType, previous, hydrated);
+  signal?.throwIfAborted();
+}
+
+async function emitRemoteFeedItem(entityType: OutboxEntityType, previous: RemoteEntity | undefined, entity: RemoteEntity): Promise<void> {
+  if (entityType !== "activity" && entityType !== "expense" && entityType !== "media") return;
+  if (!("createdBy" in entity) || entity.createdBy === getSyncUser()) return;
+  if (previous && "updatedAt" in previous && "updatedAt" in entity && previous.updatedAt === entity.updatedAt) return;
+
+  let draft;
+  if (entityType === "activity") {
+    const activity = entity as Activity;
+    const old = previous as Activity | undefined;
+    const verb = activity.deletedAt
+      ? "deleted_activity"
+      : old?.deletedAt
+        ? "restored_activity"
+        : old
+          ? "updated_activity"
+          : "added_activity";
+    draft = buildActivityFeed(verb, activity, activity.createdBy);
+  } else if (entityType === "expense") {
+    const expense = entity as Expense;
+    const verb = expense.deletedAt ? "deleted_expense" : previous ? "updated_expense" : "added_expense";
+    draft = buildExpenseFeed(verb, expense, expense.createdBy);
+  } else {
+    const media = entity as TripMedia;
+    const verb = media.deletedAt ? "deleted_photo" : previous ? "updated_photo" : "uploaded_photo";
+    draft = buildMediaFeed(verb, media, media.createdBy);
+  }
+
+  const sourceUpdatedAt = "updatedAt" in entity ? entity.updatedAt : new Date().toISOString();
+  const duplicate = await getDb().feedItems
+    .where("tripId")
+    .equals(draft.tripId)
+    .filter((item) => item.entityType === draft.entityType && item.entityId === draft.entityId && item.verb === draft.verb && item.metadata.sourceUpdatedAt === sourceUpdatedAt)
+    .first();
+  if (duplicate) return;
+
+  const item: TripFeedItem = materializeFeedItem({
+    ...draft,
+    metadata: { ...draft.metadata, sourceUpdatedAt },
+  }, sourceUpdatedAt);
+  await getDb().feedItems.add(item);
 }
 
 async function deleteLocal(store: typeof tableDefinitions[number]["store"], id: string): Promise<void> {
@@ -144,6 +223,30 @@ export async function pullRemoteChanges(full = false, signal?: AbortSignal): Pro
         await getDb().expenseShares.where("expenseId").anyOf(expenseIds).delete();
         await Promise.all([getDb().trips.delete(trip.id), getDb().tripMembers.where("tripId").equals(trip.id).delete(), getDb().activities.where("tripId").equals(trip.id).delete(), getDb().expenses.where("tripId").equals(trip.id).delete(), getDb().tripMedia.where("tripId").equals(trip.id).delete(), getDb().tripInvitations.where("tripId").equals(trip.id).delete(), getDb().expenseSettlements.where("tripId").equals(trip.id).delete(), getDb().tripTravelers.where("tripId").equals(trip.id).delete(), getDb().vaultEntries.where("tripId").equals(trip.id).delete(), getDb().tripWeatherForecasts.filter((forecast) => forecast.tripId === trip.id).delete()]);
       });
+    }
+
+    // Tombstone sweep for mutual connections. A full pull is authoritative for
+    // the edges visible to this user, so if a remote `connections` row was
+    // hard-deleted while we were offline, drop the locally-materialized contact
+    // for that edge. Edges with a not-yet-replayed outbox mutation are spared so
+    // an in-flight request/response isn't wiped by an offline pull.
+    const remoteConnectionIds = new Set(
+      staged.find(({ definition }) => definition.table === "connections")?.rows.map((row) => String(row.id)) ?? []
+    );
+    const localEdges = await getDb().contacts
+      .where("connectionStatus").anyOf("pending", "accepted")
+      .filter((contact) => contact.connectionId !== null && contact.deletedAt === null)
+      .toArray();
+    for (const contact of localEdges) {
+      signal?.throwIfAborted();
+      const edgeId = String(contact.connectionId);
+      if (remoteConnectionIds.has(edgeId)) continue;
+      const pending = await getDb().outboxMutations
+        .where("entityType").anyOf("connectionRequest", "connectionResponse", "contact")
+        .filter((mutation) => mutation.entityId === edgeId)
+        .count();
+      if (pending > 0) continue;
+      await getDb().contacts.delete(contact.id);
     }
   }
   signal?.throwIfAborted();

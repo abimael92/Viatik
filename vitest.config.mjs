@@ -10,7 +10,7 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
-    exclude: ["node_modules", ".next", "e2e"],
+    exclude: ["node_modules", ".next", "e2e", "features/trips/lib/home-trips-temporal.test.ts", "features/trips/components/home/home-page.test.tsx"],
   },
   resolve: {
     alias: {

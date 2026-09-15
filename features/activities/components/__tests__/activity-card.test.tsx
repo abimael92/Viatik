@@ -18,6 +18,7 @@ const mockActivity = {
   startTime: "2026-06-01T10:00:00",
   endTime: null,
   position: 1,
+  estimatedCostMinor: null,
   createdBy: "user-1",
   createdAt: "2026-01-01T00:00:00Z",
   updatedAt: "2026-01-01T00:00:00Z",
@@ -70,5 +71,18 @@ describe("ActivityCard", () => {
 
     expect(screen.queryByRole("button", { name: /Move/ })).toBeNull();
     expect(screen.getByRole("button", { name: `Open details for ${mockActivity.title}` })).toBeTruthy();
+  });
+
+  it("colors by category and mutes activities the current user is not attending", () => {
+    const { container } = render(
+      <ActivityCard
+        activity={{ ...mockActivity, participants: [{ userId: "user-2", status: "attending" as const }] }}
+        currentUserId="user-1"
+      />
+    );
+
+    expect(screen.getByRole("listitem").className).toContain("border-emerald-500");
+    expect(container.querySelector("article")?.className).toContain("opacity-40");
+    expect(screen.queryByRole("button", { name: /Move/ })).toBeNull();
   });
 });

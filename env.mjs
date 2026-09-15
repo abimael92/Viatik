@@ -13,6 +13,12 @@ export const env = createEnv({
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
     SMS_PROVIDER_API_KEY: z.string().optional(),
     GOOGLE_MAPS_API_KEY: z.string().min(1).optional(),
+    // Optional AI Activity Scout LLM endpoint + key. When unset, the scout uses
+    // the deterministic offline heuristic engine.
+    AI_SCOUT_ENDPOINT: z.string().url().optional(),
+    AI_SCOUT_API_KEY: z.string().optional(),
+    // Signs the short-lived QR connection tokens. Must be >= 32 bytes.
+    QR_SIGNING_SECRET: z.string().min(32).optional(),
   },
   client: {
     NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
@@ -22,6 +28,9 @@ export const env = createEnv({
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
     SMS_PROVIDER_API_KEY: process.env.SMS_PROVIDER_API_KEY,
     GOOGLE_MAPS_API_KEY: process.env.GOOGLE_MAPS_API_KEY,
+    AI_SCOUT_ENDPOINT: process.env.AI_SCOUT_ENDPOINT,
+    AI_SCOUT_API_KEY: process.env.AI_SCOUT_API_KEY,
+    QR_SIGNING_SECRET: process.env.QR_SIGNING_SECRET,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   },

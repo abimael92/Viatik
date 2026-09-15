@@ -1,41 +1,117 @@
 "use client";
 
-import { CalendarDays, Camera, CircleDollarSign, Eye, MapPin, Pencil, Plus, Settings, Trash2, Undo2, Users } from "lucide-react";
+import { ArrowLeft, Backpack, CalendarDays, CalendarPlus, Camera, CircleDollarSign, Eye, HeartPulse, Lock, MapPin, Plus, Share2, Trash2, Undo2, Users, Vote } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { AiScoutSidebar } from "@/features/ai/components/ai-scout-sidebar";
+import type { ScoutDndPayload } from "@/features/ai/lib/ai-scout-dnd";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Heading } from "@/components/ui/heading";
+import { SharedTripFeed } from "@/features/feed/components/shared-trip-feed";
 import { ItineraryBoard } from "@/features/activities/components/itinerary-board";
 import { WeekCalendar } from "@/features/activities/components/week-calendar";
+import { ActivityForm, type ActivityFormValues } from "@/features/activities/components/activity-form";
+import { ActivityCloneDialog, type ActivityCloneTiming } from "@/features/activities/components/activity-clone-dialog";
+import { ActivityLocationCard } from "@/features/activities/components/activity-location-card";
 import { activityRepository } from "@/features/activities/data/dexie-activity-repository";
-import { MemberPanel } from "@/features/collaboration/member-panel";
+import { activityPersonalBudgetRepository } from "@/features/activities/data/dexie-activity-personal-budget-repository";
+import { PeoplePanel } from "@/features/collaboration/components/people-panel";
 import { collaborationRepository } from "@/features/collaboration/data/dexie-collaboration-repository";
-import { TravelerPanel } from "@/features/contacts/components/traveler-panel";
-import type { Activity, Trip, TripMember } from "@/features/domain/entities";
+import { contactRepository, tripTravelerRepository } from "@/features/contacts/data/dexie-contact-repository";
+import type { Activity, ActivityPersonalBudget, Trip, TripMember, TripTraveler } from "@/features/domain/entities";
 import type { TripMedia } from "@/features/domain/entities-media";
-import { ExpensePanel } from "@/features/expenses/components/expense-panel";
-import { TripFormDialog } from "@/features/trips/components/trip-dashboard";
+import { TravelJournalView } from "@/features/journal/components/travel-journal-view";
+// import { FinanceSummaryStrip } from "@/features/finance/components/finance-dashboard";
+import { MoneyDashboard } from "@/features/finance/components/money-dashboard";
+// import { FinanceView } from "@/features/finance/components/finance-view";
+import { BudgetSettings } from "@/features/finance/components/budget-settings";
+import { PackingListView } from "@/features/packing/components/packing-list-view";
+import { PollsView } from "@/features/polls/components/polls-view";
+import { ShareModal } from "@/features/sharing/components/share-modal";
+import { TransitCard } from "@/features/transit/components/transit-card";
+import { useTransitSegments } from "@/features/transit/components/use-transit";
+import { transitRepository } from "@/features/transit/data/dexie-transit-repository";
+import type { TransitSegment } from "@/features/transit/domain/transit-types";
+import { DocumentRiskBanner } from "@/features/health/components/document-risk-banner";
+import { DocumentTrackerView } from "@/features/health/components/document-tracker-view";
+import { TripMapView } from "@/features/maps/components/trip-map-view";
+import { DestinationField } from "@/features/trips/components/destination-field";
+import { TripDetailsSection } from "@/features/trips/components/trip-details-section";
 import { TripGallery } from "@/features/trips/components/trip-gallery";
+// import { TripHealthBar } from "@/features/trips/components/trip-health-bar";
+import { getTripCoverGradient, isTripCoverImage } from "@/features/trips/lib/trip-cover";
 import { tripRepository } from "@/features/trips/data/dexie-trip-repository";
 import { mediaRepository } from "@/features/media/data/dexie-media-repository";
+import { VaultPanel } from "@/features/vault/components/vault-panel";
+import { TripWeatherStrip } from "@/features/weather/components/trip-weather-strip";
+import { WeatherConflictBanner, WeatherConflictModal } from "@/features/weather/components/weather-conflict-banner";
+import { deriveWeatherWarnings } from "@/features/weather/domain/weather-warnings";
+import { conflictsByActivityId, detectConflicts } from "@/features/weather/lib/weather-conflict";
+import { loadTripWeatherForecast } from "@/features/weather/lib/load-trip-weather-forecast";
+import { weatherRepository } from "@/features/weather/data/dexie-weather-repository";
+import type { TripWeatherForecast } from "@/features/weather/domain/weather-types";
+import type { PlaceDetails } from "@/app/actions/places";
+import { nextPosition } from "@/lib/ordering";
 import { cn } from "@/lib/utils";
+import { downloadActivitiesIcs } from "@/features/itinerary/lib/export-ics";
 
-const tabs = ["overview", "itinerary", "expenses", "gallery", "travelers", "collaborators", "settings"] as const;
+const SECONDARY_TOOLS = ["packing", "health", "polls", "vault"] as const;
+type SecondaryTool = (typeof SECONDARY_TOOLS)[number];
+
+const tabs = ["overview", "itinerary", "map", "money", "photos", "people", "journal", "settings"] as const;
 type Tab = (typeof tabs)[number];
 
-type ActivityDialogState = null | "new" | { activity: Activity; readOnly: boolean };
+/** Map any tab param (current or legacy/deep-link) onto the current tab + sub-view state. */
+function initWorkspace(initialTab?: string): { tab: Tab; tool: SecondaryTool | null; journalView: "journal" | "feed" } {
+  const base = { tool: null as SecondaryTool | null, journalView: "journal" as const };
+  if (initialTab && (SECONDARY_TOOLS as readonly string[]).includes(initialTab)) return { ...base, tab: "overview", tool: initialTab as SecondaryTool };
+  switch (initialTab) {
+    case "overview":
+      return { ...base, tab: "overview" };
+    case "itinerary":
+      return { ...base, tab: "itinerary" };
+    case "map":
+      return { ...base, tab: "map" };
+    case "settings":
+      return { ...base, tab: "settings" };
+    case "gallery":
+    case "photos":
+      return { ...base, tab: "photos" };
+    case "travelers":
+    case "people":
+      return { ...base, tab: "people" };
+    case "expenses":
+    case "finance":
+      return { ...base, tab: "money" };
+    case "feed":
+      return { ...base, tab: "journal", journalView: "feed" };
+    case "journal":
+      return { ...base, tab: "journal" };
+    default:
+      return { ...base, tab: "overview" };
+  }
+}
 
-export function TripWorkspace({ tripId, userId }: { tripId: string; userId: string }) {
+type ActivityDialogState = null | "new" | { draft: { dayDate: string; startTime: string } } | { activity: Activity; readOnly: boolean } | { transitSegment: TransitSegment };
+
+export function TripWorkspace({ tripId, userId, initialTab = "overview", initialMoneyToolsOpen = false }: { tripId: string; userId: string; initialTab?: string; initialMoneyToolsOpen?: boolean }) {
   const router = useRouter();
+  const init = initWorkspace(initialTab);
   const [trip, setTrip] = useState<Trip | null | undefined>(undefined);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [members, setMembers] = useState<TripMember[]>([]);
-  const [tab, setTab] = useState<Tab>("overview");
+  const [travelers, setTravelers] = useState<TripTraveler[]>([]);
+  const [tab, setTab] = useState<Tab>(init.tab);
+  const [overviewTool, setOverviewTool] = useState<SecondaryTool | null>(init.tool);
+  const [journalView, setJournalView] = useState<"journal" | "feed">(init.journalView);
   const [activityDialog, setActivityDialog] = useState<ActivityDialogState>(null);
-  const [editTrip, setEditTrip] = useState(false);
+  const [scoutOpen, setScoutOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [conflictModalOpen, setConflictModalOpen] = useState(false);
+  const [editIntent, setEditIntent] = useState(0);
   const [category, setCategory] = useState("all");
   const [itineraryView, setItineraryView] = useState<"calendar" | "board">("calendar");
   const [error, setError] = useState<string | null>(null);
@@ -45,11 +121,16 @@ export function TripWorkspace({ tripId, userId }: { tripId: string; userId: stri
   const [media, setMedia] = useState<TripMedia[]>([]);
   const [pendingExpense, setPendingExpense] = useState(false);
   const [pendingPhotos, setPendingPhotos] = useState(false);
+  const [forecast, setForecast] = useState<TripWeatherForecast | undefined>(undefined);
+  const [weatherLoading, setWeatherLoading] = useState(false);
+  const [weatherError, setWeatherError] = useState<string | null>(null);
 
   useEffect(() => tripRepository.watchById(tripId, (value) => setTrip(value ?? null)), [tripId]);
   useEffect(() => activityRepository.watchByTrip(tripId, setActivities), [tripId]);
   useEffect(() => collaborationRepository.watchMembers(tripId, setMembers), [tripId]);
+  useEffect(() => tripTravelerRepository.watch(tripId, setTravelers), [tripId]);
   useEffect(() => mediaRepository.watchByTrip(tripId, null, setMedia), [tripId]);
+  useEffect(() => weatherRepository.watchForecast(tripId, setForecast), [tripId]);
 
   useEffect(() => {
     if (toast?.id && toastRef.current) {
@@ -68,13 +149,78 @@ export function TripWorkspace({ tripId, userId }: { tripId: string; userId: stri
     }
   }, [activities, restoringActivityId]);
 
+  // The Scout Activities button only lives in the itinerary tab, so the panel
+  // is only ever visible there (derived from the tab so we avoid setState-in-
+  // effect). The raw `scoutOpen` toggle persists across tab switches.
+  const scoutVisible = scoutOpen && tab === "itinerary";
+
   const canEdit = members.some((member) => member.userId === userId && (member.role === "owner" || member.role === "editor"));
   const isOwner = members.some((member) => member.userId === userId && member.role === "owner");
   const days = useMemo(() => dateRange(trip?.startDate, trip?.endDate), [trip?.startDate, trip?.endDate]);
 
-  const handleAddExpense = useCallback(() => { if (canEdit) { setPendingExpense(true); setTab("expenses"); } }, [canEdit]);
-  const handleAddPhotos = useCallback(() => { if (canEdit) { setPendingPhotos(true); setTab("gallery"); } }, [canEdit]);
-  const handleSetDates = useCallback(() => setEditTrip(true), []);
+  const weatherWarnings = useMemo(() => (forecast ? deriveWeatherWarnings(forecast.forecast) : []), [forecast]);
+
+  // Only flag weather conflicts for activities that actually appear in the
+  // trip's itinerary (within its date range) — otherwise "ghost" activities on
+  // other days would make the banner warn even when the itinerary looks empty.
+  const weatherConflicts = useMemo(() => {
+    if (days.length === 0) return [];
+    const inItinerary = activities.filter((activity) => days.includes(activity.dayDate));
+    return detectConflicts(inItinerary, forecast?.forecast);
+  }, [activities, forecast, days]);
+  const conflictsByActivity = useMemo(() => conflictsByActivityId(weatherConflicts), [weatherConflicts]);
+
+  useEffect(() => {
+    if (!trip) return;
+    let cancelled = false;
+    Promise.resolve()
+      .then(() => {
+        if (cancelled) return;
+        setWeatherLoading(true);
+        setWeatherError(null);
+        return loadTripWeatherForecast(trip, userId, canEdit);
+      })
+      .then((result) => {
+        if (cancelled || !result) return;
+        if (result.status === "hit" || result.status === "fetched" || result.status === "stale-offline") {
+          setForecast(result.forecast);
+          setWeatherError(null);
+        } else {
+          setForecast(undefined);
+          setWeatherError(result.error);
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setWeatherError("Unable to load weather.");
+      })
+      .finally(() => {
+        if (!cancelled) setWeatherLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [trip, userId, canEdit]);
+
+  const handleAddExpense = useCallback(() => {
+    if (canEdit) {
+      setPendingExpense(true);
+      setTab("money");
+    }
+  }, [canEdit]);
+  const handleAddPhotos = useCallback(() => {
+    if (canEdit) {
+      setPendingPhotos(true);
+      setTab("photos");
+    }
+  }, [canEdit]);
+  // Editing lives inline on the Settings tab (no modal). Opening it from a
+  // shortcut bumps `editIntent` so TripDetailsSection remounts in edit mode.
+  const handleOpenDetails = useCallback(() => {
+    setEditIntent((n) => n + 1);
+    setTab("settings");
+  }, []);
+  const handleSetDates = handleOpenDetails;
 
   function openActivity(activity: Activity) {
     setActivityDialog(canEdit ? { activity, readOnly: false } : { activity, readOnly: true });
@@ -102,8 +248,52 @@ export function TripWorkspace({ tripId, userId }: { tripId: string; userId: stri
     }
   }
 
-  if (trip === undefined) return <div className="space-y-4" aria-label="Loading trip"><div className="h-48 animate-pulse rounded-2xl bg-muted" /><div className="h-96 animate-pulse rounded-2xl bg-muted" /></div>;
-  if (trip === null) return <div className="rounded-2xl border border-dashed p-12 text-center"><h1 className="text-xl font-semibold">Trip not found</h1><p className="mt-2 text-muted-foreground">It may have been removed on this device.</p><Button className="mt-5" onClick={() => router.replace("/trips")}>Back to trips</Button></div>;
+  async function handleDropScout(dayDate: string, payload: ScoutDndPayload) {
+    if (!canEdit) return;
+    const start = payload.defaultStartTime;
+    try {
+      const created = await activityRepository.create({
+        id: crypto.randomUUID(),
+        tripId,
+        dayDate,
+        title: payload.title,
+        description: payload.description,
+        location: payload.location,
+        category: payload.category || "general",
+        startTime: start ? `${dayDate}T${start}:00` : null,
+        endTime: null,
+        position: nextPosition(activities.filter((item) => item.dayDate === dayDate).map((item) => item.position)),
+        estimatedCostMinor: payload.estimatedCostMinor != null ? BigInt(payload.estimatedCostMinor) : null,
+        createdBy: userId,
+      });
+      setToast({ id: `scout-${created.id}`, message: `“${payload.title}” added to itinerary`, activityId: created.id });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to add that activity.");
+    }
+  }
+
+  if (trip === undefined)
+    return (
+      <div className="space-y-4" aria-label="Loading trip">
+        <div className="h-48 animate-pulse rounded-2xl bg-muted" />
+        <div className="h-96 animate-pulse rounded-2xl bg-muted" />
+      </div>
+    );
+  if (trip === null)
+    return (
+      <div className="rounded-2xl border border-dashed p-12 text-center">
+        <Heading level={1} className="text-xl font-semibold">
+          Trip not found
+        </Heading>
+        <p className="mt-2 text-muted-foreground">It may have been removed on this device.</p>
+        <Button className="mt-5" onClick={() => router.replace("/trips")}>
+          Back to trips
+        </Button>
+      </div>
+    );
+
+  const coverGradient = getTripCoverGradient(trip.coverImageUrl);
+  const hasCoverImage = isTripCoverImage(trip.coverImageUrl);
 
   return (
     <div className="space-y-6">
@@ -111,74 +301,314 @@ export function TripWorkspace({ tripId, userId }: { tripId: string; userId: stri
         <div role="status" aria-live="polite" className="flex items-start gap-3 rounded-2xl border bg-muted p-4 text-foreground">
           <Eye className="size-5 shrink-0 text-muted-foreground" />
           <div>
-            <p className="font-medium">View-only access</p>
+            <p className="font-semibold">View-only access</p>
             <p className="text-sm text-muted-foreground">You can view the itinerary, expenses, and gallery, but you cannot make changes.</p>
           </div>
         </div>
       )}
 
-      <header className="overflow-hidden rounded-2xl border bg-card">
-        <div className={cn("relative bg-gradient-to-br from-primary/30 via-secondary/20 to-accent/30", trip.coverImageUrl ? "h-40 sm:h-52" : "h-28 sm:h-36")} style={trip.coverImageUrl ? { backgroundImage: `linear-gradient(to top, rgba(0,0,0,.55), transparent), url(${trip.coverImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>
-          {!trip.coverImageUrl && canEdit && (
-            <Button size="sm" variant="secondary" className="absolute right-4 bottom-4 gap-1.5 shadow-sm" onClick={() => setEditTrip(true)}>
-              <Camera className="size-4" />Add cover photo
-            </Button>
+      <header className="relative overflow-hidden rounded-2xl border bg-card">
+        {/* Ambient multi-color gradient bleed behind the trip header. */}
+        <div aria-hidden className="pointer-events-none absolute -top-24 -right-16 z-0 h-72 w-72 rounded-full bg-linear-to-br from-viatik-blue/10 via-viatik-magenta/10 to-transparent blur-3xl" />
+        <div
+          className={cn("relative z-10 flex h-40 items-center justify-center px-6 sm:h-52", !hasCoverImage && (coverGradient?.className ?? "bg-linear-to-br from-sky-500 via-blue-500 to-violet-600"))}
+          style={
+            hasCoverImage
+              ? {
+                  backgroundImage: `linear-gradient(to top, rgba(0,0,0,.55), transparent), url(${trip.coverImageUrl})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                }
+              : undefined
+          }
+        >
+          <button type="button" onClick={() => router.push("/trips")} className="absolute left-3 top-3 z-20 inline-flex min-h-10 items-center gap-1.5 rounded-full border border-white/30 bg-black/55 px-4 py-2 text-sm font-semibold text-white shadow-lg backdrop-blur transition hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:left-5 sm:top-5">
+            <ArrowLeft className="size-4" aria-hidden />
+            Back to trips
+          </button>
+          {!hasCoverImage && (
+            <Heading level={1} className="max-w-3xl text-center text-3xl font-bold text-white drop-shadow-md sm:text-4xl">
+              {trip.name}
+            </Heading>
+          )}
+          {trip.latitude != null && trip.longitude != null && (
+            <div className="absolute right-3 top-3 z-20 sm:right-5 sm:top-5">
+              <TripWeatherStrip dayDates={days} forecast={forecast} warnings={weatherWarnings} loading={weatherLoading} emptyMessage={weatherError ?? ""} />
+            </div>
           )}
         </div>
         <div className="p-5 sm:p-7">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{trip.name}</h1>
-              <div className="mt-2 flex flex-wrap gap-4 text-sm text-muted-foreground">
-                {trip.destination && <span className="flex items-center gap-1.5"><MapPin className="size-4" />{trip.destination}</span>}
-                <span className="flex items-center gap-1.5"><CalendarDays className="size-4" />{trip.startDate && trip.endDate ? `${formatDate(trip.startDate)} – ${formatDate(trip.endDate)}` : "Dates not set"}</span>
-              </div>
+            <div className="min-w-0">
+              {hasCoverImage && (
+                <Heading level={1} className="text-2xl font-bold sm:text-3xl">
+                  {trip.name}
+                </Heading>
+              )}
+              {trip.destination && (
+                <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-foreground">
+                  <MapPin className="size-5 text-muted-foreground" />
+                  {trip.destination}
+                </p>
+              )}
+              <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+                <CalendarDays className="size-5" />
+                {trip.startDate && trip.endDate ? (
+                  <span className="font-mono tracking-tight tabular-nums">
+                    {formatDate(trip.startDate)} – {formatDate(trip.endDate)}
+                  </span>
+                ) : (
+                  "Dates not set"
+                )}
+              </p>
             </div>
-            {canEdit && <Button variant="outline" onClick={() => setEditTrip(true)}><Pencil className="size-4" />Edit trip</Button>}
+            {canEdit && (
+              <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
+                <div className="flex flex-wrap gap-2">
+                  {isOwner && (
+                    <Button variant="outline" onClick={() => setShareOpen(true)}>
+                      <Share2 className="size-5" />
+                      Share
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
+
+          {(trip.latitude == null || trip.longitude == null) && (
+            <div className="mt-4 rounded-2xl border bg-card p-4" aria-label="Trip weather and dates">
+              <SetLocationCard trip={trip} canEdit={canEdit} />
+            </div>
+          )}
         </div>
       </header>
 
       <div className="overflow-x-auto border-b">
         <nav aria-label="Trip sections" className="flex min-w-max gap-1">
-          {tabs.map((item) => <button key={item} onClick={() => setTab(item)} aria-current={tab === item ? "page" : undefined} className={`min-h-11 rounded-t-lg px-4 text-sm font-medium capitalize focus-visible:ring-2 focus-visible:ring-ring ${tab === item ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"}`}>{item}</button>)}
+          {tabs.map((item) => (
+            <button
+              key={item}
+              onClick={() => {
+                setOverviewTool(null);
+                setTab(item);
+              }}
+              aria-current={tab === item ? "page" : undefined}
+              className={`min-h-11 rounded-t-lg px-4 text-sm font-semibold capitalize focus-visible:ring-2 focus-visible:ring-ring ${tab === item ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              {item}
+            </button>
+          ))}
         </nav>
       </div>
 
-      {error && <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
+      {error && (
+        <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+          {error}
+        </p>
+      )}
 
       {toast && (
         <div role="status" aria-live="polite" aria-atomic="true" className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-lg">
           <span className="flex-1 text-sm">{toast.message}</span>
-          <button ref={toastRef} type="button" className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={handleUndo}>
-            <Undo2 className="size-4" />Undo
+          <button ref={toastRef} type="button" className={buttonVariants({ variant: "outline", size: "sm" })} onClick={handleUndo}>
+            <Undo2 className="size-5" />
+            Undo
           </button>
         </div>
       )}
 
-      {tab === "overview" && <Overview trip={trip} activities={activities} mediaCount={media.length} setTab={setTab} onAddActivity={() => { if (canEdit) setActivityDialog("new"); }} onAddExpense={handleAddExpense} onAddPhotos={handleAddPhotos} onSetDates={handleSetDates} canEdit={canEdit} />}
-      {tab === "itinerary" && <section className="space-y-5"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="text-2xl font-bold">Itinerary</h2><p className="text-muted-foreground">See open time, schedule activities, or organize each day.</p></div><div className="flex flex-wrap gap-2"><div className="flex rounded-md border p-0.5"><Button size="sm" variant={itineraryView === "calendar" ? "default" : "ghost"} onClick={() => setItineraryView("calendar")}>Calendar</Button><Button size="sm" variant={itineraryView === "board" ? "default" : "ghost"} onClick={() => setItineraryView("board")}>Board</Button></div>{itineraryView === "board" && <select aria-label="Filter by category" value={category} onChange={(event) => setCategory(event.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm"><option value="all">All categories</option>{Array.from(new Set(activities.map((item) => item.category))).map((item) => <option key={item}>{item}</option>)}</select>}{canEdit && <Button onClick={() => setActivityDialog("new")}><Plus className="size-4" />Activity</Button>}</div></div>{days.length ? itineraryView === "calendar" ? <WeekCalendar days={days} activities={activities} onSelect={openActivity} /> : <ItineraryBoard tripId={tripId} dayDates={days} category={category} onSelect={openActivity} readOnly={!canEdit} /> : <div className="rounded-2xl border border-dashed p-10 text-center"><h3 className="font-semibold">{canEdit ? "Add trip dates to build your itinerary" : "Trip dates are not set"}</h3>{canEdit && <Button variant="link" onClick={() => setEditTrip(true)}>Set dates</Button>}</div>}</section>}
-      {tab === "expenses" && <ExpensePanel tripId={tripId} userId={userId} currency={trip.baseCurrency} canEdit={canEdit} autoOpen={pendingExpense} onAutoOpen={() => setPendingExpense(false)} />}
-      {tab === "gallery" && <section className="rounded-2xl border bg-card p-5 sm:p-7"><TripGallery tripId={tripId} userId={userId} canEdit={canEdit} autoOpen={pendingPhotos} onAutoOpened={() => setPendingPhotos(false)} /></section>}
-      {tab === "travelers" && <TravelerPanel tripId={tripId} userId={userId} canEdit={canEdit} />}
-      {tab === "collaborators" && <MemberPanel tripId={tripId} userId={userId} />}
-      {tab === "settings" && <section className="space-y-6"><div><h2 className="text-2xl font-bold">Trip settings</h2><p className="text-muted-foreground">Manage trip details and access.</p></div>{canEdit && <div className="rounded-2xl border bg-card p-5"><h3 className="font-semibold">Trip details</h3><p className="mt-1 text-sm text-muted-foreground">Destination, dates, cover, and {trip.baseCurrency} currency.</p><Button className="mt-4" variant="outline" onClick={() => setEditTrip(true)}><Settings className="size-4" />Edit details</Button></div>}{isOwner && <div className="rounded-2xl border border-destructive/30 bg-card p-5"><h3 className="font-semibold text-destructive">Delete trip</h3><p className="mt-1 text-sm text-muted-foreground">The trip is soft-deleted locally and queued for sync.</p><Button className="mt-4" variant="destructive" onClick={async () => { if (window.confirm(`Delete ${trip.name}? This can’t be undone from the app.`)) { await tripRepository.remove(trip.id); router.replace("/trips"); } }}><Trash2 className="size-4" />Delete trip</Button></div>}</section>}
+      {tab === "overview" && overviewTool === "packing" && <PackingListView tripId={tripId} trip={trip} activities={activities} />}
+      {tab === "overview" && overviewTool === "health" && <DocumentTrackerView userId={userId} destination={trip.destination} travelDate={trip.startDate} />}
+      {tab === "overview" && overviewTool === "polls" && <PollsView tripId={tripId} userId={userId} canEdit={canEdit} trip={trip} activities={activities} />}
+      {tab === "overview" && overviewTool === "vault" && <VaultPanel tripId={tripId} userId={userId} />}
+      {tab === "overview" && overviewTool === null && weatherConflicts.length > 0 && <WeatherConflictBanner conflicts={weatherConflicts} onReview={() => setConflictModalOpen(true)} />}
+      {tab === "overview" && overviewTool === null && (
+        <Overview
+          trip={trip}
+          userId={userId}
+          activities={activities}
+          mediaCount={media.length}
+          setTab={setTab}
+          setJournalView={setJournalView}
+          onOpenTool={setOverviewTool}
+          onAddActivity={() => {
+            if (canEdit) setActivityDialog("new");
+          }}
+          onAddExpense={handleAddExpense}
+          onAddPhotos={handleAddPhotos}
+          onSetDates={handleSetDates}
+          canEdit={canEdit}
+          onError={setError}
+        />
+      )}
+      {tab === "itinerary" && (
+        <section className="space-y-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <Heading level={2} className="text-2xl font-bold">
+                Itinerary
+              </Heading>
+              <p className="text-muted-foreground">See open time, schedule activities, or organize each day.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <div className="flex rounded-md border p-0.5">
+                <Button size="sm" variant={itineraryView === "calendar" ? "default" : "ghost"} onClick={() => setItineraryView("calendar")}>
+                  Calendar
+                </Button>
+                <Button size="sm" variant={itineraryView === "board" ? "default" : "ghost"} onClick={() => setItineraryView("board")}>
+                  Board
+                </Button>
+              </div>
+              {itineraryView === "board" && (
+                <select aria-label="Filter by category" value={category} onChange={(event) => setCategory(event.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm">
+                  <option value="all">All categories</option>
+                  {Array.from(new Set(activities.map((item) => item.category))).map((item) => (
+                    <option key={item}>{item}</option>
+                  ))}
+                </select>
+              )}
+              {activities.length > 0 && (
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    downloadActivitiesIcs(
+                      activities.filter((a) => a.deletedAt === null),
+                      trip.name
+                    )
+                  }
+                >
+                  <CalendarPlus className="size-4" />
+                  Export ICS
+                </Button>
+              )}
+              {canEdit && (
+                <Button variant="primary" onClick={() => setActivityDialog("new")}>
+                  <Plus className="size-5" />
+                  Activity
+                </Button>
+              )}
+              {canEdit && (
+                <Button variant="outline" onClick={() => setScoutOpen((open) => !open)} aria-expanded={scoutVisible} className="h-11 gap-1 border-transparent bg-linear-to-r from-viatik-blue via-viatik-magenta to-viatik-red px-3 text-white shadow-[0_4px_14px_rgba(168,85,247,0.35)] hover:border-transparent hover:opacity-90">
+                  <Image src="/scout_icon.png" alt="Scout the fox" width={40} height={40} className="size-10 shrink-0 object-contain object-center" />
+                  {scoutVisible ? "Bye Scout" : "Scout AI"}
+                </Button>
+              )}
+            </div>
+          </div>
+          {weatherConflicts.length > 0 && <WeatherConflictBanner conflicts={weatherConflicts} onReview={() => setConflictModalOpen(true)} />}
+          <div className="flex items-start gap-4">
+            <div className={cn("min-w-0", scoutVisible ? "flex-1" : "w-full")}>
+              {days.length ? (
+                itineraryView === "calendar" ? (
+                  <WeekCalendar tripId={tripId} days={days} activities={activities} currentUserId={userId} onSelect={openActivity} onCreateActivity={(dayDate, startTime) => setActivityDialog({ draft: { dayDate, startTime } })} onEditTransit={(transitSegment) => setActivityDialog({ transitSegment })} forecast={forecast?.forecast} warnings={weatherWarnings} weatherLoading={weatherLoading} conflicts={conflictsByActivity} canEdit={canEdit} />
+                ) : (
+                  <ItineraryBoard tripId={tripId} dayDates={days} category={category} currentUserId={userId} onSelect={openActivity} readOnly={!canEdit} forecast={forecast?.forecast} warnings={weatherWarnings} weatherLoading={weatherLoading} conflicts={conflictsByActivity} onDropScout={handleDropScout} />
+                )
+              ) : (
+                <div className="rounded-2xl border border-dashed bg-linear-to-b from-card to-muted/30 p-10 text-center">
+                  <Heading level={3} className="text-base font-semibold">
+                    {canEdit ? "Add trip dates to build your itinerary" : "Trip dates are not set"}
+                  </Heading>
+                  {canEdit && (
+                    <Button variant="link" onClick={handleOpenDetails}>
+                      Set dates
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+            {scoutVisible && <AiScoutSidebar embedded open onOpenChange={setScoutOpen} trip={trip} tripId={tripId} userId={userId} days={days} activities={activities} canEdit={canEdit} onError={setError} />}
+          </div>
+        </section>
+      )}
+      {tab === "map" && <TripMapView tripId={tripId} userId={userId} trip={trip} canEdit={canEdit} />}
+      {tab === "money" && <MoneyDashboard tripId={tripId} userId={userId} trip={trip} days={days} canEdit={canEdit} autoOpenExpense={pendingExpense} autoOpenTools={initialMoneyToolsOpen} onConsumeAutoOpenExpense={() => setPendingExpense(false)} />}
+      {tab === "photos" && (
+        <section className="rounded-2xl border bg-card p-5 sm:p-7">
+          <TripGallery tripId={tripId} userId={userId} canEdit={canEdit} autoOpen={pendingPhotos} onAutoOpened={() => setPendingPhotos(false)} />
+        </section>
+      )}
+      {tab === "people" && <PeoplePanel tripId={tripId} userId={userId} canEdit={canEdit} />}
+      {tab === "journal" && (
+        <div className="space-y-6">
+          <div className="flex w-max rounded-md border p-0.5">
+            <Button size="sm" variant={journalView === "journal" ? "default" : "ghost"} onClick={() => setJournalView("journal")}>
+              Journal
+            </Button>
+            <Button size="sm" variant={journalView === "feed" ? "default" : "ghost"} onClick={() => setJournalView("feed")}>
+              Activity
+            </Button>
+          </div>
+          {journalView === "journal" ? <TravelJournalView tripId={tripId} userId={userId} baseCurrency={trip.baseCurrency} startDate={trip.startDate} endDate={trip.endDate} canEdit={canEdit} /> : <SharedTripFeed tripId={tripId} userId={userId} />}
+        </div>
+      )}
+      {tab === "settings" && (
+        <section className="space-y-6">
+          <div>
+            <Heading level={2} className="text-2xl font-bold">
+              Trip settings
+            </Heading>
+            <p className="text-muted-foreground">Manage trip details, budget, and access.</p>
+          </div>
+          <TripDetailsSection key={`${trip.id}-${editIntent}`} trip={trip} userId={userId} canEdit={canEdit} initialEditing={editIntent > 0} />
+          <BudgetSettings trip={trip} userId={userId} canEdit={canEdit} />
+          {isOwner && (
+            <div className="rounded-2xl border border-destructive/30 bg-card p-5">
+              <Heading level={3} className="text-base font-semibold text-destructive">
+                Delete trip
+              </Heading>
+              <p className="mt-1 text-sm text-muted-foreground">The trip is soft-deleted locally and queued for sync.</p>
+              <Button
+                className="mt-4"
+                variant="destructive"
+                onClick={async () => {
+                  if (window.confirm(`Delete ${trip.name}? This can’t be undone from the app.`)) {
+                    await tripRepository.remove(trip.id);
+                    router.replace("/trips");
+                  }
+                }}
+              >
+                <Trash2 className="size-5" />
+                Delete trip
+              </Button>
+            </div>
+          )}
+        </section>
+      )}
+      <ActivityDialog open={activityDialog !== null} state={activityDialog} trip={trip} userId={userId} members={members} travelers={travelers} activities={activities} onClose={() => setActivityDialog(null)} onError={setError} onDelete={handleDeleteActivity} />
 
-      <TripFormDialog key={editTrip ? trip.id : "closed"} open={editTrip} onOpenChange={setEditTrip} userId={userId} trip={trip} onError={setError} />
-      <ActivityDialog open={activityDialog !== null} state={activityDialog} trip={trip} userId={userId} activities={activities} onClose={() => setActivityDialog(null)} onError={setError} onDelete={handleDeleteActivity} />
+      <WeatherConflictModal open={conflictModalOpen} onOpenChange={setConflictModalOpen} conflicts={weatherConflicts} activities={activities} tripDays={days} forecast={forecast?.forecast} />
+
+      <ShareModal open={shareOpen} onOpenChange={setShareOpen} tripId={tripId} userId={userId} />
     </div>
   );
 }
 
-function Overview({ trip, activities, mediaCount, setTab, onAddActivity, onAddExpense, onAddPhotos, onSetDates, canEdit }: { trip: Trip; activities: Activity[]; mediaCount: number; setTab: (tab: Tab) => void; onAddActivity: () => void; onAddExpense: () => void; onAddPhotos: () => void; onSetDates: () => void; canEdit: boolean }) {
+function Overview({ trip, userId, activities, mediaCount, setTab, setJournalView, onOpenTool, onAddActivity, onAddExpense, onAddPhotos, onSetDates, canEdit, onError }: { trip: Trip; userId: string; activities: Activity[]; mediaCount: number; setTab: (tab: Tab) => void; setJournalView: (view: "journal" | "feed") => void; onOpenTool: (tool: SecondaryTool) => void; onAddActivity: () => void; onAddExpense: () => void; onAddPhotos: () => void; onSetDates: () => void; canEdit: boolean; onError: (message: string) => void }) {
+  const { segments } = useTransitSegments(trip.id);
+  const transit = segments.filter((segment) => segment.deletedAt === null);
+  const [scoutOpen, setScoutOpen] = useState(false);
+  const days = dateRange(trip.startDate, trip.endDate);
   return (
     <div className="space-y-6">
+      <DocumentRiskBanner userId={userId} destination={trip.destination} travelDate={trip.startDate} />
+
+      {/* TODO(cleanup): Dates / Itinerary / Weather health pills hidden per request.
+          Re-enable by uncommenting TripHealthBar below. */}
+      {/* <TripHealthBar
+        startDate={trip.startDate}
+        endDate={trip.endDate}
+        activityCount={activities.length}
+        weatherWarnings={weatherWarnings}
+      /> */}
+
       {canEdit && (!trip.startDate || !trip.endDate) && (
         <div className="flex flex-col gap-4 rounded-2xl border border-primary/20 bg-primary/10 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
             <CalendarDays className="size-5 shrink-0 text-primary" />
             <div>
-              <p className="font-medium text-primary">Set your travel dates</p>
+              <p className="font-semibold text-primary">Set your travel dates</p>
               <p className="text-sm text-primary/80">Add start and end dates to generate your itinerary.</p>
             </div>
           </div>
@@ -187,21 +617,108 @@ function Overview({ trip, activities, mediaCount, setTab, onAddActivity, onAddEx
       )}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Stat icon={CalendarDays} label="Activities" value={String(activities.length)} onClick={() => setTab("itinerary")} />
-        <Stat icon={CircleDollarSign} label="Currency" value={trip.baseCurrency} onClick={() => setTab("expenses")} />
-        <Stat icon={Users} label="Travelers" value={`${trip.adultCount + trip.childCount} total`} onClick={() => setTab("travelers")} />
-        <Stat icon={Camera} label="Gallery" value={`${mediaCount} photo${mediaCount === 1 ? "" : "s"}`} onClick={() => setTab("gallery")} />
+        <Stat icon={CircleDollarSign} label="Currency" value={trip.baseCurrency} onClick={() => setTab("money")} />
+        <Stat icon={Users} label="Travelers" value={`${trip.adultCount + trip.childCount} total`} onClick={() => setTab("people")} />
+        <Stat icon={Camera} label="Gallery" value={`${mediaCount} photo${mediaCount === 1 ? "" : "s"}`} onClick={() => setTab("photos")} />
       </div>
-      {trip.description && <div className="rounded-2xl border bg-card p-6"><h2 className="font-semibold">About this trip</h2><p className="mt-2 text-muted-foreground">{trip.description}</p></div>}
+      <section className="rounded-2xl border bg-card p-5 sm:p-6" aria-labelledby="overview-tools-heading">
+        <Heading level={2} id="overview-tools-heading" className="text-base font-semibold">Trip tools</Heading>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <ToolCard icon={Backpack} title="Packing" description="Smart packing list" onClick={() => onOpenTool("packing")} />
+          <ToolCard icon={HeartPulse} title="Travel health" description="Docs & expiry tracker" onClick={() => onOpenTool("health")} />
+          <ToolCard icon={Vote} title="Polls" description="Group voting" onClick={() => onOpenTool("polls")} />
+          <ToolCard icon={Lock} title="Secure vault" description="Encrypted documents" onClick={() => onOpenTool("vault")} />
+        </div>
+      </section>
+      {/* FinanceSummaryStrip temporarily hidden (Group spent / True leftover / Planned). */}
+      {/* <FinanceSummaryStrip tripId={trip.id} userId={userId} baseCurrency={trip.baseCurrency} /> */}
+      {transit.length > 0 && (
+        <section className="rounded-2xl border bg-card p-5 sm:p-6" aria-labelledby="overview-transit-heading">
+          <div className="flex items-center justify-between gap-3">
+            <Heading level={2} id="overview-transit-heading" className="text-base font-semibold">Transit</Heading>
+            <Button variant="ghost" size="sm" onClick={() => setTab("itinerary")}>View itinerary</Button>
+          </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {transit.map((segment) => (
+              <TransitCard key={segment.id} segment={segment} interactive={false} />
+            ))}
+          </div>
+        </section>
+      )}
+      <div className="rounded-2xl border bg-card p-5 sm:p-6">
+        <div className="flex items-center justify-between gap-3">
+          <Heading level={2} className="text-base font-semibold">Recent activity</Heading>
+          <Button variant="ghost" size="sm" onClick={() => { setJournalView("feed"); setTab("journal"); }}>View all</Button>
+        </div>
+        <div className="mt-3">
+          <SharedTripFeed tripId={trip.id} userId={userId} limit={4} emptyMessage="No activity yet. Changes you make on this trip appear here." />
+        </div>
+      </div>
+      {trip.description && <div className="rounded-2xl border bg-card p-6"><Heading level={2} className="text-base font-semibold">About this trip</Heading><p className="mt-2 text-muted-foreground">{trip.description}</p></div>}
       {canEdit && (
         <div className="rounded-2xl border bg-card p-6">
-          <h2 className="font-semibold">Quick actions</h2>
+          <Heading level={2} className="text-base font-semibold">Quick actions</Heading>
           <div className="mt-4 flex flex-wrap gap-3">
-            <Button onClick={onAddActivity}><Plus className="size-4" />Add activity</Button>
+            <Button variant="primary" onClick={onAddActivity}><Plus className="size-5" />Add activity</Button>
             <Button variant="outline" onClick={onAddExpense}>Add expense</Button>
             <Button variant="outline" onClick={onAddPhotos}>Add photos</Button>
+            <Button variant="outline" onClick={() => setScoutOpen(true)} className="h-11 gap-1 border-transparent bg-linear-to-r from-viatik-blue via-viatik-magenta to-viatik-red px-3 text-white shadow-[0_4px_14px_rgba(168,85,247,0.35)] hover:border-transparent hover:opacity-90">
+              <Image src="/scout_icon.png" alt="Scout the fox" width={40} height={40} className="size-10 shrink-0 object-contain object-center" />Scout AI</Button>
           </div>
         </div>
       )}
+      <AiScoutSidebar
+        modal
+        open={scoutOpen}
+        onOpenChange={setScoutOpen}
+        trip={trip}
+        tripId={trip.id}
+        userId={userId}
+        days={days}
+        activities={activities}
+        canEdit={canEdit}
+        onError={onError}
+      />
+    </div>
+  );
+}
+
+function SetLocationCard({ trip, canEdit }: { trip: Trip; canEdit: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (!canEdit) {
+    return <p className="text-sm text-muted-foreground">This trip has no destination coordinates set, so weather can’t be loaded.</p>;
+  }
+  if (!open) {
+    return (
+      <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-muted-foreground">Set a destination with coordinates to load the weather forecast.</p>
+        <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+          <MapPin className="size-4" />Set location
+        </Button>
+      </div>
+    );
+  }
+  async function handlePlaceSelect(details: PlaceDetails) {
+    setError(null);
+    try {
+      await tripRepository.update(trip.id, {
+        destination: details.label,
+        latitude: details.latitude,
+        longitude: details.longitude,
+        placeId: details.placeId,
+        timeZone: details.timeZone ?? trip.timeZone ?? "",
+      });
+      setOpen(false);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to save location.");
+    }
+  }
+  return (
+    <div className="space-y-2">
+      <DestinationField defaultValue={trip.destination ?? ""} onPlaceSelect={(details) => void handlePlaceSelect(details)} />
+      {error && <p className="text-xs text-destructive">{error}</p>}
+      <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
     </div>
   );
 }
@@ -216,7 +733,214 @@ function Stat({ icon: Icon, label, value, onClick }: { icon: typeof CalendarDays
   );
 }
 
-function ActivityDialog({ open, state, trip, userId, activities, onClose, onError, onDelete }: { open: boolean; state: ActivityDialogState; trip: Trip; userId: string; activities: Activity[]; onClose: () => void; onError: (message: string) => void; onDelete: (activity: Activity) => void }) { const activity = state && state !== "new" ? state.activity : undefined; const readOnly = state && state !== "new" ? state.readOnly : false; const [saving, setSaving] = useState(false); const days = dateRange(trip.startDate, trip.endDate); async function submit(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); setSaving(true); const data = new FormData(event.currentTarget); const dayDate = String(data.get("dayDate")); const time = String(data.get("startTime") || ""); const values = { dayDate, title: String(data.get("title")), description: String(data.get("description") || "") || null, location: String(data.get("location") || "") || null, category: String(data.get("category") || "general"), startTime: time ? `${dayDate}T${time}:00` : null }; try { if (activity) await activityRepository.update(activity.id, values); else await activityRepository.create({ id: crypto.randomUUID(), tripId: trip.id, ...values, position: Math.max(0, ...activities.filter((item) => item.dayDate === dayDate).map((item) => item.position)) + 1024, createdBy: userId }); onClose(); } catch (cause) { onError(cause instanceof Error ? cause.message : "Unable to save activity."); } finally { setSaving(false); } } if (readOnly && activity) { return <Dialog open={open} onOpenChange={(value) => !value && onClose()}><DialogContent><DialogHeader><DialogTitle>{activity.title}</DialogTitle><DialogDescription className="sr-only">Activity details</DialogDescription></DialogHeader><dl className="space-y-3 text-sm"><div className="flex justify-between gap-4"><dt className="text-muted-foreground">Day</dt><dd>{formatDate(activity.dayDate)}</dd></div>{activity.startTime && <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Time</dt><dd>{new Date(activity.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</dd></div>}{activity.location && <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Location</dt><dd>{activity.location}</dd></div>}<div className="flex justify-between gap-4"><dt className="text-muted-foreground">Category</dt><dd className="capitalize">{activity.category}</dd></div>{activity.description && <div><dt className="text-muted-foreground">Description</dt><dd className="mt-1">{activity.description}</dd></div>}</dl><DialogFooter><Button type="button" onClick={onClose}>Close</Button></DialogFooter></DialogContent></Dialog>; } return <Dialog open={open} onOpenChange={(value) => !value && onClose()}><DialogContent><DialogHeader><DialogTitle>{activity ? "Edit activity" : "Add activity"}</DialogTitle><DialogDescription>Plan a stop in your day. It stays available offline.</DialogDescription></DialogHeader><form onSubmit={submit} className="space-y-4"><Field label="Title" name="title" defaultValue={activity?.title} required /><div className="grid grid-cols-2 gap-3"><div className="space-y-2"><Label htmlFor="dayDate">Day</Label><select id="dayDate" name="dayDate" defaultValue={activity?.dayDate ?? days[0]} className="h-10 w-full rounded-md border bg-background px-3 text-sm">{days.map((day) => <option key={day} value={day}>{formatDate(day)}</option>)}</select></div><Field label="Start time" name="startTime" type="time" defaultValue={activity?.startTime?.slice(11, 16) ?? ""} /></div><Field label="Location" name="location" defaultValue={activity?.location ?? ""} /><Field label="Category" name="category" defaultValue={activity?.category ?? "general"} /><Field label="Description" name="description" defaultValue={activity?.description ?? ""} /><DialogFooter>{activity && <Button type="button" variant="destructive" className="sm:mr-auto" onClick={() => { if (activity) onDelete(activity); }}><Trash2 className="size-4" />Delete activity</Button>}<Button type="button" variant="outline" onClick={onClose}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? "Saving…" : "Save activity"}</Button></DialogFooter></form></DialogContent></Dialog>; }
-function Field({ label, name, ...props }: React.ComponentProps<typeof Input> & { label: string; name: string }) { return <div className="space-y-2"><Label htmlFor={`activity-${name}`}>{label}</Label><Input id={`activity-${name}`} name={name} {...props} /></div>; }
-function dateRange(start?: string | null, end?: string | null) { if (!start || !end || end < start) return []; const dates: string[] = []; const current = new Date(`${start}T12:00:00`); const finish = new Date(`${end}T12:00:00`); while (current <= finish && dates.length < 60) { dates.push(current.toISOString().slice(0, 10)); current.setDate(current.getDate() + 1); } return dates; }
+function ToolCard({ icon: Icon, title, description, onClick }: { icon: typeof Backpack; title: string; description: string; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className="flex w-full items-center gap-3 rounded-xl border bg-background p-4 text-left transition hover:border-primary/50 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><Icon className="size-5" aria-hidden /></span>
+      <span className="min-w-0">
+        <span className="block text-sm font-semibold">{title}</span>
+        <span className="block text-xs text-muted-foreground">{description}</span>
+      </span>
+    </button>
+  );
+}
+
+function ActivityDialog({ open, state, trip, userId, members, travelers, activities, onClose, onError, onDelete }: { open: boolean; state: ActivityDialogState; trip: Trip; userId: string; members: TripMember[]; travelers: TripTraveler[]; activities: Activity[]; onClose: () => void; onError: (message: string) => void; onDelete: (activity: Activity) => void }) {
+  const activity = state && state !== "new" && "activity" in state ? state.activity : undefined;
+  const draft = state && state !== "new" && "draft" in state ? state.draft : undefined;
+  const transitSegment = state && state !== "new" && "transitSegment" in state ? state.transitSegment : undefined;
+  const readOnly = state && state !== "new" && "activity" in state ? state.readOnly : false;
+  const [saving, setSaving] = useState(false);
+  const [cloneOpen, setCloneOpen] = useState(false);
+  const [cloning, setCloning] = useState(false);
+  const [personalBudget, setPersonalBudget] = useState<ActivityPersonalBudget | null>(null);
+  const [loadedBudgetForActivityId, setLoadedBudgetForActivityId] = useState<string | null>(null);
+  const days = dateRange(trip.startDate, trip.endDate);
+  const currentPersonalBudget = activity && personalBudget?.activityId === activity.id ? personalBudget : null;
+  useEffect(() => {
+    let cancelled = false;
+    if (!activity) return;
+    void activityPersonalBudgetRepository.getByActivityAndUser(activity.id, userId).then((budget) => {
+      if (cancelled) return;
+      setPersonalBudget(budget ?? null);
+      setLoadedBudgetForActivityId(activity.id);
+    });
+    return () => { cancelled = true; };
+  }, [activity, userId]);
+  async function submit(values: ActivityFormValues) {
+    setSaving(true);
+    try {
+      if (values.kind === "transit") {
+        if (transitSegment) {
+          await transitRepository.update(transitSegment.id, values.transit);
+        } else {
+          await transitRepository.create({ ...values.transit, tripId: trip.id, createdBy: userId });
+          if (activity) await activityRepository.remove(activity.id);
+        }
+      } else {
+        const activityValues = { dayDate: values.dayDate, title: values.title, description: values.description, placeName: values.placeName, formattedAddress: values.formattedAddress, placeId: values.placeId, category: values.category, timingSpecificity: values.timingSpecificity, flexiblePeriod: values.flexiblePeriod, startTime: values.startTime, endTime: values.endTime, bookingReference: values.bookingReference, participants: values.participants, pollStatus: values.pollStatus, votingEndsAt: values.votingEndsAt, pollOptions: values.pollOptions, pollVotes: values.pollVotes };
+        const activityId = activity?.id ?? crypto.randomUUID();
+        if (activity) {
+          await activityRepository.update(activity.id, activityValues);
+        } else {
+          await activityRepository.create({ id: activityId, tripId: trip.id, ...activityValues, position: Math.max(0, ...activities.filter((item) => item.dayDate === activityValues.dayDate).map((item) => item.position)) + 1024, createdBy: userId });
+          if (transitSegment) await transitRepository.remove(transitSegment.id);
+        }
+        if (values.personalBudgetMinor !== null) {
+          await activityPersonalBudgetRepository.upsert({ id: currentPersonalBudget?.id ?? crypto.randomUUID(), activityId, tripId: trip.id, userId, amountMinor: values.personalBudgetMinor, currency: trip.baseCurrency });
+        } else if (currentPersonalBudget) {
+          await activityPersonalBudgetRepository.remove(currentPersonalBudget.id);
+        }
+      }
+      onClose();
+    } catch (cause) {
+      onError(cause instanceof Error ? cause.message : "Unable to save activity.");
+    } finally {
+      setSaving(false);
+    }
+  }
+  async function cloneActivity(timing: ActivityCloneTiming) {
+    if (!activity) return;
+    setCloning(true);
+    try {
+      const cloneId = crypto.randomUUID();
+      await activityRepository.create({
+        id: cloneId,
+        tripId: trip.id,
+        dayDate: timing.dayDate,
+        title: activity.title,
+        description: activity.description,
+        placeName: activity.placeName ?? null,
+        formattedAddress: activity.formattedAddress ?? null,
+        placeId: activity.placeId ?? null,
+        category: activity.category,
+        timingSpecificity: activity.timingSpecificity ?? "exact",
+        flexiblePeriod: timing.flexiblePeriod,
+        startTime: timing.startTime,
+        endTime: timing.endTime,
+        bookingReference: activity.bookingReference ?? null,
+        participants: activity.participants ?? [],
+        pollStatus: activity.pollStatus ?? "confirmed",
+        votingEndsAt: activity.votingEndsAt ?? null,
+        pollOptions: activity.pollOptions ?? [],
+        pollVotes: activity.pollVotes ?? [],
+        position: Math.max(0, ...activities.filter((item) => item.dayDate === timing.dayDate).map((item) => item.position)) + 1024,
+        estimatedCostMinor: activity.estimatedCostMinor,
+        createdBy: userId,
+      });
+      if (currentPersonalBudget) {
+        await activityPersonalBudgetRepository.upsert({ id: crypto.randomUUID(), activityId: cloneId, tripId: trip.id, userId, amountMinor: currentPersonalBudget.amountMinor, currency: currentPersonalBudget.currency });
+      }
+      setCloneOpen(false);
+      onClose();
+    } catch (cause) {
+      onError(cause instanceof Error ? cause.message : "Unable to clone activity.");
+    } finally {
+      setCloning(false);
+    }
+  }
+  if (readOnly && activity) {
+    return (
+      <Dialog open={open} onOpenChange={(value) => !value && onClose()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{activity.title}</DialogTitle>
+            <DialogDescription className="sr-only">Activity details</DialogDescription>
+          </DialogHeader>
+          <dl className="space-y-3 text-sm">
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted-foreground">Day</dt>
+              <dd>{formatDate(activity.dayDate)}</dd>
+            </div>
+            {activity.startTime && (
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted-foreground">Time</dt>
+                <dd>
+                  {new Date(activity.startTime).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </dd>
+              </div>
+            )}
+            {activity.timingSpecificity === "flexible" && activity.flexiblePeriod && (
+              <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Time</dt><dd className="capitalize">{activity.flexiblePeriod}</dd></div>
+            )}
+            {activity.bookingReference && (
+              <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Booking reference</dt><dd className="font-mono">{activity.bookingReference}</dd></div>
+            )}
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted-foreground">Category</dt>
+              <dd className="capitalize">{activity.category}</dd>
+            </div>
+            {activity.description && (
+              <div>
+                <dt className="text-muted-foreground">Description</dt>
+                <dd className="mt-1">{activity.description}</dd>
+              </div>
+            )}
+          </dl>
+          {activity.placeName && activity.formattedAddress && activity.placeId && <ActivityLocationCard name={activity.placeName} formattedAddress={activity.formattedAddress} placeId={activity.placeId} />}
+          <DialogFooter>
+            <Button type="button" onClick={onClose}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+  return (
+    <Dialog open={open} onOpenChange={(value) => !value && onClose()}>
+      <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] max-w-4xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{transitSegment ? "Edit transit" : activity ? "Edit activity" : "Add activity"}</DialogTitle>
+          <DialogDescription>Plan a stop in your day. It stays available offline.</DialogDescription>
+        </DialogHeader>
+        {activity && loadedBudgetForActivityId !== activity.id ? <p className="py-8 text-center text-sm text-muted-foreground">Loading your private budget...</p> : <ActivityForm
+          key={transitSegment?.id ?? activity?.id ?? `${draft?.dayDate ?? "new"}-${draft?.startTime ?? ""}`}
+          activity={activity}
+          transitSegment={transitSegment}
+          members={members}
+          travelers={travelers}
+          currentUserId={userId}
+          currency={trip.baseCurrency}
+          personalBudgetMinor={currentPersonalBudget?.amountMinor ?? null}
+          draft={draft}
+          days={days}
+          saving={saving}
+          onSubmit={submit}
+          onCancel={onClose}
+          onAddTraveler={async (name) => {
+            const contact = await contactRepository.create({ id: crypto.randomUUID(), ownerId: userId, fullName: name });
+            return tripTravelerRepository.attach({ id: crypto.randomUUID(), tripId: trip.id, contact, createdBy: userId });
+          }}
+          onClone={activity ? () => setCloneOpen(true) : undefined}
+          onDelete={
+            transitSegment
+              ? async () => {
+                  await transitRepository.remove(transitSegment.id);
+                  onClose();
+                }
+              : activity
+                ? () => onDelete(activity)
+                : undefined
+          }
+        />}
+        {activity && <ActivityCloneDialog key={`${activity.id}-${cloneOpen ? "open" : "closed"}`} activity={activity} days={days} open={cloneOpen} cloning={cloning} onOpenChange={setCloneOpen} onClone={cloneActivity} />}
+      </DialogContent>
+    </Dialog>
+  );
+}
+function dateRange(start?: string | null, end?: string | null) {
+  if (!start || !end || end < start) return [];
+  const dates: string[] = [];
+  const current = new Date(`${start}T12:00:00`);
+  const finish = new Date(`${end}T12:00:00`);
+  while (current <= finish && dates.length < 60) {
+    dates.push(current.toISOString().slice(0, 10));
+    current.setDate(current.getDate() + 1);
+  }
+  return dates;
+}
 function formatDate(date: string) { return new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }); }

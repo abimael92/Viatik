@@ -16,11 +16,12 @@ if (typeof window !== "undefined") {
 
 let callback: (media: TripMedia[]) => void = () => {};
 
-const makeMedia = (id: string, caption: string): TripMedia => ({
+const makeMedia = (id: string, caption: string, takenAt: string | null = null): TripMedia => ({
   id,
   tripId: "trip-1",
   activityId: null,
   caption,
+  takenAt,
   blob: new Blob([id], { type: "image/jpeg" }),
   storagePath: `${id}.jpg`,
   uploadedUrl: null,
@@ -28,6 +29,11 @@ const makeMedia = (id: string, caption: string): TripMedia => ({
   contentType: "image/jpeg",
   byteSize: 1,
   createdBy: "user-1",
+  updatedBy: "user-1",
+  deletedBy: null,
+  restoredAt: null,
+  restoredBy: null,
+  version: 1,
   uploadStatus: "uploaded",
   uploadProgress: 100,
   uploadError: null,
@@ -96,5 +102,49 @@ describe("TripGallery", () => {
     expect(screen.queryByLabelText("Add photos")).toBeNull();
     expect(screen.queryByRole("button", { name: "Delete photo" })).toBeNull();
     expect(screen.getByRole("button", { name: /View Beach in lightbox/ })).toBeTruthy();
+  });
+
+  it("groups photos by day with headers and a fallback bucket for missing dates", () => {
+    render(<TripGallery tripId="trip-1" userId="user-1" canEdit={false} />);
+    act(() => {
+      callback([
+        makeMedia("m1", "Beach", "2026-01-03"),
+        makeMedia("m2", "Dinner", "2026-01-03"),
+        makeMedia("m3", "Sunrise", "2026-01-01"),
+        makeMedia("m4", "Old", null),
+      ]);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "By Day" }));
+
+    expect(screen.getByRole("heading", { name: "2026-01-03" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "2026-01-01" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "No date / Older" })).toBeTruthy();
+
+    expect(screen.getByRole("button", { name: /View Beach in lightbox/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /View Dinner in lightbox/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /View Old in lightbox/ })).toBeTruthy();
+  });
+
+  it("filters to photos taken today", () => {
+    const today = new Date().toISOString().slice(0, 10);
+    render(<TripGallery tripId="trip-1" userId="user-1" canEdit={false} />);
+    act(() => {
+      callback([makeMedia("m1", "TodayShot", today), makeMedia("m2", "OldShot", "2026-01-01")]);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Today" }));
+
+    expect(screen.getByRole("button", { name: /View TodayShot in lightbox/ })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /View OldShot in lightbox/ })).toBeNull();
+  });
+
+  it("shows an empty message when the selected view has no photos", () => {
+    render(<TripGallery tripId="trip-1" userId="user-1" canEdit={false} />);
+    act(() => { callback([makeMedia("m1", "OldShot", "2026-01-01")]); });
+
+    fireEvent.click(screen.getByRole("button", { name: "Today" }));
+
+    expect(screen.getByText("No photos match this view.")).toBeTruthy();
   });
 });

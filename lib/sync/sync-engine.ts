@@ -1,6 +1,6 @@
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import { getCurrentDatabase, type ViatikDatabase } from "@/lib/db/dexie";
-import type { Activity, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler } from "@/features/domain/entities";
+import type { Activity, ActivityPersonalBudget, Connection, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler, UserWallet } from "@/features/domain/entities";
 import type { TripMedia } from "@/features/domain/entities-media";
 import type { VaultEntry, VaultKeyset } from "@/features/vault/domain/vault-types";
 import type { TripWeatherForecast } from "@/features/weather/domain/weather-types";
@@ -12,10 +12,13 @@ import {
   removeMutation,
   shouldRetryMutation,
   getRetryDelay,
+  isTransientSchemaCacheError,
+  resetMutationAttempts,
 } from "@/lib/sync/outbox";
 import type { OutboxMutation } from "@/lib/sync/types";
 import {
   activityToRow,
+  activityPersonalBudgetToRow,
   tripToRow,
   expenseToRow,
   expenseShareToRow,
@@ -24,6 +27,7 @@ import {
   settlementToRow,
   mediaToRow,
   contactToRow,
+  connectionToRow,
   tripTravelerToRow,
   vaultEntryToRow,
   vaultKeysetToRow,
@@ -104,11 +108,14 @@ function mutationPayloadToRow(mutation: OutboxMutation): Record<string, unknown>
     case "tripMember": return tripMemberToRow(mutation.payload as unknown as TripMember);
     case "invitation": return invitationToRow(mutation.payload as unknown as TripInvitation);
     case "activity": return activityToRow(mutation.payload as unknown as Activity);
+    case "activityPersonalBudget": return activityPersonalBudgetToRow(mutation.payload as unknown as ActivityPersonalBudget);
     case "expense": return expenseToRow(mutation.payload as unknown as Expense);
     case "expenseShare": return expenseShareToRow(mutation.payload as unknown as ExpenseShare);
     case "settlement": return settlementToRow(mutation.payload as unknown as ExpenseSettlement);
     case "media": return mediaToRow(mutation.payload as unknown as TripMedia);
     case "contact": return contactToRow(mutation.payload as unknown as Contact);
+    case "connectionRequest":
+    case "connectionResponse": return connectionToRow(mutation.payload as unknown as Connection);
     case "tripTraveler": return tripTravelerToRow(mutation.payload as unknown as TripTraveler);
     case "vaultKeyset": return vaultKeysetToRow(mutation.payload as unknown as VaultKeyset);
     case "vaultEntry": return vaultEntryToRow(mutation.payload as unknown as VaultEntry);
@@ -281,13 +288,28 @@ async function syncOnce(context?: SyncExecutionContext): Promise<void> {
     context?.signal.throwIfAborted();
     // Check if mutation should be retried
     if (!shouldRetryMutation(mutation)) {
-      logger.warn("Skipping mutation that exceeded max retries", {
-        id: mutation.id,
-        attempts: mutation.attempts,
-        entityType: mutation.entityType,
-      });
-      skippedCount++;
-      continue;
+      // Transient PostgREST schema-cache staleness (e.g. migrations applied after
+      // the mutation was created) must not permanently drop the mutation. Reset
+      // its attempts so it gets a fresh try — the underlying resource exists now.
+      if (isTransientSchemaCacheError(mutation.lastError)) {
+        logger.warn("Resetting attempts for schema-cache-stale mutation", {
+          id: mutation.id,
+          entityType: mutation.entityType,
+          attempts: mutation.attempts,
+          lastError: mutation.lastError,
+        });
+        await resetMutationAttempts(mutation.id);
+        mutation.attempts = 0;
+        mutation.lastError = null;
+      } else {
+        logger.warn("Skipping mutation that exceeded max retries", {
+          id: mutation.id,
+          attempts: mutation.attempts,
+          entityType: mutation.entityType,
+        });
+        skippedCount++;
+        continue;
+      }
     }
 
     // Apply backoff if this mutation has failed before
@@ -323,6 +345,10 @@ async function syncOnce(context?: SyncExecutionContext): Promise<void> {
   context?.signal.throwIfAborted();
   await pullRemoteChanges(lastSyncAt === null, context?.signal);
   context?.signal.throwIfAborted();
+  // Conflicts are auto-resolved during sync (remote wins); clear the historical
+  // records so the status pill only reflects actionable conflicts, not a running
+  // total of every conflict that ever happened.
+  await getDb().syncConflicts.clear();
 
   const duration = Date.now() - startTime;
   syncDurations.push(duration);

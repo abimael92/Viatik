@@ -26,7 +26,11 @@ export function useSyncStatus(): SyncStatusState {
     const unsubscribe = subscribeToSync((status, pending, lastSyncAt) => {
       setState((previous) => ({ ...previous, status, pending, lastSyncAt, isOnline: navigator.onLine }));
     });
-    const conflictSubscription = liveQuery(() => db.syncConflicts.count()).subscribe({ next: (conflicts) => setState((previous) => ({ ...previous, conflicts })) });
+    // Only surface conflicts that are still unresolved (resolvedAt is null).
+    // Sync conflicts auto-resolve during sync (remote wins), so counting every
+    // historical record would leave the pill stuck showing "N conflicts to
+    // resolve" forever.
+    const conflictSubscription = liveQuery(() => db.syncConflicts.filter((conflict) => conflict.resolvedAt === null).count()).subscribe({ next: (conflicts) => setState((previous) => ({ ...previous, conflicts })) });
 
     function handleOnline() {
       setState((prev) => ({ ...prev, isOnline: true }));

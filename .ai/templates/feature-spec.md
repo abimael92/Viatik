@@ -1,6 +1,6 @@
 # Feature Specification: [FEATURE_NAME]
 
-**Project:** [PROJECT_NAME]  
+**Project:** Viatik  
 **Owner:** [OWNER]  
 **Status:** [Draft | Ready for Design | In Progress | Ready for QA | Complete]  
 **Created:** [YYYY-MM-DD]  

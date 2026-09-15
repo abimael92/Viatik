@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Link2, Trash2, UserPlus, Users } from "lucide-react";
+import { Trash2, UserPlus, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Heading } from "@/components/ui/heading";
 import { ContactEditorDialog } from "@/features/contacts/components/contact-editor-dialog";
-import { ViatikContactImportDialog } from "@/features/contacts/components/viatik-contact-import-dialog";
 import {
   contactRepository,
   tripTravelerRepository,
@@ -26,7 +26,6 @@ export function TravelerPanel({
   const [travelers, setTravelers] = useState<TripTraveler[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
-  const [linking, setLinking] = useState(false);
   useEffect(() => contactRepository.watch(userId, setContacts), [userId]);
   useEffect(() => tripTravelerRepository.watch(tripId, setTravelers), [tripId]);
   const available = useMemo(
@@ -56,20 +55,10 @@ export function TravelerPanel({
     }
   }
 
-  async function attachCreated(contact: Contact) {
-    await tripTravelerRepository.attach({
-      id: crypto.randomUUID(),
-      tripId,
-      contact,
-      createdBy: userId,
-    });
-    setMessage(null);
-  }
-
   return (
     <section className="space-y-5">
       <div>
-        <h2 className="text-2xl font-bold">Travelers</h2>
+        <Heading level={2} className="text-2xl font-bold">Travelers</Heading>
         <p className="text-muted-foreground">
           People going on this vacation. Everyone can see their names; their email and phone stay
           private to you.
@@ -91,7 +80,7 @@ export function TravelerPanel({
               {traveler.displayName.slice(0, 2).toUpperCase()}
             </div>
             <div className="flex-1">
-              <p className="font-medium">{traveler.displayName}</p>
+              <p className="font-semibold">{traveler.displayName}</p>
               <p className="text-xs capitalize text-muted-foreground">{traveler.travelerType}</p>
             </div>
             {canEdit && (
@@ -101,7 +90,7 @@ export function TravelerPanel({
                 aria-label={`Remove ${traveler.displayName}`}
                 onClick={() => void tripTravelerRepository.remove(traveler.id)}
               >
-                <Trash2 className="size-4 text-destructive" />
+                <Trash2 className="size-5 text-destructive" />
               </Button>
             )}
           </div>
@@ -118,22 +107,19 @@ export function TravelerPanel({
           <div className="rounded-2xl border bg-card p-5">
             <div className="flex items-center gap-2">
               <UserPlus className="size-5 text-primary" />
-              <h3 className="font-semibold">Add someone new</h3>
+              <Heading level={3} className="text-base font-semibold">Add someone new</Heading>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
               Their contact is saved privately for future trips.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
-              <Button onClick={() => setCreating(true)}>
+              <Button variant="primary" onClick={() => setCreating(true)}>
                 Add new contact
-              </Button>
-              <Button variant="outline" onClick={() => setLinking(true)}>
-                <Link2 className="size-4" /> Link Viatik account
               </Button>
             </div>
           </div>
           <form onSubmit={attach} className="rounded-2xl border bg-card p-5">
-            <h3 className="font-semibold">Add an existing contact</h3>
+            <Heading level={3} className="text-base font-semibold">Add an existing contact</Heading>
             <p className="mt-1 text-sm text-muted-foreground">
               Reuse someone already in your private contacts.
             </p>
@@ -154,7 +140,7 @@ export function TravelerPanel({
                   </option>
                 ))}
               </select>
-              <Button type="submit" disabled={!available.length}>
+              <Button type="submit" variant="primary" disabled={!available.length}>
                 Add traveler
               </Button>
             </div>
@@ -170,13 +156,14 @@ export function TravelerPanel({
         userId={userId}
         attachToTrip
         onOpenChange={setCreating}
-        onSaved={attachCreated}
-      />
-      <ViatikContactImportDialog
-        open={linking}
-        userId={userId}
-        onOpenChange={setLinking}
-        onLinked={attachCreated}
+        onSaved={async (contact) => {
+          await tripTravelerRepository.attach({
+            id: crypto.randomUUID(),
+            tripId,
+            contact,
+            createdBy: userId,
+          });
+        }}
       />
     </section>
   );

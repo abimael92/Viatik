@@ -38,7 +38,7 @@ function DialogContent({
           <motion.div
             className={cn(
               "fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2",
-              "rounded-lg border border-border bg-card p-6 text-card-foreground shadow-lg",
+              "rounded-2xl border border-border/60 bg-card p-6 text-card-foreground shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_20px_50px_-12px_rgba(15,23,42,0.25)]",
               className
             )}
             initial={{ opacity: 0, scale: 0.96 }}
@@ -47,9 +47,11 @@ function DialogContent({
             transition={{ duration: 0.15 }}
           >
             {children}
-            <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none">
-              <X className="size-4" />
-              <span className="sr-only">Close</span>
+            <DialogPrimitive.Close
+              className="absolute right-3 top-3 grid size-11 place-items-center rounded-lg opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="Close dialog"
+            >
+              <X className="size-5" />
             </DialogPrimitive.Close>
           </motion.div>
         </DialogPrimitive.Content>

@@ -27,9 +27,12 @@ export class DexieCollaborationRepository implements CollaborationRepository {
 
   async listProfiles(userIds: string[]): Promise<ProfileSummary[]> {
     if (!userIds.length || typeof navigator === "undefined" || !navigator.onLine) return [];
-    const { data, error } = await getSupabaseBrowserClient().from("profiles").select("id, full_name, avatar_url").in("id", userIds);
+    // Read collaborator identity through the safe `get_profile_public_data` RPC
+    // (migration 37) which returns only public columns for the caller + shared-trip
+    // members. Reading `profiles` directly is now self-only for RLS.
+    const { data, error } = await getSupabaseBrowserClient().rpc("get_profile_public_data", { p_ids: userIds });
     if (error) throw new Error(error.message);
-    return (data ?? []).map((profile) => ({ id: String(profile.id), fullName: profile.full_name == null ? null : String(profile.full_name), avatarUrl: profile.avatar_url == null ? null : String(profile.avatar_url), email: null }));
+    return (data ?? []).map((profile: { id: string; full_name: string | null; avatar_url: string | null }) => ({ id: String(profile.id), fullName: profile.full_name == null ? null : String(profile.full_name), avatarUrl: profile.avatar_url == null ? null : String(profile.avatar_url), email: null }));
   }
 
   listInvitations(tripId?: string): Promise<TripInvitation[]> {
@@ -55,6 +58,15 @@ export class DexieCollaborationRepository implements CollaborationRepository {
         status: "pending",
         invitedUserId: null,
         expiresAt: new Date(Date.now() + 14 * 86400000).toISOString(),
+        statusChangedAt: existing?.statusChangedAt ?? now,
+        statusChangedBy: existing?.statusChangedBy ?? input.invitedBy,
+        acceptedAt: existing?.acceptedAt ?? null,
+        acceptedBy: existing?.acceptedBy ?? null,
+        rejectedAt: existing?.rejectedAt ?? null,
+        rejectedBy: existing?.rejectedBy ?? null,
+        revokedAt: existing?.revokedAt ?? null,
+        revokedBy: existing?.revokedBy ?? null,
+        version: existing?.version ?? 1,
         createdAt: existing?.createdAt ?? now,
         updatedAt: now,
       };
@@ -73,6 +85,40 @@ export class DexieCollaborationRepository implements CollaborationRepository {
       const updated = { ...member, role, updatedAt };
       await ctx.table<TripMember>("tripMembers").put(updated);
       await append("tripMember", "update", updated, { tx: ctx, baseUpdatedAt: member.updatedAt });
+    });
+  }
+
+  async setMemberRoleByUser(tripId: string, userId: string, role: Exclude<TripMemberRole, "owner">, byUserId: string): Promise<void> {
+    const db = getDb();
+    return TransactionContext.runInTransaction([db.tripMembers], async (ctx) => {
+      const now = new Date().toISOString();
+      const existing = await ctx.table<TripMember>("tripMembers")
+        .where("[tripId+userId]").equals([tripId, userId])
+        .first();
+      if (existing) {
+        if (existing.role === role) return;
+        const updated = { ...existing, role, updatedAt: now };
+        await ctx.table<TripMember>("tripMembers").put(updated);
+        await append("tripMember", "update", updated, { tx: ctx, baseUpdatedAt: existing.updatedAt });
+        return;
+      }
+      const member: TripMember = {
+        id: crypto.randomUUID(),
+        tripId,
+        userId,
+        role,
+        invitedBy: byUserId,
+        joinedAt: now,
+        roleChangedAt: null,
+        roleChangedBy: null,
+        removedAt: null,
+        removedBy: null,
+        version: 1,
+        createdAt: now,
+        updatedAt: now,
+      };
+      await ctx.table<TripMember>("tripMembers").add(member);
+      await append("tripMember", "insert", member, { tx: ctx, baseUpdatedAt: null });
     });
   }
 

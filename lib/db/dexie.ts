@@ -1,10 +1,20 @@
 import Dexie, { type EntityTable } from "dexie";
 
-import type { Activity, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler } from "@/features/domain/entities";
+import type { Activity, ActivityPersonalBudget, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripBudget, TripInvitation, TripMember, TripTraveler, UserWallet } from "@/features/domain/entities";
 import type { TripMedia } from "@/features/domain/entities-media";
 import { MAX_MINOR_UNITS } from "@/features/domain/money";
 import type { VaultEntry, VaultKeyset } from "@/features/vault/domain/vault-types";
 import type { TripWeatherForecast } from "@/features/weather/domain/weather-types";
+import type { LocalProfile } from "@/features/profile/domain/profile-types";
+import type { TripPin } from "@/features/maps/domain/map-types";
+import type { TripFeedItem } from "@/features/feed/domain/feed-types";
+import type { PackingItem } from "@/features/packing/domain/packing-types";
+import type { TravelDocument } from "@/features/health/domain/health-types";
+import type { Poll, PollVote } from "@/features/polls/domain/poll-types";
+import type { CurrencyRate } from "@/features/finance/domain/currency-types";
+import type { TripShareLink } from "@/features/sharing/domain/share-types";
+import type { TransitSegment } from "@/features/transit/domain/transit-types";
+import type { JournalDayEntry } from "@/features/journal/domain/journal-types";
 import type { OutboxMutation, SyncConflict, SyncLease, SyncMetadata } from "@/lib/sync/types";
 
 function migrateMinorUnits(record: Record<string, unknown>, legacyField: string, minorField: string): void {
@@ -32,6 +42,7 @@ export class ViatikDatabase extends Dexie {
   trips!: EntityTable<Trip, "id">;
   tripMembers!: EntityTable<TripMember, "id">;
   activities!: EntityTable<Activity, "id">;
+  activityPersonalBudgets!: EntityTable<ActivityPersonalBudget, "id">;
   expenses!: EntityTable<Expense, "id">;
   expenseShares!: EntityTable<ExpenseShare, "id">;
   /** FIFO queue of not-yet-synced mutations, drained by `SyncEngine`. */
@@ -48,6 +59,29 @@ export class ViatikDatabase extends Dexie {
   vaultKeysets!: EntityTable<VaultKeyset, "id">;
   vaultEntries!: EntityTable<VaultEntry, "id">;
   tripWeatherForecasts!: EntityTable<TripWeatherForecast, "id">;
+  userWallets!: EntityTable<UserWallet, "id">;
+  /** Local-only unified trip budget (not synced via the outbox). */
+  tripBudgets!: EntityTable<TripBudget, "id">;
+  /** Local-only mirror of the signed-in user's own profile (not synced). */
+  profiles!: EntityTable<LocalProfile, "id">;
+  /** Local-only dropped map pins (not synced — device-local annotations). */
+  tripPins!: EntityTable<TripPin, "id">;
+  /** Local-only collaborative activity feed (not synced — derived from synced entities). */
+  feedItems!: EntityTable<TripFeedItem, "id">;
+  /** Local-only Smart Packing List items (not synced — device-local checklists). */
+  packingItems!: EntityTable<PackingItem, "id">;
+  /** Local-only travel documents tracked for expiry (not synced). */
+  travelDocuments!: EntityTable<TravelDocument, "id">;
+  /** Local-only group polls and votes (not synced — device-local, like feed). */
+  polls!: EntityTable<Poll, "id">;
+  pollVotes!: EntityTable<PollVote, "id">;
+  /** Local-only cached offline exchange rates (not synced). */
+  currencyRates!: EntityTable<CurrencyRate, "id">;
+  /** Guest share links for trips (synced via the outbox to Supabase). */
+  shareLinks!: EntityTable<TripShareLink, "id">;
+  /** Local-only live transit segments (flights & trains). */
+  transitSegments!: EntityTable<TransitSegment, "id">;
+  journalDayEntries!: EntityTable<JournalDayEntry, "id">;
 
   constructor(name: string) {
     super(name);
@@ -179,6 +213,222 @@ export class ViatikDatabase extends Dexie {
         trip.placeId ??= null;
         trip.timeZone ??= null;
       });
+    });
+
+    this.version(15).stores({}).upgrade(async (transaction) => {
+      await transaction.table("contacts").toCollection().modify((contact: Record<string, unknown>) => {
+        contact.avatarUrl ??= null;
+      });
+    });
+
+    this.version(16).stores({}).upgrade(async (transaction) => {
+      await transaction.table("contacts").toCollection().modify((contact: Record<string, unknown>) => {
+        contact.avatarSeed ??= null;
+      });
+    });
+
+    // v17: bidirectional mutual `connections` graph. Existing (unidirectional)
+    // contacts become `unverified_offline` — no remote edge is implied.
+    this.version(17).stores({
+      contacts: "id, ownerId, linkedProfileId, connectionStatus, updatedAt, deletedAt",
+    }).upgrade(async (transaction) => {
+      await transaction.table("contacts").toCollection().modify((contact: Record<string, unknown>) => {
+        if (contact.connectionStatus === undefined) contact.connectionStatus = "unverified_offline";
+        if (contact.connectionId === undefined) contact.connectionId = null;
+        if (contact.connectionDirection === undefined) contact.connectionDirection = null;
+      });
+    });
+
+    // v18: Phase 2A finance — new wallet/budget stores plus added expense &
+    // share columns. Existing records are backfilled with safe defaults.
+    this.version(18).stores({
+      expenses: "id, tripId, activityId, date, [tripId+date], updatedAt, deletedAt",
+      expenseShares: "id, expenseId, userId, splitType, [expenseId+userId]",
+      userWallets: "id, tripId, userId, [tripId+userId], updatedAt",
+      dailyBudgetOverrides: "id, tripId, date, [tripId+date], updatedAt",
+    }).upgrade(async (transaction) => {
+      await transaction.table("trips").toCollection().modify((trip: Record<string, unknown>) => {
+        trip.totalBudgetMinor ??= null;
+      });
+      await transaction.table("expenses").toCollection().modify((expense: Record<string, unknown>) => {
+        expense.exchangeRateToBase ??= null;
+        expense.categoryId ??= null;
+        expense.date ??= String(expense.createdAt ?? "").slice(0, 10);
+      });
+      await transaction.table("expenseShares").toCollection().modify((share: Record<string, unknown>) => {
+        share.splitType ??= "equal";
+      });
+    });
+
+    // v19: Phase 2B planned-budget tracking — itinerary activities gain an
+    // optional estimated cost (in the trip's base currency, minor units).
+    this.version(19).stores({}).upgrade(async (transaction) => {
+      await transaction.table("activities").toCollection().modify((activity: Record<string, unknown>) => {
+        activity.estimatedCostMinor ??= null;
+      });
+    });
+
+    // v20: Smart import — trip media gains a capture date (`takenAt`) so the
+    // gallery can group/filter photos by the day they were taken. The index is
+    // additive (inserts `takenAt`); existing rows backfill to `null`.
+    this.version(20).stores({
+      tripMedia: "id, tripId, activityId, uploadStatus, takenAt, updatedAt, deletedAt",
+    }).upgrade(async (transaction) => {
+      await transaction.table("tripMedia").toCollection().modify((media: Record<string, unknown>) => {
+        if (media.takenAt === undefined) media.takenAt = null;
+      });
+    });
+
+    // v21: local-only `profiles` mirror so safety data (emergency contact,
+    // passport) stays available offline. Not synced via the outbox.
+    this.version(21).stores({
+      profiles: "id, updatedAt",
+    });
+
+    // v22: local-only `tripPins` table for the Offline Maps feature. Dropped
+    // pins are device-local annotations (like `profiles`), not synced.
+    this.version(22).stores({
+      tripPins: "id, tripId, category, updatedAt, deletedAt",
+    });
+
+    // v23: local-only `feedItems` for the Collaborative Real-Time Feed. Feed
+    // entries are device-local (like `profiles`/`tripPins`) — they are derived
+    // from the already-synced expenses/media/activities, so no outbox/cloud
+    // sync is needed.
+    this.version(23).stores({
+      feedItems: "id, tripId, actorId, verb, createdAt, [tripId+createdAt]",
+    });
+
+    // v24: local-only `packingItems` for Smart Packing Lists. Checklists are
+    // private per-device to-dos (like `profiles`/`tripPins`), indexed by trip
+    // and category so the list view can group and filter reactively.
+    this.version(24).stores({
+      packingItems: "id, tripId, category, isPacked, [tripId+category], position, updatedAt, deletedAt",
+    });
+
+    // v25: local-only `travelDocuments` for the Travel Health & Document Expiry
+    // Tracker. Indexed by user, type, and expiry date for quick grouped reads.
+    this.version(25).stores({
+      travelDocuments: "id, userId, type, expiryDate, [userId+type], updatedAt, deletedAt",
+    });
+
+    // v26: local-only `polls`/`pollVotes` for Group Polls & Real-Time Voting.
+    // Polls are indexed by trip; votes by poll (with a per-user uniqueness
+    // index so one member == one vote). Device-local like `feedItems`/`packingItems`.
+    this.version(26).stores({
+      polls: "id, tripId, status, [tripId+status], updatedAt, deletedAt",
+      pollVotes: "id, pollId, userId, optionId, [pollId+userId], updatedAt",
+    });
+
+    // v27: local-only `currencyRates` for the Offline Currency Converter.
+    // Exchange rates are cached per (base → quote) pair, indexed by each leg
+    // so the converter can look up or seed cross-rates. Device-local (not synced).
+    this.version(27).stores({
+      currencyRates: "id, baseCurrency, quoteCurrency, [baseCurrency+quoteCurrency], updatedAt",
+    });
+
+    // v28: `shareLinks` for Social & Access Sharing. Unlike the local-only
+    // stores above, share links ARE synced via the outbox to the remote
+    // `trip_share_links` table so the unauthenticated /share/[slug] route can
+    // resolve them. Indexed by trip and (globally) by slug.
+    this.version(28).stores({
+      shareLinks: "id, tripId, slug, active, [tripId+active], updatedAt, deletedAt",
+    });
+
+    // v29: local-only `transitSegments` for Live Transit & Logistics. Flights
+    // and trains are device-local (like `packingItems`/`polls`); live status is
+    // cached onto the segment. Indexed by trip, day, mode, and departure time.
+    this.version(29).stores({
+      transitSegments: "id, tripId, dayDate, mode, scheduledDeparture, [tripId+dayDate], updatedAt, deletedAt",
+    });
+
+    this.version(30).stores({
+      journalDayEntries: "id, tripId, dayDate, [tripId+dayDate], updatedAt",
+    });
+
+    // v31: unified money tracker. Consolidates the scattered per-trip budget
+    // fields (`Trip.totalBudgetMinor` + the per-day `dailyBudgetOverrides`
+    // store) into a single `tripBudgets` table (total limit + optional daily
+    // target + per-category allocations), swaps the free-form `categoryId` on
+    // expenses for typed `category`/`subcategory` keys, and adds explicit
+    // settlement tracking (status + settledAt) to expense shares & settlements.
+    this.version(31).stores({
+      dailyBudgetOverrides: null,
+      tripBudgets: "id, tripId, updatedAt, deletedAt",
+      expenses: "id, tripId, activityId, date, category, [tripId+date], updatedAt, deletedAt",
+      expenseShares: "id, expenseId, userId, splitType, settlementStatus, [expenseId+userId]",
+      expenseSettlements: "id, tripId, fromUserId, toUserId, status, updatedAt, deletedAt",
+    }).upgrade(async (transaction) => {
+      const now = new Date().toISOString();
+
+      // Fold each trip's old `totalBudgetMinor` into a `TripBudget`, then drop
+      // the legacy column. Per-day overrides have no direct analogue in the
+      // unified model (they become the single optional daily target), so the
+      // `dailyBudgetOverrides` table is removed as part of the consolidation.
+      const tripRows = await transaction.table<Record<string, unknown>, string>("trips").toArray();
+      const budgets: Array<Record<string, unknown>> = [];
+      for (const row of tripRows) {
+        const raw = row.totalBudgetMinor;
+        let totalBudgetMinor = 0n;
+        if (raw != null) {
+          if (typeof raw === "bigint" && raw >= 0n) totalBudgetMinor = raw;
+          else if (typeof raw === "number" && Number.isSafeInteger(raw) && raw >= 0) totalBudgetMinor = BigInt(raw);
+        }
+        delete row.totalBudgetMinor;
+        budgets.push({
+          id: crypto.randomUUID(),
+          tripId: String(row.id),
+          totalBudgetMinor,
+          dailyTargetMinor: null,
+          categoryAllocations: [],
+          createdBy: String(row.ownerId ?? ""),
+          createdAt: now,
+          updatedAt: now,
+          deletedAt: null,
+        });
+      }
+      if (tripRows.length) await transaction.table<Record<string, unknown>, string>("trips").bulkPut(tripRows);
+      if (budgets.length) await transaction.table<Record<string, unknown>, string>("tripBudgets").bulkPut(budgets);
+
+      // Typed spending categories: legacy free-form category_id strings (e.g.
+      // "Meals") don't map cleanly onto the typed set, so they default to null
+      // and can be re-classified from the UI.
+      await transaction.table("expenses").toCollection().modify((expense: Record<string, unknown>) => {
+        if (expense.category === undefined) expense.category = null;
+        if (expense.subcategory === undefined) expense.subcategory = null;
+        if ("categoryId" in expense) delete expense.categoryId;
+      });
+      await transaction.table("expenseShares").toCollection().modify((share: Record<string, unknown>) => {
+        if (share.paidBy === undefined) share.paidBy = "";
+        if (share.settlementStatus === undefined) share.settlementStatus = "pending";
+        if (share.settledAt === undefined) share.settledAt = null;
+      });
+      await transaction.table("expenseSettlements").toCollection().modify((settlement: Record<string, unknown>) => {
+        if (settlement.status === undefined) settlement.status = "pending";
+        if (settlement.settledAt === undefined) settlement.settledAt = null;
+      });
+    });
+
+    // v32: trip lifecycle. Adds an explicit status (planned | active |
+    // completed | cancelled) with optional startedAt/completedAt timestamps.
+    // Backfills existing rows: a trip whose end date has already passed
+    // becomes "completed"; everything else stays "planned". The date-derived
+    // fallback in resolveTripStatus covers in-flight nuance without ever
+    // flipping the stored status automatically.
+    this.version(32).stores({}).upgrade(async (transaction) => {
+      const today = new Date().toISOString().slice(0, 10);
+      await transaction.table("trips").toCollection().modify((trip: Record<string, unknown>) => {
+        if (trip.status === undefined) {
+          trip.status =
+            trip.endDate && typeof trip.endDate === "string" && trip.endDate < today ? "completed" : "planned";
+          trip.startedAt = trip.startedAt ?? null;
+          trip.completedAt = trip.completedAt ?? null;
+        }
+      });
+    });
+
+    this.version(33).stores({
+      activityPersonalBudgets: "id, activityId, tripId, userId, [activityId+userId], updatedAt",
     });
   }
 }

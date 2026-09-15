@@ -10,6 +10,11 @@ const mocks = vi.hoisted(() => {
   const conflictAdd = vi.fn();
   const mediaUpdate = vi.fn();
   const pendingMedia = vi.fn();
+  const feedItemsAdd = vi.fn();
+  const feedItemFirst = vi.fn();
+  const contactQueryToArray = vi.fn();
+  const contactDelete = vi.fn();
+  const outboxAnyOfCount = vi.fn();
   const queryResponses: Array<{ data: Record<string, unknown>[] | null; error: { message: string } | null }> = [];
   const query = {
     lte: vi.fn(),
@@ -48,7 +53,14 @@ const mocks = vi.hoisted(() => {
           count: vi.fn().mockResolvedValue(0),
           and: vi.fn(() => ({ last: outboxLast, delete: outboxDelete })),
         })),
+        anyOf: vi.fn(() => ({ filter: vi.fn(() => ({ count: outboxAnyOfCount })) })),
       })),
+    },
+    contacts: {
+      where: vi.fn(() => ({
+        anyOf: vi.fn(() => ({ filter: vi.fn(() => ({ toArray: contactQueryToArray })) })),
+      })),
+      delete: contactDelete,
     },
     tripMedia: {
       where: vi.fn(() => ({
@@ -58,6 +70,12 @@ const mocks = vi.hoisted(() => {
       update: mediaUpdate,
     },
     syncConflicts: { add: conflictAdd },
+    feedItems: {
+      where: vi.fn(() => ({
+        equals: vi.fn(() => ({ filter: vi.fn(() => ({ first: feedItemFirst })) })),
+      })),
+      add: feedItemsAdd,
+    },
     table: vi.fn(() => ({ put, delete: tableDelete })),
   };
 
@@ -70,7 +88,7 @@ const mocks = vi.hoisted(() => {
     storage: { from: storageFrom },
   };
 
-  return { put, tableDelete, metadataGet, metadataPut, queryResponses, query, from, upsert, rpc, channel, upload, createSignedUrl, remove, storageFrom, mediaUpdate, pendingMedia, db, client, outboxLast, outboxDelete, conflictAdd };
+  return { put, tableDelete, metadataGet, metadataPut, queryResponses, query, from, upsert, rpc, channel, upload, createSignedUrl, remove, storageFrom, mediaUpdate, pendingMedia, feedItemsAdd, feedItemFirst, db, client, outboxLast, outboxDelete, conflictAdd, contactQueryToArray, contactDelete, outboxAnyOfCount };
 });
 
 vi.mock("@/lib/db/dexie", () => ({
@@ -81,6 +99,7 @@ vi.mock("@/lib/supabase/browser-client", () => ({ getSupabaseBrowserClient: () =
 vi.mock("@/features/media/data/dexie-media-repository", () => ({ mediaPayload: vi.fn() }));
 
 import { __cloudSyncInternals, processPendingMedia, pullRemoteChanges, startRealtimeSync } from "@/lib/sync/cloud-sync";
+import { configureSyncUser } from "@/lib/sync/sync-context";
 
 describe("cloud synchronization", () => {
   beforeEach(() => {
@@ -97,7 +116,10 @@ describe("cloud synchronization", () => {
     mocks.client.auth.getUser.mockResolvedValue({ data: { user: { id: "user-1" } } });
     mocks.metadataGet.mockResolvedValue(undefined);
     mocks.pendingMedia.mockResolvedValue([]);
+    mocks.feedItemFirst.mockResolvedValue(undefined);
     mocks.outboxLast.mockResolvedValue(undefined);
+    mocks.contactQueryToArray.mockResolvedValue([]);
+    mocks.outboxAnyOfCount.mockResolvedValue(0);
     mocks.upload.mockResolvedValue({ error: null });
     mocks.upsert.mockResolvedValue({ error: null });
     mocks.rpc.mockResolvedValue({ data: { status: "applied", server_updated_at: "2026-01-02T00:00:00.000Z" }, error: null });
@@ -106,14 +128,14 @@ describe("cloud synchronization", () => {
 
   it("bootstraps every collaborative table and stores a pull cursor", async () => {
     await pullRemoteChanges(true);
-    expect(mocks.from).toHaveBeenCalledTimes(10);
+    expect(mocks.from).toHaveBeenCalledTimes(17);
     expect(mocks.metadataPut).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ key: "cloud:last-pull:user-1" })]));
   });
 
   it("uses the stored cursor for incremental pulls", async () => {
     mocks.metadataGet.mockImplementation(async (key: string) => key === "cloud:active-user" ? { key, value: "user-1" } : { key, value: "2026-01-01T00:00:00.000Z" });
     await pullRemoteChanges();
-    expect(mocks.query.gt).toHaveBeenCalledTimes(10);
+    expect(mocks.query.gt).toHaveBeenCalledTimes(17);
     expect(mocks.query.gt).toHaveBeenCalledWith("updated_at", "2026-01-01T00:00:00.000Z");
   });
 
@@ -122,7 +144,7 @@ describe("cloud synchronization", () => {
 
     await pullRemoteChanges(false, controller.signal);
 
-    expect(mocks.query.abortSignal).toHaveBeenCalledTimes(10);
+    expect(mocks.query.abortSignal).toHaveBeenCalledTimes(17);
     expect(mocks.query.abortSignal).toHaveBeenCalledWith(controller.signal);
   });
 
@@ -169,11 +191,28 @@ describe("cloud synchronization", () => {
 
   it("converges on a newer remote value and records the conflict", async () => {
     mocks.outboxLast.mockResolvedValue({ id: "mutation-1", entityType: "activity", entityId: "activity-1", tripId: "trip-1", mutatedAt: "2026-01-01T00:00:00.000Z" });
-    const activity = { id: "activity-1", tripId: "trip-1", dayDate: "2026-01-02", title: "Remote winner", description: null, location: null, category: "general", startTime: null, endTime: null, position: 1, createdBy: "user-1", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-02T00:00:00.000Z", deletedAt: null };
+    const activity = { id: "activity-1", tripId: "trip-1", dayDate: "2026-01-02", title: "Remote winner", description: null, location: null, category: "general", startTime: null, endTime: null, position: 1, estimatedCostMinor: null, createdBy: "user-1", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-02T00:00:00.000Z", deletedAt: null };
     await __cloudSyncInternals.applyRemote("activity", "activities", activity, mocks.client as never);
     expect(mocks.conflictAdd).toHaveBeenCalledWith(expect.objectContaining({ resolution: "remote", entityId: "activity-1" }));
     expect(mocks.outboxDelete).toHaveBeenCalledWith("mutation-1");
     expect(mocks.put).toHaveBeenCalledWith(activity);
+  });
+
+  it("sweeps stale local connection edges after a full pull", async () => {
+    mocks.contactQueryToArray.mockResolvedValue([
+      { id: "conn-1", ownerId: "user-1", connectionId: "conn-1", connectionStatus: "pending", connectionDirection: "outbound", deletedAt: null },
+    ]);
+    await pullRemoteChanges(true);
+    expect(mocks.contactDelete).toHaveBeenCalledWith("conn-1");
+  });
+
+  it("spares connection edges with a not-yet-replayed outbox mutation", async () => {
+    mocks.contactQueryToArray.mockResolvedValue([
+      { id: "conn-2", ownerId: "user-1", connectionId: "conn-2", connectionStatus: "pending", connectionDirection: "outbound", deletedAt: null },
+    ]);
+    mocks.outboxAnyOfCount.mockResolvedValue(1);
+    await pullRemoteChanges(true);
+    expect(mocks.contactDelete).not.toHaveBeenCalled();
   });
 
   it("uploads pending compressed media and marks it complete", async () => {
@@ -187,7 +226,7 @@ describe("cloud synchronization", () => {
 
   it("subscribes to realtime changes for every table", () => {
     const stop = startRealtimeSync();
-    expect(mocks.channel.on).toHaveBeenCalledTimes(10);
+    expect(mocks.channel.on).toHaveBeenCalledTimes(17);
     expect(mocks.channel.subscribe).toHaveBeenCalledOnce();
     stop();
   });
@@ -197,6 +236,30 @@ describe("cloud synchronization", () => {
     const registration = mocks.channel.on.mock.calls.find((call) => call[1].table === "activities");
     registration?.[2]({ eventType: "UPDATE", old: {}, new: { id: "activity-1", trip_id: "trip-1", day_date: "2026-01-02", title: "Museum", description: null, location: null, category: "culture", start_time: null, end_time: null, position: 1, created_by: "user-1", created_at: "2026-01-01T00:00:00.000Z", updated_at: "2026-01-02T00:00:00.000Z", deleted_at: null } });
     await vi.waitFor(() => expect(mocks.put).toHaveBeenCalledWith(expect.objectContaining({ id: "activity-1", title: "Museum" })));
+    stop();
+  });
+
+  it("emits a feed entry for a collaborator's realtime change but not our own echo", async () => {
+    configureSyncUser("user-1");
+    const stop = startRealtimeSync();
+    const registration = mocks.channel.on.mock.calls.find((call) => call[1].table === "activities");
+    const collaboratorRow = { eventType: "INSERT", old: {}, new: { id: "activity-2", trip_id: "trip-1", day_date: "2026-01-02", title: "Wine tasting", description: null, location: null, category: "food", start_time: null, end_time: null, position: 1, created_by: "user-2", created_at: "2026-01-02T00:00:00.000Z", updated_at: "2026-01-02T00:00:00.000Z", deleted_at: null } };
+
+    registration?.[2](collaboratorRow);
+    await vi.waitFor(() => expect(mocks.feedItemsAdd).toHaveBeenCalledTimes(1));
+    expect(mocks.feedItemsAdd.mock.calls[0][0]).toEqual(expect.objectContaining({
+      tripId: "trip-1",
+      actorId: "user-2",
+      verb: "added_activity",
+      summary: expect.stringContaining("Wine tasting"),
+    }));
+
+    // The current user's own change should not be re-emitted (already logged locally).
+    const ownRow = { eventType: "INSERT", old: {}, new: { id: "activity-3", trip_id: "trip-1", day_date: "2026-01-02", title: "My walk", description: null, location: null, category: "general", start_time: null, end_time: null, position: 1, created_by: "user-1", created_at: "2026-01-02T00:00:00.000Z", updated_at: "2026-01-02T00:00:00.000Z", deleted_at: null } };
+    registration?.[2](ownRow);
+    await vi.waitFor(() => expect(mocks.feedItemsAdd).toHaveBeenCalledTimes(1));
+
+    configureSyncUser(null);
     stop();
   });
 });

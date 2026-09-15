@@ -1,0 +1,131 @@
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import type { Expense, TripMember } from "@/features/domain/entities";
+import { ExpensePanel } from "@/features/expenses/components/expense-panel";
+
+if (typeof window !== "undefined") {
+  window.matchMedia ??= () => ({ matches: false, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false }) as unknown as MediaQueryList;
+}
+
+vi.mock("@/features/expenses/data/dexie-expense-repository", () => ({
+  expenseRepository: {
+    watchByTrip: vi.fn((_tripId: string, cb: (expenses: Expense[]) => void) => {
+      cb([]);
+      return () => {};
+    }),
+    listSharesByExpense: vi.fn().mockResolvedValue([]),
+    create: vi.fn(),
+    update: vi.fn(),
+    replaceShares: vi.fn(),
+    remove: vi.fn(),
+  },
+}));
+
+vi.mock("@/features/collaboration/data/dexie-collaboration-repository", () => ({
+  collaborationRepository: {
+    watchMembers: vi.fn((_tripId: string, cb: (members: TripMember[]) => void) => {
+      cb([]);
+      return () => {};
+    }),
+  },
+}));
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  if (typeof crypto !== "undefined" && !crypto.randomUUID) {
+    (crypto as { randomUUID?: () => string }).randomUUID = () => "test-uuid";
+  }
+});
+
+afterEach(() => cleanup());
+
+describe("ExpenseDialog", () => {
+  it("defaults splitting to off and can be turned on", async () => {
+    render(<ExpensePanel tripId="trip-1" userId="user-1" currency="USD" canEdit />);
+
+    await screen.findByRole("button", { name: /Add expense/ });
+    fireEvent.click(screen.getByRole("button", { name: /Add expense/ }));
+
+    const splitToggle = screen.getByLabelText("Split this expense") as HTMLInputElement;
+    // Splitting is OFF by default.
+    expect(splitToggle.checked).toBe(false);
+    expect(screen.getByText(/Recorded as your own expense/)).toBeTruthy();
+    expect(screen.queryByText("Participants")).toBeNull();
+
+    // Turning it on reveals paid-by / method / participants.
+    fireEvent.click(splitToggle);
+    expect(screen.getByText("Participants")).toBeTruthy();
+  });
+
+  it("quick-adds a free-text person (e.g. Mom) as a participant", async () => {
+    render(<ExpensePanel tripId="trip-1" userId="user-1" currency="USD" canEdit />);
+
+    await screen.findByRole("button", { name: /Add expense/ });
+    fireEvent.click(screen.getByRole("button", { name: /Add expense/ }));
+
+    // Quick-add only appears once splitting is turned on.
+    fireEvent.click(screen.getByLabelText("Split this expense"));
+
+    const quickAdd = screen.getByPlaceholderText(/Add a person, e.g\. Mom/);
+    fireEvent.change(quickAdd, { target: { value: "Mom" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    // "Mom" appears both in the paid-by selector and as a participant chip.
+    expect(screen.getAllByText("Mom").length).toBeGreaterThanOrEqual(1);
+    // With only the current user, the "no other travelers" hint appears.
+    expect(screen.getByText(/No other travelers yet/)).toBeTruthy();
+  });
+
+  it("shows a read-only exchange rate and live conversion for foreign expenses", async () => {
+    render(<ExpensePanel tripId="trip-1" userId="user-1" currency="MXN" canEdit />);
+
+    await screen.findByRole("button", { name: /Add expense/ });
+    fireEvent.click(screen.getByRole("button", { name: /Add expense/ }));
+
+    // Switch the expense currency to USD (foreign vs. the MXN trip base).
+    fireEvent.change(screen.getByLabelText("Currency"), { target: { value: "USD" } });
+
+    // Read-only rate label: 1 USD = 17.2 MXN (correct direction, no manual entry).
+    expect(screen.getByText(/1 USD = 17\.2 MXN/)).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText(/Amount \(USD\)/), { target: { value: "20" } });
+
+    // 20 USD ≈ 344 MXN (live read-only conversion).
+    expect(await screen.findByText(/344\.00/)).toBeTruthy();
+  });
+
+  it("defaults the currency to the event location's currency", async () => {
+    render(<ExpensePanel tripId="trip-1" userId="user-1" currency="USD" locationCurrency="MXN" canEdit />);
+
+    await screen.findByRole("button", { name: /Add expense/ });
+    fireEvent.click(screen.getByRole("button", { name: /Add expense/ }));
+
+    // New expense currency defaults to the location currency (MXN), not base USD.
+    expect((screen.getByLabelText("Currency") as HTMLSelectElement).value).toBe("MXN");
+  });
+
+  it("only shows paid-by/method/participants when splitting is on", async () => {
+    render(<ExpensePanel tripId="trip-1" userId="user-1" currency="USD" canEdit />);
+
+    await screen.findByRole("button", { name: /Add expense/ });
+    fireEvent.click(screen.getByRole("button", { name: /Add expense/ }));
+
+    // Off by default → paid-by/method/participants hidden.
+    expect(screen.queryByLabelText("Paid by")).toBeNull();
+    expect(screen.queryByLabelText("Split method")).toBeNull();
+    expect(screen.queryByText("Participants")).toBeNull();
+
+    // Turn splitting on → they appear.
+    fireEvent.click(screen.getByLabelText("Split this expense"));
+    expect(screen.getByLabelText("Paid by")).toBeTruthy();
+    expect(screen.getByLabelText("Split method")).toBeTruthy();
+    expect(screen.getByText("Participants")).toBeTruthy();
+
+    // Turn it off again → they hide.
+    fireEvent.click(screen.getByLabelText("Split this expense"));
+    expect(screen.queryByLabelText("Paid by")).toBeNull();
+    expect(screen.queryByLabelText("Split method")).toBeNull();
+    expect(screen.queryByText("Participants")).toBeNull();
+  });
+});
