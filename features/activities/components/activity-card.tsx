@@ -47,14 +47,13 @@ export function ActivityCard({ activity, onSelect, draggable = true, conflict, c
         colors.border,
         colors.background,
         !muted && `${colors.hover} hover:shadow-md focus-within:ring-2 focus-within:ring-ring`,
-        muted && "grayscale",
         isDragging && "z-50 rotate-2 scale-105 opacity-90 shadow-lg"
       )}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       role="listitem"
     >
-      <article className={cn("flex items-start gap-2", muted && "opacity-40")}>
+      <article className={cn("flex items-start gap-2", muted && "opacity-40 grayscale")}>
         {draggable && !muted ? (
           <button
             type="button"

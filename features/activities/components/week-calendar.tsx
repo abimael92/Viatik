@@ -131,14 +131,107 @@ export function WeekCalendar({
               const today = localDateKey(now) === day;
               const nowMinute = now.getHours() * 60 + now.getMinutes();
               return (
-                <div key={day} className={cn("relative border-r last:border-r-0", canEdit && "cursor-crosshair")} style={{ height: (END_HOUR - START_HOUR) * HOUR_HEIGHT, backgroundImage: `repeating-linear-gradient(to bottom, transparent 0, transparent ${HOUR_HEIGHT - 1}px, var(--color-border) ${HOUR_HEIGHT}px)` }} onClick={(event) => { if (!canEdit || !onCreateActivity || (event.target as HTMLElement).closest("button")) return; const rect = event.currentTarget.getBoundingClientRect(); const minutes = START_HOUR * 60 + Math.round(((event.clientY - rect.top) / HOUR_HEIGHT) * 4) * 15; onCreateActivity(day, minuteToTime(Math.min(minutes, END_HOUR * 60 - 15))); }}>
+                <div
+                  key={day}
+                  className={cn("relative border-r last:border-r-0", canEdit && "cursor-crosshair")}
+                  style={{
+                    height: (END_HOUR - START_HOUR) * HOUR_HEIGHT,
+                    backgroundImage: `repeating-linear-gradient(to bottom, transparent 0, transparent ${HOUR_HEIGHT - 1}px, var(--color-border) ${HOUR_HEIGHT}px)`,
+                  }}
+                  onClick={(event) => {
+                    if (
+                      !canEdit ||
+                      !onCreateActivity ||
+                      (event.target as HTMLElement).closest("button")
+                    )
+                      return;
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    const minutes =
+                      START_HOUR * 60 +
+                      Math.round(((event.clientY - rect.top) / HOUR_HEIGHT) * 4) * 15;
+                    onCreateActivity(day, minuteToTime(Math.min(minutes, END_HOUR * 60 - 15)));
+                  }}
+                >
                   {daySegments.map((segment) => {
                     const range = transitRange(segment);
-                    const overlaps = dayActivities.some((activity) => rangesOverlap(range, activityRange(activity)));
-                    return <TransitBlock key={segment.id} segment={segment} split={overlaps} onClick={() => setSelectedTransit(segment)} />;
+                    const overlaps = dayActivities.some((activity) =>
+                      rangesOverlap(range, activityRange(activity))
+                    );
+                    return (
+                      <TransitBlock
+                        key={segment.id}
+                        segment={segment}
+                        split={overlaps}
+                        onClick={() => setSelectedTransit(segment)}
+                      />
+                    );
                   })}
-                  {dayActivities.map((activity) => { const range = activityRange(activity); const top = Math.max(0, (range.start - START_HOUR * 60) / 60 * HOUR_HEIGHT); const height = Math.max(28, (range.end - range.start) / 60 * HOUR_HEIGHT); const overlaps = daySegments.some((segment) => rangesOverlap(range, transitRange(segment))); const conflict = conflicts?.[activity.id]; const colors = getActivityCategoryColors(activity.category); const muted = Boolean(currentUserId && !isUserAttending(activity, currentUserId)); const voting = activity.pollStatus === "proposed" || activity.pollStatus === "voting"; return <button key={activity.id} type="button" onClick={() => onSelect?.(activity)} className={cn("absolute right-1 z-10 overflow-hidden rounded-md border-l-4 px-2 py-1 text-left text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", overlaps ? "left-[51%]" : "left-1", colors.border, colors.background, colors.text, !muted && colors.hover, muted && "opacity-40 grayscale")} style={{ top, height }} aria-label={`Open details for ${activity.title}${conflict ? ` (weather warning)` : ""}`} data-activity-id={activity.id}><strong className="block truncate">{activity.title}</strong><span className="text-muted-foreground capitalize">{activity.timingSpecificity === "flexible" ? activity.flexiblePeriod ?? "Anytime" : activity.startTime ? new Date(activity.startTime).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "Time not set"}</span>{voting && <span className="mt-0.5 flex items-center gap-1 font-medium"><Vote className="size-3" aria-hidden />Voting</span>}{conflict && <span className="mt-0.5 inline-flex items-center gap-1 text-destructive" role="img" aria-label={conflict.reason} title={conflict.reason}><CloudRain className="size-3" />Weather</span>}</button>; })}
-                  {today && nowMinute >= START_HOUR * 60 && nowMinute <= END_HOUR * 60 && <CurrentTimeLine minute={nowMinute} />}
+                  {dayActivities.map((activity) => {
+                    const range = activityRange(activity);
+                    const top = Math.max(0, ((range.start - START_HOUR * 60) / 60) * HOUR_HEIGHT);
+                    const height = Math.max(28, ((range.end - range.start) / 60) * HOUR_HEIGHT);
+                    const overlaps = daySegments.some((segment) =>
+                      rangesOverlap(range, transitRange(segment))
+                    );
+                    const conflict = conflicts?.[activity.id];
+                    const colors = getActivityCategoryColors(activity.category);
+                    const muted = Boolean(
+                      currentUserId && !isUserAttending(activity, currentUserId)
+                    );
+                    const voting =
+                      activity.pollStatus === "proposed" || activity.pollStatus === "voting";
+                    return (
+                      <button
+                        key={activity.id}
+                        type="button"
+                        onClick={() => onSelect?.(activity)}
+                        className={cn(
+                          "absolute right-1 z-10 overflow-hidden rounded-md border-l-4 px-2 py-1 text-left text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                          overlaps ? "left-[51%]" : "left-1",
+                          colors.border,
+                          colors.background,
+                          colors.text,
+                          !muted && colors.hover,
+                          muted && "opacity-50 [&>*]:grayscale"
+                        )}
+                        style={{ top, height }}
+                        aria-label={`Open details for ${activity.title}${conflict ? ` (weather warning)` : ""}`}
+                        data-activity-id={activity.id}
+                      >
+                        <strong className="block truncate">{activity.title}</strong>
+                        <span className="text-muted-foreground capitalize">
+                          {activity.timingSpecificity === "flexible"
+                            ? (activity.flexiblePeriod ?? "Anytime")
+                            : activity.startTime
+                              ? new Date(activity.startTime).toLocaleTimeString([], {
+                                  hour: "numeric",
+                                  minute: "2-digit",
+                                })
+                              : "Time not set"}
+                        </span>
+                        {voting && (
+                          <span className="mt-0.5 flex items-center gap-1 font-medium">
+                            <Vote className="size-3" aria-hidden />
+                            Voting
+                          </span>
+                        )}
+                        {conflict && (
+                          <span
+                            className="mt-0.5 inline-flex items-center gap-1 text-destructive"
+                            role="img"
+                            aria-label={conflict.reason}
+                            title={conflict.reason}
+                          >
+                            <CloudRain className="size-3" />
+                            Weather
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                  {today && nowMinute >= START_HOUR * 60 && nowMinute <= END_HOUR * 60 && (
+                    <CurrentTimeLine minute={nowMinute} />
+                  )}
                 </div>
               );
             })}
