@@ -90,9 +90,10 @@ export function useHomeData(ownerId: string): HomeData {
             scope: activeTrip ? "today" : "upcoming",
             today: todayKeyInZone(primaryTrip.timeZone),
             limit: Number.MAX_SAFE_INTEGER,
+            currentUserId: ownerId,
           })
         : [],
-    [primaryTrip, activeTrip, activities]
+    [primaryTrip, activeTrip, activities, ownerId]
   );
 
   return {

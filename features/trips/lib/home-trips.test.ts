@@ -1,10 +1,26 @@
 import { describe, it, expect } from "vitest";
 import {
+  buildTimeline,
   formatTimeInZone,
   getTemporalState,
 } from "./home-trips";
+import type { Activity } from "@/features/domain/entities";
 
 const TEST_NOW = new Date("2024-06-15T12:00:00Z");
+
+describe("buildTimeline participation", () => {
+  const base = { id: "activity-1", tripId: "trip-1", dayDate: "2026-09-16", title: "Museum", description: null, category: "sightseeing", startTime: null, endTime: null, position: 1, estimatedCostMinor: null, createdBy: "user-1", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", deletedAt: null } satisfies Activity;
+
+  it("includes only activities the current user is confirmed to attend", () => {
+    const activities = [
+      { ...base, id: "attending", participants: [{ userId: "user-1", status: "attending" as const }] },
+      { ...base, id: "declined", participants: [{ userId: "user-1", status: "declined" as const }] },
+      { ...base, id: "pending", participants: [{ userId: "user-1", status: "pending" as const }] },
+      { ...base, id: "missing", participants: [{ userId: "user-2", status: "attending" as const }] },
+    ];
+    expect(buildTimeline(activities, { scope: "upcoming", today: "2026-09-15", limit: 10, currentUserId: "user-1" }).map((item) => item.id)).toEqual(["attending"]);
+  });
+});
 
 describe("Timezone-aware time formatting", () => {
   it("formats time in the destination timezone", () => {
