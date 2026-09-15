@@ -33,6 +33,7 @@ import {
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import type { OutboxEntityType } from "@/lib/sync/types";
 import { getSyncUser } from "@/lib/sync/sync-context";
+import { isTransientSchemaCacheError } from "@/lib/sync/outbox";
 
 function getDb(): ViatikDatabase {
   const db = getCurrentDatabase();
@@ -43,6 +44,7 @@ function getDb(): ViatikDatabase {
 const LAST_PULL_KEY = "cloud:last-pull";
 const ACTIVE_USER_KEY = "cloud:active-user";
 const PULL_PAGE_SIZE = 500;
+const OPTIONAL_REMOTE_TABLES = new Set(["activity_personal_budgets"]);
 let realtimeChannel: RealtimeChannel | null = null;
 
 const tableDefinitions = [
@@ -210,7 +212,16 @@ export async function pullRemoteChanges(full = false, signal?: AbortSignal): Pro
 
   for (const definition of tableDefinitions) {
     signal?.throwIfAborted();
-    staged.push({ definition, rows: await fetchTablePages(client, definition.table, since, startedAt, signal) });
+    try {
+      staged.push({ definition, rows: await fetchTablePages(client, definition.table, since, startedAt, signal) });
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : String(cause);
+      if (!OPTIONAL_REMOTE_TABLES.has(definition.table) || !isTransientSchemaCacheError(message)) throw cause;
+      logger.warn("Skipping optional remote table until its migration is available", {
+        table: definition.table,
+      });
+      staged.push({ definition, rows: [] });
+    }
   }
 
   const remoteTripIds = new Set(staged.find(({ definition }) => definition.table === "trips")?.rows.map((row) => String(row.id)) ?? []);
