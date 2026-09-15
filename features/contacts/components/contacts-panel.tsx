@@ -6,7 +6,6 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
 import { useToast } from "@/components/ui/toast";
-import { AddContactCommandBar } from "@/features/contacts/components/AddContactCommandBar";
 import { ContactDetailsDialog } from "@/features/contacts/components/contact-details-dialog";
 import { ContactEditorDialog } from "@/features/contacts/components/contact-editor-dialog";
 import { ContactRequestInbox } from "@/features/contacts/components/ContactRequestInbox";
