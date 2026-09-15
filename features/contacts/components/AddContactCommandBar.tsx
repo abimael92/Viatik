@@ -18,12 +18,14 @@ export function AddContactCommandBar({
   userId,
   ownProfile,
   onOpenScanner,
+  embedded = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   userId: string;
   ownProfile: CurrentPublicProfile;
   onOpenScanner?: () => void;
+  embedded?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [profile, setProfile] = useState<ViatikProfileLookup | null>(null);
@@ -54,6 +56,10 @@ export function AddContactCommandBar({
       setStatus(value.trim() ? "not_found" : "idle");
       return;
     }
+    if (embedded) {
+      setStatus("idle");
+      return;
+    }
     setStatus("looking");
     debounceRef.current = setTimeout(() => {
       resolve(value).catch((err) => {
@@ -63,6 +69,16 @@ export function AddContactCommandBar({
         setError(err instanceof Error ? err.message : "We couldn't look up that Viatik ID right now.");
       });
     }, 350);
+  }
+
+  function runLookup(value: string) {
+    setStatus("looking");
+    void resolve(value).catch((err) => {
+      if (value !== queryRef.current) return;
+      setProfile(null);
+      setStatus("not_found");
+      setError(err instanceof Error ? err.message : "We couldn't look up that Viatik ID right now.");
+    });
   }
 
   async function resolve(value: string) {
@@ -100,6 +116,104 @@ export function AddContactCommandBar({
 
   if (!open) return null;
 
+  const content = (
+    <div className={embedded ? "py-2" : "p-5"}>
+      <label htmlFor="viatik-id-search" className="sr-only">Viatik ID</label>
+      <div className={embedded ? "flex gap-2" : undefined}>
+        <div className="relative flex-1">
+          <ScanLine className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            ref={inputRef}
+            id="viatik-id-search"
+            value={query}
+            onChange={(event) => onQueryChange(event.target.value)}
+            placeholder="Enter their Viatik ID, e.g. VTK-…"
+            className="min-h-12 pl-12 text-base"
+            autoComplete="off"
+            spellCheck={false}
+          />
+          {status === "looking" && (
+            <LoaderCircle className="absolute right-4 top-1/2 size-5 -translate-y-1/2 animate-spin text-muted-foreground" />
+          )}
+        </div>
+        {embedded && (
+          <Button
+            type="button"
+            variant="primary"
+            disabled={!parseViatikId(query) || status === "looking"}
+            onClick={() => runLookup(query)}
+          >
+            Search
+          </Button>
+        )}
+      </div>
+
+      <div className="mt-4 space-y-3">
+        {status === "sent" ? (
+          <div className="flex items-center gap-3 rounded-2xl border border-success/30 bg-success/5 p-4 text-sm text-success">
+            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-success/15">
+              <Check className="size-5" />
+            </span>
+            <span>
+              Request sent to <strong>{profile?.fullName}</strong>. We&apos;ll connect once they accept.
+            </span>
+          </div>
+        ) : profile && status === "matched" ? (
+          <div
+            className="flex flex-col gap-4 rounded-2xl border border-border/40 bg-card p-4 transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)]"
+            aria-label="Matched Viatik account"
+          >
+            <div className="flex items-center gap-3">
+              <UserAvatar seed={profile.avatarSeed} src={profile.avatarUrl} name={profile.fullName} size="md" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-semibold">{profile.fullName}</p>
+                <p className="text-xs text-muted-foreground">
+                  {profile.publicHandle ? `@${profile.publicHandle}` : profile.viatikId}
+                </p>
+              </div>
+              <ShieldCheck className="size-5 shrink-0 text-success" aria-label="Verified Viatik account" />
+            </div>
+            <Button type="button" className="min-h-11 w-full" disabled={sending} onClick={() => void sendRequest()}>
+              {sending ? <LoaderCircle className="size-5 animate-spin" /> : <Send className="size-5" />}
+              Send request
+            </Button>
+          </div>
+        ) : status === "not_found" ? (
+          <div className="flex flex-col gap-3">
+            {error && <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
+            {onOpenScanner && (
+              <button
+                type="button"
+                onClick={onOpenScanner}
+                className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+              >
+                <QrCode className="size-5" /> Scan their QR code instead
+              </button>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            {embedded
+              ? "Type their Viatik ID to find their profile and send a connection request."
+              : "Type their Viatik ID or scan their code. Private account details are never shared."}
+          </p>
+        )}
+      </div>
+
+      {onOpenScanner && status === "idle" && (
+        <button
+          type="button"
+          onClick={onOpenScanner}
+          className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-border/40 text-sm font-semibold transition-colors hover:bg-accent"
+        >
+          <QrCode className="size-5" /> Scan their QR code
+        </button>
+      )}
+    </div>
+  );
+
+  if (embedded) return content;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 backdrop-blur-md sm:items-center sm:p-6"
@@ -121,83 +235,7 @@ export function AddContactCommandBar({
           </button>
         </header>
 
-        <div className="p-5">
-          <label htmlFor="viatik-id-search" className="sr-only">Viatik ID</label>
-          <div className="relative">
-            <ScanLine className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              ref={inputRef}
-              id="viatik-id-search"
-              value={query}
-              onChange={(event) => onQueryChange(event.target.value)}
-              placeholder="Enter their Viatik ID, e.g. VTK-…"
-              className="min-h-12 pl-12 text-base"
-              autoComplete="off"
-              spellCheck={false}
-            />
-            {status === "looking" && (
-              <LoaderCircle className="absolute right-4 top-1/2 size-5 -translate-y-1/2 animate-spin text-muted-foreground" />
-            )}
-          </div>
-
-          <div className="mt-4 space-y-3">
-            {status === "sent" ? (
-              <div className="flex items-center gap-3 rounded-2xl border border-success/30 bg-success/5 p-4 text-sm text-success">
-                <span className="grid size-9 shrink-0 place-items-center rounded-full bg-success/15">
-                  <Check className="size-5" />
-                </span>
-                <span>
-                  Request sent to <strong>{profile?.fullName}</strong>. We&apos;ll connect once they accept.
-                </span>
-              </div>
-            ) : profile && status === "matched" ? (
-              <div
-                className="flex flex-col gap-4 rounded-2xl border border-border/40 bg-card p-4 transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)]"
-                aria-label="Matched Viatik account"
-              >
-                <div className="flex items-center gap-3">
-                  <UserAvatar seed={profile.avatarSeed} src={profile.avatarUrl} name={profile.fullName} size="md" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold">{profile.fullName}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {profile.publicHandle ? `@${profile.publicHandle}` : profile.viatikId}
-                    </p>
-                  </div>
-                  <ShieldCheck className="size-5 shrink-0 text-success" aria-label="Verified Viatik account" />
-                </div>
-                <Button type="button" className="min-h-11 w-full" disabled={sending} onClick={() => void sendRequest()}>
-                  {sending ? <LoaderCircle className="size-5 animate-spin" /> : <Send className="size-5" />}
-                  Send request
-                </Button>
-              </div>
-            ) : status === "not_found" ? (
-              <div className="flex flex-col gap-3">
-                {error && <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
-                <button
-                  type="button"
-                  onClick={onOpenScanner}
-                  className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
-                >
-                  <QrCode className="size-5" /> Scan their QR code instead
-                </button>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Type their Viatik ID or scan their code. Private account details are never shared.
-              </p>
-            )}
-          </div>
-
-          {onOpenScanner && status === "idle" && (
-            <button
-              type="button"
-              onClick={onOpenScanner}
-              className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-border/40 text-sm font-semibold transition-colors hover:bg-accent"
-            >
-              <QrCode className="size-5" /> Scan their QR code
-            </button>
-          )}
-        </div>
+        {content}
       </section>
     </div>
   );

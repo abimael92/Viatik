@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import type { Expense, ExpenseShare, UserWallet } from "@/features/domain/entities";
+import type { ActivityPersonalBudget, Expense, ExpenseShare, UserWallet } from "@/features/domain/entities";
 import { toBaseMinorUnits } from "@/features/domain/money";
 import {
   expenseShareToRow,
+  activityPersonalBudgetToRow,
   expenseToRow,
   rowToExpense,
   rowToExpenseShare,
   rowToUserWallet,
+  rowToActivityPersonalBudget,
   userWalletToRow,
 } from "@/lib/supabase/mappers";
 
@@ -17,6 +19,11 @@ const timestamps = {
 };
 
 describe("finance mappers", () => {
+  it("round-trips a private activity budget", () => {
+    const budget: ActivityPersonalBudget = { id: "budget-1", activityId: "activity-1", tripId: "trip-1", userId: "user-1", amountMinor: 12550n, currency: "USD", version: 1, ...timestamps };
+    expect(rowToActivityPersonalBudget(activityPersonalBudgetToRow(budget))).toEqual(budget);
+  });
+
   it("round-trips a user wallet with minor-unit starting balance", () => {
     const wallet: UserWallet = {
       id: "wallet-1",
@@ -24,6 +31,7 @@ describe("finance mappers", () => {
       userId: "user-1",
       startingBalanceMinor: 250000n,
       currency: "USD",
+      version: 1,
       ...timestamps,
     };
     const row = userWalletToRow(wallet);
@@ -32,7 +40,7 @@ describe("finance mappers", () => {
   });
 
   it("rejects out-of-range wallet starting balances", () => {
-    const wallet: UserWallet = { id: "wallet-1", tripId: "trip-1", userId: "user-1", startingBalanceMinor: 10_000_000_000n, currency: "USD", ...timestamps };
+    const wallet: UserWallet = { id: "wallet-1", tripId: "trip-1", userId: "user-1", startingBalanceMinor: 10_000_000_000n, currency: "USD", version: 1, ...timestamps };
     expect(() => userWalletToRow(wallet)).toThrow("Invalid remote starting_balance");
   });
 
@@ -51,6 +59,11 @@ describe("finance mappers", () => {
       subcategory: null,
       date: "2026-09-04",
       createdBy: "user-1",
+      updatedBy: null,
+      deletedBy: null,
+      restoredAt: null,
+      restoredBy: null,
+      version: 1,
       createdAt: timestamps.createdAt,
       updatedAt: timestamps.updatedAt,
       deletedAt: null,
@@ -74,6 +87,14 @@ describe("finance mappers", () => {
       splitType: "shares",
       settlementStatus: "pending",
       settledAt: null,
+      settledBy: null,
+      statusChangedAt: null,
+      statusChangedBy: null,
+      updatedBy: null,
+      deletedBy: null,
+      restoredAt: null,
+      restoredBy: null,
+      version: 1,
       ...timestamps,
     };
     const row = expenseShareToRow(share);

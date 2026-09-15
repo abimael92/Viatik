@@ -1,4 +1,4 @@
-import type { Activity } from "@/features/domain/entities";
+import type { Activity, ActivityParticipant, ActivityPollOption, ActivityPollStatus, ActivityPollVote } from "@/features/domain/entities";
 import type { MinorUnits } from "@/features/domain/money";
 
 /** Storage-agnostic contract for reading/writing itinerary activities. */
@@ -26,12 +26,26 @@ export interface NewActivity {
   dayDate: string;
   title: string;
   description?: string | null;
+  placeName?: string | null;
+  formattedAddress?: string | null;
+  placeId?: string | null;
+  /** @deprecated Use structured place fields. */
   location?: string | null;
+  /** @deprecated Use `placeId`. */
   latitude?: number | null;
+  /** @deprecated Use `placeId`. */
   longitude?: number | null;
   category?: string;
+  timingSpecificity?: "exact" | "flexible";
+  flexiblePeriod?: "morning" | "afternoon" | "evening" | "anytime" | null;
   startTime?: string | null;
   endTime?: string | null;
+  bookingReference?: string | null;
+  participants?: ActivityParticipant[];
+  pollStatus?: ActivityPollStatus;
+  votingEndsAt?: string | null;
+  pollOptions?: ActivityPollOption[];
+  pollVotes?: ActivityPollVote[];
   position: number;
   estimatedCostMinor?: MinorUnits | null;
   createdBy: string;

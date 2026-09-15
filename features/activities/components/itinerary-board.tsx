@@ -41,6 +41,7 @@ interface ItineraryBoardProps {
   conflicts?: Record<string, WeatherConflict>;
   /** Receives a scout suggestion dropped onto a day column. */
   onDropScout?: (dayDate: string, payload: ScoutDndPayload) => void;
+  currentUserId?: string;
 }
 
 export function ItineraryBoard({
@@ -54,6 +55,7 @@ export function ItineraryBoard({
   weatherLoading,
   conflicts,
   onDropScout,
+  currentUserId,
 }: ItineraryBoardProps) {
   const db = useDatabase();
   const activities = useLiveQuery(
@@ -207,11 +209,12 @@ export function ItineraryBoard({
             weatherLoading={weatherLoading}
             conflicts={conflicts}
             onDropScout={onDropScout}
+            currentUserId={currentUserId}
           />
         ))}
       </div>
       <DragOverlay dropAnimation={{ duration: 150, easing: "cubic-bezier(0.18, 0.8, 0.25, 1)" }}>
-        {activeActivity ? <ActivityCard activity={activeActivity} /> : null}
+        {activeActivity ? <ActivityCard activity={activeActivity} currentUserId={currentUserId} /> : null}
       </DragOverlay>
     </DndContext>
   );

@@ -168,6 +168,55 @@ describe("CAS mutation replay", () => {
     expect(mocks.pullRemoteChanges).not.toHaveBeenCalled();
   });
 
+  it("falls back to generic CAS when the activity insert RPC is missing from the schema cache", async () => {
+    mocks.isTransientSchemaCacheError.mockReturnValue(true);
+    mocks.rpc
+      .mockResolvedValueOnce({
+        data: null,
+        error: {
+          message: "Could not find the function public.sync_activity_cas_upsert(p_base_updated_at, p_payload) in the schema cache",
+        },
+      })
+      .mockResolvedValueOnce({
+        data: { status: "applied", server_updated_at: "2026-01-03T00:00:00.000Z" },
+        error: null,
+      });
+    const mutation = tripMutation({
+      entityType: "activity",
+      operation: "insert",
+      baseUpdatedAt: null,
+      payload: {
+        id: "00000000-0000-4000-8000-000000000003",
+        tripId: "00000000-0000-4000-8000-000000000001",
+        dayDate: "2026-01-03",
+        title: "Museum",
+        description: null,
+        category: "sightseeing",
+        startTime: null,
+        endTime: null,
+        position: 1,
+        estimatedCostMinor: null,
+        createdBy: "00000000-0000-4000-8000-000000000002",
+        createdAt: "2026-01-02T00:00:00.000Z",
+        updatedAt: "2026-01-02T00:00:00.000Z",
+        deletedAt: null,
+      },
+    });
+
+    await expect(__syncEngineInternals.replayCasMutation(mutation)).resolves.toBe(true);
+    expect(mocks.rpc).toHaveBeenNthCalledWith(
+      1,
+      "sync_activity_cas_upsert",
+      expect.objectContaining({ p_base_updated_at: null }),
+    );
+    expect(mocks.rpc).toHaveBeenNthCalledWith(
+      2,
+      "sync_cas_upsert",
+      expect.objectContaining({ p_entity: "activity", p_base_updated_at: null }),
+    );
+    expect(mocks.mutationDelete).toHaveBeenCalledWith(mutation, "2026-01-03T00:00:00.000Z");
+  });
+
   it("resets attempts for mutations stuck on a transient schema-cache error", async () => {
     mocks.rpc.mockResolvedValue({ data: { status: "applied", server_updated_at: "2026-01-03T00:00:00.000Z" }, error: null });
     const mutation = tripMutation({ attempts: 5, lastError: "Could not find the function public.sync_cas_upsert(...) in the schema cache" });

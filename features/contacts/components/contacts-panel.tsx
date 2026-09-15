@@ -1,15 +1,15 @@
 "use client";
 
-import { QrCode, UserPlus, UserRoundSearch } from "lucide-react";
+import { UserPlus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
 import { useToast } from "@/components/ui/toast";
 import { AddContactCommandBar } from "@/features/contacts/components/AddContactCommandBar";
+import { ContactDetailsDialog } from "@/features/contacts/components/contact-details-dialog";
 import { ContactEditorDialog } from "@/features/contacts/components/contact-editor-dialog";
 import { ContactRequestInbox } from "@/features/contacts/components/ContactRequestInbox";
-import { QRScannerModal } from "@/features/contacts/components/QRScannerModal";
 import { contactRepository } from "@/features/contacts/data/dexie-contact-repository";
 import type { CurrentPublicProfile } from "@/features/contacts/lib/profile-directory";
 import type { Contact } from "@/features/domain/entities";
@@ -17,8 +17,7 @@ import type { Contact } from "@/features/domain/entities";
 export function ContactsPanel({ userId, ownProfile }: { userId: string; ownProfile: CurrentPublicProfile }) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [editing, setEditing] = useState<Contact | null | undefined>(undefined);
-  const [adding, setAdding] = useState(false);
-  const [scanning, setScanning] = useState(false);
+  const [viewing, setViewing] = useState<Contact | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const prevContactsRef = useRef<Contact[]>([]);
@@ -68,14 +67,8 @@ export function ContactsPanel({ userId, ownProfile }: { userId: string; ownProfi
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => setScanning(true)}>
-            <QrCode className="size-5" /> Scan QR
-          </Button>
-          <Button variant="outline" onClick={() => setAdding(true)}>
-            <UserRoundSearch className="size-5" /> Add by ID
-          </Button>
           <Button variant="primary" onClick={() => setEditing(null)}>
-            <UserPlus className="size-5" /> New contact
+            <UserPlus className="size-5" /> Add Contact
           </Button>
         </div>
       </div>
@@ -85,8 +78,19 @@ export function ContactsPanel({ userId, ownProfile }: { userId: string; ownProfi
       <ContactRequestInbox
         ownerId={userId}
         contacts={contacts}
+        onView={(contact) => setViewing(contact)}
         onEdit={(contact) => setEditing(contact)}
         onRemove={(contact) => void remove(contact)}
+      />
+
+      <ContactDetailsDialog
+        open={viewing !== null}
+        contact={viewing}
+        onOpenChange={(open) => !open && setViewing(null)}
+        onEdit={(contact) => {
+          setViewing(null);
+          setEditing(contact);
+        }}
       />
 
       <ContactEditorDialog
@@ -94,21 +98,9 @@ export function ContactsPanel({ userId, ownProfile }: { userId: string; ownProfi
         open={editing !== undefined}
         userId={userId}
         contact={editing}
+        ownProfile={ownProfile}
         onOpenChange={(open) => !open && setEditing(undefined)}
       />
-      {adding && (
-        <AddContactCommandBar
-          open
-          onOpenChange={setAdding}
-          userId={userId}
-          ownProfile={ownProfile}
-          onOpenScanner={() => {
-            setAdding(false);
-            setScanning(true);
-          }}
-        />
-      )}
-      {scanning && <QRScannerModal open onOpenChange={setScanning} userId={userId} ownProfile={ownProfile} />}
     </div>
   );
 }
