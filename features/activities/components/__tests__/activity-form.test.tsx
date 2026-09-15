@@ -37,7 +37,7 @@ describe("ActivityForm", () => {
     })));
   });
 
-  it("prompts to reopen consensus when a confirmed activity time changes", async () => {
+  it("does not auto-prompt for group vote when a confirmed activity time changes", async () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     const activity = { id: "activity-1", tripId: "trip-1", dayDate: "2026-09-16", title: "Museum", description: null, category: "sightseeing", pollStatus: "confirmed" as const, startTime: "2026-09-16T10:00:00", endTime: "2026-09-16T12:00:00", position: 1, estimatedCostMinor: null, createdBy: "user-1", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", deletedAt: null };
@@ -45,8 +45,9 @@ describe("ActivityForm", () => {
     fireEvent.change(screen.getByLabelText("Start time"), { target: { value: "11:00" } });
     fireEvent.submit(container.querySelector("form")!);
 
-    await waitFor(() => expect(confirm).toHaveBeenCalledWith(expect.stringContaining("Send changes to group vote")));
-    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ pollStatus: "voting" }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(confirm).not.toHaveBeenCalled();
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ pollStatus: "confirmed" }));
     confirm.mockRestore();
   });
 

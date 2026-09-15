@@ -15,6 +15,7 @@ import { TRANSIT_STATUS_META, type TransitSegment } from "@/features/transit/dom
 import { deriveStatusState } from "@/features/transit/lib/transit-service";
 import { cn } from "@/lib/utils";
 import { getActivityCategoryColors, isUserAttending } from "@/features/trips/lib/activity-category-colors";
+import { activityTimeMinutes, formatActivityTime } from "@/features/activities/lib/activity-time";
 
 const START_HOUR = 0;
 const END_HOUR = 24;
@@ -202,12 +203,7 @@ export function WeekCalendar({
                         <span className="text-muted-foreground capitalize">
                           {activity.timingSpecificity === "flexible"
                             ? (activity.flexiblePeriod ?? "Anytime")
-                            : activity.startTime
-                              ? new Date(activity.startTime).toLocaleTimeString([], {
-                                  hour: "numeric",
-                                  minute: "2-digit",
-                                })
-                              : "Time not set"}
+                            : formatActivityTime(activity.startTime) ?? "Time not set"}
                         </span>
                         {voting && (
                           <span className="mt-0.5 flex items-center gap-1 font-medium">
@@ -364,6 +360,6 @@ function rangesOverlap(a: { start: number; end: number }, b: { start: number; en
 function localDateKey(date: Date) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
 function minuteToTime(minute: number) { return `${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`; }
 
-function timeMinute(value: string | null, fallback: number) { if (!value) return fallback; const date = new Date(value); return date.getHours() * 60 + date.getMinutes(); }
+function timeMinute(value: string | null, fallback: number) { return activityTimeMinutes(value) ?? fallback; }
 function formatHour(hour: number) { return new Date(2000, 0, 1, hour).toLocaleTimeString([], { hour: "numeric" }); }
 function formatHeader(day: string) { return new Date(`${day}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }); }
