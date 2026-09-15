@@ -5,12 +5,18 @@ import {
   CloudFog,
   CloudLightning,
   CloudRain,
+  ChevronDown,
+  ChevronUp,
   Loader2,
   Snowflake,
   Sun,
   Wind,
 } from "lucide-react";
+import { useState } from "react";
 
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { weatherCodeSummary } from "@/features/weather/domain/weather-warnings";
 import type { DailyForecast, TripWeatherForecast, WeatherWarning } from "@/features/weather/domain/weather-types";
 import { getDayWeather, weatherIconName } from "@/features/weather/lib/weather-helpers";
 import { cn } from "@/lib/utils";
@@ -47,35 +53,65 @@ export function TripWeatherStrip({
   loading?: boolean;
   emptyMessage?: string;
 }) {
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [hourlyOpen, setHourlyOpen] = useState(false);
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground" aria-live="polite">
-        <Loader2 className="size-4 animate-spin" /> Loading weather…
+      <div className="flex h-28 w-48 items-center justify-center gap-2 rounded-2xl border bg-card/95 text-sm text-muted-foreground shadow-lg backdrop-blur" aria-live="polite">
+        <Loader2 className="size-5 animate-spin" /> Loading weather…
       </div>
     );
   }
 
   if (!forecast || dayDates.length === 0) {
     return emptyMessage ? (
-      <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+      <p className="w-48 rounded-2xl border bg-card/95 p-3 text-sm text-muted-foreground shadow-lg backdrop-blur">{emptyMessage}</p>
     ) : null;
   }
 
+  const today = localDateKey(new Date());
+  const dayDate = dayDates.includes(today) ? today : dayDates.find((date) => date >= today) ?? dayDates.at(-1)!;
+  const day = getDayWeather(forecast.forecast, warnings ?? [], dayDate);
+  const hourlyRows = getHourlyRows(forecast.forecast, dayDate);
+
   return (
-    <div
-      className="flex gap-3 overflow-x-auto pb-2"
-      aria-label="Daily weather forecast"
-      role="region"
-    >
-      {dayDates.map((dayDate) => (
-        <WeatherDayCard
-          key={dayDate}
-          dayDate={dayDate}
-          forecast={forecast.forecast}
-          warnings={warnings ?? []}
-        />
-      ))}
-    </div>
+    <>
+      <button type="button" onClick={() => setDetailsOpen(true)} className="block rounded-2xl text-left transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99]" aria-label={`View weather details for ${formatDay(dayDate)}`}>
+        <WeatherDayCard dayDate={dayDate} forecast={forecast.forecast} warnings={warnings ?? []} />
+      </button>
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Weather for {formatFullDay(dayDate)}</DialogTitle>
+            <DialogDescription>Daily conditions and travel considerations.</DialogDescription>
+          </DialogHeader>
+          {day ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-4 rounded-xl border bg-muted/30 p-4">
+                <WeatherIcon icon={weatherIconName(day.summary.icon)} className="size-12 text-primary" />
+                <div><p className="text-xl font-bold">{day.summary.label}</p><p className="text-sm text-muted-foreground">High {day.maxTemp !== null ? `${Math.round(day.maxTemp)}°C` : "—"} · Low {day.minTemp !== null ? `${Math.round(day.minTemp)}°C` : "—"}</p></div>
+              </div>
+              <dl className="grid grid-cols-2 gap-3">
+                <WeatherMetric label="High temperature" value={day.maxTemp !== null ? `${Math.round(day.maxTemp)}°C` : "—"} />
+                <WeatherMetric label="Low temperature" value={day.minTemp !== null ? `${Math.round(day.minTemp)}°C` : "—"} />
+                <WeatherMetric label="Precipitation" value={`${Math.round(day.precipitation)} mm`} />
+                <WeatherMetric label="Maximum wind" value={`${Math.round(day.windSpeed)} km/h`} />
+              </dl>
+              {day.warnings.length > 0 && <div className="space-y-2"><p className="text-sm font-semibold">Weather warnings</p>{day.warnings.map((warning) => <div key={warning.type} className="rounded-lg border border-warning/50 bg-warning/10 p-3"><p className="text-sm font-semibold">{warning.title}</p><p className="text-xs text-muted-foreground">{warning.message}</p></div>)}</div>}
+              {hourlyRows.length > 0 && (
+                <div className="border-t pt-3">
+                  <Button type="button" variant="ghost" className="w-full justify-between" onClick={() => setHourlyOpen((open) => !open)} aria-expanded={hourlyOpen}>
+                    {hourlyOpen ? "Hide hourly forecast" : "Show hourly forecast"} {hourlyOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+                  </Button>
+                  {hourlyOpen && <div className="mt-2 max-h-72 divide-y overflow-y-auto rounded-lg border">{hourlyRows.map((hour) => <HourlyWeatherRow key={hour.time} hour={hour} />)}</div>}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">Forecast updated {new Date(forecast.fetchedAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}.</p>
+            </div>
+          ) : <p className="text-sm text-muted-foreground">No weather data is available for this day.</p>}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -93,53 +129,65 @@ function WeatherDayCard({
   return (
     <div
       className={cn(
-        "flex min-w-28 flex-col items-center gap-1 rounded-xl border bg-card p-3 text-center shadow-sm",
+        "flex h-32 w-48 flex-col items-start rounded-2xl border bg-card/95 p-3 text-left shadow-lg backdrop-blur",
         day?.warnings.length ? "border-warning/50" : "border-border"
       )}
       aria-label={day ? weatherLabel(day) : `No weather for ${formatDay(dayDate)}`}
     >
-      <p className="text-xs font-medium uppercase text-muted-foreground">
-        {formatDay(dayDate)}
-      </p>
       {day ? (
         <>
-          <WeatherIcon icon={weatherIconName(day.summary.icon)} className="size-6 text-primary" />
-          <p className="text-sm font-semibold">
-            {day.maxTemp !== null ? `${Math.round(day.maxTemp)}°` : "–"}
-            <span className="mx-1 text-muted-foreground">/</span>
-            {day.minTemp !== null ? `${Math.round(day.minTemp)}°` : "–"}
-          </p>
-          <p className="text-xs text-muted-foreground">{day.summary.label}</p>
-          {day.precipitation > 0 && (
-            <p className="text-xs text-blue-600">{Math.round(day.precipitation)} mm</p>
-          )}
-          {day.windSpeed > 0 && (
-            <p className="text-xs text-muted-foreground">{Math.round(day.windSpeed)} km/h wind</p>
-          )}
-          {day.warnings.length > 0 && (
-            <div className="mt-1 flex flex-wrap justify-center gap-1">
-              {day.warnings.map((warning) => (
-                <span
-                  key={warning.type}
-                  className={cn(
-                    "rounded-full px-2 py-0.5 text-[10px] font-medium",
-                    warning.severity === "high"
-                      ? "bg-destructive/10 text-destructive"
-                      : "bg-muted text-foreground"
-                  )}
-                  title={warning.message}
-                >
-                  {warning.title}
-                </span>
-              ))}
+          <div className="flex w-full items-center justify-between gap-2">
+            <p className="text-[11px] font-semibold uppercase text-muted-foreground">{formatDay(dayDate)}</p>
+            {day.warnings.length > 0 && <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-semibold text-foreground">Warning</span>}
+          </div>
+          <div className="mt-2 flex flex-1 items-center gap-3">
+            <WeatherIcon icon={weatherIconName(day.summary.icon)} className="size-9 shrink-0 text-primary" />
+            <div className="min-w-0 flex-1">
+              <p className="text-xl font-bold leading-none">
+                {day.maxTemp !== null ? `${Math.round(day.maxTemp)}°` : "–"}
+                <span className="ml-1 text-sm font-medium text-muted-foreground">/ {day.minTemp !== null ? `${Math.round(day.minTemp)}°` : "–"}</span>
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">{day.summary.label}</p>
             </div>
-          )}
+          </div>
         </>
-      ) : (
-        <p className="text-xs text-muted-foreground">No data</p>
-      )}
+      ) : <><Cloud className="size-7 text-muted-foreground" /><p className="mt-2 text-[11px] font-semibold uppercase text-muted-foreground">{formatDay(dayDate)}</p><p className="mt-1 text-sm font-semibold">No data</p></>}
     </div>
   );
+}
+
+interface HourlyWeather {
+  time: string;
+  temperature: number;
+  precipitationProbability: number;
+  weatherCode: number;
+  windSpeed: number;
+}
+
+function getHourlyRows(forecast: DailyForecast, dayDate: string): HourlyWeather[] {
+  if (!forecast.hourly) return [];
+  return forecast.hourly.times.flatMap((time, index) => time.startsWith(dayDate) ? [{
+    time,
+    temperature: forecast.hourly!.temperature2m[index] ?? NaN,
+    precipitationProbability: forecast.hourly!.precipitationProbability[index] ?? 0,
+    weatherCode: forecast.hourly!.weatherCode[index] ?? -1,
+    windSpeed: forecast.hourly!.windSpeed10m[index] ?? 0,
+  }] : []);
+}
+
+function HourlyWeatherRow({ hour }: { hour: HourlyWeather }) {
+  const summary = weatherCodeSummary(hour.weatherCode);
+  return (
+    <div className="grid grid-cols-[4.5rem_1fr_auto] items-center gap-3 px-3 py-2.5 text-sm">
+      <span className="font-medium tabular-nums">{new Date(hour.time).toLocaleTimeString([], { hour: "numeric" })}</span>
+      <span className="flex min-w-0 items-center gap-2"><WeatherIcon icon={weatherIconName(summary.icon)} className="size-5 shrink-0 text-primary" /><span className="truncate text-muted-foreground">{summary.label}</span></span>
+      <span className="text-right"><strong>{Number.isFinite(hour.temperature) ? `${Math.round(hour.temperature)}°` : "—"}</strong><span className="ml-2 text-xs text-blue-600">{Math.round(hour.precipitationProbability)}%</span><span className="ml-2 hidden text-xs text-muted-foreground sm:inline">{Math.round(hour.windSpeed)} km/h</span></span>
+    </div>
+  );
+}
+
+function WeatherMetric({ label, value }: { label: string; value: string }) {
+  return <div className="rounded-lg border bg-card p-3"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 text-sm font-semibold">{value}</dd></div>;
 }
 
 function weatherLabel(day: NonNullable<ReturnType<typeof getDayWeather>>): string {
@@ -159,4 +207,17 @@ function formatDay(dayDate: string): string {
     month: "short",
     day: "numeric",
   });
+}
+
+function formatFullDay(dayDate: string): string {
+  return new Date(`${dayDate}T12:00:00`).toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function localDateKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }

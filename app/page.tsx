@@ -8,6 +8,8 @@ import {
   CloudOff,
   MapPinned,
   Receipt,
+  ShieldCheck,
+  Sparkles,
   Users,
   Zap,
 } from "lucide-react";
@@ -15,6 +17,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { IconTile } from "@/components/ui/icon-tile";
 
 const features = [
   {
@@ -30,12 +33,22 @@ const features = [
   {
     icon: Receipt,
     title: "Share expenses",
-    text: "Record group costs and keep the money conversation simple.",
+    text: "Split group costs in any currency and stay on budget together.",
   },
   {
     icon: Camera,
     title: "Keep the memories",
     text: "Save trip photos beside the places and moments that made them special.",
+  },
+  {
+    icon: Sparkles,
+    title: "Ask Scout",
+    text: "Get itinerary ideas from Viatik's travel buddy, even when you're offline.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Keep documents ready",
+    text: "Track passport and visa expiry so nothing lapses before you fly.",
   },
 ];
 
@@ -48,19 +61,19 @@ export default function Home() {
       <section id="features" className="border-y bg-muted/40 py-24">
         <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
           <div className="max-w-2xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-viatik-magenta">
               Everything in one place
             </p>
             <h2 className="mt-3 text-4xl font-bold tracking-tight">
               Less coordination. More adventure.
             </h2>
           </div>
-          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {features.map(({ icon: Icon, title, text }) => (
               <article key={title} className="rounded-2xl border bg-card p-6">
-                <span className="grid size-11 place-items-center rounded-xl bg-primary/10 text-primary">
-                  <Icon />
-                </span>
+                <IconTile className="size-11 rounded-xl">
+                  <Icon className="size-5" />
+                </IconTile>
                 <h3 className="mt-5 text-lg font-semibold">{title}</h3>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">{text}</p>
               </article>
@@ -72,7 +85,7 @@ export default function Home() {
       <section id="how-it-works" className="mx-auto max-w-7xl px-5 py-24 sm:px-8 lg:px-12">
         <div className="grid gap-10 lg:grid-cols-[.7fr_1fr]">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-viatik-magenta">
               How it works
             </p>
             <h2 className="mt-3 text-4xl font-bold tracking-tight">
@@ -94,14 +107,14 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="mx-5 mb-8 rounded-[2rem] bg-primary px-6 py-16 text-center text-primary-foreground sm:mx-8 lg:mx-auto lg:max-w-7xl">
+      <section className="glow-magenta mx-5 mb-8 rounded-[2rem] bg-surface-dark px-6 py-16 text-center text-white sm:mx-8 lg:mx-auto lg:max-w-7xl">
         <h2 className="text-3xl font-bold sm:text-4xl">
           Your next trip deserves one shared plan.
         </h2>
-        <p className="mx-auto mt-4 max-w-xl text-primary-foreground/75">
+        <p className="mx-auto mt-4 max-w-xl text-white/70">
           Bring the people, places, details, and memories together with Viatik.
         </p>
-        <Button asChild size="lg" variant="secondary" className="mt-8">
+        <Button asChild size="lg" variant="primary" className="mt-8">
           <Link href="/register">
             Create your first trip <ArrowRight />
           </Link>
@@ -147,11 +160,7 @@ function LandingHeader() {
           >
             <Link href="#features">Features</Link>
           </Button>
-          <Button
-            asChild
-            size="sm"
-            className="bg-primary text-primary-foreground shadow-md shadow-primary/20 hover:bg-primary/90 hover:opacity-100"
-          >
+          <Button asChild size="sm" variant="primary">
             <Link href="/login" className="group">
               Sign in
               <ArrowUpRight
@@ -172,21 +181,22 @@ function HeroSection() {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_24%,color-mix(in_oklch,var(--primary)_12%,transparent),transparent_34%),radial-gradient(circle_at_88%_52%,color-mix(in_oklch,var(--secondary)_10%,transparent),transparent_32%)]" />
       <div className="relative mx-auto grid max-w-7xl items-center gap-16 px-5 py-20 sm:px-8 sm:py-24 lg:grid-cols-[.92fr_1.08fr] lg:px-12 lg:py-32">
         <div className="max-w-2xl">
-          <p className="mb-5 text-sm font-semibold uppercase tracking-[0.2em] text-primary">
+          <p className="mb-5 text-sm font-semibold uppercase tracking-[0.2em] text-viatik-magenta">
             Travel better, together
           </p>
           <h1 className="text-5xl font-bold leading-[1.02] tracking-tighter sm:text-6xl lg:text-7xl">
             One shared plan for every unforgettable trip.
           </h1>
           <p className="mt-7 max-w-xl text-lg leading-8 text-muted-foreground sm:text-xl">
-            Build itineraries, organize group expenses, and keep every traveler in sync—even when
-            you’re offline.
+            Build itineraries, split expenses in any currency, track passports and visas, and keep
+            every traveler in sync—even when you’re offline.
           </p>
           <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Button
               asChild
               size="lg"
-              className="h-12 border border-primary bg-primary px-6 text-base text-primary-foreground shadow-lg shadow-primary/25 hover:bg-primary/90 hover:opacity-100"
+              variant="primary"
+              className="h-12 px-6 text-base shadow-lg shadow-viatik-red/25"
             >
               <Link href="/register">
                 Start planning <ArrowRight />
@@ -196,7 +206,7 @@ function HeroSection() {
               asChild
               size="lg"
               variant="outline"
-              className="h-12 border-2 border-primary/40 bg-transparent px-6 text-base text-foreground shadow-sm hover:border-primary/70 hover:bg-primary/10"
+              className="h-12 border-2 border-viatik-magenta/40 bg-transparent px-6 text-base text-foreground shadow-sm hover:border-viatik-magenta/70 hover:bg-viatik-magenta/10"
             >
               <Link href="#how-it-works">See how it works</Link>
             </Button>
@@ -216,10 +226,10 @@ function ProductPreview() {
       <div className="overflow-hidden rounded-[1.75rem] border border-border/60 bg-card/95 shadow-2xl shadow-primary/10 backdrop-blur-sm">
         <div className="flex flex-col gap-4 border-b border-border/60 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div>
-            <p className="text-xs font-medium text-muted-foreground">May 18–24 · Portugal</p>
+            <p className="text-xs font-semibold text-muted-foreground">May 18–24 · Portugal</p>
             <h2 className="mt-1 text-xl font-semibold tracking-tight">Lisbon with friends</h2>
           </div>
-          <div className="inline-flex w-fit items-center gap-2 rounded-full border border-success/25 bg-success/10 px-3 py-1.5 text-xs font-medium text-success">
+          <div className="inline-flex w-fit items-center gap-2 rounded-full border border-success/25 bg-success/10 px-3 py-1.5 text-xs font-semibold text-success">
             <Zap className="size-3.5" aria-hidden="true" />
             <span>Offline Ready</span>
             <span className="size-1 rounded-full bg-success" aria-hidden="true" />
@@ -231,30 +241,30 @@ function ProductPreview() {
           <section className="rounded-2xl border border-border/60 bg-background/65 p-4" aria-labelledby="preview-day">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-primary">Day 2 · Tuesday</p>
+                <p className="text-xs font-semibold text-primary">Day 2 · Tuesday</p>
                 <h3 id="preview-day" className="mt-1 font-semibold">Today in Lisbon</h3>
               </div>
               <span className="grid size-9 place-items-center rounded-xl bg-primary/10 text-primary">
-                <CalendarDays className="size-4" />
+                <CalendarDays className="size-5" />
               </span>
             </div>
 
             <div className="relative mt-5 space-y-3 before:absolute before:bottom-5 before:left-4.25 before:top-5 before:w-px before:bg-border">
               <PreviewActivity
-                icon={<MapPinned className="size-4" />}
+                icon={<MapPinned className="size-5" />}
                 time="10:00"
                 title="Explore Alfama"
                 detail="Miradouro de Santa Luzia"
                 active
               />
               <PreviewActivity
-                icon={<Clock3 className="size-4" />}
+                icon={<Clock3 className="size-5" />}
                 time="13:30"
                 title="Lunch at Prado"
                 detail="Reserved for 4 travelers"
               />
               <PreviewActivity
-                icon={<CheckCircle2 className="size-4" />}
+                icon={<CheckCircle2 className="size-5" />}
                 time="19:00"
                 title="Sunset sailing"
                 detail="Tickets saved offline"
@@ -264,27 +274,27 @@ function ProductPreview() {
 
           <div className="grid gap-4">
             <section className="rounded-2xl border border-border/60 bg-background/65 p-4" aria-label="Trip budget">
-              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                <Receipt className="size-4" />
+              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+                <Receipt className="size-5" />
                 Group budget
               </div>
-              <p className="mt-4 text-2xl font-semibold tracking-tight">€428</p>
+              <p className="mt-4 text-2xl font-semibold tracking-tight">$428</p>
               <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
                 <div className="h-full w-[62%] rounded-full bg-primary" />
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">62% of €690 planned</p>
+              <p className="mt-2 text-xs text-muted-foreground">62% of $690 planned</p>
             </section>
 
             <section className="rounded-2xl border border-border/60 bg-background/65 p-4" aria-label="Trip collaborators">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-muted-foreground">Travel crew</span>
-                <Users className="size-4 text-muted-foreground" />
+                <span className="text-xs font-semibold text-muted-foreground">Travel crew</span>
+                <Users className="size-5 text-muted-foreground" />
               </div>
               <div className="mt-4 flex -space-x-2">
                 {["AM", "JR", "SK", "+1"].map((name) => (
                   <span
                     key={name}
-                    className="grid size-9 place-items-center rounded-full border-2 border-card bg-muted text-[11px] font-semibold"
+                    className="grid size-9 place-items-center rounded-full border-2 border-card bg-muted text-xs font-semibold"
                   >
                     {name}
                   </span>
@@ -322,7 +332,7 @@ function PreviewActivity({
         {icon}
       </span>
       <div className="min-w-0">
-        <p className="text-[11px] font-medium text-muted-foreground">{time}</p>
+        <p className="text-xs font-semibold text-muted-foreground">{time}</p>
         <h4 className="truncate text-sm font-semibold">{title}</h4>
         <p className="truncate text-xs text-muted-foreground">{detail}</p>
       </div>

@@ -18,6 +18,7 @@ import {
 import type { OutboxMutation } from "@/lib/sync/types";
 import {
   activityToRow,
+  activityPersonalBudgetToRow,
   tripToRow,
   expenseToRow,
   expenseShareToRow,
@@ -107,6 +108,7 @@ function mutationPayloadToRow(mutation: OutboxMutation): Record<string, unknown>
     case "tripMember": return tripMemberToRow(mutation.payload as unknown as TripMember);
     case "invitation": return invitationToRow(mutation.payload as unknown as TripInvitation);
     case "activity": return activityToRow(mutation.payload as unknown as Activity);
+    case "activityPersonalBudget": return activityPersonalBudgetToRow(mutation.payload as unknown as ActivityPersonalBudget);
     case "expense": return expenseToRow(mutation.payload as unknown as Expense);
     case "expenseShare": return expenseShareToRow(mutation.payload as unknown as ExpenseShare);
     case "settlement": return settlementToRow(mutation.payload as unknown as ExpenseSettlement);
@@ -345,6 +347,10 @@ async function syncOnce(context?: SyncExecutionContext): Promise<void> {
   context?.signal.throwIfAborted();
   await pullRemoteChanges(lastSyncAt === null, context?.signal);
   context?.signal.throwIfAborted();
+  // Conflicts are auto-resolved during sync (remote wins); clear the historical
+  // records so the status pill only reflects actionable conflicts, not a running
+  // total of every conflict that ever happened.
+  await getDb().syncConflicts.clear();
 
   const duration = Date.now() - startTime;
   syncDurations.push(duration);

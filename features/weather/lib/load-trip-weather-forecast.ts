@@ -30,7 +30,7 @@ export async function loadTripWeatherForecast(
   const existing = await weatherRepository.getForecast(trip.id);
   const expectedRevision =
     trip.latitude != null && trip.longitude != null
-      ? buildLocationRevision(trip.latitude, trip.longitude, trip.timeZone)
+      ? buildLocationRevision(trip.latitude, trip.longitude, trip.timeZone, trip.startDate, trip.endDate)
       : null;
 
   if (!expectedRevision) {
@@ -55,7 +55,13 @@ export async function loadTripWeatherForecast(
     return { status: "missing", error: "Connect to the internet to load weather." };
   }
 
-  const result = await fetchTripWeatherForecast(trip.id);
+  const result = await fetchTripWeatherForecast(trip.id, {
+    latitude: trip.latitude!,
+    longitude: trip.longitude!,
+    timeZone: trip.timeZone,
+    startDate: trip.startDate,
+    endDate: trip.endDate,
+  });
   if (!result?.success) {
     logger.warn("Weather fetch failed", { tripId: trip.id, error: result.error });
     if (existing) {

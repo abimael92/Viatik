@@ -10,6 +10,12 @@ export interface TripMedia {
   tripId: string;
   activityId: string | null;
   caption: string | null;
+  /**
+   * Capture date of the photo (ISO date `yyyy-mm-dd`), read from EXIF
+   * DateTimeOriginal or falling back to the file's lastModified date. Used to
+   * group/filter the gallery by the day the photo was taken.
+   */
+  takenAt?: string | null;
   /** The compressed image blob held in IndexedDB. */
   blob: Blob | null;
   /** Object URL generated on demand for rendering (not persisted). */
@@ -20,6 +26,11 @@ export interface TripMedia {
   contentType: string;
   byteSize: number;
   createdBy: string;
+  updatedBy: string;
+  deletedBy: string | null;
+  restoredAt: string | null;
+  restoredBy: string | null;
+  version: number;
   uploadStatus: MediaUploadStatus;
   uploadProgress: number;
   uploadError: string | null;

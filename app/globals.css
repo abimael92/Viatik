@@ -9,7 +9,9 @@
  * in sync automatically — there is no tailwind.config.ts.
  */
 :root {
-  --background: oklch(0.99 0.002 247);
+  /* Slightly cool-tinted light canvas so white cards and glass read as depth,
+     not flat white-on-white. */
+  --background: oklch(0.985 0.004 260);
   --foreground: oklch(0.18 0.02 264);
 
   --card: oklch(1 0 0);
@@ -18,14 +20,17 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.18 0.02 264);
 
-  --primary: oklch(0.62 0.19 253);
-  --primary-foreground: oklch(0.98 0.01 253);
+  /* Primary = Viatik brand magenta (active nav, links, icon accents, and the
+     default button fill). Mirrors the magenta→red CTA gradient's hue so the
+     whole product reads as one brand. */
+  --primary: #a855f7;
+  --primary-foreground: #ffffff;
 
   --secondary: oklch(0.7 0.14 180);
   --secondary-foreground: oklch(0.15 0.03 180);
 
-  --muted: oklch(0.96 0.005 264);
-  --muted-foreground: oklch(0.5 0.02 264);
+  --muted: oklch(0.955 0.005 260);
+  --muted-foreground: oklch(0.44 0.02 264);
 
   --accent: oklch(0.85 0.13 90);
   --accent-foreground: oklch(0.2 0.05 90);
@@ -36,15 +41,28 @@
   --success: oklch(0.65 0.16 150);
   --success-foreground: oklch(0.15 0.04 150);
 
-  --border: oklch(0.9 0.005 264);
-  --input: oklch(0.9 0.005 264);
-  --ring: oklch(0.62 0.19 253);
+  /* Crisper light hairline so 1px borders actually delineate cards. */
+  --border: oklch(0.86 0.012 264);
+  --input: oklch(0.88 0.008 264);
+  /* Deeper magenta focus ring — legible on white, still on-brand. */
+  --ring: #9333ea;
+
+  /* Theme-aware sidebar chrome (white glass in light). */
+  --side: oklch(1 0 0 / 0.66);
+  --side-border: oklch(0.86 0.012 264);
+  --side-fg: oklch(0.18 0.02 264);
+  --side-muted: oklch(0.45 0.02 264);
+  --side-hover: oklch(0.6 0.06 260 / 0.12);
+  --side-active: oklch(0.93 0.05 300);
+  --side-active-fg: #a855f7;
+  --side-glow: 0 0 0 1px oklch(0.62 0.18 300 / 0.3), 0 0 18px -4px oklch(0.55 0.2 300 / 0.4);
 
   --radius: 0.75rem;
 }
 
 [data-theme="dark"] {
-  --background: oklch(0.16 0.015 264);
+  /* Rich, high-contrast dark productivity canvas (surface-dark). */
+  --background: #090a0f;
   --foreground: oklch(0.95 0.005 264);
 
   --card: oklch(0.2 0.015 264);
@@ -53,8 +71,8 @@
   --popover: oklch(0.2 0.015 264);
   --popover-foreground: oklch(0.95 0.005 264);
 
-  --primary: oklch(0.72 0.17 253);
-  --primary-foreground: oklch(0.16 0.03 253);
+  --primary: #a855f7;
+  --primary-foreground: #ffffff;
 
   --secondary: oklch(0.6 0.12 180);
   --secondary-foreground: oklch(0.95 0.02 180);
@@ -73,7 +91,17 @@
 
   --border: oklch(0.32 0.015 264);
   --input: oklch(0.32 0.015 264);
-  --ring: oklch(0.72 0.17 253);
+  --ring: #a855f7;
+
+  /* Theme-aware sidebar chrome (dark glass in dark). */
+  --side: rgba(0, 0, 0, 0.4);
+  --side-border: rgb(255 255 255 / 0.1);
+  --side-fg: #ffffff;
+  --side-muted: rgb(255 255 255 / 0.6);
+  --side-hover: rgb(255 255 255 / 0.05);
+  --side-active: rgb(168 85 247 / 0.12);
+  --side-active-fg: #ffffff;
+  --side-glow: 0 0 0 1px rgb(168 85 247 / 0.35), 0 0 18px -4px rgb(168 85 247 / 0.55);
 }
 
 @theme inline {
@@ -108,6 +136,31 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
+  /* Theme-aware sidebar chrome. */
+  --color-side: var(--side);
+  --color-side-border: var(--side-border);
+  --color-side-fg: var(--side-fg);
+  --color-side-muted: var(--side-muted);
+  --color-side-hover: var(--side-hover);
+  --color-side-active: var(--side-active);
+  --color-side-active-fg: var(--side-active-fg);
+
+  /*
+   * Viatik brand — signature V-icon palette.
+   * The V-icon transitions from deep electric blue through magenta to a
+   * fiery coral-red particle tip. Reserved usage:
+   *   - viatik-blue    structural depth, active sidebars, cool surfaces
+   *   - viatik-magenta primary brand color, focus states, ambient glow,
+   *                    transitions (also backs `--primary`)
+   *   - viatik-red     the signature particle tip — strictly primary CTAs
+   *                    and critical actions
+   *   - surface-dark   Raycast/Linear inspired dark productivity canvas
+   */
+  --color-viatik-blue: #0ea5e9;
+  --color-viatik-magenta: #a855f7;
+  --color-viatik-red: #f43f5e;
+  --color-surface-dark: #090a0f;
+
   --radius-sm: calc(var(--radius) - 0.5rem);
   --radius-md: calc(var(--radius) - 0.25rem);
   --radius-lg: var(--radius);
@@ -117,16 +170,39 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/*
+ * Larger type scale — every text-* utility is bumped ~1px (and a couple of
+ * display steps more) for better legibility, with line-heights scaled to match.
+ */
+@theme {
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.125rem;
+  --text-sm: 0.9375rem;
+  --text-sm--line-height: 1.375rem;
+  --text-base: 1.0625rem;
+  --text-base--line-height: 1.625rem;
+  --text-lg: 1.1875rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl: 1.3125rem;
+  --text-xl--line-height: 1.875rem;
+  --text-2xl: 1.625rem;
+  --text-2xl--line-height: 2.125rem;
+  --text-3xl: 2rem;
+  --text-3xl--line-height: 2.375rem;
+  --text-4xl: 2.5rem;
+  --text-4xl--line-height: 2.75rem;
+}
+
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --background: oklch(0.16 0.015 264);
+    --background: #090a0f;
     --foreground: oklch(0.95 0.005 264);
     --card: oklch(0.2 0.015 264);
     --card-foreground: oklch(0.95 0.005 264);
     --popover: oklch(0.2 0.015 264);
     --popover-foreground: oklch(0.95 0.005 264);
-    --primary: oklch(0.72 0.17 253);
-    --primary-foreground: oklch(0.16 0.03 253);
+    --primary: #a855f7;
+    --primary-foreground: #ffffff;
     --secondary: oklch(0.6 0.12 180);
     --secondary-foreground: oklch(0.95 0.02 180);
     --muted: oklch(0.26 0.015 264);
@@ -139,7 +215,15 @@
     --success-foreground: oklch(0.95 0.03 150);
     --border: oklch(0.32 0.015 264);
     --input: oklch(0.32 0.015 264);
-    --ring: oklch(0.72 0.17 253);
+    --ring: #a855f7;
+    --side: rgba(0, 0, 0, 0.4);
+    --side-border: rgb(255 255 255 / 0.1);
+    --side-fg: #ffffff;
+    --side-muted: rgb(255 255 255 / 0.6);
+    --side-hover: rgb(255 255 255 / 0.05);
+    --side-active: rgb(168 85 247 / 0.12);
+    --side-active-fg: #ffffff;
+    --side-glow: 0 0 0 1px rgb(168 85 247 / 0.35), 0 0 18px -4px rgb(168 85 247 / 0.55);
   }
 }
 
@@ -152,6 +236,13 @@
   body {
     background: var(--color-background);
     color: var(--color-foreground);
+  }
+
+  /* Uniform iconography: all lucide icons share a consistent 1.75 stroke.
+     CSS stroke-width overrides lucide's default presentation attribute (2),
+     giving every icon the same authored weight. */
+  .lucide {
+    stroke-width: 1.75;
   }
 }
 

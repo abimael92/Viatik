@@ -7,11 +7,15 @@
  */
 
 import type { CurrencyCode, MinorUnits } from "@/features/domain/money";
+import type { SpendingCategory, SpendingSubcategory } from "@/features/domain/categories";
 
 export type TripMemberRole = "owner" | "editor" | "viewer";
 
-export type ExpenseSplitType = "equal" | "exact" | "percentage";
+export type ExpenseSplitType = "equal" | "exact" | "percentage" | "shares";
 export type InvitationStatus = "pending" | "accepted" | "rejected" | "revoked";
+
+/** Lifecycle of a debt/split: a pending obligation vs. one already settled. */
+export type SettlementStatus = "pending" | "settled";
 
 export interface TripInvitation {
   id: string;
@@ -24,6 +28,15 @@ export interface TripInvitation {
   expiresAt: string;
   createdAt: string;
   updatedAt: string;
+  statusChangedAt: string;
+  statusChangedBy: string;
+  acceptedAt: string | null;
+  acceptedBy: string | null;
+  rejectedAt: string | null;
+  rejectedBy: string | null;
+  revokedAt: string | null;
+  revokedBy: string | null;
+  version: number;
 }
 
 export interface ProfileSummary {
@@ -32,6 +45,8 @@ export interface ProfileSummary {
   avatarUrl: string | null;
   email: string | null;
 }
+
+export type TripStatus = "planned" | "active" | "completed" | "cancelled";
 
 export interface Trip {
   id: string;
@@ -45,10 +60,32 @@ export interface Trip {
   timeZone: string | null;
   startDate: string | null; // ISO date (yyyy-mm-dd)
   endDate: string | null; // ISO date (yyyy-mm-dd)
+  status: TripStatus; // explicit lifecycle state (planned | active | completed | cancelled)
+  startedAt: string | null; // ISO datetime when the trip was started
+  completedAt: string | null; // ISO datetime when the trip was ended or cancelled
+  cancelledAt: string | null; // ISO datetime when the trip was cancelled
   coverImageUrl: string | null;
   adultCount: number;
   childCount: number;
   baseCurrency: string;
+  createdBy: string;
+  updatedBy: string;
+  deletedBy: string | null;
+  restoredAt: string | null;
+  restoredBy: string | null;
+  statusChangedAt: string;
+  statusChangedBy: string;
+  version: number;
+  /**
+   * Community / public-template fields (offline-first, local-only). Not synced
+   * to the shared `trips` table — these describe a trip as a browsable public
+   * template in the Community hub.
+   */
+  isPublic?: boolean;
+  shareSlug?: string | null;
+  likesCount?: number;
+  forkCount?: number;
+  authorName?: string | null;
   createdAt: string; // ISO datetime
   updatedAt: string; // ISO datetime
   deletedAt: string | null;
@@ -61,6 +98,11 @@ export interface TripMember {
   role: TripMemberRole;
   invitedBy: string | null;
   joinedAt: string;
+  roleChangedAt: string | null;
+  roleChangedBy: string | null;
+  removedAt: string | null;
+  removedBy: string | null;
+  version: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -71,16 +113,82 @@ export interface Activity {
   dayDate: string; // ISO date (yyyy-mm-dd) — which day column this belongs to
   title: string;
   description: string | null;
-  location: string | null;
+  placeName?: string | null;
+  formattedAddress?: string | null;
+  placeId?: string | null;
+  /** @deprecated Use `placeName` and `formattedAddress`. */
+  location?: string | null;
+  /** @deprecated Activity locations are identified by `placeId`. */
+  latitude?: number | null;
+  /** @deprecated Activity locations are identified by `placeId`. */
+  longitude?: number | null;
+  /** Canonical values are enforced when activities are persisted. */
   category: string;
+  timingSpecificity?: "exact" | "flexible";
+  flexiblePeriod?: "morning" | "afternoon" | "evening" | "anytime" | null;
   startTime: string | null; // ISO datetime
   endTime: string | null; // ISO datetime
+  bookingReference?: string | null;
+  participants?: ActivityParticipant[];
+  pollStatus?: ActivityPollStatus;
+  votingEndsAt?: string | null;
+  pollOptions?: ActivityPollOption[];
+  pollVotes?: ActivityPollVote[];
   /** Fractional ordering key within (tripId, dayDate) for drag-and-drop reordering. */
   position: number;
+  /** Planned/estimated cost in the trip's base currency (minor units), used for "planned" budget pacing. */
+  estimatedCostMinor: MinorUnits | null;
   createdBy: string;
+  updatedBy?: string | null;
+  deletedBy?: string | null;
+  restoredAt?: string | null;
+  restoredBy?: string | null;
+  version?: number;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
+}
+
+export type ActivityParticipationStatus = "attending" | "declined" | "pending";
+
+export interface ActivityParticipant {
+  userId: string | null;
+  travelerId?: string | null;
+  displayName?: string | null;
+  status: ActivityParticipationStatus;
+}
+
+export type ActivityPollStatus = "confirmed" | "proposed" | "voting" | "approved" | "rejected";
+export type ActivityVoteChoice = "approve" | "decline" | "suggested";
+
+export interface ActivityPollOption {
+  id: string;
+  label: string;
+  proposedBy: string;
+  createdAt: string;
+  dayDate?: string | null;
+  startTime?: string | null;
+  location?: string | null;
+}
+
+export interface ActivityPollVote {
+  userId: string;
+  choice: ActivityVoteChoice;
+  optionId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ActivityPersonalBudget {
+  id: string;
+  activityId: string;
+  tripId: string;
+  userId: string;
+  amountMinor: MinorUnits;
+  currency: CurrencyCode;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Expense {
@@ -90,9 +198,22 @@ export interface Expense {
   description: string;
   amountMinor: MinorUnits;
   currency: CurrencyCode;
+  /** Multiplier converting 1 unit of this expense's currency to the trip's base currency. */
+  exchangeRateToBase: number | null;
   paidBy: string;
   splitType: ExpenseSplitType;
+  /** Top-level spending category (one of the predefined set in `features/domain/categories`). */
+  category: SpendingCategory | null;
+  /** Subcategory within `category` (e.g. `"uber"` under `"transport"`), nullable for uncategorized costs. */
+  subcategory: SpendingSubcategory | null;
+  /** ISO date (yyyy-mm-dd) the expense occurred, distinct from `createdAt`. */
+  date: string;
   createdBy: string;
+  updatedBy?: string | null;
+  deletedBy?: string | null;
+  restoredAt?: string | null;
+  restoredBy?: string | null;
+  version?: number;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
@@ -101,20 +222,116 @@ export interface Expense {
 export interface ExpenseShare {
   id: string;
   expenseId: string;
+  /** Who fronted the full cost (mirrors the parent expense, stored explicitly on each split). */
+  paidBy: string;
+  /** Who owes this share for the expense. */
   userId: string;
+  /** The amount this user owes for the expense (in the expense's currency), in minor units. */
   shareAmountMinor: MinorUnits;
   sharePercentage: number | null;
+  /** The split methodology used to derive this share (copied from the parent expense). */
+  splitType: ExpenseSplitType;
+  /** Whether this split has been paid back (`pending`) or fully settled (`settled`). */
+  settlementStatus: SettlementStatus;
+  /** ISO datetime when this split was settled, or `null` while it is still pending. */
+  settledAt: string | null;
+  settledBy?: string | null;
+  statusChangedAt?: string | null;
+  statusChangedBy?: string | null;
+  updatedBy?: string | null;
+  deletedBy?: string | null;
+  restoredAt?: string | null;
+  restoredBy?: string | null;
+  version?: number;
   createdAt: string;
   updatedAt: string;
 }
 
+/**
+ * A member's personal starting balance attributed to a trip, in the wallet's
+ * own currency. Owner-only at the RLS layer: a wallet is private to its owner.
+ */
+export interface UserWallet {
+  id: string;
+  tripId: string;
+  userId: string;
+  startingBalanceMinor: MinorUnits;
+  currency: CurrencyCode;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * A single cash transfer settling a debt between two travelers. `fromUserId`
+ * pays `toUserId`; the debt stays `pending` until the transfer is marked
+ * `settled` (with the timestamp recorded in `settledAt`).
+ */
 export interface ExpenseSettlement {
   id: string;
   tripId: string;
+  /** The traveler who owes money (the debtor). */
   fromUserId: string;
+  /** The traveler being repaid (the creditor). */
   toUserId: string;
   amountMinor: MinorUnits;
   currency: CurrencyCode;
+  /** Whether this debt is still outstanding (`pending`) or has been paid back (`settled`). */
+  status: SettlementStatus;
+  /** ISO datetime the debt was settled, or `null` while it is still pending. */
+  settledAt: string | null;
+  settledBy?: string | null;
+  statusChangedAt?: string | null;
+  statusChangedBy?: string | null;
+  updatedBy?: string | null;
+  deletedBy?: string | null;
+  restoredAt?: string | null;
+  restoredBy?: string | null;
+  version?: number;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+/**
+ * A per-category spending cap within a trip budget, in the trip's base
+ * currency (minor units). All monetary figures are integer minor units to
+ * avoid floating-point drift.
+ */
+export interface TripBudgetCategoryAllocation {
+  category: SpendingCategory;
+  /** Cap for this category, in the trip's base currency, minor units. */
+  allocationMinor: MinorUnits;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * The unified, single-source-of-truth budget for a trip. Consolidates the
+ * former `Trip.totalBudgetMinor` and per-day `DailyBudgetOverride` stores into
+ * one entity that supports:
+ *
+ * - a total budget limit (`totalBudgetMinor`),
+ * - an optional daily target for pacing (`dailyTargetMinor`), and
+ * - per-category allocation caps (`categoryAllocations`).
+ *
+ * One budget exists per trip (unique on `tripId`). All amounts are stored as
+ * integer minor units (bigint cents) in the trip's base currency.
+ */
+export interface TripBudget {
+  id: string;
+  tripId: string;
+  /** Overall budget limit for the trip, in the trip's base currency, minor units. */
+  totalBudgetMinor: MinorUnits;
+  /**
+   * Optional daily target for pacing (per-day budget), in minor units. When
+   * set it overrides the derived total ÷ trip-days pacing; when `null` the
+   * daily target is derived from the total.
+   */
+  dailyTargetMinor: MinorUnits | null;
+  /** Per-category allocation limits, in the trip's base currency. */
+  categoryAllocations: TripBudgetCategoryAllocation[];
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -202,6 +419,11 @@ export interface Contact {
   passportExpiresOn: string | null;
   preferredCurrency: string | null;
   preferredLanguage: string | null;
+  updatedBy?: string | null;
+  deletedBy?: string | null;
+  restoredAt?: string | null;
+  restoredBy?: string | null;
+  version?: number;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
@@ -216,6 +438,11 @@ export interface TripTraveler {
   displayName: string;
   travelerType: TravelerType;
   createdBy: string;
+  updatedBy?: string | null;
+  deletedBy?: string | null;
+  restoredAt?: string | null;
+  restoredBy?: string | null;
+  version?: number;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;

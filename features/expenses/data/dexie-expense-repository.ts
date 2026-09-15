@@ -7,7 +7,10 @@ import type {
   ExpenseRepository,
   NewExpense,
 } from "@/features/domain/repositories/expense-repository";
+import { buildExpenseFeed, materializeFeedItem } from "@/features/feed/lib/feed-builder";
+import { emitFeedItem } from "@/features/feed/data/dexie-feed-repository";
 import { append } from "@/lib/sync/outbox-transactional";
+import { getSyncUser } from "@/lib/sync/sync-context";
 import { logger } from "@/lib/observability/logger";
 
 function getDb(): ViatikDatabase {
@@ -38,7 +41,7 @@ export class DexieExpenseRepository implements ExpenseRepository {
 
   async create(input: NewExpense): Promise<Expense> {
     const db = getDb();
-    return TransactionContext.runInTransaction([db.expenses, db.expenseShares], async (ctx) => {
+    return TransactionContext.runInTransaction([db.expenses, db.expenseShares, db.feedItems], async (ctx) => {
       const now = new Date().toISOString();
       const expense: Expense = {
         id: input.id,
@@ -47,8 +50,12 @@ export class DexieExpenseRepository implements ExpenseRepository {
         description: input.description,
         amountMinor: input.amountMinor,
         currency: input.currency,
+        exchangeRateToBase: input.exchangeRateToBase ?? null,
         paidBy: input.paidBy,
         splitType: input.splitType,
+        category: input.category ?? null,
+        subcategory: input.subcategory ?? null,
+        date: input.date ?? now.slice(0, 10),
         createdBy: input.createdBy,
         createdAt: now,
         updatedAt: now,
@@ -61,9 +68,13 @@ export class DexieExpenseRepository implements ExpenseRepository {
       const shares: ExpenseShare[] = input.shares.map((share) => ({
         id: crypto.randomUUID(),
         expenseId: expense.id,
+        paidBy: expense.paidBy,
         userId: share.userId,
         shareAmountMinor: share.shareAmountMinor,
         sharePercentage: share.sharePercentage,
+        splitType: share.splitType ?? expense.splitType,
+        settlementStatus: "pending",
+        settledAt: null,
         createdAt: now,
         updatedAt: now,
       }));
@@ -73,6 +84,7 @@ export class DexieExpenseRepository implements ExpenseRepository {
         await append("expenseShare", "insert", { ...share, tripId: expense.tripId }, { tx: ctx, baseUpdatedAt: null });
       }
 
+      await emitFeedItem(ctx, materializeFeedItem(buildExpenseFeed("added_expense", expense, expense.createdBy)));
       logger.debug("Expense created locally", { expenseId: expense.id });
       return expense;
     });
@@ -83,7 +95,7 @@ export class DexieExpenseRepository implements ExpenseRepository {
     patch: Partial<Omit<Expense, "id" | "tripId">>
   ): Promise<Expense> {
     const db = getDb();
-    return TransactionContext.runInTransaction([db.expenses], async (ctx) => {
+    return TransactionContext.runInTransaction([db.expenses, db.feedItems], async (ctx) => {
       const previous = await ctx.table<Expense>("expenses").get(id);
       if (!previous) throw new Error(`Expense ${id} not found before update`);
       const updatedAt = new Date().toISOString();
@@ -91,6 +103,7 @@ export class DexieExpenseRepository implements ExpenseRepository {
       const expense = await ctx.table<Expense>("expenses").get(id);
       if (!expense) throw new Error(`Expense ${id} not found after update`);
       await append("expense", "update", expense, { tx: ctx, baseUpdatedAt: previous.updatedAt });
+      await emitFeedItem(ctx, materializeFeedItem(buildExpenseFeed("updated_expense", expense, getSyncUser() ?? expense.createdBy)));
       logger.debug("Expense updated locally", { expenseId: expense.id });
       return expense;
     });
@@ -117,9 +130,13 @@ export class DexieExpenseRepository implements ExpenseRepository {
         return {
           id: previous?.id ?? crypto.randomUUID(),
           expenseId,
+          paidBy: expense.paidBy,
           userId: share.userId,
           shareAmountMinor: share.shareAmountMinor,
           sharePercentage: share.sharePercentage,
+          splitType: share.splitType ?? expense.splitType,
+          settlementStatus: previous?.settlementStatus ?? "pending",
+          settledAt: previous?.settledAt ?? null,
           createdAt: previous?.createdAt ?? now,
           updatedAt: now,
         };
@@ -137,15 +154,31 @@ export class DexieExpenseRepository implements ExpenseRepository {
     });
   }
 
+  async settleShare(shareId: string): Promise<void> {
+    const db = getDb();
+    return TransactionContext.runInTransaction([db.expenseShares], async (ctx) => {
+      const share = await ctx.table<ExpenseShare>("expenseShares").get(shareId);
+      if (!share || share.settlementStatus === "settled") return;
+      const now = new Date().toISOString();
+      await ctx.table<ExpenseShare>("expenseShares").put({
+        ...share,
+        settlementStatus: "settled",
+        settledAt: now,
+        updatedAt: now,
+      });
+    });
+  }
+
   async remove(id: string): Promise<void> {
     const db = getDb();
-    return TransactionContext.runInTransaction([db.expenses], async (ctx) => {
+    return TransactionContext.runInTransaction([db.expenses, db.feedItems], async (ctx) => {
       const expense = await ctx.table<Expense>("expenses").get(id);
       if (!expense) return;
       const deletedAt = new Date().toISOString();
       const updated = { ...expense, deletedAt, updatedAt: deletedAt };
       await ctx.table<Expense>("expenses").put(updated);
       await append("expense", "update", updated, { tx: ctx, baseUpdatedAt: expense.updatedAt });
+      await emitFeedItem(ctx, materializeFeedItem(buildExpenseFeed("deleted_expense", updated, getSyncUser() ?? updated.createdBy)));
       logger.debug("Expense deleted locally", { expenseId: id });
     });
   }

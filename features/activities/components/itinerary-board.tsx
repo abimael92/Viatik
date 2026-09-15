@@ -1,26 +1,30 @@
 "use client";
 
+import { CalendarDays } from "lucide-react";
 import { useMemo, useCallback } from "react";
 import {
   DndContext,
   type DragEndEvent,
   DragOverlay,
   type DragStartEvent,
+  KeyboardSensor,
   PointerSensor,
   TouchSensor,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { arrayMove } from "@dnd-kit/sortable";
+import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useLiveQuery } from "dexie-react-hooks";
 
 import { activityRepository } from "@/features/activities/data/dexie-activity-repository";
 import { useDatabase } from "@/lib/db/database-provider";
 import type { Activity } from "@/features/domain/entities";
 import type { DailyForecast, WeatherWarning } from "@/features/weather/domain/weather-types";
+import type { WeatherConflict } from "@/features/weather/domain/weather-conflict-types";
 import { positionBetween } from "@/lib/ordering";
 import { useUiStore } from "@/lib/store/ui-store";
 import { logger } from "@/lib/observability/logger";
+import type { ScoutDndPayload } from "@/features/ai/lib/ai-scout-dnd";
 import { DayColumn } from "@/features/activities/components/day-column";
 import { ActivityCard } from "@/features/activities/components/activity-card";
 
@@ -33,6 +37,11 @@ interface ItineraryBoardProps {
   forecast?: DailyForecast;
   warnings?: WeatherWarning[];
   weatherLoading?: boolean;
+  /** Weather conflict per activity id, to badge impacted cards. */
+  conflicts?: Record<string, WeatherConflict>;
+  /** Receives a scout suggestion dropped onto a day column. */
+  onDropScout?: (dayDate: string, payload: ScoutDndPayload) => void;
+  currentUserId?: string;
 }
 
 export function ItineraryBoard({
@@ -44,6 +53,9 @@ export function ItineraryBoard({
   forecast,
   warnings,
   weatherLoading,
+  conflicts,
+  onDropScout,
+  currentUserId,
 }: ItineraryBoardProps) {
   const db = useDatabase();
   const activities = useLiveQuery(
@@ -88,7 +100,13 @@ export function ItineraryBoard({
   const touch = useSensor(TouchSensor, {
     activationConstraint: { delay: 200, tolerance: 5 },
   });
-  const sensors = useSensors(pointer, touch);
+  // KeyboardSensor + sortableKeyboardCoordinates make the sortable grip
+  // keyboard-operable: focused grip + Space starts the drag, arrow keys move
+  // the item between adjacent slots/days, and Space/Escape ends or cancels it.
+  const keyboard = useSensor(KeyboardSensor, {
+    coordinateGetter: sortableKeyboardCoordinates,
+  });
+  const sensors = useSensors(pointer, touch, keyboard);
 
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {
@@ -96,6 +114,10 @@ export function ItineraryBoard({
     },
     [beginDrag]
   );
+
+  const handleDragCancel = useCallback(() => {
+    endDrag();
+  }, [endDrag]);
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
@@ -149,8 +171,11 @@ export function ItineraryBoard({
 
   if (totalVisible === 0) {
     return (
-      <div className="rounded-2xl border border-dashed p-10 text-center" role="status">
-        <h3 className="font-semibold">
+      <div className="rounded-2xl border border-dashed bg-linear-to-b from-card to-muted/30 p-10 text-center" role="status">
+        <span className="mx-auto grid size-12 place-items-center rounded-full bg-primary/10 text-primary">
+          <CalendarDays className="size-6" aria-hidden />
+        </span>
+        <h3 className="mt-4 font-semibold">
           {category === "all" ? "No activities yet" : "No matching activities"}
         </h3>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -167,11 +192,13 @@ export function ItineraryBoard({
       sensors={sensors}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
     >
       <div className="grid w-full grid-cols-1 gap-4 p-4 @md:grid-cols-2 @xl:grid-cols-3">
         {dayDates.map((day) => (
           <DayColumn
             key={day}
+            tripId={tripId}
             dayDate={day}
             activities={byDay.get(day) ?? []}
             category={category}
@@ -180,11 +207,14 @@ export function ItineraryBoard({
             forecast={forecast}
             warnings={warnings}
             weatherLoading={weatherLoading}
+            conflicts={conflicts}
+            onDropScout={onDropScout}
+            currentUserId={currentUserId}
           />
         ))}
       </div>
       <DragOverlay dropAnimation={{ duration: 150, easing: "cubic-bezier(0.18, 0.8, 0.25, 1)" }}>
-        {activeActivity ? <ActivityCard activity={activeActivity} /> : null}
+        {activeActivity ? <ActivityCard activity={activeActivity} currentUserId={currentUserId} /> : null}
       </DragOverlay>
     </DndContext>
   );

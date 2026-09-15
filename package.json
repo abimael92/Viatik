@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "setup": "bash bin/setup.sh",
+    "secrets:lock": "node bin/secrets.mjs lock",
+    "secrets:unlock": "node bin/secrets.mjs unlock",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -28,6 +31,7 @@
     "browser-image-compression": "^2.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "date-fns": "^4.4.0",
     "dexie": "^4.4.5",
     "dexie-react-hooks": "^4.4.0",
     "jose": "^6.2.10",
@@ -38,6 +42,7 @@
     "react-dom": "19.2.8",
     "react-qr-code": "^2.2.0",
     "tailwind-merge": "^3.6.0",
+    "tesseract.js": "7.0.0",
     "zustand": "^5.0.15"
   },
   "devDependencies": {

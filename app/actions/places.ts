@@ -7,36 +7,72 @@ export type PlaceSuggestion = { placeId: string; label: string };
 export type PlaceDetails = {
   placeId: string;
   label: string;
+  name: string;
+  formattedAddress: string;
   latitude: number;
   longitude: number;
   timeZone: string | null;
 };
 
-export async function searchDestinations(query: string): Promise<{ suggestions: PlaceSuggestion[]; configured: boolean }> {
+async function searchPlaces(query: string, citiesOnly: boolean): Promise<{ suggestions: PlaceSuggestion[]; configured: boolean }> {
   const input = query.trim();
-  if (!env.GOOGLE_MAPS_API_KEY) return { suggestions: [], configured: false };
   if (input.length < 2) return { suggestions: [], configured: true };
 
-  const response = await fetch("https://places.googleapis.com/v1/places:autocomplete", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Goog-Api-Key": env.GOOGLE_MAPS_API_KEY,
-      "X-Goog-FieldMask": "suggestions.placePrediction.placeId,suggestions.placePrediction.text.text",
-    },
-    body: JSON.stringify({ input, includedPrimaryTypes: ["(cities)"], languageCode: "en" }),
-    cache: "no-store",
-  });
-  if (!response.ok) return { suggestions: [], configured: true };
+  if (env.GOOGLE_MAPS_API_KEY) {
+    const response = await fetch("https://places.googleapis.com/v1/places:autocomplete", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": env.GOOGLE_MAPS_API_KEY,
+        "X-Goog-FieldMask": "suggestions.placePrediction.placeId,suggestions.placePrediction.text.text",
+      },
+      body: JSON.stringify({ input, ...(citiesOnly ? { includedPrimaryTypes: ["(cities)"] } : {}), languageCode: "en" }),
+      cache: "no-store",
+    });
+    if (response.ok) {
+      const payload = await response.json() as { suggestions?: Array<{ placePrediction?: { placeId?: string; text?: { text?: string } } }> };
+      const suggestions = (payload.suggestions ?? []).flatMap(({ placePrediction }) => placePrediction?.placeId && placePrediction.text?.text ? [{ placeId: placePrediction.placeId, label: placePrediction.text.text }] : []);
+      if (suggestions.length > 0) return { suggestions, configured: true };
+    }
+  }
 
-  const payload = await response.json() as { suggestions?: Array<{ placePrediction?: { placeId?: string; text?: { text?: string } } }> };
-  return {
-    configured: true,
-    suggestions: (payload.suggestions ?? []).flatMap(({ placePrediction }) => placePrediction?.placeId && placePrediction.text?.text ? [{ placeId: placePrediction.placeId, label: placePrediction.text.text }] : []),
-  };
+  try {
+    const url = new URL("https://geocoding-api.open-meteo.com/v1/search");
+    url.searchParams.set("name", input);
+    url.searchParams.set("count", "8");
+    url.searchParams.set("language", "en");
+    url.searchParams.set("format", "json");
+    const response = await fetch(url, { cache: "no-store" });
+    if (!response.ok) return { suggestions: [], configured: true };
+    const payload = await response.json() as { results?: Array<{ id: number; name: string; latitude: number; longitude: number; timezone?: string; country?: string; admin1?: string }> };
+    return {
+      configured: true,
+      suggestions: (payload.results ?? []).map((place) => ({
+        placeId: `open-meteo:${place.latitude}:${place.longitude}:${encodeURIComponent(place.timezone ?? "")}:${place.id}`,
+        label: [place.name, place.admin1, place.country].filter(Boolean).join(", "),
+      })),
+    };
+  } catch {
+    return { suggestions: [], configured: true };
+  }
+}
+
+export async function searchDestinations(query: string) {
+  return searchPlaces(query, true);
+}
+
+export async function searchActivityPlaces(query: string) {
+  return searchPlaces(query, false);
 }
 
 export async function getPlaceDetails(placeId: string, label: string): Promise<PlaceDetails | null> {
+  if (placeId.startsWith("open-meteo:")) {
+    const [, latitude, longitude, timeZone] = placeId.split(":");
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    return { placeId, label, name: label.split(",")[0]?.trim() || label, formattedAddress: label, latitude: lat, longitude: lng, timeZone: decodeURIComponent(timeZone) || null };
+  }
   if (!env.GOOGLE_MAPS_API_KEY) return null;
 
   const response = await fetch(`https://places.googleapis.com/v1/places/${placeId}`, {
@@ -44,13 +80,15 @@ export async function getPlaceDetails(placeId: string, label: string): Promise<P
     headers: {
       "Content-Type": "application/json",
       "X-Goog-Api-Key": env.GOOGLE_MAPS_API_KEY,
-      "X-Goog-FieldMask": "location,timeZone",
+      "X-Goog-FieldMask": "displayName,formattedAddress,location,timeZone",
     },
     cache: "no-store",
   });
   if (!response.ok) return null;
 
   const payload = (await response.json()) as {
+    displayName?: { text?: string };
+    formattedAddress?: string;
     location?: { latitude?: number; longitude?: number };
     timeZone?: { id?: string };
   };
@@ -64,6 +102,8 @@ export async function getPlaceDetails(placeId: string, label: string): Promise<P
   return {
     placeId,
     label,
+    name: payload.displayName?.text ?? label.split(",")[0]?.trim() ?? label,
+    formattedAddress: payload.formattedAddress ?? label,
     latitude: payload.location.latitude,
     longitude: payload.location.longitude,
     timeZone: payload.timeZone?.id ?? null,

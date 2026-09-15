@@ -17,8 +17,10 @@ import { useSyncStatus } from "@/lib/sync/use-sync-status";
 import { cn } from "@/lib/utils";
 
 const links = [
+  { href: "/home", label: "Home", icon: Home },
   { href: "/trips", label: "Trips", icon: Map },
   { href: "/contacts", label: "Contacts", icon: ContactRound },
+  { href: "/community", label: "Community", icon: Compass, comingSoon: true },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -54,7 +56,25 @@ export function AppShell({
 
   const navigation = (
     <nav aria-label="Main navigation" className="space-y-1">
-      {links.map(({ href, label, icon: Icon }) => {
+      {links.map(({ href, label, icon: Icon, comingSoon }) => {
+        if (comingSoon) {
+          return (
+            <button
+              key={href}
+              type="button"
+              disabled
+              title="Coming soon"
+              aria-disabled="true"
+              className={cn(navLinkClasses(false), "cursor-not-allowed opacity-60")}
+            >
+              {navIcon(Icon)}
+              {label}
+              <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Soon
+              </span>
+            </button>
+          );
+        }
         const active = pathname === href || pathname.startsWith(`${href}/`);
         return (
           <Link
@@ -160,8 +180,8 @@ export function AppShell({
       </aside>
 
       {/* Glass mobile header — pinned on scroll. */}
-      <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border/40 bg-background/80 px-4 backdrop-blur-md lg:hidden">
-        <Link href="/trips" className="flex items-center gap-2 font-bold">
+      <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-side-border bg-side px-4 backdrop-blur-xl lg:hidden">
+        <Link href="/home" className="flex items-center gap-2 font-bold text-side-fg">
           <Image src="/viatik-logo.png" alt="" width={36} height={36} priority className="size-9 object-contain" />
           Viatik
         </Link>
@@ -184,16 +204,54 @@ export function AppShell({
       {menuOpen && (
         <div
           id="mobile-navigation"
-          className="fixed inset-x-0 top-16 z-30 border-b border-border/40 bg-background/85 p-4 shadow-lg backdrop-blur-md lg:hidden"
+          className="fixed inset-x-0 top-16 z-30 border-b border-side-border bg-side p-4 shadow-lg backdrop-blur-xl lg:hidden"
         >
           {navigation}
           <div className="mt-4 border-t border-border/40 pt-3">{userCard}</div>
         </div>
       )}
 
+      {/* Mobile bottom tab bar — keeps the main nav always reachable on small screens. */}
+      <nav
+        aria-label="Main navigation (mobile)"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-side-border bg-side pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden"
+      >
+        <div className="grid grid-cols-5">
+          {links.map(({ href, label, icon: Icon, comingSoon }) => {
+            const active = pathname === href || pathname.startsWith(`${href}/`);
+            const cls = cn(
+              "flex min-h-14 flex-col items-center justify-center gap-1 py-2 text-[11px] font-semibold tracking-tight",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-viatik-magenta",
+              active ? "text-primary" : "text-side-muted hover:text-side-fg",
+              comingSoon && "cursor-not-allowed opacity-50"
+            );
+            if (comingSoon) {
+              return (
+                <button key={href} type="button" disabled title="Coming soon" aria-disabled="true" className={cls}>
+                  <Icon className="size-6" />
+                  {label}
+                </button>
+              );
+            }
+            return (
+              <Link
+                key={href}
+                href={href}
+                onClick={() => setMenuOpen(false)}
+                aria-current={active ? "page" : undefined}
+                className={cls}
+              >
+                <Icon className="size-6" />
+                {label}
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
+
       <main
         id="main-content"
-        className="mx-auto min-h-dvh max-w-7xl px-4 py-6 sm:px-6 lg:ml-64 lg:px-8 lg:py-10"
+        className="mx-auto min-h-dvh max-w-7xl px-4 pb-24 pt-6 sm:px-6 lg:ml-64 lg:px-8 lg:py-10"
       >
         {children}
       </main>

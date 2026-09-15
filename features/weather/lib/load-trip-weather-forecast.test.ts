@@ -33,10 +33,22 @@ function makeTrip(overrides: Partial<Trip> = {}): Trip {
     timeZone: "Asia/Tokyo",
     startDate: "2026-09-01",
     endDate: "2026-09-02",
+    status: "planned",
+    startedAt: null,
+    completedAt: null,
     coverImageUrl: null,
     adultCount: 2,
     childCount: 0,
     baseCurrency: "USD",
+    createdBy: TEST_USER,
+    updatedBy: TEST_USER,
+    deletedBy: null,
+    restoredAt: null,
+    restoredBy: null,
+    cancelledAt: null,
+    statusChangedAt: new Date().toISOString(),
+    statusChangedBy: TEST_USER,
+    version: 1,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     deletedAt: null,
@@ -49,7 +61,7 @@ function makeForecast(tripId = TRIP_ID): TripWeatherForecast {
   return {
     id: tripId,
     tripId,
-    locationRevision: `${(35.6762).toFixed(4)},${(139.6503).toFixed(4)}:Asia/Tokyo`,
+    locationRevision: `${(35.6762).toFixed(4)},${(139.6503).toFixed(4)}:Asia/Tokyo:2026-09-01:2026-09-02`,
     fetchedAt: now,
     createdBy: TEST_USER,
     createdAt: now,
@@ -96,11 +108,11 @@ describe("loadTripWeatherForecast", () => {
   it("fetches a new forecast when the location revision changed", async () => {
     const trip = makeTrip({ latitude: 35.7 });
     const stale = makeForecast();
-    stale.locationRevision = `${(35.6762).toFixed(4)},${(139.6503).toFixed(4)}:Asia/Tokyo`;
+    stale.locationRevision = `${(35.6762).toFixed(4)},${(139.6503).toFixed(4)}:Asia/Tokyo:2026-09-01:2026-09-02`;
     await weatherRepository.saveForecast(stale, TEST_USER, true);
 
     const fresh = makeForecast();
-    fresh.locationRevision = `${(35.7).toFixed(4)},${(139.6503).toFixed(4)}:Asia/Tokyo`;
+    fresh.locationRevision = `${(35.7).toFixed(4)},${(139.6503).toFixed(4)}:Asia/Tokyo:2026-09-01:2026-09-02`;
     vi.mocked(fetchTripWeatherForecast).mockResolvedValue({
       success: true,
       forecast: fresh,
@@ -109,7 +121,13 @@ describe("loadTripWeatherForecast", () => {
     const result = await loadTripWeatherForecast(trip, TEST_USER, true);
 
     expect(result.status).toBe("fetched");
-    expect(fetchTripWeatherForecast).toHaveBeenCalledWith(TRIP_ID);
+    expect(fetchTripWeatherForecast).toHaveBeenCalledWith(TRIP_ID, {
+      latitude: trip.latitude,
+      longitude: trip.longitude,
+      timeZone: trip.timeZone,
+      startDate: trip.startDate,
+      endDate: trip.endDate,
+    });
   });
 
   it("returns the stale forecast offline", async () => {

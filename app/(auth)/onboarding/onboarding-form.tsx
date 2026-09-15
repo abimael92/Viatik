@@ -47,14 +47,14 @@ const emptyValues: FormValues = {
   passportExpiresOn: "",
 };
 
-export function OnboardingForm({ email, next }: { email: string; next: string }) {
+export function OnboardingForm({ email, next, initialName = "" }: { email: string; next: string; initialName?: string }) {
   const router = useRouter();
   const [avatar, setAvatar] = useState<File | null>(null);
   const [step, setStep] = useState(1);
   const [message, setMessage] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [values, setValues] = useState<FormValues>(emptyValues);
+  const [values, setValues] = useState<FormValues>(() => ({ ...emptyValues, fullName: initialName }));
   const [pending, startTransition] = useTransition();
   const [visited, setVisited] = useState<boolean[]>([true, ...Array(STEPS.length - 1).fill(false)]);
   const allVisited = visited.every(Boolean);
@@ -89,6 +89,12 @@ export function OnboardingForm({ email, next }: { email: string; next: string })
       const name = values.fullName.trim();
       if (name.length < 2) errors.fullName = "Enter at least 2 characters.";
       else if (name.length > 60) errors.fullName = "Use no more than 60 characters.";
+      const phoneDigits = values.phone.replace(/\D/g, "");
+      if (!phoneDigits || phoneDigits.length < 7) errors.phone = "Enter a valid phone number.";
+    }
+    if (targetStep === 3) {
+      if (!values.birthDate) errors.birthDate = "Enter your date of birth.";
+      else if (new Date(values.birthDate) > new Date()) errors.birthDate = "Date of birth can't be in the future.";
     }
     return errors;
   }
@@ -132,8 +138,8 @@ export function OnboardingForm({ email, next }: { email: string; next: string })
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (values.fullName.trim().length < 2) {
-      const errors = { fullName: "Enter a display name with at least 2 characters." };
+    const errors = { ...validateStep(1), ...validateStep(3) };
+    if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       focusFirstError(errors);
       return;
@@ -167,7 +173,7 @@ export function OnboardingForm({ email, next }: { email: string; next: string })
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">One last step</p>
         <h1 className="mt-3 text-3xl font-bold tracking-tight">Make Viatik yours</h1>
         <p className="mt-2 text-muted-foreground">
-          Only your name is required — the rest is optional and stays private to you.
+          Your name and phone are required — the rest is optional and stays private to you.
         </p>
       </div>
 
@@ -189,7 +195,7 @@ export function OnboardingForm({ email, next }: { email: string; next: string })
             onChange={(event) => setField("fullName", event.target.value)}
             error={fieldErrors.fullName}
             autoComplete="name"
-            placeholder="Alex Morgan"
+            placeholder="John Doe"
             required
             autoFocus
           />
@@ -202,7 +208,9 @@ export function OnboardingForm({ email, next }: { email: string; next: string })
             value={values.phone}
             onChange={(event) => setField("phone", event.target.value)}
             placeholder="+1 555 012 3456"
-            helper="Optional · used for account recovery and shared trip details."
+            helper="Used for account recovery and shared trip details."
+            required
+            error={fieldErrors.phone}
           />
         </div>
       )}
@@ -211,7 +219,7 @@ export function OnboardingForm({ email, next }: { email: string; next: string })
         <section className="space-y-4 rounded-xl border border-border/70 bg-card p-4 sm:p-5">
           <div className="flex items-start gap-3 border-b border-border/60 pb-4">
             <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
-              <ShieldCheck className="size-4" />
+              <ShieldCheck className="size-5" />
             </span>
             <div>
               <h3 className="text-sm font-semibold">Emergency contact</h3>
@@ -221,7 +229,7 @@ export function OnboardingForm({ email, next }: { email: string; next: string })
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Contact name" name="emergencyContactName" value={values.emergencyContactName} onChange={(event) => setField("emergencyContactName", event.target.value)} placeholder="Taylor Rivera" />
+            <Field label="Contact name" name="emergencyContactName" value={values.emergencyContactName} onChange={(event) => setField("emergencyContactName", event.target.value)} placeholder="Jane Doe" />
             <Field label="Relationship" name="emergencyContactRelationship" value={values.emergencyContactRelationship} onChange={(event) => setField("emergencyContactRelationship", event.target.value)} placeholder="Parent, partner, friend…" />
             <Field label="Emergency phone" name="emergencyContactPhone" type="tel" inputMode="tel" value={values.emergencyContactPhone} onChange={(event) => setField("emergencyContactPhone", event.target.value)} placeholder="+1 555 012 3456" />
           </div>
@@ -232,7 +240,7 @@ export function OnboardingForm({ email, next }: { email: string; next: string })
         <section className="space-y-4 rounded-xl border border-border/70 bg-card p-4 sm:p-5">
           <div className="flex items-start gap-3 border-b border-border/60 pb-4">
             <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
-              <CalendarDays className="size-4" />
+              <CalendarDays className="size-5" />
             </span>
             <div>
               <h3 className="text-sm font-semibold">Travel details</h3>
@@ -242,7 +250,7 @@ export function OnboardingForm({ email, next }: { email: string; next: string })
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Date of birth" name="birthDate" type="date" value={values.birthDate} onChange={(event) => setField("birthDate", event.target.value)} max={new Date().toISOString().slice(0, 10)} />
+            <Field label="Date of birth" name="birthDate" type="date" value={values.birthDate} onChange={(event) => setField("birthDate", event.target.value)} max={new Date().toISOString().slice(0, 10)} required error={fieldErrors.birthDate} />
             <Field label="Preferred language" name="preferredLanguage" value={values.preferredLanguage} onChange={(event) => setField("preferredLanguage", event.target.value)} placeholder="English" maxLength={35} />
             <SelectField label="Preferred currency" name="preferredCurrency" value={values.preferredCurrency} onChange={(event) => setField("preferredCurrency", event.target.value)}>
               <option value="">Not specified</option>
@@ -273,9 +281,9 @@ export function OnboardingForm({ email, next }: { email: string; next: string })
             </Button>
           )}
           {step < STEPS.length ? (
-            <Button type="button" onClick={handleNext}>Next</Button>
+            <Button type="button" variant="primary" onClick={handleNext}>Next</Button>
           ) : (
-            <Button type="submit" disabled={pending || !allVisited}>
+            <Button type="submit" variant="primary" disabled={pending || !allVisited}>
               {pending ? "Saving your profile…" : "Continue to Viatik"}
             </Button>
           )}
@@ -309,7 +317,7 @@ function StepHeader({
                 className="group flex min-h-11 flex-col gap-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <div className={cn("h-1.5 rounded-full transition-colors", active ? "bg-primary" : completed ? "bg-primary/40" : "bg-muted group-hover:bg-primary/20")} />
-                <span className={cn("text-xs sm:text-sm font-medium", active ? "text-primary" : completed ? "text-foreground" : "text-muted-foreground group-hover:text-foreground")}>
+                <span className={cn("text-xs sm:text-sm font-semibold", active ? "text-primary" : completed ? "text-foreground" : "text-muted-foreground group-hover:text-foreground")}>
                   {title}
                 </span>
               </button>

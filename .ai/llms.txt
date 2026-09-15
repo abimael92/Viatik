@@ -1,4 +1,4 @@
-# [PROJECT_NAME] AI Development Framework
+# Viatik AI Development Framework
 
 This file is the entry point for every AI agent working in the repository. For a concise human and agent workflow, see [`QUICKSTART.md`](./QUICKSTART.md).
 
@@ -6,6 +6,7 @@ This file is the entry point for every AI agent working in the repository. For a
 
 Read these files in order before planning or changing anything:
 
+0. [`CONTEXT.md`](./CONTEXT.md) — fast project snapshot (stack, auth, features, commands). Read this first.
 1. [`constitution.md`](./constitution.md) — non-negotiable engineering, security, specification, and verification rules.
 2. [`AGENTS.md`](./AGENTS.md) — Main, Architect, Implementation, QA, and Security Agent responsibilities.
 3. [`QUICKSTART.md`](./QUICKSTART.md) for the practical workflow and copy-paste prompts.
@@ -15,6 +16,8 @@ Read these files in order before planning or changing anything:
    - [`templates/bug-report.md`](./templates/bug-report.md) for bugs.
    - [`specs/bug-ledger.md`](./specs/bug-ledger.md) for historical invariants and bug-derived rules.
    - [`skills/bug-backprop.md`](./skills/bug-backprop.md) for the bug-fixing protocol.
+   - [`skills/ui-component-generator.md`](./skills/ui-component-generator.md) for UI work.
+   - [`specs/design-system.md`](./specs/design-system.md) for UI tokens, surfaces, and component conventions.
 6. Repository-level rules such as `AGENTS.md`, `CLAUDE.md`, `README.md`, package scripts, and framework documentation.
 
 Agents must not begin implementation until the applicable specification or bug report exists and is sufficiently complete.
@@ -104,7 +107,7 @@ Never report a command as passing unless it was actually run. Do not place secre
 
 ## Project Structure Overview
 
-The framework is project-neutral, but [PROJECT_NAME] should document its actual structure here:
+The framework is project-neutral, but Viatik should document its actual structure here:
 
 ```text
 [REPOSITORY_ROOT]/
@@ -115,9 +118,11 @@ The framework is project-neutral, but [PROJECT_NAME] should document its actual 
 │   ├── QUICKSTART.md
 │   ├── ROADMAP.md
 │   ├── specs/
-│   │   └── bug-ledger.md
+│   │   ├── bug-ledger.md
+│   │   └── design-system.md
 │   ├── skills/
-│   │   └── bug-backprop.md
+│   │   ├── bug-backprop.md
+│   │   └── ui-component-generator.md
 │   └── templates/
 │       ├── feature-spec.md
 │       └── bug-report.md
@@ -132,7 +137,7 @@ The framework is project-neutral, but [PROJECT_NAME] should document its actual 
 └── README.md            # [Human project documentation]
 ```
 
-For the current [PROJECT_NAME] implementation, agents must additionally inspect:
+For the current Viatik implementation, agents must additionally inspect:
 
 - `AGENTS.md` and `CLAUDE.md` for repository rules.
 - `package.json` for authoritative scripts and dependencies.
@@ -144,6 +149,7 @@ For the current [PROJECT_NAME] implementation, agents must additionally inspect:
 
 | File | Purpose | References |
 |---|---|---|
+| [`CONTEXT.md`](./CONTEXT.md) | Fast project snapshot: stack, auth, features, commands | llms.txt entry point, AGENTS.md |
 | [`constitution.md`](./constitution.md) | Non-negotiable engineering rules | Agents, templates, bug ledger |
 | [`AGENTS.md`](./AGENTS.md) | Agent roles and handoffs | Constitution, templates, bug ledger |
 | [`QUICKSTART.md`](./QUICKSTART.md) | Practical workflows and prompts | Constitution, agents, templates, bug-backprop |
@@ -152,8 +158,10 @@ For the current [PROJECT_NAME] implementation, agents must additionally inspect:
 | [`templates/feature-spec.md`](./templates/feature-spec.md) | New feature specification | Constitution, agents, entry point |
 | [`templates/bug-report.md`](./templates/bug-report.md) | Bug investigation and resolution | Constitution, agents, bug ledger, entry point |
 | [`skills/bug-backprop.md`](./skills/bug-backprop.md) | Bug-fixing protocol | Constitution, agents, bug report, bug ledger |
+| [`skills/ui-component-generator.md`](./skills/ui-component-generator.md) | UI-building protocol (`READ→SCAN→ASSEMBLE→TEST`) | Constitution, agents, design system |
+| [`specs/design-system.md`](./specs/design-system.md) | UI tokens, surfaces, component conventions | UI skill, globals.css, agents |
 | [`llms.txt`](./llms.txt) | Framework entry point and workflow | All framework files |
 
 ## Placeholder Policy
 
-Replace placeholders such as `[PROJECT_NAME]`, `[OWNER]`, `[PROJECT_OWNER_OR_TEAM]`, `[FEATURE_NAME]`, and `[REPOSITORY_ROOT]` when customizing this framework. Do not replace placeholders with secrets or private credentials. If a value is intentionally unknown, state that explicitly rather than guessing.
+Replace prompt placeholders such as `[OWNER]`, `[PROJECT_OWNER_OR_TEAM]`, `[FEATURE_NAME]`, and `[REPOSITORY_ROOT]` when customizing this framework. Do not replace placeholders with secrets or private credentials. If a value is intentionally unknown, state that explicitly rather than guessing.

@@ -18,8 +18,34 @@ export function ContactsPanel({ userId, ownProfile }: { userId: string; ownProfi
   const [adding, setAdding] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+  const prevContactsRef = useRef<Contact[]>([]);
 
-  useEffect(() => contactRepository.watch(userId, setContacts), [userId]);
+  useEffect(() => {
+    const unsub = contactRepository.watch(userId, (newContacts) => {
+      // Detect newly accepted outbound requests
+      const prev = prevContactsRef.current;
+      for (const contact of newContacts) {
+        const old = prev.find((c) => c.id === contact.id);
+        if (
+          old &&
+          old.connectionStatus === "pending" &&
+          old.connectionDirection === "outbound" &&
+          contact.connectionStatus === "accepted" &&
+          contact.connectionDirection === null
+        ) {
+          toast({
+            title: "Connection accepted",
+            description: `${contact.fullName} accepted your request. You're now connected.`,
+            variant: "success",
+          });
+        }
+      }
+      prevContactsRef.current = newContacts;
+      setContacts(newContacts);
+    });
+    return unsub;
+  }, [userId, toast]);
 
   async function remove(contact: Contact) {
     setError(null);
@@ -34,7 +60,7 @@ export function ContactsPanel({ userId, ownProfile }: { userId: string; ownProfi
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Contacts</h1>
+          <Heading level={1} className="text-3xl font-bold">Contacts</Heading>
           <p className="mt-1 text-muted-foreground">
             Mutual connections for shared trips and safe settlements. Private details are never exposed.
           </p>
@@ -66,6 +92,7 @@ export function ContactsPanel({ userId, ownProfile }: { userId: string; ownProfi
         open={editing !== undefined}
         userId={userId}
         contact={editing}
+        ownProfile={ownProfile}
         onOpenChange={(open) => !open && setEditing(undefined)}
       />
       {adding && (

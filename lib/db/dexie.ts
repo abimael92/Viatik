@@ -1,10 +1,20 @@
 import Dexie, { type EntityTable } from "dexie";
 
-import type { Activity, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler } from "@/features/domain/entities";
+import type { Activity, ActivityPersonalBudget, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripBudget, TripInvitation, TripMember, TripTraveler, UserWallet } from "@/features/domain/entities";
 import type { TripMedia } from "@/features/domain/entities-media";
 import { MAX_MINOR_UNITS } from "@/features/domain/money";
 import type { VaultEntry, VaultKeyset } from "@/features/vault/domain/vault-types";
 import type { TripWeatherForecast } from "@/features/weather/domain/weather-types";
+import type { LocalProfile } from "@/features/profile/domain/profile-types";
+import type { TripPin } from "@/features/maps/domain/map-types";
+import type { TripFeedItem } from "@/features/feed/domain/feed-types";
+import type { PackingItem } from "@/features/packing/domain/packing-types";
+import type { TravelDocument } from "@/features/health/domain/health-types";
+import type { Poll, PollVote } from "@/features/polls/domain/poll-types";
+import type { CurrencyRate } from "@/features/finance/domain/currency-types";
+import type { TripShareLink } from "@/features/sharing/domain/share-types";
+import type { TransitSegment } from "@/features/transit/domain/transit-types";
+import type { JournalDayEntry } from "@/features/journal/domain/journal-types";
 import type { OutboxMutation, SyncConflict, SyncLease, SyncMetadata } from "@/lib/sync/types";
 
 function migrateMinorUnits(record: Record<string, unknown>, legacyField: string, minorField: string): void {
@@ -32,6 +42,7 @@ export class ViatikDatabase extends Dexie {
   trips!: EntityTable<Trip, "id">;
   tripMembers!: EntityTable<TripMember, "id">;
   activities!: EntityTable<Activity, "id">;
+  activityPersonalBudgets!: EntityTable<ActivityPersonalBudget, "id">;
   expenses!: EntityTable<Expense, "id">;
   expenseShares!: EntityTable<ExpenseShare, "id">;
   /** FIFO queue of not-yet-synced mutations, drained by `SyncEngine`. */
@@ -48,6 +59,29 @@ export class ViatikDatabase extends Dexie {
   vaultKeysets!: EntityTable<VaultKeyset, "id">;
   vaultEntries!: EntityTable<VaultEntry, "id">;
   tripWeatherForecasts!: EntityTable<TripWeatherForecast, "id">;
+  userWallets!: EntityTable<UserWallet, "id">;
+  /** Local-only unified trip budget (not synced via the outbox). */
+  tripBudgets!: EntityTable<TripBudget, "id">;
+  /** Local-only mirror of the signed-in user's own profile (not synced). */
+  profiles!: EntityTable<LocalProfile, "id">;
+  /** Local-only dropped map pins (not synced — device-local annotations). */
+  tripPins!: EntityTable<TripPin, "id">;
+  /** Local-only collaborative activity feed (not synced — derived from synced entities). */
+  feedItems!: EntityTable<TripFeedItem, "id">;
+  /** Local-only Smart Packing List items (not synced — device-local checklists). */
+  packingItems!: EntityTable<PackingItem, "id">;
+  /** Local-only travel documents tracked for expiry (not synced). */
+  travelDocuments!: EntityTable<TravelDocument, "id">;
+  /** Local-only group polls and votes (not synced — device-local, like feed). */
+  polls!: EntityTable<Poll, "id">;
+  pollVotes!: EntityTable<PollVote, "id">;
+  /** Local-only cached offline exchange rates (not synced). */
+  currencyRates!: EntityTable<CurrencyRate, "id">;
+  /** Guest share links for trips (synced via the outbox to Supabase). */
+  shareLinks!: EntityTable<TripShareLink, "id">;
+  /** Local-only live transit segments (flights & trains). */
+  transitSegments!: EntityTable<TransitSegment, "id">;
+  journalDayEntries!: EntityTable<JournalDayEntry, "id">;
 
   constructor(name: string) {
     super(name);

@@ -6,12 +6,43 @@
  * be stored in Dexie, the outbox, or Supabase.
  */
 
+/**
+ * Categorises a vault entry so critical travel documents (passport, insurance,
+ * visa) can be surfaced in the Emergency Center. `other` is the safe default for
+ * anything that isn't a flagged document type.
+ */
+export type VaultEntryCategory = "passport" | "insurance" | "visa" | "other";
+
+/** The ordered set of categories offered in the vault entry editor. */
+export const VAULT_ENTRY_CATEGORIES: readonly VaultEntryCategory[] = [
+  "passport",
+  "insurance",
+  "visa",
+  "other",
+];
+
+/** Categories treated as critical, safety-relevant documents. */
+export const CRITICAL_VAULT_CATEGORIES: readonly VaultEntryCategory[] = [
+  "passport",
+  "insurance",
+  "visa",
+];
+
+/** Coerce an unknown/legacy value into a valid category (defaults to `other`). */
+export function normalizeVaultCategory(value: unknown): VaultEntryCategory {
+  return VAULT_ENTRY_CATEGORIES.includes(value as VaultEntryCategory)
+    ? (value as VaultEntryCategory)
+    : "other";
+}
+
 /** The plaintext values a user enters for a single vault entry. */
 export interface VaultEntryValues {
   title: string;
   username: string | null;
   secret: string;
   notes: string | null;
+  /** Optional document category; encrypted alongside the other values. */
+  category?: VaultEntryCategory;
 }
 
 /** The encrypted payload produced by the crypto layer. */

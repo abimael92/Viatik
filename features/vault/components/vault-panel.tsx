@@ -4,6 +4,7 @@ import { Lock, Plus, Shield, Unlock } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Heading } from "@/components/ui/heading";
 import type { VaultEntry, VaultEntryValues, VaultKeyset } from "@/features/vault/domain/vault-types";
 import { vaultRepository } from "@/features/vault/data/dexie-vault-repository";
 import { webCryptoVault, type VaultSession } from "@/lib/security/web-crypto-vault";
@@ -40,7 +41,7 @@ export function VaultPanel({ tripId, userId }: { tripId: string; userId: string 
           const values = await webCryptoVault.decrypt(entry, session);
           next.set(entry.id, values);
         } catch {
-          next.set(entry.id, { title: entry.id, username: null, secret: "Unable to decrypt", notes: null });
+          next.set(entry.id, { title: entry.id, username: null, secret: "Unable to decrypt", notes: null, category: "other" });
         }
       }
       if (!cancelled) setDecrypted(next);
@@ -160,18 +161,18 @@ export function VaultPanel({ tripId, userId }: { tripId: string; userId: string 
     <section className="space-y-6" aria-labelledby="vault-heading">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 id="vault-heading" className="text-2xl font-bold">
+          <Heading level={2} id="vault-heading" className="text-2xl font-bold">
             Vault
-          </h2>
+          </Heading>
           <p className="text-muted-foreground">Private, encrypted notes and credentials for this trip.</p>
         </div>
         {session && (
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={handleLock}>
-              <Lock className="size-4" /> Lock
+              <Lock className="size-5" /> Lock
             </Button>
-            <Button onClick={() => { setEditing(null); setDialog("entry"); }}>
-              <Plus className="size-4" /> Add entry
+            <Button variant="primary" onClick={() => { setEditing(null); setDialog("entry"); }}>
+              <Plus className="size-5" /> Add entry
             </Button>
           </div>
         )}
@@ -182,7 +183,7 @@ export function VaultPanel({ tripId, userId }: { tripId: string; userId: string 
           <span className="mx-auto grid size-12 place-items-center rounded-full bg-primary/10 text-primary">
             <Shield className="size-6" />
           </span>
-          <h3 className="mt-4 font-semibold">Your vault is locked</h3>
+          <Heading level={3} className="mt-4 text-base font-semibold">Your vault is locked</Heading>
           <p className="mt-1 text-sm text-muted-foreground">
             {keyset === undefined
               ? "Checking vault status…"
@@ -191,11 +192,12 @@ export function VaultPanel({ tripId, userId }: { tripId: string; userId: string 
                 : "Unlock with your passphrase to view your private entries."}
           </p>
           <Button
+            variant="primary"
             className="mt-5"
             onClick={() => setDialog("unlock")}
             disabled={keyset === undefined}
           >
-            <Unlock className="size-4" />
+            <Unlock className="size-5" />
             {keyset ? "Unlock vault" : "Create vault"}
           </Button>
         </div>
@@ -219,7 +221,7 @@ export function VaultPanel({ tripId, userId }: { tripId: string; userId: string 
             <div className="rounded-2xl border border-dashed p-10 text-center">
               <p className="text-muted-foreground">No entries yet.</p>
               <Button className="mt-4" onClick={() => { setEditing(null); setDialog("entry"); }}>
-                <Plus className="size-4" /> Add your first entry
+                <Plus className="size-5" /> Add your first entry
               </Button>
             </div>
           ) : (

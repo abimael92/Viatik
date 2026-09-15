@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import type { TripMedia } from "@/features/domain/entities-media";
 import { mediaRepository } from "@/features/media/data/dexie-media-repository";
+import { extractCaptureDate } from "@/features/media/lib/exif";
 import { useSyncStatus } from "@/lib/sync/use-sync-status";
 
 interface TripGalleryProps {
@@ -26,11 +27,22 @@ const COMPRESSION_OPTIONS = {
   useWebWorker: true,
 };
 
+type GalleryFilter = "all" | "today" | "day";
+
+const FILTER_LABELS: Record<GalleryFilter, string> = {
+  all: "All",
+  today: "Today",
+  day: "By Day",
+};
+
+const NO_DATE_LABEL = "No date / Older";
+
 export function TripGallery({ tripId, userId, canEdit = true, activityId = null, autoOpen = false, onAutoOpened }: TripGalleryProps) {
   const [compressing, setCompressing] = useState(false);
   const [media, setMedia] = useState<TripMedia[] | null>(null);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<GalleryFilter>("all");
   const [lightbox, setLightbox] = useState<{ open: boolean; index: number }>({ open: false, index: 0 });
   const autoOpenConsumed = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -62,8 +74,17 @@ export function TripGallery({ tripId, userId, canEdit = true, activityId = null,
       try {
         const selected = Array.from(files);
         for (const [index, file] of selected.entries()) {
+          const captureDate = await extractCaptureDate(file);
           const compressed = await imageCompression(file, COMPRESSION_OPTIONS);
-          await mediaRepository.create({ id: crypto.randomUUID(), tripId, activityId, caption: file.name, blob: compressed, createdBy: userId });
+          await mediaRepository.create({
+            id: crypto.randomUUID(),
+            tripId,
+            activityId,
+            caption: file.name,
+            blob: compressed,
+            createdBy: userId,
+            takenAt: captureDate.slice(0, 10),
+          });
           setProgress(Math.round(((index + 1) / selected.length) * 100));
         }
       } catch {
@@ -77,7 +98,33 @@ export function TripGallery({ tripId, userId, canEdit = true, activityId = null,
 
   const handleDelete = useCallback((id: string) => mediaRepository.remove(id), []);
 
-  const currentItem = useMemo(() => (media ?? [])[lightbox.index], [media, lightbox.index]);
+  const todayKey = useMemo(() => new Date().toISOString().slice(0, 10), []);
+
+  const groups = useMemo(() => {
+    if (filter !== "day") return [];
+    const byDate = new Map<string, TripMedia[]>();
+    for (const item of media ?? []) {
+      const label = item.takenAt ?? NO_DATE_LABEL;
+      const bucket = byDate.get(label);
+      if (bucket) bucket.push(item);
+      else byDate.set(label, [item]);
+    }
+    return Array.from(byDate.entries())
+      .sort((a, b) => {
+        if (a[0] === NO_DATE_LABEL) return 1;
+        if (b[0] === NO_DATE_LABEL) return -1;
+        return b[0].localeCompare(a[0]);
+      })
+      .map(([label, items]) => ({ label, items }));
+  }, [media, filter]);
+
+  const visibleItems = useMemo(() => {
+    if (filter === "today") return (media ?? []).filter((item) => item.takenAt === todayKey);
+    if (filter === "day") return groups.flatMap((group) => group.items);
+    return media ?? [];
+  }, [media, filter, todayKey, groups]);
+
+  const currentItem = useMemo(() => visibleItems[lightbox.index], [visibleItems, lightbox.index]);
   const currentUrl = useMemo(() => {
     if (!currentItem) return "";
     return currentItem.uploadedUrl ?? (currentItem.blob ? URL.createObjectURL(currentItem.blob) : "");
@@ -92,14 +139,14 @@ export function TripGallery({ tripId, userId, canEdit = true, activityId = null,
   const openLightbox = (index: number) => setLightbox({ open: true, index });
 
   const previous = useCallback(() => {
-    const length = (media ?? []).length || 1;
+    const length = visibleItems.length || 1;
     setLightbox((current) => ({ ...current, index: (current.index - 1 + length) % length }));
-  }, [media]);
+  }, [visibleItems.length]);
 
   const next = useCallback(() => {
-    const length = (media ?? []).length || 1;
+    const length = visibleItems.length || 1;
     setLightbox((current) => ({ ...current, index: (current.index + 1) % length }));
-  }, [media]);
+  }, [visibleItems.length]);
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
     if (event.key === "ArrowLeft") {
@@ -128,7 +175,7 @@ export function TripGallery({ tripId, userId, canEdit = true, activityId = null,
             />
             <Button asChild variant="outline" size="sm" disabled={compressing}>
               <span>
-                <ImagePlus className="size-4" />
+                <ImagePlus className="size-5" />
                 {compressing ? "Compressing..." : "Add photos"}
               </span>
             </Button>
@@ -142,18 +189,49 @@ export function TripGallery({ tripId, userId, canEdit = true, activityId = null,
 
       {media === null && <div role="status" className="h-32 animate-pulse rounded-xl bg-muted" aria-label="Loading gallery" />}
 
-      <div className="grid grid-cols-2 gap-3 @md:grid-cols-3 @xl:grid-cols-4">
-        <AnimatePresence>
-          {(media ?? []).map((item, index) => (
-            <GalleryImage key={item.id} item={item} canEdit={canEdit} onDelete={handleDelete} onRetry={(id) => mediaRepository.retry(id)} onOpen={() => openLightbox(index)} />
+      {media !== null && media.length > 0 && (
+        <div className="flex w-fit rounded-md border p-0.5" role="group" aria-label="Gallery view">
+          {(Object.keys(FILTER_LABELS) as GalleryFilter[]).map((option) => (
+            <Button key={option} size="sm" variant={filter === option ? "default" : "ghost"} onClick={() => setFilter(option)} aria-pressed={filter === option}>
+              {FILTER_LABELS[option]}
+            </Button>
           ))}
-        </AnimatePresence>
-      </div>
+        </div>
+      )}
 
-      {(media ?? []).length === 0 && media !== null && (
+      {media !== null && filter === "day" && groups.length > 0 && (
+        <div className="space-y-6">
+          {groups.map((group) => (
+            <section key={group.label} className="space-y-3">
+              <h4 className="text-sm font-medium text-muted-foreground">{group.label}</h4>
+              <div className="grid grid-cols-2 gap-3 @md:grid-cols-3 @xl:grid-cols-4">
+                {group.items.map((item) => (
+                  <GalleryImage key={item.id} item={item} canEdit={canEdit} onDelete={handleDelete} onRetry={(id) => mediaRepository.retry(id)} onOpen={() => openLightbox(visibleItems.indexOf(item))} />
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
+
+      {media !== null && (filter !== "day" || groups.length === 0) && visibleItems.length > 0 && (
+        <div key={filter} className="grid grid-cols-2 gap-3 @md:grid-cols-3 @xl:grid-cols-4">
+          <AnimatePresence>
+            {visibleItems.map((item, index) => (
+              <GalleryImage key={item.id} item={item} canEdit={canEdit} onDelete={handleDelete} onRetry={(id) => mediaRepository.retry(id)} onOpen={() => openLightbox(index)} />
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
+
+      {media !== null && media.length === 0 && (
         <p className="text-sm text-muted-foreground">
           {canEdit ? "No photos yet. Add some and they will be available offline after compression." : "No photos yet."}
         </p>
+      )}
+
+      {media !== null && media.length > 0 && visibleItems.length === 0 && (
+        <p className="text-sm text-muted-foreground">No photos match this view.</p>
       )}
 
       <Dialog open={lightbox.open} onOpenChange={(open) => setLightbox((current) => ({ ...current, open }))}>
@@ -230,14 +308,14 @@ function GalleryImage({
           className="h-full w-full object-cover"
         />
       </button>
-      {canEdit && item.uploadStatus === "failed" && <button onClick={() => onRetry(item.id)} className="absolute left-2 top-2 rounded-full bg-background/90 p-1.5" aria-label="Retry photo upload" title={item.uploadError ?? "Upload failed"}><RotateCcw className="size-4" /></button>}
+      {canEdit && item.uploadStatus === "failed" && <button onClick={() => onRetry(item.id)} className="absolute left-2 top-2 rounded-full bg-background/90 p-1.5" aria-label="Retry photo upload" title={item.uploadError ?? "Upload failed"}><RotateCcw className="size-5" /></button>}
       {item.uploadStatus === "uploading" && <div className="absolute inset-x-2 bottom-2 h-1.5 overflow-hidden rounded-full bg-background/70"><div className="h-full bg-primary" style={{ width: `${item.uploadProgress}%` }} /></div>}
       {canEdit && <button
         onClick={() => onDelete(item.id)}
         className="absolute right-2 top-2 rounded-full bg-background/80 p-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
         aria-label="Delete photo"
       >
-        <Trash2 className="size-4 text-destructive" />
+        <Trash2 className="size-5 text-destructive" />
       </button>}
     </motion.div>
   );

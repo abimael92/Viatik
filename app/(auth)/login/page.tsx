@@ -4,8 +4,8 @@ import { AuthShell } from "@/app/(auth)/auth-shell";
 import { LoginForm } from "@/app/(auth)/login/login-form";
 import { createClient } from "@/lib/supabase/server-client";
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
-  const [{ next }, supabase] = await Promise.all([searchParams, createClient()]);
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; error?: string }> }) {
+  const [{ next, error }, supabase] = await Promise.all([searchParams, createClient()]);
   const { data } = await supabase.auth.getUser();
   if (data.user) {
     const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", data.user.id).maybeSingle();
@@ -15,7 +15,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
 
   return (
     <AuthShell>
-      <LoginForm next={next} />
+      <LoginForm next={next} initialError={error} />
     </AuthShell>
   );
 }

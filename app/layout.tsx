@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import LayoutProps from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ErrorBoundary } from "@/components/error-boundary";
@@ -24,8 +25,11 @@ const themeInitScript = `(function(){try{var s=localStorage.getItem("viatik-them
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
+    // The theme init script sets `data-theme` on <html> before React hydrates,
+    // so suppress hydration warnings on this element to avoid a false mismatch.
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">

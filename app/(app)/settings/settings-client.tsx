@@ -9,6 +9,7 @@ import { viatikQrPayload } from "@/features/contacts/lib/viatik-id";
 import { AvatarPicker, type AvatarChange } from "@/components/ui/avatar-picker";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { Button } from "@/components/ui/button";
+import { Heading } from "@/components/ui/heading";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -61,8 +62,8 @@ export function SettingsClient({
   return (
     <div className="space-y-6">
       <header>
-        <p className="text-sm font-medium text-primary">Account</p>
-        <h1 className="mt-1 text-3xl font-bold tracking-tight">Settings</h1>
+        <p className="text-sm font-semibold text-primary">Account</p>
+        <Heading level={1} className="mt-1 text-3xl font-bold">Settings</Heading>
         <p className="mt-2 text-muted-foreground">Manage your profile, sign-in methods, and session.</p>
       </header>
       {message && <p role="status" className="rounded-lg border bg-card p-3 text-sm">{message}</p>}
@@ -212,7 +213,7 @@ function ProfileRow({ label, value }: { label: string; value: string | null | un
   const display = value?.trim() || "—";
   return (
     <div>
-      <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</dt>
+      <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</dt>
       <dd className="mt-1 text-sm text-foreground">{display}</dd>
     </div>
   );
@@ -312,11 +313,11 @@ function ProfileEditForm({
       </div>
       <div className="space-y-2">
         <Label htmlFor="settings-phone">Phone</Label>
-        <Input id="settings-phone" type="tel" inputMode="tel" autoComplete="tel" value={values.phone} onChange={(event) => setField("phone", event.target.value)} placeholder="+1 555 012 3456" />
+        <Input id="settings-phone" type="tel" inputMode="tel" autoComplete="tel" value={values.phone} onChange={(event) => setField("phone", event.target.value)} placeholder="+1 555 012 3456" required />
       </div>
       <div className="space-y-2">
         <Label htmlFor="settings-birthDate">Date of birth</Label>
-        <Input id="settings-birthDate" type="date" value={values.birthDate} onChange={(event) => setField("birthDate", event.target.value)} max={new Date().toISOString().slice(0, 10)} />
+        <Input id="settings-birthDate" type="date" value={values.birthDate} onChange={(event) => setField("birthDate", event.target.value)} max={new Date().toISOString().slice(0, 10)} required />
       </div>
       <div className="space-y-2">
         <Label htmlFor="settings-preferredCurrency">Preferred currency</Label>
@@ -344,7 +345,7 @@ function ProfileEditForm({
       </div>
       <div className="space-y-2">
         <Label htmlFor="settings-emergencyContactName">Emergency contact name</Label>
-        <Input id="settings-emergencyContactName" value={values.emergencyContactName} onChange={(event) => setField("emergencyContactName", event.target.value)} placeholder="Taylor Rivera" />
+        <Input id="settings-emergencyContactName" value={values.emergencyContactName} onChange={(event) => setField("emergencyContactName", event.target.value)} placeholder="Jane Doe" />
       </div>
       <div className="space-y-2">
         <Label htmlFor="settings-emergencyContactRelationship">Emergency relationship</Label>
@@ -364,7 +365,7 @@ function ProfileEditForm({
       </div>
       {message && <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive sm:col-span-2">{message}</p>}
       <div className="flex gap-2 sm:col-span-2">
-        <Button type="submit" disabled={pending}>{pending ? "Saving…" : "Save profile"}</Button>
+        <Button type="submit" variant="primary" disabled={pending}>{pending ? "Saving…" : "Save profile"}</Button>
         <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>Cancel</Button>
       </div>
     </form>

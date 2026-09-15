@@ -37,6 +37,7 @@ export function ThemeToggle() {
       variant="ghost"
       size="icon"
       suppressHydrationWarning
+      className="text-side-muted hover:bg-side-hover hover:text-side-fg"
       aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
       title={dark ? "Switch to light mode" : "Switch to dark mode"}
       onClick={() => setDark((value) => !value)}
