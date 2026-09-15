@@ -62,6 +62,7 @@ export class DexieUserWalletRepository implements UserWalletRepository {
         userId: input.userId,
         startingBalanceMinor: input.startingBalanceMinor,
         currency: input.currency,
+        version: 1,
         createdAt: now,
         updatedAt: now,
       };

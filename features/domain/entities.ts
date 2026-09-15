@@ -28,6 +28,15 @@ export interface TripInvitation {
   expiresAt: string;
   createdAt: string;
   updatedAt: string;
+  statusChangedAt: string;
+  statusChangedBy: string;
+  acceptedAt: string | null;
+  acceptedBy: string | null;
+  rejectedAt: string | null;
+  rejectedBy: string | null;
+  revokedAt: string | null;
+  revokedBy: string | null;
+  version: number;
 }
 
 export interface ProfileSummary {
@@ -54,10 +63,19 @@ export interface Trip {
   status: TripStatus; // explicit lifecycle state (planned | active | completed | cancelled)
   startedAt: string | null; // ISO datetime when the trip was started
   completedAt: string | null; // ISO datetime when the trip was ended or cancelled
+  cancelledAt: string | null; // ISO datetime when the trip was cancelled
   coverImageUrl: string | null;
   adultCount: number;
   childCount: number;
   baseCurrency: string;
+  createdBy: string;
+  updatedBy: string;
+  deletedBy: string | null;
+  restoredAt: string | null;
+  restoredBy: string | null;
+  statusChangedAt: string;
+  statusChangedBy: string;
+  version: number;
   /**
    * Community / public-template fields (offline-first, local-only). Not synced
    * to the shared `trips` table — these describe a trip as a browsable public
@@ -80,6 +98,11 @@ export interface TripMember {
   role: TripMemberRole;
   invitedBy: string | null;
   joinedAt: string;
+  roleChangedAt: string | null;
+  roleChangedBy: string | null;
+  removedAt: string | null;
+  removedBy: string | null;
+  version: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -90,21 +113,82 @@ export interface Activity {
   dayDate: string; // ISO date (yyyy-mm-dd) — which day column this belongs to
   title: string;
   description: string | null;
-  location: string | null;
-  /** Optional geocoordinates for the activity, plotted on the trip map. */
+  placeName?: string | null;
+  formattedAddress?: string | null;
+  placeId?: string | null;
+  /** @deprecated Use `placeName` and `formattedAddress`. */
+  location?: string | null;
+  /** @deprecated Activity locations are identified by `placeId`. */
   latitude?: number | null;
+  /** @deprecated Activity locations are identified by `placeId`. */
   longitude?: number | null;
+  /** Canonical values are enforced when activities are persisted. */
   category: string;
+  timingSpecificity?: "exact" | "flexible";
+  flexiblePeriod?: "morning" | "afternoon" | "evening" | "anytime" | null;
   startTime: string | null; // ISO datetime
   endTime: string | null; // ISO datetime
+  bookingReference?: string | null;
+  participants?: ActivityParticipant[];
+  pollStatus?: ActivityPollStatus;
+  votingEndsAt?: string | null;
+  pollOptions?: ActivityPollOption[];
+  pollVotes?: ActivityPollVote[];
   /** Fractional ordering key within (tripId, dayDate) for drag-and-drop reordering. */
   position: number;
   /** Planned/estimated cost in the trip's base currency (minor units), used for "planned" budget pacing. */
   estimatedCostMinor: MinorUnits | null;
   createdBy: string;
+  updatedBy?: string | null;
+  deletedBy?: string | null;
+  restoredAt?: string | null;
+  restoredBy?: string | null;
+  version?: number;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
+}
+
+export type ActivityParticipationStatus = "attending" | "declined" | "pending";
+
+export interface ActivityParticipant {
+  userId: string | null;
+  travelerId?: string | null;
+  displayName?: string | null;
+  status: ActivityParticipationStatus;
+}
+
+export type ActivityPollStatus = "confirmed" | "proposed" | "voting" | "approved" | "rejected";
+export type ActivityVoteChoice = "approve" | "decline" | "suggested";
+
+export interface ActivityPollOption {
+  id: string;
+  label: string;
+  proposedBy: string;
+  createdAt: string;
+  dayDate?: string | null;
+  startTime?: string | null;
+  location?: string | null;
+}
+
+export interface ActivityPollVote {
+  userId: string;
+  choice: ActivityVoteChoice;
+  optionId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ActivityPersonalBudget {
+  id: string;
+  activityId: string;
+  tripId: string;
+  userId: string;
+  amountMinor: MinorUnits;
+  currency: CurrencyCode;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Expense {
@@ -125,6 +209,11 @@ export interface Expense {
   /** ISO date (yyyy-mm-dd) the expense occurred, distinct from `createdAt`. */
   date: string;
   createdBy: string;
+  updatedBy?: string | null;
+  deletedBy?: string | null;
+  restoredAt?: string | null;
+  restoredBy?: string | null;
+  version?: number;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
@@ -146,6 +235,14 @@ export interface ExpenseShare {
   settlementStatus: SettlementStatus;
   /** ISO datetime when this split was settled, or `null` while it is still pending. */
   settledAt: string | null;
+  settledBy?: string | null;
+  statusChangedAt?: string | null;
+  statusChangedBy?: string | null;
+  updatedBy?: string | null;
+  deletedBy?: string | null;
+  restoredAt?: string | null;
+  restoredBy?: string | null;
+  version?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -160,6 +257,7 @@ export interface UserWallet {
   userId: string;
   startingBalanceMinor: MinorUnits;
   currency: CurrencyCode;
+  version: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -182,6 +280,14 @@ export interface ExpenseSettlement {
   status: SettlementStatus;
   /** ISO datetime the debt was settled, or `null` while it is still pending. */
   settledAt: string | null;
+  settledBy?: string | null;
+  statusChangedAt?: string | null;
+  statusChangedBy?: string | null;
+  updatedBy?: string | null;
+  deletedBy?: string | null;
+  restoredAt?: string | null;
+  restoredBy?: string | null;
+  version?: number;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -257,6 +363,7 @@ export interface ConnectionSnapshot {
 
 /** The remote `connections.status` enum (authoritative edge state). */
 export type ConnectionRemoteStatus = "pending" | "accepted" | "blocked";
+export type ConnectionSource = "viatik_id_request" | "qr_scan" | "legacy";
 
 /**
  * The remote mutual connection edge (request/accept graph). Local representation
@@ -270,6 +377,14 @@ export interface Connection {
   status: ConnectionRemoteStatus;
   requesterSnapshot: ConnectionSnapshot;
   recipientSnapshot: ConnectionSnapshot;
+  statusChangedAt?: string | null;
+  statusChangedBy?: string | null;
+  acceptedAt?: string | null;
+  acceptedBy?: string | null;
+  blockedAt?: string | null;
+  blockedBy?: string | null;
+  version?: number;
+  source?: ConnectionSource | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -313,6 +428,11 @@ export interface Contact {
   passportExpiresOn: string | null;
   preferredCurrency: string | null;
   preferredLanguage: string | null;
+  updatedBy?: string | null;
+  deletedBy?: string | null;
+  restoredAt?: string | null;
+  restoredBy?: string | null;
+  version?: number;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
@@ -327,6 +447,11 @@ export interface TripTraveler {
   displayName: string;
   travelerType: TravelerType;
   createdBy: string;
+  updatedBy?: string | null;
+  deletedBy?: string | null;
+  restoredAt?: string | null;
+  restoredBy?: string | null;
+  version?: number;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;

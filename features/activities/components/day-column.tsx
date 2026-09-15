@@ -30,6 +30,7 @@ interface DayColumnProps {
   conflicts?: Record<string, WeatherConflict>;
   /** Receives a scout suggestion dropped onto this column. */
   onDropScout?: (dayDate: string, payload: ScoutDndPayload) => void;
+  currentUserId?: string;
 }
 
 export function DayColumn({
@@ -44,6 +45,7 @@ export function DayColumn({
   weatherLoading,
   conflicts,
   onDropScout,
+  currentUserId,
 }: DayColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: dayDate, data: { dayDate } });
   const setDragOverDay = useUiStore((s) => s.setDragOverDay);
@@ -131,6 +133,7 @@ export function DayColumn({
               onSelect={onSelect}
               draggable={draggable}
               conflict={conflicts?.[activity.id]}
+              currentUserId={currentUserId}
             />
           ))}
           {emptyText && (

@@ -72,4 +72,17 @@ describe("ActivityCard", () => {
     expect(screen.queryByRole("button", { name: /Move/ })).toBeNull();
     expect(screen.getByRole("button", { name: `Open details for ${mockActivity.title}` })).toBeTruthy();
   });
+
+  it("colors by category and mutes activities the current user is not attending", () => {
+    const { container } = render(
+      <ActivityCard
+        activity={{ ...mockActivity, participants: [{ userId: "user-2", status: "attending" as const }] }}
+        currentUserId="user-1"
+      />
+    );
+
+    expect(screen.getByRole("listitem").className).toContain("border-emerald-500");
+    expect(container.querySelector("article")?.className).toContain("opacity-40");
+    expect(screen.queryByRole("button", { name: /Move/ })).toBeNull();
+  });
 });

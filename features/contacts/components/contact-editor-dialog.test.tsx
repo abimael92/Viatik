@@ -85,4 +85,150 @@ describe("ContactEditorDialog", () => {
     expect(within(dialog).getByRole("button", { name: "Save contact" })).toBeTruthy();
     expect(within(dialog).queryByRole("button", { name: "Next" })).toBeNull();
   });
+
+  it("preserves manual form state while switching add methods", () => {
+    render(
+      <ContactEditorDialog
+        open
+        userId="user-1"
+        ownProfile={{ profileId: "user-1", fullName: "Alex Morgan" }}
+        onOpenChange={vi.fn()}
+      />
+    );
+
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("heading", { name: "Add Contact" })).toBeTruthy();
+
+    fireEvent.change(within(dialog).getByLabelText("Full name"), {
+      target: { value: "Jordan Rivera" },
+    });
+    fireEvent.mouseDown(within(dialog).getByRole("tab", { name: "Viatik ID" }), {
+      button: 0,
+      ctrlKey: false,
+    });
+    fireEvent.change(within(dialog).getByPlaceholderText(/Enter their Viatik ID/), {
+      target: { value: "VTK-EF50869B9DF94913" },
+    });
+    expect((within(dialog).getByRole("button", { name: "Search" }) as HTMLButtonElement).disabled).toBe(false);
+
+    fireEvent.mouseDown(within(dialog).getByRole("tab", { name: "Scan QR" }), {
+      button: 0,
+      ctrlKey: false,
+    });
+    expect(within(dialog).getByRole("button", { name: "Start camera" })).toBeTruthy();
+
+    fireEvent.mouseDown(within(dialog).getByRole("tab", { name: "Manual" }), {
+      button: 0,
+      ctrlKey: false,
+    });
+    expect((within(dialog).getByLabelText("Full name") as HTMLInputElement).value).toBe("Jordan Rivera");
+  });
+
+  it("disables full name and avatar editing when contact is linked to a Viatik account", () => {
+    const viatikContact = {
+      id: "c-1",
+      ownerId: "user-1",
+      fullName: "Elena Lopez",
+      avatarUrl: "https://example.com/avatar.jpg",
+      avatarSeed: null,
+      email: "elena@example.com",
+      phone: "+1234567890",
+      relationship: "friend" as const,
+      travelerType: "adult" as const,
+      birthDate: "1990-01-01",
+      notes: "Friend from college",
+      linkedProfileId: "viatik-user-123",
+      linkedAvatarUrl: "https://example.com/avatar.jpg",
+      linkedHandle: "elenalopez",
+      connectionId: "conn-123",
+      connectionStatus: "accepted" as const,
+      connectionDirection: null,
+      emergencyContactName: null,
+      emergencyContactRelationship: null,
+      emergencyContactPhone: null,
+      dietaryRestrictions: [],
+      allergies: [],
+      passportIssuingCountry: null,
+      passportExpiresOn: null,
+      preferredCurrency: null,
+      preferredLanguage: null,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      deletedAt: null,
+    };
+
+    render(
+      <ContactEditorDialog
+        open
+        userId="user-1"
+        contact={viatikContact}
+        onOpenChange={vi.fn()}
+      />
+    );
+
+    const dialog = screen.getByRole("dialog");
+    const nameInput = within(dialog).getByLabelText("Full name") as HTMLInputElement;
+
+    // Name is disabled because it is synced from the Viatik registration account
+    expect(nameInput.disabled).toBe(true);
+    expect(nameInput.value).toBe("Elena Lopez");
+    expect(within(dialog).getByText(/Managed by Viatik account · read-only/)).toBeTruthy();
+
+    // Relationship is still editable
+    const relationshipSelect = within(dialog).getByLabelText("Relationship") as HTMLSelectElement;
+    expect(relationshipSelect.disabled).toBe(false);
+  });
+
+  it("allows full editing when contact was created manually", () => {
+    const manualContact = {
+      id: "c-2",
+      ownerId: "user-1",
+      fullName: "Manual Friend",
+      avatarUrl: null,
+      avatarSeed: "adventurer|seed1",
+      email: "manual@example.com",
+      phone: null,
+      relationship: "friend" as const,
+      travelerType: "adult" as const,
+      birthDate: null,
+      notes: null,
+      linkedProfileId: null,
+      linkedAvatarUrl: null,
+      linkedHandle: null,
+      connectionId: null,
+      connectionStatus: "unverified_offline" as const,
+      connectionDirection: null,
+      emergencyContactName: null,
+      emergencyContactRelationship: null,
+      emergencyContactPhone: null,
+      dietaryRestrictions: [],
+      allergies: [],
+      passportIssuingCountry: null,
+      passportExpiresOn: null,
+      preferredCurrency: null,
+      preferredLanguage: null,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      deletedAt: null,
+    };
+
+    render(
+      <ContactEditorDialog
+        open
+        userId="user-1"
+        contact={manualContact}
+        onOpenChange={vi.fn()}
+      />
+    );
+
+    const dialog = screen.getByRole("dialog");
+    const nameInput = within(dialog).getByLabelText("Full name") as HTMLInputElement;
+
+    // Full name is editable for manual contacts
+    expect(nameInput.disabled).toBe(false);
+    expect(nameInput.value).toBe("Manual Friend");
+
+    fireEvent.change(nameInput, { target: { value: "Manual Friend Updated" } });
+    expect(nameInput.value).toBe("Manual Friend Updated");
+  });
 });

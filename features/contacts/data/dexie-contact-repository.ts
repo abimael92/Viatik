@@ -203,6 +203,14 @@ export class DexieContactRepository implements ContactRepository {
           avatarSeed: profile.avatarSeed?.trim() || null,
           publicHandle: profile.publicHandle?.trim() || null,
         },
+        statusChangedAt: now,
+        statusChangedBy: ownerId,
+        acceptedAt: null,
+        acceptedBy: null,
+        blockedAt: null,
+        blockedBy: null,
+        version: 1,
+        source: "viatik_id_request",
         createdAt: now,
         updatedAt: now,
       };
@@ -217,6 +225,7 @@ export class DexieContactRepository implements ContactRepository {
       const contact = await ctx.table<Contact>("contacts").get(id);
       if (!contact || contact.ownerId !== ownerId || contact.deletedAt) throw new Error("Contact not found.");
       if (!contact.linkedProfileId) throw new Error("This request has no linked profile.");
+      if (contact.connectionStatus !== "pending" || contact.connectionDirection !== "inbound") throw new Error("This request is no longer pending.");
       const now = new Date().toISOString();
       const updated: Contact = {
         ...contact,
@@ -242,6 +251,14 @@ export class DexieContactRepository implements ContactRepository {
           publicHandle: contact.linkedHandle,
         },
         recipientSnapshot: { profileId: ownerId, displayName: contact.fullName },
+        statusChangedAt: now,
+        statusChangedBy: ownerId,
+        acceptedAt: accept ? now : null,
+        acceptedBy: accept ? ownerId : null,
+        blockedAt: accept ? null : now,
+        blockedBy: accept ? null : ownerId,
+        version: 2,
+        source: "viatik_id_request",
         createdAt: contact.createdAt,
         updatedAt: now,
       };

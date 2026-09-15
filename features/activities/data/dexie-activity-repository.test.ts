@@ -36,14 +36,17 @@ describe("DexieActivityRepository", () => {
     });
 
     expect(await db.activities.get("activity-1")).toEqual(activity);
+    expect(activity).toMatchObject({ createdBy: TEST_USER, updatedBy: TEST_USER, deletedBy: null, version: 1 });
 
     await activityRepository.remove("activity-1");
     const deleted = await db.activities.get("activity-1");
     expect(deleted?.deletedAt).not.toBeNull();
+    expect(deleted).toMatchObject({ deletedBy: TEST_USER, updatedBy: TEST_USER, version: 2 });
     expect(await activityRepository.listByTrip("trip-1")).toHaveLength(0);
 
     const restored = await activityRepository.restore("activity-1");
     expect(restored.deletedAt).toBeNull();
+    expect(restored).toMatchObject({ deletedBy: null, restoredBy: TEST_USER, version: 3 });
 
     const list = await activityRepository.listByTrip("trip-1");
     expect(list).toHaveLength(1);
