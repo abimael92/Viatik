@@ -1,6 +1,6 @@
 import Dexie, { type EntityTable } from "dexie";
 
-import type { Activity, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripBudget, TripInvitation, TripMember, TripTraveler, UserWallet } from "@/features/domain/entities";
+import type { Activity, ActivityPersonalBudget, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripBudget, TripInvitation, TripMember, TripTraveler, UserWallet } from "@/features/domain/entities";
 import type { TripMedia } from "@/features/domain/entities-media";
 import { MAX_MINOR_UNITS } from "@/features/domain/money";
 import type { VaultEntry, VaultKeyset } from "@/features/vault/domain/vault-types";
@@ -42,6 +42,7 @@ export class ViatikDatabase extends Dexie {
   trips!: EntityTable<Trip, "id">;
   tripMembers!: EntityTable<TripMember, "id">;
   activities!: EntityTable<Activity, "id">;
+  activityPersonalBudgets!: EntityTable<ActivityPersonalBudget, "id">;
   expenses!: EntityTable<Expense, "id">;
   expenseShares!: EntityTable<ExpenseShare, "id">;
   /** FIFO queue of not-yet-synced mutations, drained by `SyncEngine`. */
@@ -424,6 +425,10 @@ export class ViatikDatabase extends Dexie {
           trip.completedAt = trip.completedAt ?? null;
         }
       });
+    });
+
+    this.version(33).stores({
+      activityPersonalBudgets: "id, activityId, tripId, userId, [activityId+userId], updatedAt",
     });
   }
 }
