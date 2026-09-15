@@ -62,7 +62,12 @@ export function AddContactCommandBar({
     }
     setStatus("looking");
     debounceRef.current = setTimeout(() => {
-      runLookup(value);
+      resolve(value).catch((err) => {
+        if (value !== queryRef.current) return; // stale response
+        setProfile(null);
+        setStatus("not_found");
+        setError(err instanceof Error ? err.message : "We couldn't look up that Viatik ID right now.");
+      });
     }, 350);
   }
 
