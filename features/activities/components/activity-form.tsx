@@ -116,6 +116,7 @@ export function ActivityForm({
   draft,
   days,
   saving,
+  forceVote = false,
   onSubmit,
   onCancel,
   onDelete,
@@ -132,6 +133,8 @@ export function ActivityForm({
   draft?: { dayDate: string; startTime: string };
   days: string[];
   saving: boolean;
+  /** Pre-enables "Send to Group Vote" for a brand-new activity created from the Proposals section. */
+  forceVote?: boolean;
   onSubmit: (values: ActivityFormValues) => Promise<void>;
   onCancel: () => void;
   onDelete?: () => void;
@@ -152,7 +155,7 @@ export function ActivityForm({
   const [endTime, setEndTime] = useState(activity?.endTime?.slice(11, 16) ?? "");
   const [endTimeEdited, setEndTimeEdited] = useState(Boolean(activity?.endTime));
   const [bookingEnabled, setBookingEnabled] = useState(Boolean(activity?.bookingReference));
-  const [sendToVote, setSendToVote] = useState(activity?.pollStatus === "proposed" || activity?.pollStatus === "voting");
+  const [sendToVote, setSendToVote] = useState(activity?.pollStatus === "proposed" || activity?.pollStatus === "voting" || forceVote);
   const [votingEndsAt, setVotingEndsAt] = useState(() => activity?.votingEndsAt?.slice(0, 16) ?? defaultVotingDeadline());
   const [manualTravelerName, setManualTravelerName] = useState("");
   const [addingTraveler, setAddingTraveler] = useState(false);
@@ -208,10 +211,7 @@ export function ActivityForm({
     const nextStartTime = exact && startTime ? `${dayDate}T${startTime}:00` : null;
     const nextEndTime = exact && endTime ? combineEndDate(dayDate, startTime, endTime) : null;
     const nextPlaceName = place?.name ?? null;
-    let shouldVote = sendToVote;
-    if (activity && activity.pollStatus !== "proposed" && activity.pollStatus !== "voting" && !shouldVote && criticalFieldsChanged(activity, { dayDate, startTime: nextStartTime, endTime: nextEndTime, placeName: nextPlaceName })) {
-      shouldVote = window.confirm("These changes affect the schedule or location. Send changes to group vote?");
-    }
+    const shouldVote = sendToVote;
     const now = new Date().toISOString();
     const existingVoteOpen = activity?.pollStatus === "proposed" || activity?.pollStatus === "voting";
     const pollStatus: ActivityPollStatus = shouldVote ? (activity ? "voting" : "proposed") : "confirmed";
@@ -542,17 +542,15 @@ function combineEndDate(dayDate: string, startTime: string, endTime: string): st
 }
 
 function defaultVotingDeadline(): string {
-  const deadline = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const deadline = new Date();
+  deadline.setDate(deadline.getDate() + 3);
+  deadline.setHours(0, 0, 0, 0);
   return localDateTimeValue(deadline);
 }
 
 function localDateTimeValue(date: Date): string {
   const offset = date.getTimezoneOffset() * 60_000;
   return new Date(date.getTime() - offset).toISOString().slice(0, 16);
-}
-
-function criticalFieldsChanged(activity: Activity, next: { dayDate: string; startTime: string | null; endTime: string | null; placeName: string | null }): boolean {
-  return activity.dayDate !== next.dayDate || activity.startTime !== next.startTime || activity.endTime !== next.endTime || (activity.placeName ?? null) !== next.placeName;
 }
 
 function formatDate(date: string) {

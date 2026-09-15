@@ -7,6 +7,7 @@ import { motion } from "motion/react";
 
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { ActivityVoteCard } from "@/features/activities/components/activity-vote-card";
+import { formatActivityTime } from "@/features/activities/lib/activity-time";
 import type { Activity } from "@/features/domain/entities";
 import type { WeatherConflict } from "@/features/weather/domain/weather-conflict-types";
 import { getActivityCategoryColors, isUserAttending } from "@/features/trips/lib/activity-category-colors";
@@ -83,10 +84,7 @@ export function ActivityCard({ activity, onSelect, draggable = true, conflict, c
             {activity.startTime && (
               <span className="flex items-center gap-1">
                 <Clock className="size-3" />
-                {new Date(activity.startTime).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                {formatActivityTime(activity.startTime)}
               </span>
             )}
             {activity.timingSpecificity === "flexible" && activity.flexiblePeriod && (

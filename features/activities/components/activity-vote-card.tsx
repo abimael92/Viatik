@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Clock3, Lightbulb, ThumbsDown, Vote } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,11 +16,16 @@ export function ActivityVoteCard({ activity, currentUserId }: { activity: Activi
   const [alternativeOpen, setAlternativeOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [renderedAt] = useState(() => Date.now());
+  // Tracked in state (not read at render time) so expiry stays live without violating react-hooks/purity.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(interval);
+  }, []);
   const options = activity.pollOptions ?? [];
   const votes = activity.pollVotes ?? [];
   const primaryOption = options[0];
-  const expired = activity.votingEndsAt ? new Date(activity.votingEndsAt).getTime() <= renderedAt : false;
+  const expired = activity.votingEndsAt ? new Date(activity.votingEndsAt).getTime() <= now : false;
   const active = (activity.pollStatus === "proposed" || activity.pollStatus === "voting") && !expired;
 
   async function castVote(choice: ActivityVoteChoice, optionId: string | null) {
