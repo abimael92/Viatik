@@ -4,6 +4,7 @@ import { CalendarDays, Clock, Image as ImageIcon, MapPin, Share2 } from "lucide-
 import { useMemo, useState } from "react";
 
 import type { SharedTripSnapshot } from "@/features/sharing/domain/share-types";
+import { formatActivityTime } from "@/features/activities/lib/activity-time";
 import { cn } from "@/lib/utils";
 
 type GuestTab = "itinerary" | "map" | "photos";
@@ -134,7 +135,7 @@ function ItineraryTab({ activities }: { activities: SharedTripSnapshot["activiti
                   {activity.startTime && (
                     <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
                       <Clock className="size-3.5" aria-hidden />
-                      {new Date(activity.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      {formatActivityTime(activity.startTime)}
                     </span>
                   )}
                 </div>

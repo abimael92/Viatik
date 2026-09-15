@@ -16,8 +16,10 @@ import { WeekCalendar } from "@/features/activities/components/week-calendar";
 import { ActivityForm, type ActivityFormValues } from "@/features/activities/components/activity-form";
 import { ActivityCloneDialog, type ActivityCloneTiming } from "@/features/activities/components/activity-clone-dialog";
 import { ActivityLocationCard } from "@/features/activities/components/activity-location-card";
+import { ProposalsSection } from "@/features/activities/components/proposals-section";
 import { activityRepository } from "@/features/activities/data/dexie-activity-repository";
 import { activityPersonalBudgetRepository } from "@/features/activities/data/dexie-activity-personal-budget-repository";
+import { formatActivityTime } from "@/features/activities/lib/activity-time";
 import { PeoplePanel } from "@/features/collaboration/components/people-panel";
 import { collaborationRepository } from "@/features/collaboration/data/dexie-collaboration-repository";
 import { contactRepository, tripTravelerRepository } from "@/features/contacts/data/dexie-contact-repository";
@@ -95,7 +97,7 @@ function initWorkspace(initialTab?: string): { tab: Tab; tool: SecondaryTool | n
   }
 }
 
-type ActivityDialogState = null | "new" | { draft: { dayDate: string; startTime: string } } | { activity: Activity; readOnly: boolean } | { transitSegment: TransitSegment };
+type ActivityDialogState = null | "new" | { draft: { dayDate: string; startTime: string } } | { activity: Activity; readOnly: boolean } | { transitSegment: TransitSegment } | { newProposal: true };
 
 export function TripWorkspace({ tripId, userId, initialTab = "overview", initialMoneyToolsOpen = false }: { tripId: string; userId: string; initialTab?: string; initialMoneyToolsOpen?: boolean }) {
   const router = useRouter();
@@ -520,6 +522,13 @@ export function TripWorkspace({ tripId, userId, initialTab = "overview", initial
             </div>
             {scoutVisible && <AiScoutSidebar embedded open onOpenChange={setScoutOpen} trip={trip} tripId={tripId} userId={userId} days={days} activities={activities} canEdit={canEdit} onError={setError} />}
           </div>
+          <ProposalsSection
+            activities={activities}
+            currentUserId={userId}
+            canEdit={canEdit}
+            onSelect={openActivity}
+            onAddProposal={() => setActivityDialog({ newProposal: true })}
+          />
         </section>
       )}
       {tab === "map" && <TripMapView tripId={tripId} userId={userId} trip={trip} canEdit={canEdit} />}
@@ -750,6 +759,7 @@ function ActivityDialog({ open, state, trip, userId, members, travelers, activit
   const draft = state && state !== "new" && "draft" in state ? state.draft : undefined;
   const transitSegment = state && state !== "new" && "transitSegment" in state ? state.transitSegment : undefined;
   const readOnly = state && state !== "new" && "activity" in state ? state.readOnly : false;
+  const forceVote = Boolean(state && state !== "new" && "newProposal" in state);
   const [saving, setSaving] = useState(false);
   const [cloneOpen, setCloneOpen] = useState(false);
   const [cloning, setCloning] = useState(false);
@@ -856,10 +866,7 @@ function ActivityDialog({ open, state, trip, userId, members, travelers, activit
               <div className="flex justify-between gap-4">
                 <dt className="text-muted-foreground">Time</dt>
                 <dd>
-                  {new Date(activity.startTime).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                  {formatActivityTime(activity.startTime)}
                 </dd>
               </div>
             )}
@@ -894,7 +901,7 @@ function ActivityDialog({ open, state, trip, userId, members, travelers, activit
     <Dialog open={open} onOpenChange={(value) => !value && onClose()}>
       <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] max-w-4xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{transitSegment ? "Edit transit" : activity ? "Edit activity" : "Add activity"}</DialogTitle>
+          <DialogTitle>{transitSegment ? "Edit transit" : activity ? "Edit activity" : forceVote ? "Add proposal" : "Add activity"}</DialogTitle>
           <DialogDescription>Plan a stop in your day. It stays available offline.</DialogDescription>
         </DialogHeader>
         {activity && loadedBudgetForActivityId !== activity.id ? <p className="py-8 text-center text-sm text-muted-foreground">Loading your private budget...</p> : <ActivityForm
@@ -909,6 +916,7 @@ function ActivityDialog({ open, state, trip, userId, members, travelers, activit
           draft={draft}
           days={days}
           saving={saving}
+          forceVote={forceVote}
           onSubmit={submit}
           onCancel={onClose}
           onAddTraveler={async (name) => {
