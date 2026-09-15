@@ -1,6 +1,6 @@
 import type { Activity, Trip } from "@/features/domain/entities";
 import { resolveTripStatus } from "@/features/trips/lib/trip-status";
-import { isUserAttending } from "@/features/trips/lib/activity-category-colors";
+import { isUserConfirmedAttending } from "@/features/trips/lib/activity-category-colors";
 
 export const DAY_MS = 86_400_000;
 
@@ -184,7 +184,7 @@ export function buildTimeline(
 ): TimelineItem[] {
   const { scope, today, limit, currentUserId } = options;
   const sorted = [...activities]
-    .filter((activity) => activity.deletedAt === null && isUserAttending(activity, currentUserId))
+    .filter((activity) => activity.deletedAt === null && isUserConfirmedAttending(activity, currentUserId))
     .sort((a, b) => {
       const dateCmp = a.dayDate.localeCompare(b.dayDate);
       if (dateCmp !== 0) return dateCmp;

@@ -23,6 +23,7 @@
 -- ---------------------------------------------------------------------------
 drop policy if exists "profiles_select_self_or_shared_trip" on public.profiles;
 drop policy if exists "profiles_select_authenticated" on public.profiles;
+drop policy if exists "profiles_select_self" on public.profiles;
 
 create policy "profiles_select_self"
   on public.profiles for select

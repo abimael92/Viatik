@@ -64,6 +64,13 @@ export function getActivityCategoryColors(category: string): ActivityCategoryCol
 }
 
 export function isUserAttending(activity: Activity, userId: string): boolean {
+  if (!activity.participants?.length) return true;
+  return activity.participants.some(
+    (participant) => participant.userId === userId && participant.status === "attending"
+  );
+}
+
+export function isUserConfirmedAttending(activity: Activity, userId: string): boolean {
   return activity.participants?.some(
     (participant) => participant.userId === userId && participant.status === "attending"
   ) ?? false;

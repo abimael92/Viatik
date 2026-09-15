@@ -39,9 +39,7 @@ set
          else created_at end),
   status_changed_by = coalesce(status_changed_by,
     case when status = 'planned' then owner_id
-         when status = 'active' then coalesce(started_by, '0fb843db-9c96-4021-92f8-f143ddd3efe8'::uuid)
-         when status = 'completed' then coalesce(completed_by, '0fb843db-9c96-4021-92f8-f143ddd3efe8'::uuid)
-         when status = 'cancelled' then coalesce(cancelled_by, '0fb843db-9c96-4021-92f8-f143ddd3efe8'::uuid)
+         when status in ('active', 'completed', 'cancelled') then '0fb843db-9c96-4021-92f8-f143ddd3efe8'::uuid
          else owner_id end),
   version = coalesce(version, 1);
 
@@ -49,12 +47,12 @@ alter table public.trips
   alter column created_by set not null,
   alter column updated_by set not null,
   alter column version set not null,
-  add constraint if not exists trips_created_by_fkey foreign key (created_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists trips_updated_by_fkey foreign key (updated_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists trips_deleted_by_fkey foreign key (deleted_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists trips_restored_by_fkey foreign key (restored_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists trips_status_changed_by_fkey foreign key (status_changed_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists trips_version_positive_chk check (version > 0);
+  add constraint trips_created_by_fkey foreign key (created_by) references public.profiles (id) on delete cascade,
+  add constraint trips_updated_by_fkey foreign key (updated_by) references public.profiles (id) on delete cascade,
+  add constraint trips_deleted_by_fkey foreign key (deleted_by) references public.profiles (id) on delete cascade,
+  add constraint trips_restored_by_fkey foreign key (restored_by) references public.profiles (id) on delete cascade,
+  add constraint trips_status_changed_by_fkey foreign key (status_changed_by) references public.profiles (id) on delete cascade,
+  add constraint trips_version_positive_chk check (version > 0);
 
 create index if not exists trips_status_changed_at_idx on public.trips (status, status_changed_at);
 
@@ -93,11 +91,11 @@ set
 alter table public.trip_invitations
   alter column status_changed_at set not null,
   alter column status_changed_by set not null,
-  add constraint if not exists trip_invitations_status_changed_by_fkey foreign key (status_changed_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists trip_invitations_accepted_by_fkey foreign key (accepted_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists trip_invitations_rejected_by_fkey foreign key (rejected_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists trip_invitations_revoked_by_fkey foreign key (revoked_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists trip_invitations_version_positive_chk check (version > 0);
+  add constraint trip_invitations_status_changed_by_fkey foreign key (status_changed_by) references public.profiles (id) on delete cascade,
+  add constraint trip_invitations_accepted_by_fkey foreign key (accepted_by) references public.profiles (id) on delete cascade,
+  add constraint trip_invitations_rejected_by_fkey foreign key (rejected_by) references public.profiles (id) on delete cascade,
+  add constraint trip_invitations_revoked_by_fkey foreign key (revoked_by) references public.profiles (id) on delete cascade,
+  add constraint trip_invitations_version_positive_chk check (version > 0);
 
 create index if not exists trip_invitations_status_changed_at_idx on public.trip_invitations (status, status_changed_at);
 
@@ -111,8 +109,7 @@ set
 where version is null;
 
 alter table public.connections
-  alter column version set not null,
-  add constraint if not exists connections_version_positive_chk check (version > 0);
+  alter column version set not null;
 
 create index if not exists connections_status_changed_at_idx on public.connections (status, status_changed_at);
 
@@ -134,10 +131,10 @@ set
 
 alter table public.activities
   alter column updated_by set not null,
-  add constraint if not exists activities_updated_by_fkey foreign key (updated_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists activities_deleted_by_fkey foreign key (deleted_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists activities_restored_by_fkey foreign key (restored_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists activities_version_positive_chk check (version > 0);
+  add constraint activities_updated_by_fkey foreign key (updated_by) references public.profiles (id) on delete cascade,
+  add constraint activities_deleted_by_fkey foreign key (deleted_by) references public.profiles (id) on delete cascade,
+  add constraint activities_restored_by_fkey foreign key (restored_by) references public.profiles (id) on delete cascade,
+  add constraint activities_version_positive_chk check (version > 0);
 
 -- 5) expenses
 alter table public.expenses
@@ -157,13 +154,14 @@ set
 
 alter table public.expenses
   alter column updated_by set not null,
-  add constraint if not exists expenses_updated_by_fkey foreign key (updated_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists expenses_deleted_by_fkey foreign key (deleted_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists expenses_restored_by_fkey foreign key (restored_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists expenses_version_positive_chk check (version > 0);
+  add constraint expenses_updated_by_fkey foreign key (updated_by) references public.profiles (id) on delete cascade,
+  add constraint expenses_deleted_by_fkey foreign key (deleted_by) references public.profiles (id) on delete cascade,
+  add constraint expenses_restored_by_fkey foreign key (restored_by) references public.profiles (id) on delete cascade,
+  add constraint expenses_version_positive_chk check (version > 0);
 
 -- 5b) expense_shares
 alter table public.expense_shares
+  add column if not exists deleted_at timestamptz,
   add column if not exists updated_by uuid,
   add column if not exists deleted_by uuid,
   add column if not exists restored_at timestamptz,
@@ -180,10 +178,10 @@ set
 
 alter table public.expense_shares
   alter column updated_by set not null,
-  add constraint if not exists expense_shares_updated_by_fkey foreign key (updated_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists expense_shares_deleted_by_fkey foreign key (deleted_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists expense_shares_restored_by_fkey foreign key (restored_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists expense_shares_version_positive_chk check (version > 0);
+  add constraint expense_shares_updated_by_fkey foreign key (updated_by) references public.profiles (id) on delete cascade,
+  add constraint expense_shares_deleted_by_fkey foreign key (deleted_by) references public.profiles (id) on delete cascade,
+  add constraint expense_shares_restored_by_fkey foreign key (restored_by) references public.profiles (id) on delete cascade,
+  add constraint expense_shares_version_positive_chk check (version > 0);
 
 -- 5c) expense_settlements
 alter table public.expense_settlements
@@ -203,10 +201,10 @@ set
 
 alter table public.expense_settlements
   alter column updated_by set not null,
-  add constraint if not exists expense_settlements_updated_by_fkey foreign key (updated_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists expense_settlements_deleted_by_fkey foreign key (deleted_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists expense_settlements_restored_by_fkey foreign key (restored_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists expense_settlements_version_positive_chk check (version > 0);
+  add constraint expense_settlements_updated_by_fkey foreign key (updated_by) references public.profiles (id) on delete cascade,
+  add constraint expense_settlements_deleted_by_fkey foreign key (deleted_by) references public.profiles (id) on delete cascade,
+  add constraint expense_settlements_restored_by_fkey foreign key (restored_by) references public.profiles (id) on delete cascade,
+  add constraint expense_settlements_version_positive_chk check (version > 0);
 
 -- 6) user_wallets
 alter table public.user_wallets
@@ -218,7 +216,7 @@ set
 
 alter table public.user_wallets
   alter column version set not null,
-  add constraint if not exists user_wallets_version_positive_chk check (version > 0);
+  add constraint user_wallets_version_positive_chk check (version > 0);
 
 -- 7) contacts
 alter table public.contacts
@@ -238,10 +236,10 @@ set
 
 alter table public.contacts
   alter column updated_by set not null,
-  add constraint if not exists contacts_updated_by_fkey foreign key (updated_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists contacts_deleted_by_fkey foreign key (deleted_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists contacts_restored_by_fkey foreign key (restored_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists contacts_version_positive_chk check (version > 0);
+  add constraint contacts_updated_by_fkey foreign key (updated_by) references public.profiles (id) on delete cascade,
+  add constraint contacts_deleted_by_fkey foreign key (deleted_by) references public.profiles (id) on delete cascade,
+  add constraint contacts_restored_by_fkey foreign key (restored_by) references public.profiles (id) on delete cascade,
+  add constraint contacts_version_positive_chk check (version > 0);
 
 -- 7b) trip_travelers
 alter table public.trip_travelers
@@ -261,10 +259,10 @@ set
 
 alter table public.trip_travelers
   alter column updated_by set not null,
-  add constraint if not exists trip_travelers_updated_by_fkey foreign key (updated_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists trip_travelers_deleted_by_fkey foreign key (deleted_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists trip_travelers_restored_by_fkey foreign key (restored_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists trip_travelers_version_positive_chk check (version > 0);
+  add constraint trip_travelers_updated_by_fkey foreign key (updated_by) references public.profiles (id) on delete cascade,
+  add constraint trip_travelers_deleted_by_fkey foreign key (deleted_by) references public.profiles (id) on delete cascade,
+  add constraint trip_travelers_restored_by_fkey foreign key (restored_by) references public.profiles (id) on delete cascade,
+  add constraint trip_travelers_version_positive_chk check (version > 0);
 
 -- 8) trip_media
 alter table public.trip_media
@@ -284,10 +282,10 @@ set
 
 alter table public.trip_media
   alter column updated_by set not null,
-  add constraint if not exists trip_media_updated_by_fkey foreign key (updated_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists trip_media_deleted_by_fkey foreign key (deleted_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists trip_media_restored_by_fkey foreign key (restored_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists trip_media_version_positive_chk check (version > 0);
+  add constraint trip_media_updated_by_fkey foreign key (updated_by) references public.profiles (id) on delete cascade,
+  add constraint trip_media_deleted_by_fkey foreign key (deleted_by) references public.profiles (id) on delete cascade,
+  add constraint trip_media_restored_by_fkey foreign key (restored_by) references public.profiles (id) on delete cascade,
+  add constraint trip_media_version_positive_chk check (version > 0);
 
 -- 9) trip_share_links
 alter table public.trip_share_links
@@ -315,12 +313,12 @@ set
 
 alter table public.trip_share_links
   alter column updated_by set not null,
-  add constraint if not exists trip_share_links_updated_by_fkey foreign key (updated_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists trip_share_links_deleted_by_fkey foreign key (deleted_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists trip_share_links_restored_by_fkey foreign key (restored_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists trip_share_links_enabled_by_fkey foreign key (enabled_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists trip_share_links_disabled_by_fkey foreign key (disabled_by) references public.profiles (id) on delete cascade,
-  add constraint if not exists trip_share_links_version_positive_chk check (version > 0);
+  add constraint trip_share_links_updated_by_fkey foreign key (updated_by) references public.profiles (id) on delete cascade,
+  add constraint trip_share_links_deleted_by_fkey foreign key (deleted_by) references public.profiles (id) on delete cascade,
+  add constraint trip_share_links_restored_by_fkey foreign key (restored_by) references public.profiles (id) on delete cascade,
+  add constraint trip_share_links_enabled_by_fkey foreign key (enabled_by) references public.profiles (id) on delete cascade,
+  add constraint trip_share_links_disabled_by_fkey foreign key (disabled_by) references public.profiles (id) on delete cascade,
+  add constraint trip_share_links_version_positive_chk check (version > 0);
 
 -- 10) vault_keysets
 alter table public.vault_keysets
@@ -332,7 +330,7 @@ set
 
 alter table public.vault_keysets
   alter column version set not null,
-  add constraint if not exists vault_keysets_version_positive_chk check (version > 0);
+  add constraint vault_keysets_version_positive_chk check (version > 0);
 
 -- 11) vault_entries
 alter table public.vault_entries
@@ -348,7 +346,7 @@ set
 
 alter table public.vault_entries
   alter column version set not null,
-  add constraint if not exists vault_entries_version_positive_chk check (version > 0);
+  add constraint vault_entries_version_positive_chk check (version > 0);
 
 -- 12) trip_weather_forecasts
 alter table public.trip_weather_forecasts
@@ -360,7 +358,7 @@ set
 
 alter table public.trip_weather_forecasts
   alter column version set not null,
-  add constraint if not exists trip_weather_forecasts_version_positive_chk check (version > 0);
+  add constraint trip_weather_forecasts_version_positive_chk check (version > 0);
 
 -- 13) trip_share_links — ensure sync function passes version
 -- (No additional column needed; handled by CAS upsert)
@@ -371,6 +369,9 @@ alter table public.trip_weather_forecasts
 
 -- Trip members: role change tracking (already has invited_by, joined_at)
 alter table public.trip_members
+  add column if not exists updated_by uuid,
+  add column if not exists deleted_by uuid,
+  add column if not exists deleted_at timestamptz,
   add column if not exists role_changed_at timestamptz,
   add column if not exists role_changed_by uuid,
   add column if not exists removed_at timestamptz,
@@ -391,7 +392,7 @@ set
 
 alter table public.trip_members
   alter column version set not null,
-  add constraint if not exists trip_members_version_positive_chk check (version > 0);
+  add constraint trip_members_version_positive_chk check (version > 0);
 
 create index if not exists trip_members_role_changed_at_idx on public.trip_members (role, role_changed_at);
 

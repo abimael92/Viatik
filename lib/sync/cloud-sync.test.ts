@@ -139,6 +139,29 @@ describe("cloud synchronization", () => {
     expect(mocks.query.gt).toHaveBeenCalledWith("updated_at", "2026-01-01T00:00:00.000Z");
   });
 
+  it("skips the optional personal-budget table while its migration is absent", async () => {
+    mocks.queryResponses.push(
+      { data: [], error: null },
+      { data: [], error: null },
+      { data: [], error: null },
+      { data: [], error: null },
+      { data: null, error: { message: "Could not find the table 'public.activity_personal_budgets' in the schema cache" } },
+    );
+
+    await expect(pullRemoteChanges(true)).resolves.toBeUndefined();
+    expect(mocks.metadataPut).toHaveBeenCalled();
+  });
+
+  it("still fails when a core table is missing from the schema cache", async () => {
+    mocks.queryResponses.push({
+      data: null,
+      error: { message: "Could not find the table 'public.trips' in the schema cache" },
+    });
+
+    await expect(pullRemoteChanges(true)).rejects.toThrow("Pull trips");
+    expect(mocks.metadataPut).not.toHaveBeenCalled();
+  });
+
   it("propagates ownership cancellation to every PostgREST page request", async () => {
     const controller = new AbortController();
 
