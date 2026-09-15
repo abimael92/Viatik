@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import type { Expense, ExpenseShare, UserWallet } from "@/features/domain/entities";
+import type { ActivityPersonalBudget, Expense, ExpenseShare, UserWallet } from "@/features/domain/entities";
 import { toBaseMinorUnits } from "@/features/domain/money";
 import {
   expenseShareToRow,
+  activityPersonalBudgetToRow,
   expenseToRow,
   rowToExpense,
   rowToExpenseShare,
   rowToUserWallet,
+  rowToActivityPersonalBudget,
   userWalletToRow,
 } from "@/lib/supabase/mappers";
 
@@ -17,6 +19,11 @@ const timestamps = {
 };
 
 describe("finance mappers", () => {
+  it("round-trips a private activity budget", () => {
+    const budget: ActivityPersonalBudget = { id: "budget-1", activityId: "activity-1", tripId: "trip-1", userId: "user-1", amountMinor: 12550n, currency: "USD", version: 1, ...timestamps };
+    expect(rowToActivityPersonalBudget(activityPersonalBudgetToRow(budget))).toEqual(budget);
+  });
+
   it("round-trips a user wallet with minor-unit starting balance", () => {
     const wallet: UserWallet = {
       id: "wallet-1",
