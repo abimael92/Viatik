@@ -1,6 +1,6 @@
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import { getCurrentDatabase, type ViatikDatabase } from "@/lib/db/dexie";
-import type { Activity, Connection, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler, UserWallet } from "@/features/domain/entities";
+import type { Activity, ActivityPersonalBudget, Connection, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler, UserWallet } from "@/features/domain/entities";
 import type { TripMedia } from "@/features/domain/entities-media";
 import type { VaultEntry, VaultKeyset } from "@/features/vault/domain/vault-types";
 import type { TripWeatherForecast } from "@/features/weather/domain/weather-types";
@@ -19,6 +19,7 @@ import {
 import type { OutboxMutation } from "@/lib/sync/types";
 import {
   activityToRow,
+  activityPersonalBudgetToRow,
   tripToRow,
   expenseToRow,
   expenseShareToRow,
@@ -110,6 +111,7 @@ function mutationPayloadToRow(mutation: OutboxMutation): Record<string, unknown>
     case "tripMember": return tripMemberToRow(mutation.payload as unknown as TripMember);
     case "invitation": return invitationToRow(mutation.payload as unknown as TripInvitation);
     case "activity": return activityToRow(mutation.payload as unknown as Activity);
+    case "activityPersonalBudget": return activityPersonalBudgetToRow(mutation.payload as unknown as ActivityPersonalBudget);
     case "expense": return expenseToRow(mutation.payload as unknown as Expense);
     case "expenseShare": return expenseShareToRow(mutation.payload as unknown as ExpenseShare);
     case "settlement": return settlementToRow(mutation.payload as unknown as ExpenseSettlement);
@@ -144,6 +146,9 @@ function resolveDeleteRequest(client: ReturnType<typeof getSupabaseBrowserClient
   if (mutation.entityType === "tripShareLink") {
     return client.rpc("sync_trip_share_link_cas_delete", { p_id: mutation.entityId, p_base_updated_at: mutation.baseUpdatedAt });
   }
+  if (mutation.entityType === "activityPersonalBudget") {
+    return client.rpc("sync_activity_personal_budget_cas_delete", { p_id: mutation.entityId, p_base_updated_at: mutation.baseUpdatedAt });
+  }
   return client.rpc("sync_cas_delete", { p_entity: mutation.entityType, p_id: mutation.entityId, p_base_updated_at: mutation.baseUpdatedAt });
 }
 
@@ -156,6 +161,10 @@ async function replayCasMutation(mutation: OutboxMutation, signal?: AbortSignal)
   const client = getSupabaseBrowserClient();
   const request = mutation.operation === "delete"
     ? resolveDeleteRequest(client, mutation)
+    : mutation.entityType === "activity"
+      ? client.rpc("sync_activity_cas_upsert", { p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt })
+    : mutation.entityType === "activityPersonalBudget"
+      ? client.rpc("sync_activity_personal_budget_cas_upsert", { p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt })
     : mutation.entityType === "contact"
       ? client.rpc("sync_contact_cas_upsert", { p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt })
       : mutation.entityType === "vaultKeyset"
@@ -169,7 +178,20 @@ async function replayCasMutation(mutation: OutboxMutation, signal?: AbortSignal)
               : mutation.entityType === "tripShareLink"
                 ? client.rpc("sync_trip_share_link_cas_upsert", { p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt })
                 : client.rpc("sync_cas_upsert", { p_entity: mutation.entityType, p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt });
-  const response = signal ? await request.abortSignal(signal) : await request;
+  let response = signal ? await request.abortSignal(signal) : await request;
+  if (
+    mutation.entityType === "activity" &&
+    mutation.operation === "insert" &&
+    response.error &&
+    isTransientSchemaCacheError(response.error.message)
+  ) {
+    const fallback = client.rpc("sync_cas_upsert", {
+      p_entity: "activity",
+      p_payload: mutationPayloadToRow(mutation),
+      p_base_updated_at: mutation.baseUpdatedAt,
+    });
+    response = signal ? await fallback.abortSignal(signal) : await fallback;
+  }
   if (response.error) throw new Error(response.error.message);
   const result = response.data as CasResult;
   if (result.status === "conflict" || (result.status === "not_found" && mutation.operation !== "delete")) {

@@ -1,5 +1,6 @@
 import type { Activity, Trip } from "@/features/domain/entities";
 import { resolveTripStatus } from "@/features/trips/lib/trip-status";
+import { isUserAttending } from "@/features/trips/lib/activity-category-colors";
 
 export const DAY_MS = 86_400_000;
 
@@ -179,11 +180,11 @@ export function getTemporalState(
  */
 export function buildTimeline(
   activities: Activity[],
-  options: { scope: "today" | "upcoming"; today: string; limit: number }
+  options: { scope: "today" | "upcoming"; today: string; limit: number; currentUserId: string }
 ): TimelineItem[] {
-  const { scope, today, limit } = options;
+  const { scope, today, limit, currentUserId } = options;
   const sorted = [...activities]
-    .filter((activity) => activity.deletedAt === null)
+    .filter((activity) => activity.deletedAt === null && isUserAttending(activity, currentUserId))
     .sort((a, b) => {
       const dateCmp = a.dayDate.localeCompare(b.dayDate);
       if (dateCmp !== 0) return dateCmp;
@@ -200,7 +201,7 @@ export function buildTimeline(
     dayDate: activity.dayDate,
     title: activity.title,
     timeLabel: timeLabel(activity.startTime),
-    location: activity.location,
+    location: activity.formattedAddress ?? activity.placeName ?? activity.location ?? null,
     category: activity.category,
     startTime: activity.startTime,
     endTime: activity.endTime,

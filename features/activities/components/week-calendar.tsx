@@ -1,11 +1,10 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, CloudRain, Pencil, Plane, TrainFront, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight, CloudRain, Pencil, Plane, TrainFront, Trash2, Vote } from "lucide-react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AddTransitDialog } from "@/features/transit/components/add-transit-dialog";
 import { transitRepository } from "@/features/transit/data/dexie-transit-repository";
 import type { Activity } from "@/features/domain/entities";
 import type { DailyForecast, WeatherWarning } from "@/features/weather/domain/weather-types";
@@ -15,10 +14,12 @@ import { useTransitSegments } from "@/features/transit/components/use-transit";
 import { TRANSIT_STATUS_META, type TransitSegment } from "@/features/transit/domain/transit-types";
 import { deriveStatusState } from "@/features/transit/lib/transit-service";
 import { cn } from "@/lib/utils";
+import { getActivityCategoryColors, isUserAttending } from "@/features/trips/lib/activity-category-colors";
 
 const START_HOUR = 0;
 const END_HOUR = 24;
 const HOUR_HEIGHT = 64;
+const INITIAL_SCROLL_HOUR = 6;
 
 export function WeekCalendar({
   tripId,
@@ -31,6 +32,8 @@ export function WeekCalendar({
   conflicts,
   canEdit = false,
   onCreateActivity,
+  onEditTransit,
+  currentUserId,
 }: {
   tripId: string;
   days: string[];
@@ -43,6 +46,8 @@ export function WeekCalendar({
   conflicts?: Record<string, WeatherConflict>;
   canEdit?: boolean;
   onCreateActivity?: (dayDate: string, time: string) => void;
+  onEditTransit?: (segment: TransitSegment) => void;
+  currentUserId?: string;
 }) {
   const [view, setView] = useState<"today" | "range" | "all">("all");
   const [rangeStart, setRangeStart] = useState(() => {
@@ -57,7 +62,12 @@ export function WeekCalendar({
   });
   const [now, setNow] = useState(() => new Date());
   const [selectedTransit, setSelectedTransit] = useState<TransitSegment | null>(null);
-  const [editingTransit, setEditingTransit] = useState<TransitSegment | null>(null);
+  const timelineScrollRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (timelineScrollRef.current) {
+      timelineScrollRef.current.scrollTop = (INITIAL_SCROLL_HOUR - START_HOUR) * HOUR_HEIGHT;
+    }
+  }, []);
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 60_000);
     return () => window.clearInterval(timer);
@@ -91,7 +101,7 @@ export function WeekCalendar({
     <section className="overflow-hidden rounded-2xl border bg-card">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b p-3 sm:p-4"><div><h3 className="font-semibold">{title}</h3><p className="text-xs text-muted-foreground">Click an open time to add an activity.</p></div><div className="flex flex-wrap items-center gap-2"><div className="flex rounded-md border p-0.5"><Button type="button" size="sm" variant={view === "today" ? "default" : "ghost"} onClick={() => setView("today")}>Today</Button><Button type="button" size="sm" variant={view === "range" ? "default" : "ghost"} onClick={() => setView("range")}>Range</Button><Button type="button" size="sm" variant={view === "all" ? "default" : "ghost"} onClick={() => setView("all")}>All</Button></div>{view === "range" && (<div className="flex flex-wrap items-center gap-1"><div className="flex items-center gap-1"><Button type="button" size="icon" variant="ghost" aria-label="Shift range earlier" disabled={!rangeStart || rangeStart === days[0]} onClick={() => shiftRange(-1)}><ChevronLeft /></Button><input type="date" value={rangeStart} min={days[0]} max={rangeEnd} onChange={(event) => setRangeStart(event.target.value)} className="h-8 rounded-md border bg-background px-2 text-sm" aria-label="Range start date" /><span className="text-xs text-muted-foreground">to</span><input type="date" value={rangeEnd} min={rangeStart} max={days.at(-1)} onChange={(event) => setRangeEnd(event.target.value)} className="h-8 rounded-md border bg-background px-2 text-sm" aria-label="Range end date" /><Button type="button" size="icon" variant="ghost" aria-label="Shift range later" disabled={!rangeEnd || rangeEnd === days.at(-1)} onClick={() => shiftRange(1)}><ChevronRight /></Button></div></div>)}</div></header>
       <div className="overflow-x-auto">
-        <div className="min-w-[860px]">
+        <div className="min-w-215">
           <div className="grid" style={{ gridTemplateColumns: `5rem repeat(${visibleDays.length}, minmax(7rem, 1fr))` }}>
             <div className="sticky top-0 z-30 border-b border-r bg-card p-3 text-xs text-muted-foreground">Local time</div>
             {visibleDays.map((day) => (
@@ -113,7 +123,7 @@ export function WeekCalendar({
               </div>
             ))}
           </div>
-          <div className="grid max-h-[65vh] overflow-y-auto" style={{ gridTemplateColumns: `5rem repeat(${visibleDays.length}, minmax(7rem, 1fr))` }}>
+          <div ref={timelineScrollRef} className="grid max-h-[65vh] overflow-y-auto" style={{ gridTemplateColumns: `5rem repeat(${visibleDays.length}, minmax(7rem, 1fr))` }}>
             <div className="relative border-r" style={{ height: (END_HOUR - START_HOUR) * HOUR_HEIGHT }}>{Array.from({ length: END_HOUR - START_HOUR }, (_, index) => <div key={index} className="absolute w-full border-t pr-2 pt-1 text-right text-xs text-muted-foreground" style={{ top: index * HOUR_HEIGHT }}>{formatHour(START_HOUR + index)}</div>)}</div>
             {visibleDays.map((day) => {
               const daySegments = transitByDay.get(day) ?? [];
@@ -127,7 +137,7 @@ export function WeekCalendar({
                     const overlaps = dayActivities.some((activity) => rangesOverlap(range, activityRange(activity)));
                     return <TransitBlock key={segment.id} segment={segment} split={overlaps} onClick={() => setSelectedTransit(segment)} />;
                   })}
-                  {dayActivities.map((activity) => { const range = activityRange(activity); const top = Math.max(0, (range.start - START_HOUR * 60) / 60 * HOUR_HEIGHT); const height = Math.max(28, (range.end - range.start) / 60 * HOUR_HEIGHT); const overlaps = daySegments.some((segment) => rangesOverlap(range, transitRange(segment))); const conflict = conflicts?.[activity.id]; return <button key={activity.id} type="button" onClick={() => onSelect?.(activity)} className={`absolute ${overlaps ? "left-[51%]" : "left-1"} right-1 z-10 overflow-hidden rounded-md border-l-4 border-primary bg-primary/15 px-2 py-1 text-left text-xs hover:bg-primary/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`} style={{ top, height }} aria-label={`Open details for ${activity.title}${conflict ? ` (weather warning)` : ""}`} data-activity-id={activity.id}><strong className="block truncate">{activity.title}</strong><span className="text-muted-foreground">{activity.startTime ? new Date(activity.startTime).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "Time not set"}</span>{conflict && <span className="mt-0.5 inline-flex items-center gap-1 text-destructive" role="img" aria-label={conflict.reason} title={conflict.reason}><CloudRain className="size-3" />Weather</span>}</button>; })}
+                  {dayActivities.map((activity) => { const range = activityRange(activity); const top = Math.max(0, (range.start - START_HOUR * 60) / 60 * HOUR_HEIGHT); const height = Math.max(28, (range.end - range.start) / 60 * HOUR_HEIGHT); const overlaps = daySegments.some((segment) => rangesOverlap(range, transitRange(segment))); const conflict = conflicts?.[activity.id]; const colors = getActivityCategoryColors(activity.category); const muted = Boolean(currentUserId && !isUserAttending(activity, currentUserId)); const voting = activity.pollStatus === "proposed" || activity.pollStatus === "voting"; return <button key={activity.id} type="button" onClick={() => onSelect?.(activity)} className={cn("absolute right-1 z-10 overflow-hidden rounded-md border-l-4 px-2 py-1 text-left text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", overlaps ? "left-[51%]" : "left-1", colors.border, colors.background, colors.text, !muted && colors.hover, muted && "opacity-40 grayscale")} style={{ top, height }} aria-label={`Open details for ${activity.title}${conflict ? ` (weather warning)` : ""}`} data-activity-id={activity.id}><strong className="block truncate">{activity.title}</strong><span className="text-muted-foreground capitalize">{activity.timingSpecificity === "flexible" ? activity.flexiblePeriod ?? "Anytime" : activity.startTime ? new Date(activity.startTime).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "Time not set"}</span>{voting && <span className="mt-0.5 flex items-center gap-1 font-medium"><Vote className="size-3" aria-hidden />Voting</span>}{conflict && <span className="mt-0.5 inline-flex items-center gap-1 text-destructive" role="img" aria-label={conflict.reason} title={conflict.reason}><CloudRain className="size-3" />Weather</span>}</button>; })}
                   {today && nowMinute >= START_HOUR * 60 && nowMinute <= END_HOUR * 60 && <CurrentTimeLine minute={nowMinute} />}
                 </div>
               );
@@ -140,17 +150,8 @@ export function WeekCalendar({
       segment={selectedTransit}
       canEdit={canEdit}
       onClose={() => setSelectedTransit(null)}
-      onEdit={(segment) => { setSelectedTransit(null); setEditingTransit(segment); }}
+      onEdit={(segment) => { setSelectedTransit(null); onEditTransit?.(segment); }}
       onDelete={async (segment) => { await transitRepository.remove(segment.id); setSelectedTransit(null); }}
-    />
-    <AddTransitDialog
-      key={editingTransit?.id ?? "no-transit-edit"}
-      open={editingTransit !== null}
-      onOpenChange={(open) => { if (!open) setEditingTransit(null); }}
-      tripId={tripId}
-      userId={editingTransit?.createdBy ?? ""}
-      defaultDay={editingTransit?.dayDate ?? visibleDays[0] ?? localDateKey(now)}
-      segment={editingTransit ?? undefined}
     />
     </>
   );
@@ -238,6 +239,7 @@ function TransitDetailsDialog({ segment, canEdit, onClose, onEdit, onDelete }: {
           <dt className="text-muted-foreground">Route</dt><dd className="font-medium">{segment.origin ?? "—"} → {segment.destination ?? "—"}</dd>
           <dt className="text-muted-foreground">Departure</dt><dd>{departure.toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</dd>
           <dt className="text-muted-foreground">Arrival</dt><dd>{arrival ? arrival.toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "Not set"}</dd>
+          {segment.bookingReference && <><dt className="text-muted-foreground">Booking reference</dt><dd className="font-mono">{segment.bookingReference}</dd></>}
           <dt className="text-muted-foreground">{segment.mode === "flight" ? "Gate" : "Platform"}</dt><dd>{segment.mode === "flight" ? segment.gate ?? "—" : segment.platform ?? "—"}</dd>
           {segment.statusMessage && <><dt className="text-muted-foreground">Status</dt><dd>{segment.statusMessage}</dd></>}
         </dl>
@@ -257,7 +259,14 @@ function transitRange(segment: TransitSegment) {
   if (end <= start) end += 1440;
   return { start, end };
 }
-function activityRange(activity: Activity) { const start = timeMinute(activity.startTime, START_HOUR * 60); return { start, end: Math.max(start + 30, timeMinute(activity.endTime, start + 60)) }; }
+function activityRange(activity: Activity) {
+  if (activity.timingSpecificity === "flexible") {
+    const start = activity.flexiblePeriod === "morning" ? 8 * 60 : activity.flexiblePeriod === "afternoon" ? 13 * 60 : activity.flexiblePeriod === "evening" ? 18 * 60 : START_HOUR * 60;
+    return { start, end: start + 60 };
+  }
+  const start = timeMinute(activity.startTime, START_HOUR * 60);
+  return { start, end: Math.max(start + 30, timeMinute(activity.endTime, start + 60)) };
+}
 function rangesOverlap(a: { start: number; end: number }, b: { start: number; end: number }) { return a.start < b.end && b.start < a.end; }
 function localDateKey(date: Date) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
 function minuteToTime(minute: number) { return `${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`; }

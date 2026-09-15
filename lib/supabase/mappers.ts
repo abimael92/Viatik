@@ -1,4 +1,4 @@
-import type { Activity, Connection, ConnectionRemoteStatus, ConnectionSnapshot, ConnectionSource, ConnectionStatus, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripStatus, TripTraveler, UserWallet } from "@/features/domain/entities";
+import type { Activity, ActivityPersonalBudget, Connection, ConnectionRemoteStatus, ConnectionSnapshot, ConnectionSource, ConnectionStatus, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripStatus, TripTraveler, UserWallet } from "@/features/domain/entities";
 import { isSpendingCategory, type SpendingCategory, type SpendingSubcategory } from "@/features/domain/categories";
 import type { TripMedia } from "@/features/domain/entities-media";
 import { MAX_MINOR_UNITS, type MinorUnits } from "@/features/domain/money";
@@ -6,6 +6,7 @@ import { getSyncUser } from "@/lib/sync/sync-context";
 import type { VaultEntry, VaultKeyset } from "@/features/vault/domain/vault-types";
 import type { TripWeatherForecast } from "@/features/weather/domain/weather-types";
 import type { TripShareLink } from "@/features/sharing/domain/share-types";
+import { normalizeActivityCategory } from "@/features/activities/domain/activity-category";
 
 function minorUnitsToRemote(value: MinorUnits, field: string): string {
   if (value < 0n || value > MAX_MINOR_UNITS) throw new Error(`Invalid remote ${field}`);
@@ -110,15 +111,31 @@ export function activityToRow(activity: Activity): Record<string, unknown> {
     day_date: activity.dayDate,
     title: activity.title,
     description: activity.description,
-    location: activity.location,
-    latitude: activity.latitude ?? null,
-    longitude: activity.longitude ?? null,
-    category: activity.category,
+    place_name: activity.placeName ?? null,
+    formatted_address: activity.formattedAddress ?? null,
+    place_id: activity.placeId ?? null,
+    location: null,
+    latitude: null,
+    longitude: null,
+    category: normalizeActivityCategory(activity.category),
+    timing_specificity: activity.timingSpecificity ?? "exact",
+    flexible_period: activity.flexiblePeriod ?? null,
     start_time: activity.startTime,
     end_time: activity.endTime,
+    booking_reference: activity.bookingReference ?? null,
+    participants: activity.participants ?? [],
+    poll_status: activity.pollStatus ?? "confirmed",
+    voting_ends_at: activity.votingEndsAt ?? null,
+    poll_options: activity.pollOptions ?? [],
+    poll_votes: activity.pollVotes ?? [],
     position: activity.position,
     estimated_cost: activity.estimatedCostMinor == null ? null : minorUnitsToRemote(activity.estimatedCostMinor, "estimated_cost"),
     created_by: activity.createdBy,
+    updated_by: activity.updatedBy ?? activity.createdBy,
+    deleted_by: activity.deletedBy ?? null,
+    restored_at: activity.restoredAt ?? null,
+    restored_by: activity.restoredBy ?? null,
+    version: activity.version ?? 1,
     created_at: activity.createdAt,
     updated_at: activity.updatedAt,
     deleted_at: activity.deletedAt,
@@ -132,18 +149,69 @@ export function rowToActivity(row: Record<string, unknown>): Activity {
     dayDate: String(row.day_date),
     title: String(row.title),
     description: row.description == null ? null : String(row.description),
-    location: row.location == null ? null : String(row.location),
-    latitude: row.latitude == null ? null : Number(row.latitude),
-    longitude: row.longitude == null ? null : Number(row.longitude),
-    category: row.category == null ? "general" : String(row.category),
+    placeName: row.place_name == null ? null : String(row.place_name),
+    formattedAddress: row.formatted_address == null ? null : String(row.formatted_address),
+    placeId: row.place_id == null ? null : String(row.place_id),
+    category: normalizeActivityCategory(row.category),
+    timingSpecificity: row.timing_specificity === "flexible" ? "flexible" : "exact",
+    flexiblePeriod: row.flexible_period == null ? null : row.flexible_period as Activity["flexiblePeriod"],
     startTime: row.start_time == null ? null : String(row.start_time),
     endTime: row.end_time == null ? null : String(row.end_time),
+    bookingReference: row.booking_reference == null ? null : String(row.booking_reference),
+    participants: Array.isArray(row.participants)
+      ? row.participants.flatMap((participant) => {
+          if (!participant || typeof participant !== "object") return [];
+          const value = participant as Record<string, unknown>;
+          const status = value.status;
+          const userId = typeof value.userId === "string" ? value.userId : null;
+          const travelerId = typeof value.travelerId === "string" ? value.travelerId : null;
+          if ((!userId && !travelerId) || (status !== "attending" && status !== "declined" && status !== "pending")) return [];
+          return [{ userId, travelerId, displayName: typeof value.displayName === "string" ? value.displayName : null, status }];
+        })
+      : [],
+    pollStatus: row.poll_status === "proposed" || row.poll_status === "voting" || row.poll_status === "approved" || row.poll_status === "rejected" ? row.poll_status : "confirmed",
+    votingEndsAt: row.voting_ends_at == null ? null : String(row.voting_ends_at),
+    pollOptions: Array.isArray(row.poll_options) ? row.poll_options as Activity["pollOptions"] : [],
+    pollVotes: Array.isArray(row.poll_votes) ? row.poll_votes as Activity["pollVotes"] : [],
     position: typeof row.position === "number" ? row.position : Number(row.position),
     estimatedCostMinor: row.estimated_cost == null ? null : minorUnitsFromRemote(row.estimated_cost, "estimated_cost"),
     createdBy: String(row.created_by),
+    updatedBy: row.updated_by == null ? String(row.created_by) : String(row.updated_by),
+    deletedBy: row.deleted_by == null ? null : String(row.deleted_by),
+    restoredAt: row.restored_at == null ? null : String(row.restored_at),
+    restoredBy: row.restored_by == null ? null : String(row.restored_by),
+    version: Number(row.version ?? 1),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
     deletedAt: row.deleted_at == null ? null : String(row.deleted_at),
+  };
+}
+
+export function activityPersonalBudgetToRow(budget: ActivityPersonalBudget): Record<string, unknown> {
+  return {
+    id: budget.id,
+    activity_id: budget.activityId,
+    trip_id: budget.tripId,
+    user_id: budget.userId,
+    amount: minorUnitsToRemote(budget.amountMinor, "amount"),
+    currency: budget.currency,
+    version: budget.version,
+    created_at: budget.createdAt,
+    updated_at: budget.updatedAt,
+  };
+}
+
+export function rowToActivityPersonalBudget(row: Record<string, unknown>): ActivityPersonalBudget {
+  return {
+    id: String(row.id),
+    activityId: String(row.activity_id),
+    tripId: String(row.trip_id),
+    userId: String(row.user_id),
+    amountMinor: minorUnitsFromRemote(row.amount, "amount"),
+    currency: String(row.currency),
+    version: Number(row.version ?? 1),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
   };
 }
 

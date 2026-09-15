@@ -12,6 +12,7 @@ import { emitFeedItem } from "@/features/feed/data/dexie-feed-repository";
 import { append } from "@/lib/sync/outbox-transactional";
 import { getSyncUser } from "@/lib/sync/sync-context";
 import { logger } from "@/lib/observability/logger";
+import { normalizeActivityCategory } from "@/features/activities/domain/activity-category";
 
 function getDb(): ViatikDatabase {
   const db = getCurrentDatabase();
@@ -45,21 +46,33 @@ export class DexieActivityRepository implements ActivityRepository {
     const db = getDb();
     return TransactionContext.runInTransaction([db.activities, db.feedItems], async (ctx) => {
       const now = new Date().toISOString();
+      const actorId = getSyncUser() ?? input.createdBy;
       const activity: Activity = {
         id: input.id,
         tripId: input.tripId,
         dayDate: input.dayDate,
         title: input.title,
         description: input.description ?? null,
-        location: input.location ?? null,
-        latitude: input.latitude ?? null,
-        longitude: input.longitude ?? null,
-        category: input.category ?? "general",
+        placeName: input.placeName ?? null,
+        formattedAddress: input.formattedAddress ?? null,
+        placeId: input.placeId ?? null,
+        category: normalizeActivityCategory(input.category),
+        timingSpecificity: input.timingSpecificity ?? "exact",
+        flexiblePeriod: input.timingSpecificity === "flexible" ? input.flexiblePeriod ?? "anytime" : null,
         startTime: input.startTime ?? null,
         endTime: input.endTime ?? null,
+        bookingReference: input.bookingReference?.trim() || null,
+        participants: input.participants ?? [],
+        pollStatus: input.pollStatus ?? "confirmed",
+        votingEndsAt: input.votingEndsAt ?? null,
+        pollOptions: input.pollOptions ?? [],
+        pollVotes: input.pollVotes ?? [],
         position: input.position,
         estimatedCostMinor: input.estimatedCostMinor ?? null,
-        createdBy: input.createdBy,
+        createdBy: actorId,
+        updatedBy: actorId,
+        deletedBy: null,
+        version: 1,
         createdAt: now,
         updatedAt: now,
         deletedAt: null,
@@ -81,7 +94,8 @@ export class DexieActivityRepository implements ActivityRepository {
       const previous = await ctx.table<Activity>("activities").get(id);
       if (!previous) throw new Error(`Activity ${id} not found before update`);
       const updatedAt = new Date().toISOString();
-      await ctx.table<Activity>("activities").update(id, { ...patch, updatedAt });
+      const actorId = getSyncUser() ?? previous.createdBy;
+      await ctx.table<Activity>("activities").update(id, { ...patch, category: patch.category ? normalizeActivityCategory(patch.category) : previous.category, updatedBy: actorId, version: (previous.version ?? 1) + 1, updatedAt });
       const activity = await ctx.table<Activity>("activities").get(id);
       if (!activity) throw new Error(`Activity ${id} not found after update`);
       await append("activity", "update", activity, { tx: ctx, baseUpdatedAt: previous.updatedAt });
@@ -101,7 +115,8 @@ export class DexieActivityRepository implements ActivityRepository {
       const activity = await ctx.table<Activity>("activities").get(id);
       if (!activity) return;
       const deletedAt = new Date().toISOString();
-      const updated = { ...activity, deletedAt, updatedAt: deletedAt };
+      const actorId = getSyncUser() ?? activity.createdBy;
+      const updated = { ...activity, deletedAt, deletedBy: actorId, updatedBy: actorId, version: (activity.version ?? 1) + 1, updatedAt: deletedAt };
       await ctx.table<Activity>("activities").put(updated);
       await append("activity", "update", updated, { tx: ctx, baseUpdatedAt: activity.updatedAt });
       await emitFeedItem(ctx, materializeFeedItem(buildActivityFeed("deleted_activity", updated, getSyncUser() ?? updated.createdBy)));
@@ -115,7 +130,8 @@ export class DexieActivityRepository implements ActivityRepository {
       const activity = await ctx.table<Activity>("activities").get(id);
       if (!activity) throw new Error(`Activity ${id} not found`);
       const updatedAt = new Date().toISOString();
-      const restored = { ...activity, deletedAt: null, updatedAt };
+      const actorId = getSyncUser() ?? activity.createdBy;
+      const restored = { ...activity, deletedAt: null, deletedBy: null, restoredAt: updatedAt, restoredBy: actorId, updatedBy: actorId, version: (activity.version ?? 1) + 1, updatedAt };
       await ctx.table<Activity>("activities").put(restored);
       await append("activity", "update", restored, { tx: ctx, baseUpdatedAt: activity.updatedAt });
       await emitFeedItem(ctx, materializeFeedItem(buildActivityFeed("restored_activity", restored, getSyncUser() ?? restored.createdBy)));
