@@ -1,6 +1,6 @@
 import Dexie, { type EntityTable } from "dexie";
 
-import type { Activity, ActivityPersonalBudget, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripBudget, TripInvitation, TripMember, TripTraveler, UserWallet } from "@/features/domain/entities";
+import type { Activity, ActivityPersonalBudget, Contact, Decision, DecisionOption, DecisionVote, Expense, ExpenseSettlement, ExpenseShare, Trip, TripBudget, TripInvitation, TripMember, TripTraveler, UserWallet } from "@/features/domain/entities";
 import type { TripMedia } from "@/features/domain/entities-media";
 import { MAX_MINOR_UNITS } from "@/features/domain/money";
 import type { VaultEntry, VaultKeyset } from "@/features/vault/domain/vault-types";
@@ -82,6 +82,9 @@ export class ViatikDatabase extends Dexie {
   /** Local-only live transit segments (flights & trains). */
   transitSegments!: EntityTable<TransitSegment, "id">;
   journalDayEntries!: EntityTable<JournalDayEntry, "id">;
+  decisions!: EntityTable<Decision, "id">;
+  decisionOptions!: EntityTable<DecisionOption, "id">;
+  decisionVotes!: EntityTable<DecisionVote, "id">;
 
   constructor(name: string) {
     super(name);
@@ -429,6 +432,14 @@ export class ViatikDatabase extends Dexie {
 
     this.version(33).stores({
       activityPersonalBudgets: "id, activityId, tripId, userId, [activityId+userId], updatedAt",
+    });
+
+    // v34: synchronized unified voting model. Legacy local-only polls remain
+    // available for migration compatibility; new code should use these stores.
+    this.version(34).stores({
+      decisions: "id, tripId, type, status, [tripId+status], updatedAt, deletedAt",
+      decisionOptions: "id, decisionId, position, [decisionId+position], updatedAt, deletedAt",
+      decisionVotes: "id, decisionId, optionId, userId, [decisionId+userId], updatedAt, deletedAt",
     });
   }
 }

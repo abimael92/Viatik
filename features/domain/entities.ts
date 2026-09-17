@@ -132,7 +132,9 @@ export interface Activity {
   participants?: ActivityParticipant[];
   pollStatus?: ActivityPollStatus;
   votingEndsAt?: string | null;
+  /** @deprecated Use the synchronized Decision model instead. */
   pollOptions?: ActivityPollOption[];
+  /** @deprecated Use the synchronized Decision model instead. */
   pollVotes?: ActivityPollVote[];
   /** Fractional ordering key within (tripId, dayDate) for drag-and-drop reordering. */
   position: number;
@@ -177,6 +179,57 @@ export interface ActivityPollVote {
   optionId: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export type DecisionType = "activity_proposal" | "standalone_poll";
+export type DecisionStatus = "draft" | "open" | "closed" | "resolved" | "cancelled";
+
+export interface Decision {
+  id: string;
+  tripId: string;
+  type: DecisionType;
+  question: string;
+  status: DecisionStatus;
+  votingEndsAt: string | null;
+  resolution: Record<string, unknown> | null;
+  resolvedBy: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+  createdBy: string;
+  updatedAt: string;
+  updatedBy: string;
+  version: number;
+  deletedAt: string | null;
+  deletedBy: string | null;
+}
+
+export interface DecisionOption {
+  id: string;
+  decisionId: string;
+  label: string;
+  metadata: Record<string, unknown>;
+  position: number;
+  createdAt: string;
+  createdBy: string;
+  updatedAt: string;
+  updatedBy: string;
+  version: number;
+  deletedAt: string | null;
+  deletedBy: string | null;
+}
+
+export interface DecisionVote {
+  id: string;
+  decisionId: string;
+  optionId: string;
+  userId: string;
+  createdAt: string;
+  createdBy: string;
+  updatedAt: string;
+  updatedBy: string;
+  version: number;
+  deletedAt: string | null;
+  deletedBy: string | null;
 }
 
 export interface ActivityPersonalBudget {
