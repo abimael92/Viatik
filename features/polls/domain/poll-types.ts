@@ -28,6 +28,7 @@ export interface PollOption {
  * the option set is fixed at creation time, so it lives as a small array
  * alongside the question rather than as its own indexed store.
  */
+/** @deprecated Use the synchronized Decision entity instead. */
 export interface Poll {
   id: string;
   tripId: string;
@@ -55,6 +56,7 @@ export interface Poll {
  * the previous vote (only while the poll is active). Indexed by `pollId` (and
  * `[pollId+userId]` for the uniqueness guarantee).
  */
+/** @deprecated Use DecisionVote from the unified voting model instead. */
 export interface PollVote {
   id: string;
   pollId: string;
