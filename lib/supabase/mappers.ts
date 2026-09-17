@@ -1,4 +1,4 @@
-import type { Activity, ActivityPersonalBudget, Connection, ConnectionRemoteStatus, ConnectionSnapshot, ConnectionSource, ConnectionStatus, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripStatus, TripTraveler, UserWallet } from "@/features/domain/entities";
+import type { Activity, ActivityPersonalBudget, Connection, ConnectionRemoteStatus, ConnectionSnapshot, ConnectionSource, ConnectionStatus, Contact, Decision, DecisionOption, DecisionVote, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripStatus, TripTraveler, UserWallet } from "@/features/domain/entities";
 import { isSpendingCategory, type SpendingCategory, type SpendingSubcategory } from "@/features/domain/categories";
 import type { TripMedia } from "@/features/domain/entities-media";
 import { MAX_MINOR_UNITS, type MinorUnits } from "@/features/domain/money";
@@ -27,6 +27,118 @@ function minorUnitsFromRemote(value: unknown, field: string): MinorUnits {
  * (which is the only component that speaks to Supabase) can adapt to schema
  * changes in one place.
  */
+
+function jsonObject(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+export function decisionToRow(decision: Decision): Record<string, unknown> {
+  return {
+    id: decision.id,
+    trip_id: decision.tripId,
+    type: decision.type,
+    question: decision.question,
+    status: decision.status,
+    voting_ends_at: decision.votingEndsAt,
+    resolution: decision.resolution,
+    resolved_by: decision.resolvedBy,
+    resolved_at: decision.resolvedAt,
+    created_at: decision.createdAt,
+    created_by: decision.createdBy,
+    updated_at: decision.updatedAt,
+    updated_by: decision.updatedBy,
+    version: decision.version,
+    deleted_at: decision.deletedAt,
+    deleted_by: decision.deletedBy,
+  };
+}
+
+export function rowToDecision(row: Record<string, unknown>): Decision {
+  return {
+    id: String(row.id),
+    tripId: String(row.trip_id),
+    type: row.type === "activity_proposal" ? "activity_proposal" : "standalone_poll",
+    question: String(row.question),
+    status: row.status === "open" || row.status === "closed" || row.status === "resolved" || row.status === "cancelled" ? row.status : "draft",
+    votingEndsAt: row.voting_ends_at == null ? null : String(row.voting_ends_at),
+    resolution: row.resolution == null ? null : jsonObject(row.resolution),
+    resolvedBy: row.resolved_by == null ? null : String(row.resolved_by),
+    resolvedAt: row.resolved_at == null ? null : String(row.resolved_at),
+    createdAt: String(row.created_at),
+    createdBy: String(row.created_by),
+    updatedAt: String(row.updated_at),
+    updatedBy: String(row.updated_by),
+    version: Number(row.version ?? 1),
+    deletedAt: row.deleted_at == null ? null : String(row.deleted_at),
+    deletedBy: row.deleted_by == null ? null : String(row.deleted_by),
+  };
+}
+
+export function decisionOptionToRow(option: DecisionOption): Record<string, unknown> {
+  return {
+    id: option.id,
+    decision_id: option.decisionId,
+    label: option.label,
+    metadata: option.metadata,
+    position: option.position,
+    created_at: option.createdAt,
+    created_by: option.createdBy,
+    updated_at: option.updatedAt,
+    updated_by: option.updatedBy,
+    version: option.version,
+    deleted_at: option.deletedAt,
+    deleted_by: option.deletedBy,
+  };
+}
+
+export function rowToDecisionOption(row: Record<string, unknown>): DecisionOption {
+  return {
+    id: String(row.id),
+    decisionId: String(row.decision_id),
+    label: String(row.label),
+    metadata: jsonObject(row.metadata),
+    position: Number(row.position),
+    createdAt: String(row.created_at),
+    createdBy: String(row.created_by),
+    updatedAt: String(row.updated_at),
+    updatedBy: String(row.updated_by),
+    version: Number(row.version ?? 1),
+    deletedAt: row.deleted_at == null ? null : String(row.deleted_at),
+    deletedBy: row.deleted_by == null ? null : String(row.deleted_by),
+  };
+}
+
+export function decisionVoteToRow(vote: DecisionVote): Record<string, unknown> {
+  return {
+    id: vote.id,
+    decision_id: vote.decisionId,
+    option_id: vote.optionId,
+    user_id: vote.userId,
+    created_at: vote.createdAt,
+    created_by: vote.createdBy,
+    updated_at: vote.updatedAt,
+    updated_by: vote.updatedBy,
+    version: vote.version,
+    deleted_at: vote.deletedAt,
+    deleted_by: vote.deletedBy,
+  };
+}
+
+export function rowToDecisionVote(row: Record<string, unknown>): DecisionVote {
+  return {
+    id: String(row.id),
+    decisionId: String(row.decision_id),
+    optionId: String(row.option_id),
+    userId: String(row.user_id),
+    createdAt: String(row.created_at),
+    createdBy: String(row.created_by),
+    updatedAt: String(row.updated_at),
+    updatedBy: String(row.updated_by),
+    version: Number(row.version ?? 1),
+    deletedAt: row.deleted_at == null ? null : String(row.deleted_at),
+    deletedBy: row.deleted_by == null ? null : String(row.deleted_by),
+  };
+}
 
 export function tripToRow(trip: Trip): Record<string, unknown> {
   return {
