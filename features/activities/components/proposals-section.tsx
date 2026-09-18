@@ -1,12 +1,15 @@
 "use client";
 
 import { Plus, Vote } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
 import { ActivityVoteCard } from "@/features/activities/components/activity-vote-card";
 import { formatActivityTime } from "@/features/activities/lib/activity-time";
-import type { Activity } from "@/features/domain/entities";
+import type { Activity, ProfileSummary } from "@/features/domain/entities";
+import { collaborationRepository } from "@/features/collaboration/data/dexie-collaboration-repository";
+import { useLocalProfile } from "@/features/profile/lib/use-local-profile";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 
 /**
@@ -32,11 +35,26 @@ export function ProposalsSection({
   tripOwnerId?: string;
 }) {
   const { t } = useI18n();
+  const localProfile = useLocalProfile(currentUserId);
+  const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
   const proposals = activities.filter(
     (activity) =>
       activity.deletedAt === null &&
       (activity.pollStatus === "proposed" || activity.pollStatus === "voting")
   );
+
+  const profileUserIds = [...new Set(proposals.flatMap((activity) => (activity.pollVotes ?? []).map((vote) => vote.userId)))].join(",");
+  useEffect(() => {
+    const userIds = profileUserIds ? profileUserIds.split(",") : [];
+    if (userIds.length === 0) return;
+    let cancelled = false;
+    void collaborationRepository.listProfiles(userIds).then((nextProfiles) => {
+      if (!cancelled) setProfiles(nextProfiles);
+    }).catch(() => {
+      if (!cancelled) setProfiles([]);
+    });
+    return () => { cancelled = true; };
+  }, [profileUserIds]);
 
   return (
     <section className="rounded-2xl border bg-card p-5 sm:p-6" aria-labelledby="proposals-heading">
@@ -48,7 +66,7 @@ export function ProposalsSection({
           <p className="text-sm text-muted-foreground">{t("common.proposalsDescription")}</p>
         </div>
         {canEdit && (
-          <Button size="sm" variant="outline" onClick={onAddProposal}>
+          <Button size="sm" variant="primary" onClick={onAddProposal}>
             <Plus className="size-4" />
             {t("common.addProposal")}
           </Button>
@@ -79,7 +97,16 @@ export function ProposalsSection({
                 {formatDay(activity.dayDate)}
                 {activity.startTime ? ` · ${formatActivityTime(activity.startTime)}` : ""}
               </p>
-              <ActivityVoteCard activity={activity} currentUserId={currentUserId} eligibleViaticUsers={eligibleViaticUsers} tripOwnerId={tripOwnerId} />
+              <ActivityVoteCard
+              activity={activity}
+              currentUserId={currentUserId}
+              eligibleViaticUsers={eligibleViaticUsers}
+              tripOwnerId={tripOwnerId}
+              profiles={[
+                ...profiles,
+                ...(localProfile ? [{ id: localProfile.id, fullName: localProfile.fullName, avatarUrl: localProfile.avatarUrl, avatarSeed: localProfile.avatarSeed, email: null }] : []),
+              ]}
+            />
             </li>
           ))}
         </ul>
