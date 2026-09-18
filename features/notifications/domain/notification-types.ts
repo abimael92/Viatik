@@ -7,6 +7,7 @@ export interface Notification {
   type: NotificationType;
   referenceId: string;
   isRead: boolean;
+  pushSentAt: string | null;
   message: string;
   createdAt: string;
   updatedAt: string;
