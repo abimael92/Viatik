@@ -9,6 +9,7 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: "jsdom",
+    environmentOptions: { jsdom: { url: "http://localhost/" } },
     globals: true,
     exclude: ["node_modules", ".next", "e2e", "features/trips/lib/home-trips-temporal.test.ts", "features/trips/components/home/home-page.test.tsx"],
   },
