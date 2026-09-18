@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ContactRound, Plus, ShieldAlert, ShieldCheck, UserPlus, Wrench, type LucideIcon } from "lucide-react";
+import { Bell, ContactRound, Plus, ShieldAlert, ShieldCheck, Wrench, type LucideIcon } from "lucide-react";
 
 import { EmergencyCenter } from "@/features/emergency/components/emergency-center";
 import type { Trip } from "@/features/domain/entities";
@@ -55,11 +55,11 @@ export function QuickActionHub({ userId, primaryTrip, onOpenMoneyTools }: { user
       requiresTrip: true,
     },
     {
-      key: "invite",
-      label: t("common.inviteCrew"),
-      description: t("common.addTravelers"),
-      href: primaryTrip ? tripTabPath(primaryTrip.id, "travelers") : tripFallback,
-      icon: UserPlus,
+      key: "notifications",
+      label: t("common.notifications"),
+      description: t("common.viewNotifications"),
+      href: "/notifications",
+      icon: Bell,
     },
     {
       key: "contact",
