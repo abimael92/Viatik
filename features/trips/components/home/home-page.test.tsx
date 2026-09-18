@@ -159,8 +159,10 @@ describe("HomePage", () => {
     expect(screen.getByText("Lunch at Prado")).toBeTruthy();
 
     // Quick actions
-    const moneyTools = screen.getByRole("link", { name: /Money tools/ });
-    expect(moneyTools.getAttribute("href")).toBe("/trips/trip-1?tab=finance&action=money-tools");
+    const moneyTools = screen.getByRole("button", { name: /Money tools/ });
+    fireEvent.click(moneyTools);
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Money tools" })).toBeTruthy();
     expect(screen.getByText("Trip vault")).toBeTruthy();
     // Emergency Center quick action is prominent and present.
     expect(screen.getByText("Emergency")).toBeTruthy();
