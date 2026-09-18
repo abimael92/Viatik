@@ -7,6 +7,7 @@ import { Heading } from "@/components/ui/heading";
 import { ActivityVoteCard } from "@/features/activities/components/activity-vote-card";
 import { formatActivityTime } from "@/features/activities/lib/activity-time";
 import type { Activity } from "@/features/domain/entities";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 /**
  * Dedicated section for activities awaiting a group vote. Voting is opt-in
@@ -19,13 +20,18 @@ export function ProposalsSection({
   canEdit,
   onSelect,
   onAddProposal,
+  eligibleViaticUsers,
+  tripOwnerId,
 }: {
   activities: Activity[];
   currentUserId: string;
   canEdit: boolean;
   onSelect: (activity: Activity) => void;
   onAddProposal: () => void;
+  eligibleViaticUsers: number;
+  tripOwnerId?: string;
 }) {
+  const { t } = useI18n();
   const proposals = activities.filter(
     (activity) =>
       activity.deletedAt === null &&
@@ -37,14 +43,14 @@ export function ProposalsSection({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <Heading level={3} id="proposals-heading" className="text-lg font-semibold">
-            Proposals
+            {t("common.proposals")}
           </Heading>
-          <p className="text-sm text-muted-foreground">Schedule or location changes open for a group vote.</p>
+          <p className="text-sm text-muted-foreground">{t("common.proposalsDescription")}</p>
         </div>
         {canEdit && (
           <Button size="sm" variant="outline" onClick={onAddProposal}>
             <Plus className="size-4" />
-            Add proposal
+            {t("common.addProposal")}
           </Button>
         )}
       </div>
@@ -54,7 +60,7 @@ export function ProposalsSection({
             <Vote className="size-5" aria-hidden />
           </span>
           <p className="mt-3 text-sm text-muted-foreground">
-            No open proposals. Toggle &ldquo;Send to Group Vote&rdquo; on an activity, or add one here.
+            {t("common.noOpenProposals")}
           </p>
         </div>
       ) : (
@@ -73,7 +79,7 @@ export function ProposalsSection({
                 {formatDay(activity.dayDate)}
                 {activity.startTime ? ` · ${formatActivityTime(activity.startTime)}` : ""}
               </p>
-              <ActivityVoteCard activity={activity} currentUserId={currentUserId} />
+              <ActivityVoteCard activity={activity} currentUserId={currentUserId} eligibleViaticUsers={eligibleViaticUsers} tripOwnerId={tripOwnerId} />
             </li>
           ))}
         </ul>

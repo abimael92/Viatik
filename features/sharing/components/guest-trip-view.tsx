@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 
 import type { SharedTripSnapshot } from "@/features/sharing/domain/share-types";
 import { formatActivityTime } from "@/features/activities/lib/activity-time";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 type GuestTab = "itinerary" | "map" | "photos";
@@ -15,15 +16,16 @@ type GuestTab = "itinerary" | "map" | "photos";
  * the sections the owner enabled are shown here.
  */
 export function GuestTripView({ snapshot }: { snapshot: SharedTripSnapshot }) {
+  const { t } = useI18n();
   const { share, name, destination, startDate, endDate, coverImageUrl, activities, media } = snapshot;
 
   const tabs: Array<{ key: GuestTab; label: string; enabled: boolean }> = useMemo(
     () => [
-      { key: "itinerary", label: "Itinerary", enabled: share.allowItinerary },
-      { key: "map", label: "Map", enabled: share.allowMap },
-      { key: "photos", label: "Photos", enabled: share.allowGallery },
+      { key: "itinerary", label: t("common.itinerary"), enabled: share.allowItinerary },
+      { key: "map", label: t("common.map"), enabled: share.allowMap },
+      { key: "photos", label: t("common.photos"), enabled: share.allowGallery },
     ],
-    [share],
+    [share, t],
   );
 
   const [tab, setTab] = useState<GuestTab>(() => {
@@ -47,7 +49,7 @@ export function GuestTripView({ snapshot }: { snapshot: SharedTripSnapshot }) {
         <div className="absolute inset-0 bg-linear-to-b from-black/60 to-black/40" />
         <div className="relative px-6 py-10 sm:py-14">
           <p className="text-sm font-semibold uppercase tracking-widest text-white/70">
-            {destination ?? "Viatik trip"}
+            {destination ?? t("common.viatikTrip")}
           </p>
           <h1 className="mt-1 max-w-2xl text-3xl font-bold text-white sm:text-4xl">{name}</h1>
           {(startDate || endDate) && (
@@ -93,7 +95,7 @@ export function GuestTripView({ snapshot }: { snapshot: SharedTripSnapshot }) {
 
         <p className="mt-10 flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
           <Share2 className="size-3.5" aria-hidden />
-          Shared with you from Viatik · Read-only view
+          {t("common.sharedReadOnly")}
         </p>
       </main>
     </div>
@@ -101,6 +103,7 @@ export function GuestTripView({ snapshot }: { snapshot: SharedTripSnapshot }) {
 }
 
 function ItineraryTab({ activities }: { activities: SharedTripSnapshot["activities"] }) {
+  const { t } = useI18n();
   const days = useMemo(() => {
     const map = new Map<string, SharedTripSnapshot["activities"]>();
     for (const activity of activities) {
@@ -112,7 +115,7 @@ function ItineraryTab({ activities }: { activities: SharedTripSnapshot["activiti
   }, [activities]);
 
   if (days.length === 0) {
-    return <EmptyState icon={CalendarDays} title="No itinerary yet" message="The itinerary hasn't been published for this trip." />;
+    return <EmptyState icon={CalendarDays} title={t("common.noItinerary")} message={t("common.itineraryNotPublished")} />;
   }
 
   return (
@@ -154,9 +157,10 @@ function ItineraryTab({ activities }: { activities: SharedTripSnapshot["activiti
 }
 
 function MapTab({ activities }: { activities: SharedTripSnapshot["activities"] }) {
+  const { t } = useI18n();
   const located = activities.filter((a) => a.latitude != null && a.longitude != null);
   if (located.length === 0) {
-    return <EmptyState icon={MapPin} title="No pinned places yet" message="No map locations have been shared for this trip." />;
+    return <EmptyState icon={MapPin} title={t("common.noPinnedPlaces")} message={t("common.noSharedLocations")} />;
   }
   return (
     <ul className="space-y-2">
@@ -176,7 +180,7 @@ function MapTab({ activities }: { activities: SharedTripSnapshot["activities"] }
               rel="noopener noreferrer"
               className="shrink-0 rounded-md border px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              Open map
+              {t("common.openMap")}
             </a>
           </li>
         );
@@ -186,8 +190,9 @@ function MapTab({ activities }: { activities: SharedTripSnapshot["activities"] }
 }
 
 function PhotosTab({ media }: { media: SharedTripSnapshot["media"] }) {
+  const { t } = useI18n();
   if (media.length === 0) {
-    return <EmptyState icon={ImageIcon} title="No photos yet" message="Photos haven't been shared for this trip." />;
+    return <EmptyState icon={ImageIcon} title={t("common.noPhotos")} message={t("common.photosNotShared")} />;
   }
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
@@ -197,7 +202,7 @@ function PhotosTab({ media }: { media: SharedTripSnapshot["media"] }) {
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={photo.url}
-              alt={photo.caption ?? "Trip photo"}
+              alt={photo.caption ?? t("common.tripPhoto")}
               className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
               loading="lazy"
             />

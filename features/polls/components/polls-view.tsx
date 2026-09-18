@@ -25,6 +25,7 @@ import {
   calculateTally,
   pickWinnerDay,
 } from "@/features/polls/lib/poll-engine";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 import { nextPosition } from "@/lib/ordering";
 
@@ -47,6 +48,7 @@ export function PollsView({
   trip: Trip;
   activities: Activity[];
 }) {
+  const { t } = useI18n();
   const [polls, setPolls] = useState<Poll[]>([]);
   const [votesByPoll, setVotesByPoll] = useState<Record<string, PollVote[]>>({});
   const [createOpen, setCreateOpen] = useState(false);
@@ -134,16 +136,16 @@ export function PollsView({
           </span>
           <div>
             <Heading level={2} id="polls-heading" className="text-xl font-bold">
-              Polls
+              {t("common.pollsTitle")}
             </Heading>
             <p className="text-sm text-muted-foreground">
-              Decide together and turn the winning choice into your itinerary.
+              {t("common.pollsDescription")}
             </p>
           </div>
         </div>
         {canEdit && (
           <Button type="button" variant="primary" onClick={() => setCreateOpen(true)}>
-            <Plus className="size-4" /> New poll
+            <Plus className="size-4" /> {t("common.newPoll")}
           </Button>
         )}
       </div>
@@ -158,12 +160,12 @@ export function PollsView({
         <div className="rounded-2xl border border-dashed p-10 text-center">
           <Vote className="mx-auto size-8 text-muted-foreground" aria-hidden />
           <Heading level={3} className="mt-3 text-base font-semibold">
-            No polls yet
+            {t("common.noPolls")}
           </Heading>
           <p className="mt-1 text-sm text-muted-foreground">
             {canEdit
-              ? "Create a poll to let the group vote on the next plan."
-              : "A member of this trip hasn’t created any polls yet."}
+              ? t("common.createPollPrompt")
+              : t("common.noPollsByMember")}
           </p>
         </div>
       ) : (
@@ -215,6 +217,7 @@ function PollCard({
   onClose: (poll: Poll) => void;
   onSchedule: (poll: Poll) => void;
 }) {
+  const { t } = useI18n();
   const tally = useMemo(() => calculateTally(poll, votes), [poll, votes]);
   const myVote = useMemo(
     () => votes.find((vote) => vote.userId === currentUserId)?.optionId ?? null,
@@ -230,15 +233,15 @@ function PollCard({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant={active ? "default" : "muted"}>
-              {active ? "Active" : "Closed"}
+              {active ? t("common.active") : t("common.closed")}
             </Badge>
-            {poll.scheduledActivityId && <Badge variant="success">Scheduled</Badge>}
-            {tally.isTie && tally.hasVotes && <Badge variant="warning">Tied</Badge>}
+            {poll.scheduledActivityId && <Badge variant="success">{t("common.scheduled")}</Badge>}
+            {tally.isTie && tally.hasVotes && <Badge variant="warning">{t("common.tied")}</Badge>}
           </div>
           <h3 className="mt-2 font-semibold text-card-foreground">{poll.question}</h3>
         </div>
         <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground tabular-nums">
-          {tally.totalVotes} {tally.totalVotes === 1 ? "vote" : "votes"}
+          {tally.totalVotes} {tally.totalVotes === 1 ? t("common.vote") : t("common.votes")}
         </span>
       </div>
 
@@ -295,20 +298,20 @@ function PollCard({
         {active && tally.winner && (
           <p className="text-xs text-muted-foreground">
             {myVote
-              ? "Tap an option to change your vote."
-              : "Tap an option to cast your vote."}
+              ? t("common.changeVote")
+              : t("common.castVote")}
           </p>
         )}
         {!active && tally.winner && (
           <p className="flex items-center gap-1 text-xs font-medium text-accent-foreground">
-            <Trophy className="size-3.5" aria-hidden /> Winner: {tally.winner.label}
+            <Trophy className="size-3.5" aria-hidden /> {t("common.winner")}: {tally.winner.label}
           </p>
         )}
         {!active && tally.isTie && tally.hasVotes && (
-          <p className="text-xs text-muted-foreground">No clear winner — votes are tied.</p>
+          <p className="text-xs text-muted-foreground">{t("common.noWinner")}</p>
         )}
         {!active && !tally.hasVotes && (
-          <p className="text-xs text-muted-foreground">No votes were cast.</p>
+          <p className="text-xs text-muted-foreground">{t("common.noVotes")}</p>
         )}
       </div>
 

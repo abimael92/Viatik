@@ -19,6 +19,7 @@ import { budgetUserCurrency, convertBudget, minorToInput, recommendedDailyBudget
 import { formatAmount, getTipCustoms, lookupRate, parseAmount } from "@/features/finance/lib/currency-converter";
 import type { CurrencyCode } from "@/features/finance/domain/currency-types";
 import { useLocalProfile } from "@/features/profile/lib/use-local-profile";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 /**
@@ -35,6 +36,7 @@ export function BudgetSettings({
   userId: string;
   canEdit: boolean;
 }) {
+  const { t } = useI18n();
   const baseCurrency = trip.baseCurrency || "USD";
   const [budget, setBudget] = useState<TripBudget | undefined>(undefined);
   const [editing, setEditing] = useState(false);
@@ -87,7 +89,7 @@ export function BudgetSettings({
       });
       setEditing(false);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to save budget.");
+      setError(cause instanceof Error ? cause.message : t("common.noBudget"));
     } finally {
       setSaving(false);
     }
@@ -102,30 +104,30 @@ export function BudgetSettings({
           </span>
           <div>
             <Heading level={2} id="budget-settings-heading" className="text-base font-semibold">
-              Trip budget &amp; spending
+              {t("common.tripBudgetSpending")}
             </Heading>
             <p className="text-sm text-muted-foreground">
-              Set your total budget and an optional daily target.
+              {t("common.budgetDescription")}
             </p>
           </div>
         </div>
         {canEdit && !editing && (
           <Button variant="ghost" size="sm" onClick={beginEdit}>
-            {totalBudget !== null ? "Edit" : "Set budget"}
+            {totalBudget !== null ? t("common.edit") : t("common.setBudget")}
           </Button>
         )}
       </div>
 
       {!canEdit && (
         <p className="mt-4 text-sm text-muted-foreground">
-          You have view-only access and cannot change the budget.
+          {t("common.viewOnlyBudget")}
         </p>
       )}
 
       {canEdit && editing ? (
         <div className="mt-4 space-y-3">
           <div className="space-y-1.5">
-            <Label htmlFor="settings-budget-total">Total trip budget ({userCurrency})</Label>
+            <Label htmlFor="settings-budget-total">{t("common.totalTripBudget")} ({userCurrency})</Label>
             <Input
               id="settings-budget-total"
               inputMode="decimal"
@@ -138,7 +140,7 @@ export function BudgetSettings({
             )}
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="settings-budget-daily">Daily spending target ({baseCurrency}) · optional</Label>
+            <Label htmlFor="settings-budget-daily">{t("common.dailySpendingTarget")} ({baseCurrency}) · {t("common.optional")}</Label>
             <Input
               id="settings-budget-daily"
               inputMode="decimal"
@@ -147,11 +149,11 @@ export function BudgetSettings({
               placeholder="e.g. 150.00"
             />
             <p className="text-xs text-muted-foreground">
-              Leave blank to pace spending from your total over the trip duration.
+              {t("common.blankToPace")}
             </p>
             {recommendedDaily !== null ? (
               <p className="text-xs text-primary">
-                Recommended: <span className="font-semibold">{formatMinorUnits(recommendedDaily, baseCurrency)}</span>/day
+                {t("common.recommended")}: <span className="font-semibold">{formatMinorUnits(recommendedDaily, baseCurrency)}</span>/day
                 {" "}— keeps ~10% of your {formatMinorUnits(totalBudget!, baseCurrency)} budget as a buffer over {dayCount} day{dayCount === 1 ? "" : "s"}.
               </p>
             ) : (
@@ -164,10 +166,10 @@ export function BudgetSettings({
           {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
           <div className="flex items-center gap-2">
             <Button type="button" size="sm" onClick={() => void handleSave()} disabled={saving}>
-              {saving ? "Saving…" : "Save budget"}
+              {saving ? t("settings.saving") : t("common.saveBudget")}
             </Button>
             <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(false)}>
-              Cancel
+              {t("common.cancel")}
             </Button>
           </div>
         </div>
@@ -175,14 +177,14 @@ export function BudgetSettings({
         <div className="mt-4">
           <div className="flex flex-wrap items-end gap-x-6 gap-y-2">
             <div>
-              <p className="text-xs text-muted-foreground">Total budget</p>
+              <p className="text-xs text-muted-foreground">{t("common.totalBudget")}</p>
               <p className="font-mono text-2xl font-bold tabular-nums">
-                {totalBudget !== null ? formatMinorUnits(totalBudget, baseCurrency) : "Not set"}
+                {totalBudget !== null ? formatMinorUnits(totalBudget, baseCurrency) : t("common.notSet")}
               </p>
             </div>
             {dailyTarget !== null && (
               <div>
-                <p className="text-xs text-muted-foreground">Daily target</p>
+                <p className="text-xs text-muted-foreground">{t("common.dailyTarget")}</p>
                 <p className="font-mono text-2xl font-bold tabular-nums">
                   {formatMinorUnits(dailyTarget, baseCurrency)}<span className="text-sm font-normal text-muted-foreground">/day</span>
                 </p>
@@ -192,7 +194,7 @@ export function BudgetSettings({
           {totalBudget === null && (
             <p className="mt-3 flex items-start gap-2 rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-amber-700">
               <Wallet className="mt-0.5 size-4 shrink-0" aria-hidden />
-              No budget set — add a total trip budget to track planned versus spent.
+              {t("common.noBudget")}
             </p>
           )}
           <ReadOnlyConversion trip={trip} baseCurrency={baseCurrency} />

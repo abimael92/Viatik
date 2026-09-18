@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { Trip } from "@/features/domain/entities";
 import { TripDashboard } from "@/features/trips/components/trip-dashboard";
 import { tripRepository } from "@/features/trips/data/dexie-trip-repository";
 
@@ -27,6 +28,48 @@ describe("TripDashboard", () => {
     render(<TripDashboard userId="user-1" />);
     expect(await screen.findByText("Your next trip starts here")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Create your first trip" })).toBeTruthy();
+  });
+
+  it("keeps trip titles readable over uploaded cover images", async () => {
+    const trip = {
+      id: "trip-1",
+      ownerId: "user-1",
+      name: "Lisbon with friends",
+      description: null,
+      destination: "Lisbon, Portugal",
+      latitude: null,
+      longitude: null,
+      placeId: null,
+      timeZone: null,
+      startDate: "2030-09-15",
+      endDate: "2030-09-22",
+      status: "planned",
+      startedAt: null,
+      completedAt: null,
+      cancelledAt: null,
+      coverImageUrl: "https://example.com/bright-cover.jpg",
+      adultCount: 2,
+      childCount: 0,
+      baseCurrency: "USD",
+      createdBy: "user-1",
+      updatedBy: "user-1",
+      deletedBy: null,
+      restoredAt: null,
+      restoredBy: null,
+      statusChangedAt: "2026-01-01T00:00:00Z",
+      statusChangedBy: "user-1",
+      version: 1,
+      createdAt: "2026-01-01T00:00:00Z",
+      updatedAt: "2026-01-01T00:00:00Z",
+      deletedAt: null,
+    } satisfies Trip;
+    vi.mocked(tripRepository.watchAll).mockImplementation((callback) => { callback([trip]); return () => undefined; });
+
+    render(<TripDashboard userId="user-1" />);
+
+    const title = (await screen.findAllByText("Lisbon with friends"))[0];
+    expect(title.className).toContain("bg-black/60");
+    expect(title.className).toContain("text-white");
   });
 
   it("creates trips through the repository", async () => {

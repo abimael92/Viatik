@@ -23,6 +23,8 @@ import { TripCountdownHero } from "@/features/trips/components/home/trip-countdo
 import { LiveTimelineHud } from "@/features/trips/components/home/live-timeline-hud";
 import { QuickActionHub } from "@/features/trips/components/home/quick-action-hub";
 import { SuggestionsDrawer } from "@/features/community/components/suggestions-drawer";
+import { MoneyToolsDialog } from "@/features/finance/components/money-dashboard";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 /**
  * Post-login home dashboard — the "operational cockpit". It is deliberately
@@ -32,10 +34,12 @@ import { SuggestionsDrawer } from "@/features/community/components/suggestions-d
  * Trips library when other planned trips exist.
  */
 export function HomePage({ userId }: { userId: string }) {
+  const { t } = useI18n();
   const { loading, primaryTrip, readiness, timeline } = useHomeData(userId);
   const [pending, setPending] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [moneyToolsOpen, setMoneyToolsOpen] = useState(false);
   const { toast } = useToast();
 
   if (loading) {
@@ -114,14 +118,13 @@ export function HomePage({ userId }: { userId: string }) {
             <span className="grid size-14 place-items-center rounded-2xl bg-primary/10 text-primary">
               <Plane className="size-7" aria-hidden />
             </span>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Where to next?</h1>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("common.whereToNext")}</h1>
             <p className="max-w-md text-sm text-muted-foreground sm:text-base">
-              Create your first trip to start building an itinerary, sharing expenses, and keeping
-              everyone in sync — even offline.
+              {t("common.createTripDescription")}
             </p>
             <Button asChild variant="primary" size="lg" className="mt-2">
               <Link href="/trips">
-                Create your first trip <ArrowRight />
+                {t("common.createFirstTrip")} <ArrowRight />
               </Link>
             </Button>
             <Button
@@ -132,13 +135,17 @@ export function HomePage({ userId }: { userId: string }) {
               onClick={() => setSuggestionsOpen(true)}
             >
               <Sparkles className="size-4 text-viatik-magenta" aria-hidden />
-              Travel ideas
+              {t("common.travelIdeas")}
             </Button>
           </div>
         )}
 
         {/* Quick actions — always visible, at the bottom of the Home container. */}
-        <QuickActionHub userId={userId} primaryTrip={primaryTrip} />
+        <QuickActionHub userId={userId} primaryTrip={primaryTrip} onOpenMoneyTools={() => setMoneyToolsOpen(true)} />
+
+        {primaryTrip && moneyToolsOpen && (
+          <MoneyToolsDialog open={moneyToolsOpen} onOpenChange={setMoneyToolsOpen} trip={primaryTrip} />
+        )}
 
         {!primaryTrip && (
           <SuggestionsDrawer
@@ -153,17 +160,17 @@ export function HomePage({ userId }: { userId: string }) {
         <Dialog open={confirmCancel} onOpenChange={setConfirmCancel}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Cancel this trip?</DialogTitle>
+              <DialogTitle>{t("common.cancelThisTrip")}</DialogTitle>
               <DialogDescription>
-                It will move to Past Trips. You can still open it to review what was planned.
+                {t("common.cancelTripDescription")}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
               <Button variant="outline" onClick={() => setConfirmCancel(false)} disabled={pending}>
-                Keep trip
+                {t("common.keepTrip")}
               </Button>
               <Button variant="destructive" onClick={() => void confirmCancelTrip()} disabled={pending}>
-                Cancel trip
+                {t("common.cancelTrip")}
               </Button>
             </DialogFooter>
           </DialogContent>

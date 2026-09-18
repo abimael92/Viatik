@@ -23,6 +23,7 @@ import { QRScannerModal } from "@/features/contacts/components/QRScannerModal";
 import { contactRepository } from "@/features/contacts/data/dexie-contact-repository";
 import type { CurrentPublicProfile } from "@/features/contacts/lib/profile-directory";
 import type { Contact, TravelerType, Trip } from "@/features/domain/entities";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 const STEPS = ["Identity", "Contact details", "Travel details"];
@@ -132,6 +133,7 @@ function ContactForm({
   pending: boolean;
   setPending: (pending: boolean) => void;
 }) {
+  const { t } = useI18n();
   const operation = contact ? "edit" : "create";
   const unified = !contact && !attachToTrip && Boolean(ownProfile);
   const isLinkedToViatik = Boolean(contact?.linkedProfileId);
@@ -310,17 +312,16 @@ function ContactForm({
             <div className="flex gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3.5 sm:p-4 text-sm">
               <ShieldCheck className="mt-0.5 size-5 shrink-0 text-primary" />
               <div>
-                <p className="font-semibold">Private by default</p>
+                <p className="font-semibold">{t("common.privateByDefault")}</p>
                 <p className="mt-1 leading-5 text-muted-foreground">
-                  Only you can see email, phone, birth date, and notes. Travelers only see the name
-                  and traveler type attached to a trip.
+                  {t("common.privateDetails")}
                 </p>
               </div>
             </div>
             <FormSection
               icon={<UserRound className="size-5" />}
-              title="Identity"
-              description="The details used to recognize this traveler across your trips."
+              title={t("common.identity")}
+              description={t("common.profileHelp")}
             >
               {isLinkedToViatik ? (
                 <div className="flex items-center gap-3 sm:gap-4 rounded-xl border border-primary/20 bg-primary/5 p-3.5 sm:p-4">
@@ -355,7 +356,7 @@ function ContactForm({
               )}
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field
-                  label="Full name"
+                  label={t("common.fullName")}
                   name="fullName"
                   value={values.fullName}
                   onChange={(event) => setField("fullName", event.target.value)}
@@ -371,7 +372,7 @@ function ContactForm({
                   autoFocus={!isLinkedToViatik}
                 />
                 <SelectField
-                  label="Relationship"
+                  label={t("common.relationship")}
                   name="relationship"
                   value={values.relationship}
                   onChange={(event) =>
@@ -386,7 +387,7 @@ function ContactForm({
                   <option value="other">Other</option>
                 </SelectField>
                 <SelectField
-                  label="Traveler type"
+                  label={t("common.travelerType")}
                   name="travelerType"
                   value={values.travelerType}
                   onChange={(event) => setField("travelerType", event.target.value as TravelerType)}
@@ -404,7 +405,7 @@ function ContactForm({
           <div className="space-y-6">
             <FormSection
               icon={<Mail className="size-5" />}
-              title="Contact details"
+              title={t("common.contactDetails")}
               description="Optional details that remain private to your account."
             >
               <div className="grid gap-4 sm:grid-cols-2">
@@ -432,7 +433,7 @@ function ContactForm({
             </FormSection>
             <FormSection
               icon={<ShieldCheck className="size-5" />}
-              title="Emergency contact"
+              title={t("common.emergencyContact")}
               description="Private safety details for the person to contact during an emergency."
             >
               <div className="grid gap-4 sm:grid-cols-2">
@@ -470,7 +471,7 @@ function ContactForm({
           <div className="space-y-6">
             <FormSection
               icon={<CalendarDays className="size-5" />}
-              title="Travel details"
+              title={t("common.travelDetails")}
               description="Optional context for planning age-aware activities and future trips."
             >
               <div className="grid gap-4 sm:grid-cols-2">
@@ -484,7 +485,7 @@ function ContactForm({
                   helper="Private · useful for age requirements."
                 />
                 <Field
-                  label="Preferred language"
+                  label={t("settings.preferredLanguage")}
                   name="preferredLanguage"
                   value={values.preferredLanguage}
                   onChange={(event) => setField("preferredLanguage", event.target.value)}
@@ -492,7 +493,7 @@ function ContactForm({
                   maxLength={35}
                 />
                 <SelectField
-                  label="Preferred currency"
+                  label={t("common.preferredCurrency")}
                   name="preferredCurrency"
                   value={values.preferredCurrency}
                   onChange={(event) => setField("preferredCurrency", event.target.value)}
@@ -540,7 +541,7 @@ function ContactForm({
                   helper="No passport number is stored."
                 />
                 <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="contact-notes">Notes</Label>
+                  <Label htmlFor="contact-notes">{t("common.notes")}</Label>
                   <p id="contact-notes-help" className="text-xs leading-5 text-muted-foreground">
                     Add dietary preferences, accessibility needs, or planning context. Avoid
                     passport numbers and other sensitive identity documents.
@@ -592,7 +593,7 @@ function ContactForm({
                         )
                       }
                     >
-                      {selected.length === upcoming.length ? "Clear all" : "Select all"}
+                      {selected.length === upcoming.length ? t("common.clearAll") : t("common.selectAll")}
                     </Button>
                     {upcoming.map((trip) => (
                       <label key={trip.id} className="flex gap-2 text-sm">
@@ -633,7 +634,7 @@ function ContactForm({
               disabled={pending}
               onClick={() => goToStep(step - 1)}
             >
-              Back
+              {t("common.back")}
             </Button>
           )}
           {step < STEPS.length ? (

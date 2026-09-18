@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "motion/react";
 
 import { AddSuggestionDialog } from "@/features/community/components/add-suggestion-dialog";
 import { publicTemplates, type PublicTripTemplate } from "@/features/community/data/public-templates";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 /**
@@ -29,6 +30,7 @@ export function SuggestionsDrawer({
 }) {
   const [internalOpen, setInternalOpen] = useState(false);
   const [selected, setSelected] = useState<PublicTripTemplate | null>(null);
+  const { t } = useI18n();
   const open = controlledOpen ?? internalOpen;
   const setOpen = onOpenChange ?? setInternalOpen;
 
@@ -49,7 +51,7 @@ export function SuggestionsDrawer({
               className="fixed bottom-20 left-0 right-0 z-40 mx-auto flex w-fit items-center gap-2 rounded-full border bg-card/95 px-4 py-2.5 text-sm font-semibold shadow-lg backdrop-blur transition-colors hover:bg-card lg:bottom-6"
             >
               <Sparkles className="size-4 text-viatik-magenta" aria-hidden />
-              Travel ideas
+              {t("common.travelIdeas")}
             </motion.button>
           )}
         </AnimatePresence>
@@ -102,12 +104,12 @@ export function SuggestionsDrawer({
             <div className="flex items-center justify-between px-5 pb-1 pt-3">
               <p className="flex items-center gap-2 text-sm font-semibold text-viatik-magenta">
                 <Sparkles className="size-4" aria-hidden />
-                Travel ideas from the community
+                {t("common.travelIdeasFromCommunity")}
               </p>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                aria-label="Close suggestions"
+                aria-label={t("common.closeSuggestions")}
                 className="grid size-9 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <X className="size-5" aria-hidden />
@@ -148,7 +150,7 @@ export function SuggestionsDrawer({
                     </div>
                     <p className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground">
                       <ListChecks className="size-3" aria-hidden />
-                      {template.source.activities.length} activities
+                      {template.source.activities.length} {t("common.activities")}
                     </p>
                   </div>
                 </button>

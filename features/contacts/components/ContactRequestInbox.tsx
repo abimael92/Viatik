@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { contactRepository } from "@/features/contacts/data/dexie-contact-repository";
 import type { Contact } from "@/features/domain/entities";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 type Tab = "contacts" | "requests";
@@ -30,6 +31,7 @@ export function ContactRequestInbox({
   onEdit: (contact: Contact) => void;
   onRemove: (contact: Contact) => void;
 }) {
+  const { t } = useI18n();
   const [tab, setTab] = useState<Tab>("contacts");
   const inbound = contacts.filter(
     (contact) => contact.connectionStatus === "pending" && contact.connectionDirection === "inbound"
@@ -50,11 +52,11 @@ export function ContactRequestInbox({
 
   return (
     <div className="space-y-4">
-      <div className="flex rounded-xl border border-border/40 bg-muted/40 p-1 sm:w-fit" role="tablist" aria-label="Contacts views">
+      <div className="flex rounded-xl border border-border/40 bg-muted/40 p-1 sm:w-fit" role="tablist" aria-label={t("common.contactsViews")}>
         {(
           [
-            { key: "contacts", label: "My Contacts" },
-            { key: "requests", label: "Friend Requests" },
+            { key: "contacts", label: t("common.myContacts") },
+            { key: "requests", label: t("common.friendRequests") },
           ] as const
         ).map(({ key, label }) => (
           <button
@@ -62,7 +64,7 @@ export function ContactRequestInbox({
             type="button"
             role="tab"
             aria-selected={tab === key}
-            aria-label={key === "requests" && inbound.length ? `Friend Requests, ${inbound.length} pending` : label}
+            aria-label={key === "requests" && inbound.length ? `${t("common.friendRequests")}, ${inbound.length} ${t("common.pendingRequestsCount")}` : label}
             onClick={() => setTab(key)}
             className={cn(
               "flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] sm:flex-none",
@@ -87,7 +89,7 @@ export function ContactRequestInbox({
                 key={contact.id}
                 role="button"
                 tabIndex={0}
-                aria-label={`View details for ${contact.fullName}`}
+                aria-label={t("common.viewDetailsFor", { name: contact.fullName })}
                 onClick={() => onView?.(contact)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
@@ -153,7 +155,7 @@ export function ContactRequestInbox({
                   <Button
                     variant="ghost"
                     size="icon"
-                    aria-label={`Edit ${contact.fullName}`}
+                    aria-label={t("common.editContact", { name: contact.fullName })}
                     className="size-9 sm:size-10 text-muted-foreground hover:text-foreground"
                     onClick={() => onEdit(contact)}
                   >
@@ -162,7 +164,7 @@ export function ContactRequestInbox({
                   <Button
                     variant="ghost"
                     size="icon"
-                    aria-label={`Remove ${contact.fullName}`}
+                    aria-label={t("common.removeContact", { name: contact.fullName })}
                     className="size-9 sm:size-10 text-destructive/80 hover:text-destructive hover:bg-destructive/10"
                     onClick={() => onRemove(contact)}
                   >
@@ -173,13 +175,13 @@ export function ContactRequestInbox({
             ))}
           </div>
         ) : (
-          <EmptyState icon={<Users className="size-8" />} title="No contacts yet" subtitle="Add someone to start planning together." />
+          <EmptyState icon={<Users className="size-8" />} title={t("common.noContacts")} subtitle={t("common.addSomeone")} />
         )
       ) : inbound.length || outbound.length ? (
         <div className="space-y-6 rounded-2xl border bg-card p-3.5 sm:p-6">
           {inbound.length > 0 && (
             <section>
-              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Pending Requests</h3>
+              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("common.pendingRequests")}</h3>
               <div className="space-y-2">
                 {inbound.map((contact) => (
                   <div
@@ -203,13 +205,13 @@ export function ContactRequestInbox({
                           </Badge>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          Requested {relativeTime(contact.createdAt)}
+                          {t("common.requested", { time: relativeTime(contact.createdAt) })}
                         </p>
                       </div>
                     </div>
                     <div className="flex shrink-0 gap-2 w-full sm:w-auto">
                       <Button size="sm" variant="default" className="flex-1 sm:flex-none rounded-full px-4 min-h-9" onClick={() => void accept(contact)}>
-                        Accept
+                        {t("common.accept")}
                       </Button>
                       <Button
                         size="sm"
@@ -217,7 +219,7 @@ export function ContactRequestInbox({
                         className="flex-1 sm:flex-none rounded-full text-destructive hover:bg-destructive/10 min-h-9"
                         onClick={() => void decline(contact)}
                       >
-                        Decline
+                        {t("common.decline")}
                       </Button>
                     </div>
                   </div>
@@ -227,7 +229,7 @@ export function ContactRequestInbox({
           )}
           {outbound.length > 0 && (
             <section>
-              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sent Requests</h3>
+              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("common.sentRequests")}</h3>
               <div className="space-y-2">
                 {outbound.map((contact) => (
                   <div
@@ -251,7 +253,7 @@ export function ContactRequestInbox({
                           </Badge>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          Request sent {relativeTime(contact.createdAt)}
+                          {t("common.requestSentAt", { time: relativeTime(contact.createdAt) })}
                         </p>
                       </div>
                     </div>
@@ -261,7 +263,7 @@ export function ContactRequestInbox({
                       className="w-full sm:w-auto rounded-full text-xs min-h-9"
                       onClick={() => onRemove(contact)}
                     >
-                      Cancel
+                      {t("common.cancelRequest")}
                     </Button>
                   </div>
                 ))}
@@ -270,7 +272,7 @@ export function ContactRequestInbox({
           )}
         </div>
       ) : (
-        <EmptyState icon={<Inbox className="size-8" />} title="No pending requests" subtitle="Requests you send or receive will show up here." />
+        <EmptyState icon={<Inbox className="size-8" />} title={t("common.noPendingRequests")} subtitle={t("common.requestsHere")} />
       )}
     </div>
   );

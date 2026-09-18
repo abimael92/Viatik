@@ -13,6 +13,7 @@ import { persistTripClone } from "@/features/community/lib/duplicate-trip";
 import type { Activity } from "@/features/domain/entities";
 import { expenseRepository } from "@/features/expenses/data/dexie-expense-repository";
 import { tripRepository } from "@/features/trips/data/dexie-trip-repository";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 function formatBudget(minor: bigint, currency: string): string {
@@ -33,6 +34,7 @@ function formatDate(iso: string): string {
 
 export function CommunityFeed({ userId }: { userId: string }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string>("All");
   const [preview, setPreview] = useState<PublicTripTemplate | null>(null);
@@ -63,7 +65,7 @@ export function CommunityFeed({ userId }: { userId: string }) {
       router.push("/trips");
       router.refresh();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Unable to add this itinerary to your trips.");
+      setMessage(error instanceof Error ? error.message : t("common.unableAddItinerary"));
     } finally {
       setDuplicating(false);
     }
@@ -77,19 +79,18 @@ export function CommunityFeed({ userId }: { userId: string }) {
           className="pointer-events-none absolute -top-24 -right-16 h-72 w-72 rounded-full bg-linear-to-br from-viatik-blue/10 via-viatik-magenta/10 to-transparent blur-3xl"
         />
         <div className="relative">
-          <p className="text-sm font-semibold text-viatik-magenta">Community itineraries</p>
-          <Heading level={1} className="mt-1 text-3xl font-bold">Get inspired by real trips</Heading>
+          <p className="text-sm font-semibold text-viatik-magenta">{t("common.communityItineraries")}</p>
+          <Heading level={1} className="mt-1 text-3xl font-bold">{t("common.inspiredTrips")}</Heading>
           <p className="mt-2 max-w-2xl text-muted-foreground">
-            Browse public itineraries, preview the full plan, and duplicate one into your own account
-            with a single click. Then make it yours.
+            {t("common.communityDescription")}
           </p>
           <div className="relative mt-5 max-w-md">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by destination or theme…"
-              aria-label="Search community itineraries"
+              placeholder={t("common.searchCommunity")}
+              aria-label={t("common.searchCommunityLabel")}
               className="h-12 w-full rounded-xl border bg-background pl-11 pr-4 text-sm outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-viatik-magenta/50"
             />
           </div>
@@ -106,7 +107,7 @@ export function CommunityFeed({ userId }: { userId: string }) {
                     : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
               >
-                {value}
+                {value === "All" ? t("common.all") : value}
               </button>
             ))}
           </div>
@@ -118,8 +119,8 @@ export function CommunityFeed({ userId }: { userId: string }) {
       {filtered.length === 0 ? (
         <div className="rounded-2xl border border-dashed p-12 text-center">
           <Sparkles className="mx-auto size-8 text-muted-foreground" />
-          <p className="mt-3 font-semibold">No itineraries match your search</p>
-          <p className="mt-1 text-sm text-muted-foreground">Try a different destination or clear the filters.</p>
+          <p className="mt-3 font-semibold">{t("common.noMatchingItineraries")}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{t("common.clearFilters")}</p>
         </div>
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
@@ -152,7 +153,7 @@ export function CommunityFeed({ userId }: { userId: string }) {
                   <span className="flex items-center gap-3">
                     <span className="flex items-center gap-1"><Heart className="size-4 text-viatik-red" />{template.likesCount}</span>
                     <span className="flex items-center gap-1"><ListChecks className="size-4" />{template.source.activities.length}</span>
-                    <span className="flex items-center gap-1"><Users className="size-4" />by {template.authorName}</span>
+                    <span className="flex items-center gap-1"><Users className="size-4" />{t("common.by")} {template.authorName}</span>
                   </span>
                 </div>
               </div>
@@ -178,8 +179,8 @@ export function CommunityFeed({ userId }: { userId: string }) {
                 <DialogTitle className="sr-only">{preview.name}</DialogTitle>
                 <DialogDescription className="text-base text-foreground">{preview.description}</DialogDescription>
                 <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1.5"><Heart className="size-4 text-viatik-red" />{preview.likesCount} likes</span>
-                  <span className="flex items-center gap-1.5"><ListChecks className="size-4" />{preview.source.activities.length} activities</span>
+                  <span className="flex items-center gap-1.5"><Heart className="size-4 text-viatik-red" />{preview.likesCount} {t("common.likes")}</span>
+                  <span className="flex items-center gap-1.5"><ListChecks className="size-4" />{preview.source.activities.length} {t("common.activities")}</span>
                   <span className="flex items-center gap-1.5"><CalendarDays className="size-4" />{preview.source.activities.length ? `${formatDate(preview.source.trip.startDate ?? "")} – ${formatDate(preview.source.trip.endDate ?? "")}` : ""}</span>
                   <span className="flex items-center gap-1.5"><Users className="size-4" />by {preview.authorName}</span>
                 </div>
@@ -187,7 +188,7 @@ export function CommunityFeed({ userId }: { userId: string }) {
 
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Estimated budget:{" "}
+                  {t("common.estimatedBudget")}: {" "}
                   <span className="font-mono font-semibold tabular-nums text-foreground">
                     {formatBudget(preview.budgetMinor, preview.baseCurrency)}
                   </span>
@@ -228,9 +229,9 @@ export function CommunityFeed({ userId }: { userId: string }) {
               </div>
 
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setPreview(null)}>Close</Button>
+                <Button type="button" variant="outline" onClick={() => setPreview(null)}>{t("common.close")}</Button>
                 <Button variant="primary" disabled={duplicating} onClick={() => void duplicate(preview)}>
-                  {duplicating ? "Adding…" : "Duplicate to my trips"}
+                  {duplicating ? t("common.adding") : t("common.duplicateToTrips")}
                 </Button>
               </DialogFooter>
             </>

@@ -8,9 +8,9 @@ import { liveQuery } from "dexie";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useDatabase } from "@/lib/db/database-provider";
-import { syncNow } from "@/lib/sync/sync-engine";
 import type { OutboxMutation } from "@/lib/sync/types";
-import { useSyncStatus } from "@/lib/sync/use-sync-status";
+import { useSyncRetryCountdown, useSyncStatus } from "@/lib/sync/use-sync-status";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 /**
@@ -21,11 +21,16 @@ import { cn } from "@/lib/utils";
  */
 export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
   const sync = useSyncStatus();
+  const { t } = useI18n();
   const db = useDatabase();
   const triggerRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [triggerRect, setTriggerRect] = useState<DOMRect | null>(null);
   const [queue, setQueue] = useState<OutboxMutation[]>([]);
+  const { countdown: resyncCountdown, retryNow } = useSyncRetryCountdown({
+    ...sync,
+    pending: Math.max(sync.pending, queue.length),
+  });
 
   // Measure the trigger so the dropdown can be rendered fixed (via a portal)
   // near it, since the sidebar clips absolutely-positioned children.
@@ -47,12 +52,16 @@ export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
   const interactive =
     offline || sync.status === "error" || sync.conflicts > 0 || sync.pending > 0 || queue.length > 0;
 
+  function compactLabel(value: string) {
+    return <span className={compact ? "max-w-28 truncate text-xs font-semibold" : undefined} title={compact ? value : undefined}>{value}</span>;
+  }
+
   function renderPill() {
     if (offline) {
       return (
         <Badge variant="success">
           <StatusDot tone="success" pulse />
-          {compact ? "Offline ready" : "Offline ready · Saved locally"}
+          {compactLabel(t("common.offlineSaved"))}
         </Badge>
       );
     }
@@ -60,7 +69,7 @@ export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
       return (
         <Badge variant="muted">
           <LoaderCircle className="size-3 animate-spin text-primary" />
-          {compact ? "Syncing" : "Syncing to cloud"}
+          {compactLabel(t("common.syncing"))}
         </Badge>
       );
     }
@@ -68,7 +77,7 @@ export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
       return (
         <Badge variant="warning">
           <StatusDot tone="warning" pulse />
-          {compact ? "Attention" : "Sync needs attention"}
+          {compactLabel(resyncCountdown !== null ? t("common.resyncIn", { count: resyncCountdown }) : t("common.syncIssue"))}
           <RefreshCw className="size-3" aria-hidden />
         </Badge>
       );
@@ -79,7 +88,7 @@ export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
           <span className="grid min-h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[11px] font-bold text-primary-foreground animate-pulse">
             {sync.pending}
           </span>
-          {compact ? "pending" : "changes waiting"}
+          {compactLabel(t("common.pendingChanges"))}
         </Badge>
       );
     }
@@ -87,14 +96,14 @@ export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
       return (
         <Badge variant="warning">
           <StatusDot tone="warning" pulse />
-          {compact ? `${sync.conflicts} conflict` : `${sync.conflicts} conflicts to resolve`}
+          {compactLabel(t("common.resolveConflicts"))}
         </Badge>
       );
     }
     return (
       <Badge variant="success">
         <StatusDot tone="success" />
-        {compact ? "Synced" : "Synced · up to date"}
+        {compactLabel(t("common.synced"))}
       </Badge>
     );
   }
@@ -107,7 +116,7 @@ export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
         aria-haspopup="menu"
         aria-expanded={open}
         className={cn(
-          "inline-flex rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "inline-flex min-w-0 max-w-40 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           !interactive && "cursor-default"
         )}
       >
@@ -117,7 +126,7 @@ export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
       {/* Portaled to <body> so the overlay + dropdown aren't clipped by the
           sidebar's overflow-hidden / backdrop-blur. */}
       {open && createPortal(
-        <button type="button" aria-label="Close sync panel" className="fixed inset-0 z-40 cursor-default" onClick={() => setOpen(false)} />,
+        <button type="button" aria-label={t("common.closeSyncPanel")} className="fixed inset-0 z-40 cursor-default" onClick={() => setOpen(false)} />,
         document.body
       )}
       {open && triggerRect && createPortal(
@@ -133,13 +142,13 @@ export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
           className="overflow-hidden rounded-xl border border-white/10 bg-black/80 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_24px_50px_-12px_rgba(0,0,0,0.6)] backdrop-blur-xl"
         >
           <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-white/50">Sync queue</p>
-            <Badge variant="outline" className="!text-[11px]">{queue.length}</Badge>
+            <p className="text-[11px] font-bold uppercase tracking-widest text-white/50">{t("common.syncQueue")}</p>
+            <Badge variant="outline" className="text-[11px]!">{queue.length}</Badge>
           </div>
 
           <div className="max-h-56 overflow-y-auto">
             {queue.length === 0 ? (
-              <p className="px-4 py-6 text-center text-xs text-white/40">Queue is clear — everything is up to date.</p>
+              <p className="px-4 py-6 text-center text-xs text-white/40">{t("common.queueClear")}</p>
             ) : (
               <ul className="divide-y divide-white/5 px-2 py-1">
                 {queue.slice(0, 8).map((mutation) => (
@@ -147,17 +156,17 @@ export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-xs font-semibold text-white/80">{mutation.entityType}</span>
                       <span className="block text-[11px] uppercase tracking-widest text-white/35">
-                        {mutation.operation} · {mutation.attempts} attempt{mutation.attempts === 1 ? "" : "s"}
+                        {mutation.operation} · {mutation.attempts} {mutation.attempts === 1 ? t("common.attempt") : t("common.attempts")}
                       </span>
                     </span>
                     {mutation.lastError && (
-                      <AlertTriangle className="size-3.5 shrink-0 text-accent" aria-label="Error" />
+                      <AlertTriangle className="size-3.5 shrink-0 text-accent" aria-label={t("common.error")} />
                     )}
                   </li>
                 ))}
                 {queue.length > 8 && (
                   <li className="px-2 py-1.5 text-center text-[11px] uppercase tracking-widest text-white/35">
-                    + {queue.length - 8} more
+                    + {queue.length - 8} {t("common.more")}
                   </li>
                 )}
               </ul>
@@ -165,8 +174,18 @@ export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
           </div>
 
           <div className="border-t border-white/10 p-2">
-            <Button size="sm" variant="primary" className="w-full" onClick={() => void syncNow()}>
-              <RefreshCw className="size-5" /> Retry now
+            <Button
+              size="sm"
+              variant="primary"
+              className="w-full"
+              onClick={() => {
+                retryNow();
+              }}
+            >
+              <RefreshCw className="size-5" />
+              {resyncCountdown !== null
+                ? t("common.resyncIn", { count: resyncCountdown })
+                : t("common.resyncNow")}
             </Button>
           </div>
         </div>,

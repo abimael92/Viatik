@@ -8,24 +8,15 @@ import { Button } from "@/components/ui/button";
 import type { Trip } from "@/features/domain/entities";
 import type { TripReadiness } from "@/features/trips/lib/readiness";
 import { TripReadinessSection } from "@/features/trips/components/home/trip-readiness-section";
-import { DAY_MS, daysUntil, formatCountdown, tripTabPath } from "@/features/trips/lib/home-trips";
+import { DAY_MS, daysUntil, tripTabPath } from "@/features/trips/lib/home-trips";
 import { getTripCoverGradient, isTripCoverImage } from "@/features/trips/lib/trip-cover";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 function daysBetween(start: string, end: string): number {
   const [sy, sm, sd] = start.split("-").map(Number);
   const [ey, em, ed] = end.split("-").map(Number);
   return Math.round((Date.UTC(ey, em - 1, ed) - Date.UTC(sy, sm - 1, sd)) / DAY_MS);
-}
-
-function activeDayLabel(trip: Trip, today: Date): string | null {
-  if (!trip.startDate) return null;
-  const day = Math.max(1, daysUntil(trip.startDate, today) + 1);
-  if (trip.endDate) {
-    const total = Math.max(1, daysBetween(trip.startDate, trip.endDate) + 1);
-    return `Day ${day} of ${total}`;
-  }
-  return `Day ${day}`;
 }
 
 /**
@@ -48,11 +39,24 @@ export function TripCountdownHero({
   onEnd?: () => void;
   onCancel?: () => void;
 }) {
+  const { t } = useI18n();
   const active = trip.status === "active";
-  const countdown = formatCountdown(trip.startDate ?? "", today);
-  const destination = trip.destination ?? trip.name;
-  const dayLabel = active ? activeDayLabel(trip, today) : null;
   const daysToStart = trip.startDate ? daysUntil(trip.startDate, today) : null;
+  const countdown = daysToStart === null
+    ? ""
+    : daysToStart === 0
+      ? t("common.todayLabel")
+      : daysToStart < 0
+        ? t("common.startedLabel")
+        : t("common.daysLeft", { count: daysToStart });
+  const destination = trip.destination ?? trip.name;
+  const dayLabel = active && trip.startDate
+    ? (() => {
+        const day = Math.max(1, daysUntil(trip.startDate, today) + 1);
+        const total = trip.endDate ? Math.max(1, daysBetween(trip.startDate, trip.endDate) + 1) : null;
+        return total ? t("common.dayOf", { day, total }) : `${t("common.day")} ${day}`;
+      })()
+    : null;
   const readyToStart = !active && daysToStart !== null && daysToStart <= 7;
   const coverGradient = getTripCoverGradient(trip.coverImageUrl);
   const hasCoverImage = isTripCoverImage(trip.coverImageUrl);
@@ -62,10 +66,10 @@ export function TripCountdownHero({
   return (
     <section
       className="relative overflow-hidden rounded-[1.75rem] border bg-card text-foreground shadow-sm transition-shadow hover:shadow-md"
-      aria-label={active ? "Active trip" : "Next trip"}
+      aria-label={active ? t("common.activeTrip") : t("common.nextTrip")}
     >
       {/* The whole card opens the trip overview. */}
-      <Link href={overviewHref} aria-label={`Open ${destination} trip`} className="absolute inset-0 z-0" />
+      <Link href={overviewHref} aria-label={t("common.openTrip", { name: destination })} className="absolute inset-0 z-0" />
 
       {active && (
         <div className="pointer-events-none relative h-32 overflow-hidden sm:h-40" aria-hidden>
@@ -92,7 +96,7 @@ export function TripCountdownHero({
         <button
           type="button"
           onClick={() => setMenuOpen((value) => !value)}
-          aria-label="More options"
+          aria-label={t("common.moreOptions")}
           aria-haspopup="menu"
           aria-expanded={menuOpen}
           className="grid size-9 place-items-center rounded-full border bg-card/80 text-muted-foreground backdrop-blur transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -114,7 +118,7 @@ export function TripCountdownHero({
                 className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <X className="size-4" aria-hidden />
-                Cancel trip
+                {t("common.cancelTrip")}
               </button>
             </div>
           </>
@@ -143,12 +147,12 @@ export function TripCountdownHero({
           {active ? (
             <Button variant="secondary" size="lg" className="w-full sm:w-auto" onClick={onEnd} disabled={!onEnd}>
               <Flag className="size-4" aria-hidden />
-              End trip
+              {t("common.endTrip")}
             </Button>
           ) : null}
           {!active && !readyToStart && (
             <p className="mt-1 max-w-xs text-xs leading-5 text-muted-foreground">
-              Start becomes available 7 days before departure.
+              {t("common.startAvailable", { count: 7 })}
             </p>
           )}
         </div>

@@ -45,6 +45,7 @@ import {
 import type { Activity, ActivityParticipant, ActivityPollOption, ActivityPollStatus, ActivityPollVote, TripMember, TripTraveler } from "@/features/domain/entities";
 import { decimalFromMinorUnits, parseMinorUnits, type MinorUnits } from "@/features/domain/money";
 import type { TransitSegment } from "@/features/transit/domain/transit-types";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import {
   getTransitFormValues,
   TransitFields,
@@ -141,6 +142,7 @@ export function ActivityForm({
   onAddTraveler?: (name: string) => Promise<TripTraveler>;
   onClone?: () => void;
 }) {
+  const { t } = useI18n();
   const [category, setCategory] = useState<ActivityCategory>(() =>
     transitSegment ? "transit" : normalizeActivityCategory(activity?.category)
   );
@@ -260,7 +262,7 @@ export function ActivityForm({
   return (
     <form onSubmit={submit} className="space-y-4">
       <div className="space-y-2">
-        <Label>Category</Label>
+        <Label>{t("common.category")}</Label>
         <input type="hidden" name="category" value={category} />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -301,32 +303,32 @@ export function ActivityForm({
         <>
           <div className="grid items-start gap-5 lg:grid-cols-2">
             <div className="space-y-4">
-              <Field label="Title" name="title" defaultValue={activity?.title} required />
-              <TextAreaField label="Description" name="description" defaultValue={activity?.description ?? ""} />
+              <Field label={t("common.title")} name="title" defaultValue={activity?.title} required />
+              <TextAreaField label={t("common.description")} name="description" defaultValue={activity?.description ?? ""} />
               <div className="space-y-2">
-                <Label htmlFor="activity-dayDate">Day</Label>
+                <Label htmlFor="activity-dayDate">{t("common.day")}</Label>
                 <select id="activity-dayDate" name="dayDate" defaultValue={activity?.dayDate ?? draft?.dayDate ?? days[0]} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
                   {days.map((day) => <option key={day} value={day}>{formatDate(day)}</option>)}
                 </select>
               </div>
               <div className="space-y-2">
-                <Label>Time specificity</Label>
+                <Label>{t("common.timeSpecificity")}</Label>
                 <div className="grid grid-cols-2 rounded-xl border border-border/40 bg-muted/40 p-1">
                   {(["exact", "flexible"] as const).map((specificity) => (
                     <button key={specificity} type="button" data-active={timingSpecificity === specificity} className="h-9 rounded-lg px-3 text-sm font-medium text-muted-foreground transition-colors data-[active=true]:bg-background data-[active=true]:text-foreground data-[active=true]:shadow-sm" onClick={() => setTimingSpecificity(specificity)}>
-                      {specificity === "exact" ? "Exact Time" : "Flexible"}
+                      {specificity === "exact" ? t("common.exactTime") : t("common.flexible")}
                     </button>
                   ))}
                 </div>
               </div>
               {timingSpecificity === "exact" ? (
                 <div className="grid grid-cols-2 gap-3">
-                  <ControlledTimeField label="Start time" name="startTime" value={startTime} onChange={changeStartTime} />
-                  <ControlledTimeField label="End time" name="endTime" value={endTime} onChange={(value) => { setEndTime(value); setEndTimeEdited(Boolean(value)); }} />
+                  <ControlledTimeField label={t("common.startTime")} name="startTime" value={startTime} onChange={changeStartTime} />
+                  <ControlledTimeField label={t("common.endTime")} name="endTime" value={endTime} onChange={(value) => { setEndTime(value); setEndTimeEdited(Boolean(value)); }} />
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <Label>Flexible period</Label>
+                  <Label>{t("common.flexiblePeriod")}</Label>
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
                     {(["morning", "afternoon", "evening", "anytime"] as const).map((period) => (
                       <Button key={period} type="button" size="sm" variant={flexiblePeriod === period ? "default" : "outline"} className="capitalize" onClick={() => setFlexiblePeriod(period)}>{period}</Button>
@@ -339,14 +341,14 @@ export function ActivityForm({
               <ActivityPlaceField defaultValue={activity?.formattedAddress ?? activity?.placeName ?? ""} onPlaceSelect={(details) => setPlace(details)} onClear={() => setPlace(null)} />
               <div className="space-y-2">
             <button type="button" aria-pressed={bookingEnabled} className="flex w-full items-center justify-between rounded-xl border p-3 text-left" onClick={() => setBookingEnabled((enabled) => !enabled)}>
-              <span><span className="block text-sm font-semibold">Booking</span><span className="block text-xs text-muted-foreground">Add a confirmation code</span></span>
+              <span><span className="block text-sm font-semibold">{t("common.booking")}</span><span className="block text-xs text-muted-foreground">{t("common.confirmationCode")}</span></span>
               <span className={`relative h-6 w-11 rounded-full transition-colors ${bookingEnabled ? "bg-primary" : "bg-muted"}`}><span className={`absolute top-1 size-4 rounded-full bg-background shadow-sm transition-transform ${bookingEnabled ? "translate-x-6" : "translate-x-1"}`} /></span>
             </button>
-            {bookingEnabled && <div className="relative"><TicketCheck className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" aria-hidden /><Input aria-label="Booking Reference / Confirmation Code" name="bookingReference" defaultValue={activity?.bookingReference ?? ""} autoCapitalize="characters" autoComplete="off" className="pl-9 font-mono uppercase" /></div>}
+            {bookingEnabled && <div className="relative"><TicketCheck className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" aria-hidden /><Input aria-label={t("common.bookingReference")} name="bookingReference" defaultValue={activity?.bookingReference ?? ""} autoCapitalize="characters" autoComplete="off" className="pl-9 font-mono uppercase" /></div>}
           </div>
           {currentUserId && <div className="space-y-2">
-            <Label htmlFor="activity-personalBudget">My budget (optional)</Label>
-            <p className="text-xs text-muted-foreground">Private to you. Other travelers cannot see or edit this amount.</p>
+            <Label htmlFor="activity-personalBudget">{t("common.myBudget")}</Label>
+            <p className="text-xs text-muted-foreground">{t("common.privateBudget")}</p>
             <div className="flex">
               <span className="inline-flex h-10 items-center rounded-l-md border border-r-0 bg-muted px-3 text-sm font-medium text-muted-foreground">{currency}</span>
               <Input id="activity-personalBudget" name="personalBudget" inputMode="decimal" defaultValue={personalBudgetMinor == null ? "" : decimalFromMinorUnits(personalBudgetMinor, currency)} placeholder="0.00" className="rounded-l-none" />
@@ -354,23 +356,23 @@ export function ActivityForm({
           </div>}
           <div className="space-y-2 rounded-xl border p-3">
             <button type="button" aria-pressed={sendToVote} className="flex w-full items-center justify-between gap-3 text-left" onClick={() => setSendToVote((enabled) => !enabled)}>
-              <span className="flex items-start gap-3"><Vote className="mt-0.5 size-5 text-primary" aria-hidden /><span><span className="block text-sm font-semibold">Send to Group Vote</span><span className="block text-xs text-muted-foreground">Ask travelers to approve this plan or suggest another.</span></span></span>
+              <span className="flex items-start gap-3"><Vote className="mt-0.5 size-5 text-primary" aria-hidden /><span><span className="block text-sm font-semibold">{t("common.sendToVote")}</span><span className="block text-xs text-muted-foreground">{t("common.voteHelp")}</span></span></span>
               <span className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${sendToVote ? "bg-primary" : "bg-muted"}`}><span className={`absolute top-1 size-4 rounded-full bg-background shadow-sm transition-transform ${sendToVote ? "translate-x-6" : "translate-x-1"}`} /></span>
             </button>
-            {sendToVote && <div className="space-y-2 pt-2"><Label htmlFor="activity-voting-ends">Voting ends</Label><Input id="activity-voting-ends" type="datetime-local" value={votingEndsAt} min={localDateTimeValue(new Date())} onChange={(event) => setVotingEndsAt(event.target.value)} required /></div>}
+            {sendToVote && <div className="space-y-2 pt-2"><Label htmlFor="activity-voting-ends">{t("common.votingEnds")}</Label><Input id="activity-voting-ends" type="datetime-local" value={votingEndsAt} min={localDateTimeValue(new Date())} onChange={(event) => setVotingEndsAt(event.target.value)} required /></div>}
           </div>
           <fieldset className="space-y-2">
-            <legend className="text-sm font-semibold">Who&apos;s going?</legend>
+            <legend className="text-sm font-semibold">{t("common.whosGoing")}</legend>
             <div className="grid gap-2 sm:grid-cols-2">
               {members.map((member) => {
                 const key = memberKey(member.userId);
                 const attending = attendingParticipantKeys.has(key);
-                const label = member.userId === currentUserId ? "You" : member.userId;
+                const label = member.userId === currentUserId ? t("common.you") : member.userId;
                 return (
-                  <button key={member.id} type="button" aria-label={`${label}: ${attending ? "Going" : "Not going"}`} aria-pressed={attending} className="flex min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition-colors aria-pressed:border-primary aria-pressed:bg-primary/10" onClick={() => toggleParticipant(key, setAttendingParticipantKeys)}>
+                  <button key={member.id} type="button" aria-label={`${label}: ${attending ? t("common.going") : t("common.notGoing")}`} aria-pressed={attending} className="flex min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition-colors aria-pressed:border-primary aria-pressed:bg-primary/10" onClick={() => toggleParticipant(key, setAttendingParticipantKeys)}>
                     <UserAvatar seed={member.userId} name={label} size="sm" />
                     <span className="min-w-0 flex-1 truncate text-sm font-medium">{label}</span>
-                    <span className="text-xs text-muted-foreground">{attending ? "Going" : "Not going"}</span>
+                    <span className="text-xs text-muted-foreground">{attending ? t("common.going") : t("common.notGoing")}</span>
                   </button>
                 );
               })}
@@ -378,10 +380,10 @@ export function ActivityForm({
                 const key = travelerKey(traveler.id);
                 const attending = attendingParticipantKeys.has(key);
                 return (
-                  <button key={traveler.id} type="button" aria-label={`${traveler.displayName}: ${attending ? "Going" : "Not going"}`} aria-pressed={attending} className="flex min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition-colors aria-pressed:border-primary aria-pressed:bg-primary/10" onClick={() => toggleParticipant(key, setAttendingParticipantKeys)}>
+                  <button key={traveler.id} type="button" aria-label={`${traveler.displayName}: ${attending ? t("common.going") : t("common.notGoing")}`} aria-pressed={attending} className="flex min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition-colors aria-pressed:border-primary aria-pressed:bg-primary/10" onClick={() => toggleParticipant(key, setAttendingParticipantKeys)}>
                     <UserAvatar seed={traveler.id} name={traveler.displayName} size="sm" />
                     <span className="min-w-0 flex-1 truncate text-sm font-medium">{traveler.displayName}</span>
-                    <span className="text-xs text-muted-foreground">{attending ? "Going" : "Not going"}</span>
+                    <span className="text-xs text-muted-foreground">{attending ? t("common.going") : t("common.notGoing")}</span>
                   </button>
                 );
               })}
@@ -389,11 +391,11 @@ export function ActivityForm({
             {onAddTraveler && (
               <div className="mt-3 flex flex-col gap-2 rounded-xl border border-dashed p-3 sm:flex-row sm:items-end">
                 <div className="min-w-0 flex-1 space-y-2">
-                  <Label htmlFor="activity-new-traveler">Add traveler manually</Label>
-                  <Input id="activity-new-traveler" value={manualTravelerName} onChange={(event) => setManualTravelerName(event.target.value)} placeholder="Traveler name" />
+                  <Label htmlFor="activity-new-traveler">{t("common.addTravelerManually")}</Label>
+                  <Input id="activity-new-traveler" value={manualTravelerName} onChange={(event) => setManualTravelerName(event.target.value)} placeholder={t("common.travelerName")} />
                 </div>
                 <Button type="button" variant="outline" disabled={addingTraveler || manualTravelerName.trim().length < 2} onClick={async () => { setAddingTraveler(true); setParticipantMessage(null); try { const traveler = await onAddTraveler(manualTravelerName.trim()); setAddedTravelers((current) => [...current, traveler]); setAttendingParticipantKeys((current) => new Set(current).add(travelerKey(traveler.id))); setManualTravelerName(""); setParticipantMessage(`${traveler.displayName} added and selected.`); } catch (cause) { setParticipantMessage(cause instanceof Error ? cause.message : "Unable to add traveler."); } finally { setAddingTraveler(false); } }}>
-                  <UserPlus aria-hidden />{addingTraveler ? "Adding..." : "Add traveler"}
+                  <UserPlus aria-hidden />{addingTraveler ? t("common.adding") : t("common.addTraveler")}
                 </Button>
               </div>
             )}
@@ -405,14 +407,14 @@ export function ActivityForm({
       )}
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         {activity && <div className="flex gap-2 sm:mr-auto">
-          {onDelete && <Button type="button" variant="destructive" onClick={onDelete}><Trash2 aria-hidden />Delete activity</Button>}
-          {onClone && <Button type="button" variant="outline" onClick={onClone}><CopyPlus aria-hidden />Quick clone</Button>}
+          {onDelete && <Button type="button" variant="destructive" onClick={onDelete}><Trash2 aria-hidden />{t("common.deleteActivity")}</Button>}
+          {onClone && <Button type="button" variant="outline" onClick={onClone}><CopyPlus aria-hidden />{t("common.quickClone")}</Button>}
         </div>}
         <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
+          {t("common.cancel")}
         </Button>
         <Button type="submit" variant="primary" disabled={saving}>
-          {saving ? "Saving..." : category === "transit" ? transitSegment ? "Save transit" : "Add transit" : "Save activity"}
+          {saving ? t("settings.saving") : category === "transit" ? transitSegment ? t("common.saveTransit") : t("common.addTransit") : t("common.saveActivity")}
         </Button>
       </div>
     </form>
@@ -428,6 +430,7 @@ function ActivityPlaceField({
   onPlaceSelect: (details: PlaceDetails) => void;
   onClear: () => void;
 }) {
+  const { t } = useI18n();
   const [value, setValue] = useState(defaultValue);
   const [selectedLabel, setSelectedLabel] = useState(defaultValue);
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
@@ -459,7 +462,7 @@ function ActivityPlaceField({
 
   return (
     <div className="relative space-y-2">
-      <Label htmlFor="activity-place">Location</Label>
+      <Label htmlFor="activity-place">{t("common.location")}</Label>
       <div className="relative">
         <MapPin
           className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground"
@@ -470,7 +473,7 @@ function ActivityPlaceField({
           value={value}
           disabled={pending}
           autoComplete="off"
-          placeholder="Search for a place"
+          placeholder={t("common.searchPlace")}
           className="pl-9"
           onChange={(event) => {
             setValue(event.target.value);

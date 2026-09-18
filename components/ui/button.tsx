@@ -18,7 +18,8 @@ const buttonVariants = cva(
           "bg-linear-to-r from-viatik-magenta to-viatik-red text-white " +
           "shadow-[0_1px_2px_rgba(244,63,94,0.25)] hover:opacity-90",
         default: "bg-primary text-primary-foreground hover:opacity-90",
-        secondary: "bg-secondary text-secondary-foreground hover:opacity-90",
+        secondary: "border border-foreground/30 bg-primary/10 text-foreground hover:bg-primary/20",
+        ai: "border-2 border-viatik-blue/40 bg-viatik-blue/10 text-foreground hover:bg-viatik-blue/20",
         destructive: "bg-destructive text-destructive-foreground hover:opacity-90",
         outline: "border border-input bg-transparent hover:bg-muted",
         ghost: "hover:bg-muted",

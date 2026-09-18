@@ -5,6 +5,7 @@ import type { TripMedia } from "@/features/domain/entities-media";
 import type { VaultEntry, VaultKeyset } from "@/features/vault/domain/vault-types";
 import type { TripWeatherForecast } from "@/features/weather/domain/weather-types";
 import type { TripShareLink } from "@/features/sharing/domain/share-types";
+import type { Notification } from "@/features/notifications/domain/notification-types";
 import {
   acknowledgeMutation,
   countPendingMutations,
@@ -35,6 +36,7 @@ import {
   vaultKeysetToRow,
   tripWeatherForecastToRow,
   shareLinkToRow,
+  notificationToRow,
 } from "@/lib/supabase/mappers";
 import { logger } from "@/lib/observability/logger";
 import { deleteRemoteMedia, processPendingMedia, pullRemoteChanges, startRealtimeSync } from "@/lib/sync/cloud-sync";
@@ -125,6 +127,7 @@ function mutationPayloadToRow(mutation: OutboxMutation): Record<string, unknown>
     case "tripWeatherForecast": return tripWeatherForecastToRow(mutation.payload as unknown as TripWeatherForecast);
     case "userWallet": return userWalletToRow(mutation.payload as unknown as UserWallet);
     case "tripShareLink": return shareLinkToRow(mutation.payload as unknown as TripShareLink);
+    case "notification": return notificationToRow(mutation.payload as unknown as Notification);
   }
 }
 

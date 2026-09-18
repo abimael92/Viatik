@@ -16,6 +16,7 @@ import { AvatarPicker, type AvatarChange } from "@/components/ui/avatar-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 
@@ -99,6 +100,7 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
   const [success, setSuccess] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
   const [pending, startTransition] = useTransition();
+  const { t } = useI18n();
 
   useEffect(() => {
     if (!cooldown) return;
@@ -236,15 +238,15 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
     return (
       <div className="space-y-6">
         <div>
-          <p className="mb-2 text-sm font-semibold text-primary">Create your account</p>
-          <h1 className="text-3xl font-bold tracking-tight">Check your email</h1>
-          <p className="mt-2 text-muted-foreground">We sent a confirmation link to {maskEmail(email)}. Click it to activate your account, then sign in.</p>
+          <p className="mb-2 text-sm font-semibold text-primary">{t("auth.createAccount")}</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t("auth.checkEmail")}</h1>
+          <p className="mt-2 text-muted-foreground">{t("auth.confirmationSent", { email: maskEmail(email) })}</p>
         </div>
         <div className="rounded-xl border bg-muted/40 p-4 text-sm text-muted-foreground">
-          <p>Can&apos;t find it? Check your spam folder, or wait a moment and try again.</p>
+          <p>{t("auth.checkSpam")}</p>
         </div>
         <Link href="/login" className="block text-center text-sm font-semibold text-primary hover:underline">
-          Back to sign in
+          {t("auth.backToSignIn")}
         </Link>
       </div>
     );
@@ -254,12 +256,12 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
     return (
       <div className="space-y-6">
         <div>
-          <p className="mb-2 text-sm font-semibold text-primary">{mode === "register" ? "Create your account" : "Sign in to your account"}</p>
-          <h1 className="text-3xl font-bold tracking-tight">Check your email</h1>
-          <p className="mt-2 text-muted-foreground">Enter the {OTP_LENGTH}-digit code sent to {maskEmail(email)}.</p>
+          <p className="mb-2 text-sm font-semibold text-primary">{mode === "register" ? t("auth.createAccount") : t("auth.existingAccount")}</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t("auth.checkEmail")}</h1>
+          <p className="mt-2 text-muted-foreground">{t("auth.verificationCodeSent", { count: OTP_LENGTH, email: maskEmail(email) })}</p>
         </div>
         <div className="space-y-3">
-          <Label id="code-label">Verification code</Label>
+          <Label id="code-label">{t("auth.verificationCode")}</Label>
           <div role="group" aria-labelledby="code-label" onPaste={handlePaste} className="grid grid-cols-8 gap-1.5 sm:gap-2">
             {digits.map((digit, index) => (
               <Input
@@ -271,7 +273,7 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
                 onFocus={(event) => event.currentTarget.select()}
                 inputMode="numeric"
                 autoComplete={index === 0 ? "one-time-code" : "off"}
-                aria-label={`Digit ${index + 1}`}
+                aria-label={t("auth.digit", { count: index + 1 })}
                 maxLength={1}
                 className="h-12 px-0 text-center text-lg font-semibold sm:h-14 sm:text-xl"
                 autoFocus={index === 0}
@@ -282,11 +284,11 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
         </div>
         {message && <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{message}</p>}
         <Button variant="primary" className="w-full" size="lg" disabled={pending || digits.some((digit) => !digit)} onClick={() => verifyCode()}>
-          {pending ? "Verifying…" : "Verify and continue"}
+          {pending ? t("auth.verifying") : t("auth.verifyContinue")}
         </Button>
         <div className="flex flex-col items-center gap-2 text-sm">
           <button type="button" className="font-semibold text-primary disabled:text-muted-foreground" disabled={pending || cooldown > 0} onClick={requestCode}>
-            {cooldown ? `Resend code in ${formatCooldown(cooldown)}` : "Resend code"}
+            {cooldown ? t("auth.resendIn", { time: formatCooldown(cooldown) }) : t("auth.resend")}
           </button>
           <button type="button" className="text-muted-foreground hover:text-foreground" onClick={() => { setSent(false); setDigits(Array.from({ length: OTP_LENGTH }, () => "")); setMessage(null); }}>
             Back to email and password

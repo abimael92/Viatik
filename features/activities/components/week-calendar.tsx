@@ -13,6 +13,7 @@ import { WeatherDayBadge } from "@/features/weather/components/weather-day-badge
 import { useTransitSegments } from "@/features/transit/components/use-transit";
 import { TRANSIT_STATUS_META, type TransitSegment } from "@/features/transit/domain/transit-types";
 import { deriveStatusState } from "@/features/transit/lib/transit-service";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 import { getActivityCategoryColors, isUserAttending } from "@/features/trips/lib/activity-category-colors";
 import { activityTimeMinutes, formatActivityTime } from "@/features/activities/lib/activity-time";
@@ -50,6 +51,7 @@ export function WeekCalendar({
   onEditTransit?: (segment: TransitSegment) => void;
   currentUserId?: string;
 }) {
+  const { t } = useI18n();
   const [view, setView] = useState<"today" | "range" | "all">("all");
   const [rangeStart, setRangeStart] = useState(() => {
     const idx = days.indexOf(localDateKey(new Date()));
@@ -87,7 +89,7 @@ export function WeekCalendar({
     }
     return map;
   }, [segments]);
-  const title = visibleDays.length === 1 ? formatHeader(visibleDays[0]) : visibleDays.length ? `${formatHeader(visibleDays[0])} – ${formatHeader(visibleDays.at(-1)!)}` : "Trip calendar";
+  const title = visibleDays.length === 1 ? formatHeader(visibleDays[0]) : visibleDays.length ? `${formatHeader(visibleDays[0])} – ${formatHeader(visibleDays.at(-1)!)}` : t("common.tripCalendar");
   const shiftRange = (direction: -1 | 1) => {
     const len = Math.max(1, visibleDays.length);
     const idx = rangeStart ? days.indexOf(rangeStart) : -1;
@@ -100,11 +102,11 @@ export function WeekCalendar({
   return (
     <>
     <section className="overflow-hidden rounded-2xl border bg-card">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b p-3 sm:p-4"><div><h3 className="font-semibold">{title}</h3><p className="text-xs text-muted-foreground">Click an open time to add an activity.</p></div><div className="flex flex-wrap items-center gap-2"><div className="flex rounded-md border p-0.5"><Button type="button" size="sm" variant={view === "today" ? "default" : "ghost"} onClick={() => setView("today")}>Today</Button><Button type="button" size="sm" variant={view === "range" ? "default" : "ghost"} onClick={() => setView("range")}>Range</Button><Button type="button" size="sm" variant={view === "all" ? "default" : "ghost"} onClick={() => setView("all")}>All</Button></div>{view === "range" && (<div className="flex flex-wrap items-center gap-1"><div className="flex items-center gap-1"><Button type="button" size="icon" variant="ghost" aria-label="Shift range earlier" disabled={!rangeStart || rangeStart === days[0]} onClick={() => shiftRange(-1)}><ChevronLeft /></Button><input type="date" value={rangeStart} min={days[0]} max={rangeEnd} onChange={(event) => setRangeStart(event.target.value)} className="h-8 rounded-md border bg-background px-2 text-sm" aria-label="Range start date" /><span className="text-xs text-muted-foreground">to</span><input type="date" value={rangeEnd} min={rangeStart} max={days.at(-1)} onChange={(event) => setRangeEnd(event.target.value)} className="h-8 rounded-md border bg-background px-2 text-sm" aria-label="Range end date" /><Button type="button" size="icon" variant="ghost" aria-label="Shift range later" disabled={!rangeEnd || rangeEnd === days.at(-1)} onClick={() => shiftRange(1)}><ChevronRight /></Button></div></div>)}</div></header>
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b p-3 sm:p-4"><div><h3 className="font-semibold">{title}</h3><p className="text-xs text-muted-foreground">{t("common.clickOpenTime")}</p></div><div className="flex flex-wrap items-center gap-2"><div className="flex rounded-md border p-0.5"><Button type="button" size="sm" variant={view === "today" ? "default" : "ghost"} onClick={() => setView("today")}>Today</Button><Button type="button" size="sm" variant={view === "range" ? "default" : "ghost"} onClick={() => setView("range")}>{t("common.range")}</Button><Button type="button" size="sm" variant={view === "all" ? "default" : "ghost"} onClick={() => setView("all")}>All</Button></div>{view === "range" && (<div className="flex flex-wrap items-center gap-1"><div className="flex items-center gap-1"><Button type="button" size="icon" variant="ghost" aria-label={t("common.shiftEarlier")} disabled={!rangeStart || rangeStart === days[0]} onClick={() => shiftRange(-1)}><ChevronLeft /></Button><input type="date" value={rangeStart} min={days[0]} max={rangeEnd} onChange={(event) => setRangeStart(event.target.value)} className="h-8 rounded-md border bg-background px-2 text-sm" aria-label={t("common.rangeStart")} /><span className="text-xs text-muted-foreground">to</span><input type="date" value={rangeEnd} min={rangeStart} max={days.at(-1)} onChange={(event) => setRangeEnd(event.target.value)} className="h-8 rounded-md border bg-background px-2 text-sm" aria-label={t("common.rangeEnd")} /><Button type="button" size="icon" variant="ghost" aria-label={t("common.shiftLater")} disabled={!rangeEnd || rangeEnd === days.at(-1)} onClick={() => shiftRange(1)}><ChevronRight /></Button></div></div>)}</div></header>
       <div className="overflow-x-auto">
         <div className="min-w-215">
           <div className="grid" style={{ gridTemplateColumns: `5rem repeat(${visibleDays.length}, minmax(7rem, 1fr))` }}>
-            <div className="sticky top-0 z-30 border-b border-r bg-card p-3 text-xs text-muted-foreground">Local time</div>
+            <div className="sticky top-0 z-30 border-b border-r bg-card p-3 text-xs text-muted-foreground">{t("common.localTime")}</div>
             {visibleDays.map((day) => (
               <div key={day} className="sticky top-0 z-30 border-b border-r bg-card p-3 text-center last:border-r-0">
                 <p className="text-xs uppercase text-muted-foreground">

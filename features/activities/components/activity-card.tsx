@@ -20,9 +20,11 @@ interface ActivityCardProps {
   /** Weather conflict affecting this activity, shown as a warning badge. */
   conflict?: WeatherConflict;
   currentUserId?: string;
+  eligibleViaticUsers?: number;
+  tripOwnerId?: string;
 }
 
-export function ActivityCard({ activity, onSelect, draggable = true, conflict, currentUserId }: ActivityCardProps) {
+export function ActivityCard({ activity, onSelect, draggable = true, conflict, currentUserId, eligibleViaticUsers, tripOwnerId }: ActivityCardProps) {
   const colors = getActivityCategoryColors(activity.category);
   const muted = Boolean(currentUserId && !isUserAttending(activity, currentUserId));
   const {
@@ -111,7 +113,7 @@ export function ActivityCard({ activity, onSelect, draggable = true, conflict, c
         </div>
       </article>
       {currentUserId && (activity.pollStatus === "proposed" || activity.pollStatus === "voting") && (
-        <ActivityVoteCard activity={activity} currentUserId={currentUserId} />
+        <ActivityVoteCard activity={activity} currentUserId={currentUserId} eligibleViaticUsers={eligibleViaticUsers} tripOwnerId={tripOwnerId} />
       )}
     </motion.li>
   );

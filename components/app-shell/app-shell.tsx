@@ -4,10 +4,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Compass, ContactRound, Home, LogOut, Map, Menu, Settings, X } from "lucide-react";
+import { NotificationBell } from "@/features/notifications/components/notification-center";
 import { useState, useTransition } from "react";
 
 import { logout } from "@/app/actions/auth";
 import { SyncStatusPill } from "@/components/app-shell/sync-status-pill";
+import { LanguageSwitcher } from "@/components/app-shell/language-switcher";
 import { ThemeToggle } from "@/components/app-shell/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { IconTile } from "@/components/ui/icon-tile";
@@ -15,14 +17,27 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import { deleteDatabase } from "@/lib/db/dexie";
 import { syncNow } from "@/lib/sync/sync-engine";
 import { useSyncStatus } from "@/lib/sync/use-sync-status";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
-const links = [
-  { href: "/home", label: "Home", icon: Home },
-  { href: "/trips", label: "Trips", icon: Map },
-  { href: "/contacts", label: "Contacts", icon: ContactRound },
-  { href: "/community", label: "Community", icon: Compass, comingSoon: true },
-  { href: "/settings", label: "Settings", icon: Settings },
+type NavigationLink = {
+  href: "/home" | "/trips" | "/contacts" | "/community" | "/settings";
+  labelKey:
+    | "navigation.home"
+    | "navigation.trips"
+    | "navigation.contacts"
+    | "navigation.community"
+    | "navigation.settings";
+  icon: typeof Home | typeof Map | typeof ContactRound | typeof Compass | typeof Settings;
+  comingSoon?: boolean;
+};
+
+const links: readonly NavigationLink[] = [
+  { href: "/home", labelKey: "navigation.home", icon: Home, comingSoon: false },
+  { href: "/trips", labelKey: "navigation.trips", icon: Map, comingSoon: false },
+  { href: "/contacts", labelKey: "navigation.contacts", icon: ContactRound, comingSoon: false },
+  { href: "/community", labelKey: "navigation.community", icon: Compass, comingSoon: true },
+  { href: "/settings", labelKey: "navigation.settings", icon: Settings, comingSoon: false },
 ];
 
 export function AppShell({
@@ -45,6 +60,7 @@ export function AppShell({
   const [menuOpen, setMenuOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const sync = useSyncStatus();
+  const { t } = useI18n();
 
   function signOut() {
     startTransition(async () => {
@@ -74,22 +90,23 @@ export function AppShell({
   );
 
   const navigation = (
-    <nav aria-label="Main navigation" className="space-y-1">
-      {links.map(({ href, label, icon: Icon, comingSoon }) => {
+    <nav aria-label={t("navigation.main")} className="space-y-1">
+      {links.map(({ href, labelKey, icon: Icon, comingSoon = false }) => {
+        const label = t(labelKey);
         if (comingSoon) {
           return (
             <button
               key={href}
               type="button"
               disabled
-              title="Coming soon"
+              title={t("common.comingSoon")}
               aria-disabled="true"
               className={cn(navLinkClasses(false), "cursor-not-allowed opacity-60")}
             >
               {navIcon(Icon)}
               {label}
               <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Soon
+                {t("common.comingSoon")}
               </span>
             </button>
           );
@@ -128,8 +145,10 @@ export function AppShell({
             <span className="mt-1 block truncate text-[13px] leading-tight text-side-muted" title={userEmail}>{userEmail}</span>
           )}
         </span>
+        <NotificationBell userId={userId} />
       </div>
-      <div className="mt-3 flex border-t border-side-border pt-2.5">
+      <div className="mt-3 flex items-center justify-between gap-2 border-t border-side-border pt-2.5">
+        <LanguageSwitcher dark />
         <SyncStatusPill compact />
       </div>
     </div>
@@ -139,9 +158,9 @@ export function AppShell({
     <div className="min-h-dvh bg-background">
       <a
         href="#main-content"
-        className="sr-only z-[100] rounded-md bg-primary p-3 text-primary-foreground focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+        className="sr-only z-100 rounded-md bg-primary p-3 text-primary-foreground focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
       >
-        Skip to content
+        {t("navigation.skipToContent")}
       </a>
 
       {!sync.isOnline && (
@@ -149,7 +168,7 @@ export function AppShell({
           role="status"
           className="border-b border-border/40 bg-background/80 px-4 py-2 text-center text-sm text-foreground backdrop-blur-md"
         >
-          You are offline. Changes are saved on this device and will sync when you reconnect.
+          {t("sync.offline")}
         </div>
       )}
       {sync.isOnline && sync.status === "error" && (
@@ -157,9 +176,9 @@ export function AppShell({
           role="alert"
           className="flex items-center justify-center gap-3 border-b border-border/40 bg-destructive/10 px-4 py-2 text-sm text-destructive backdrop-blur-md"
         >
-          <span>Some cloud changes could not sync.</span>
+          <span>{t("sync.error")}</span>
           <Button size="sm" variant="outline" onClick={() => void syncNow()}>
-            Retry now
+            {t("common.retry")}
           </Button>
         </div>
       )}
@@ -178,7 +197,9 @@ export function AppShell({
             <Image src="/viatik-logo.png" alt="" width={44} height={44} priority className="size-11 object-contain" />
             Viatik
           </Link>
-          <ThemeToggle />
+          <div className="flex items-center gap-1">
+            <ThemeToggle />
+          </div>
         </div>
 
         {/* User profile card (static) sits before the navigation links, with sync status on it. */}
@@ -195,7 +216,7 @@ export function AppShell({
             onClick={() => signOut()}
             disabled={pending}
           >
-            <span className="text-xs font-semibold">Sign out</span>
+            <span className="text-xs font-semibold">{t("common.signOut")}</span>
             <LogOut className="size-5" />
           </Button>
         </div>
@@ -208,15 +229,27 @@ export function AppShell({
           Viatik
         </Link>
         <div className="flex items-center gap-1">
+          <LanguageSwitcher dark />
           <SyncStatusPill compact />
+          <NotificationBell userId={userId} />
           <ThemeToggle />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => void signOut()}
+            disabled={pending}
+            aria-label={t("common.signOut")}
+            title={t("common.signOut")}
+          >
+            <LogOut aria-hidden />
+          </Button>
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setMenuOpen((open) => !open)}
             aria-expanded={menuOpen}
             aria-controls="mobile-navigation"
-            aria-label={menuOpen ? "Close navigation" : "Open navigation"}
+            aria-label={menuOpen ? t("navigation.close") : t("navigation.open")}
           >
             {menuOpen ? <X aria-hidden /> : <Menu aria-hidden />}
           </Button>
@@ -235,11 +268,12 @@ export function AppShell({
 
       {/* Mobile bottom tab bar — keeps the main nav always reachable on small screens. */}
       <nav
-        aria-label="Main navigation (mobile)"
+        aria-label={t("navigation.mobile")}
         className="fixed inset-x-0 bottom-0 z-40 border-t border-side-border bg-side pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden"
       >
         <div className="grid grid-cols-5">
-          {links.map(({ href, label, icon: Icon, comingSoon }) => {
+          {links.map(({ href, labelKey, icon: Icon, comingSoon = false }) => {
+            const label = t(labelKey);
             const active = pathname === href || pathname.startsWith(`${href}/`);
             const cls = cn(
               "flex min-h-14 flex-col items-center justify-center gap-1 py-2 text-[11px] font-semibold tracking-tight",

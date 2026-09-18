@@ -42,6 +42,8 @@ interface ItineraryBoardProps {
   /** Receives a scout suggestion dropped onto a day column. */
   onDropScout?: (dayDate: string, payload: ScoutDndPayload) => void;
   currentUserId?: string;
+  eligibleViaticUsers?: number;
+  tripOwnerId?: string;
 }
 
 export function ItineraryBoard({
@@ -56,6 +58,8 @@ export function ItineraryBoard({
   conflicts,
   onDropScout,
   currentUserId,
+  eligibleViaticUsers,
+  tripOwnerId,
 }: ItineraryBoardProps) {
   const db = useDatabase();
   const activities = useLiveQuery(
@@ -210,11 +214,13 @@ export function ItineraryBoard({
             conflicts={conflicts}
             onDropScout={onDropScout}
             currentUserId={currentUserId}
+            eligibleViaticUsers={eligibleViaticUsers}
+            tripOwnerId={tripOwnerId}
           />
         ))}
       </div>
       <DragOverlay dropAnimation={{ duration: 150, easing: "cubic-bezier(0.18, 0.8, 0.25, 1)" }}>
-        {activeActivity ? <ActivityCard activity={activeActivity} currentUserId={currentUserId} /> : null}
+        {activeActivity ? <ActivityCard activity={activeActivity} currentUserId={currentUserId} eligibleViaticUsers={eligibleViaticUsers} tripOwnerId={tripOwnerId} /> : null}
       </DragOverlay>
     </DndContext>
   );
@@ -230,7 +236,7 @@ function ItineraryBoardSkeleton({ dayDates }: { dayDates: string[] }) {
       {columns.map((_, index) => (
         <div
           key={index}
-          className="flex h-full min-h-[12rem] flex-col gap-3 rounded-xl border border-border bg-muted/30 p-3"
+          className="flex h-full min-h-48 flex-col gap-3 rounded-xl border border-border bg-muted/30 p-3"
         >
           <div className="h-4 w-24 animate-pulse rounded bg-muted-foreground/20" />
           <div className="h-20 animate-pulse rounded-lg bg-muted-foreground/10" />

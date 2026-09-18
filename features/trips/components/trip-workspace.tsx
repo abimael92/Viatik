@@ -57,6 +57,7 @@ import { weatherRepository } from "@/features/weather/data/dexie-weather-reposit
 import type { TripWeatherForecast } from "@/features/weather/domain/weather-types";
 import type { PlaceDetails } from "@/app/actions/places";
 import { nextPosition } from "@/lib/ordering";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 import { downloadActivitiesIcs } from "@/features/itinerary/lib/export-ics";
 
@@ -101,10 +102,12 @@ type ActivityDialogState = null | "new" | { draft: { dayDate: string; startTime:
 
 export function TripWorkspace({ tripId, userId, initialTab = "overview", initialMoneyToolsOpen = false }: { tripId: string; userId: string; initialTab?: string; initialMoneyToolsOpen?: boolean }) {
   const router = useRouter();
+  const { t } = useI18n();
   const init = initWorkspace(initialTab);
   const [trip, setTrip] = useState<Trip | null | undefined>(undefined);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [members, setMembers] = useState<TripMember[]>([]);
+  const eligibleViaticUsers = members.filter((member) => member.viatikId != null).length;
   const [travelers, setTravelers] = useState<TripTraveler[]>([]);
   const [tab, setTab] = useState<Tab>(init.tab);
   const [overviewTool, setOverviewTool] = useState<SecondaryTool | null>(init.tool);
@@ -126,6 +129,16 @@ export function TripWorkspace({ tripId, userId, initialTab = "overview", initial
   const [forecast, setForecast] = useState<TripWeatherForecast | undefined>(undefined);
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [weatherError, setWeatherError] = useState<string | null>(null);
+  const tabLabels: Record<Tab, string> = {
+    overview: t("common.overview"),
+    itinerary: t("common.itinerary"),
+    map: t("common.map"),
+    money: t("common.money"),
+    photos: t("common.photos"),
+    people: t("common.people"),
+    journal: t("common.journal"),
+    settings: t("common.settings"),
+  };
 
   useEffect(() => tripRepository.watchById(tripId, (value) => setTrip(value ?? null)), [tripId]);
   useEffect(() => activityRepository.watchByTrip(tripId, setActivities), [tripId]);
@@ -370,7 +383,7 @@ export function TripWorkspace({ tripId, userId, initialTab = "overview", initial
                   {isOwner && (
                     <Button variant="outline" onClick={() => setShareOpen(true)}>
                       <Share2 className="size-5" />
-                      Share
+                      {t("common.share")}
                     </Button>
                   )}
                 </div>
@@ -387,7 +400,7 @@ export function TripWorkspace({ tripId, userId, initialTab = "overview", initial
       </header>
 
       <div className="overflow-x-auto border-b">
-        <nav aria-label="Trip sections" className="flex min-w-max gap-1">
+        <nav aria-label={t("common.itinerary")} className="flex min-w-max gap-1">
           {tabs.map((item) => (
             <button
               key={item}
@@ -398,7 +411,7 @@ export function TripWorkspace({ tripId, userId, initialTab = "overview", initial
               aria-current={tab === item ? "page" : undefined}
               className={`min-h-11 rounded-t-lg px-4 text-sm font-semibold capitalize focus-visible:ring-2 focus-visible:ring-ring ${tab === item ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"}`}
             >
-              {item}
+              {tabLabels[item]}
             </button>
           ))}
         </nav>
@@ -449,22 +462,22 @@ export function TripWorkspace({ tripId, userId, initialTab = "overview", initial
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <Heading level={2} className="text-2xl font-bold">
-                Itinerary
+                {t("common.itinerary")}
               </Heading>
-              <p className="text-muted-foreground">See open time, schedule activities, or organize each day.</p>
+              <p className="text-muted-foreground">{t("common.seeOpenTime")}</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <div className="flex rounded-md border p-0.5">
                 <Button size="sm" variant={itineraryView === "calendar" ? "default" : "ghost"} onClick={() => setItineraryView("calendar")}>
-                  Calendar
+                  {t("common.calendar")}
                 </Button>
                 <Button size="sm" variant={itineraryView === "board" ? "default" : "ghost"} onClick={() => setItineraryView("board")}>
-                  Board
+                  {t("common.board")}
                 </Button>
               </div>
               {itineraryView === "board" && (
                 <select aria-label="Filter by category" value={category} onChange={(event) => setCategory(event.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm">
-                  <option value="all">All categories</option>
+                  <option value="all">{t("common.allCategories")}</option>
                   {Array.from(new Set(activities.map((item) => item.category))).map((item) => (
                     <option key={item}>{item}</option>
                   ))}
@@ -481,19 +494,19 @@ export function TripWorkspace({ tripId, userId, initialTab = "overview", initial
                   }
                 >
                   <CalendarPlus className="size-4" />
-                  Export ICS
+                  {t("common.export")}
                 </Button>
               )}
               {canEdit && (
                 <Button variant="primary" onClick={() => setActivityDialog("new")}>
                   <Plus className="size-5" />
-                  Activity
+                  {t("common.activity")}
                 </Button>
               )}
               {canEdit && (
-                <Button variant="outline" onClick={() => setScoutOpen((open) => !open)} aria-expanded={scoutVisible} className="h-11 gap-1 border-transparent bg-linear-to-r from-viatik-blue via-viatik-magenta to-viatik-red px-3 text-white shadow-[0_4px_14px_rgba(168,85,247,0.35)] hover:border-transparent hover:opacity-90">
-                  <Image src="/scout_icon.png" alt="Scout the fox" width={40} height={40} className="size-10 shrink-0 object-contain object-center" />
-                  {scoutVisible ? "Bye Scout" : "Scout AI"}
+                <Button variant="ai" onClick={() => setScoutOpen((open) => !open)} aria-expanded={scoutVisible} className="h-11 gap-2 px-4">
+                  <Image src="/scout_icon.png" alt={t("common.scoutFox")} width={60} height={60} className="-ml-1 size-12 shrink-0 scale-110 object-contain object-center invert" />
+                  {scoutVisible ? t("common.byeScout") : t("common.scout")}
                 </Button>
               )}
             </div>
@@ -505,16 +518,16 @@ export function TripWorkspace({ tripId, userId, initialTab = "overview", initial
                 itineraryView === "calendar" ? (
                   <WeekCalendar tripId={tripId} days={days} activities={activities} currentUserId={userId} onSelect={openActivity} onCreateActivity={(dayDate, startTime) => setActivityDialog({ draft: { dayDate, startTime } })} onEditTransit={(transitSegment) => setActivityDialog({ transitSegment })} forecast={forecast?.forecast} warnings={weatherWarnings} weatherLoading={weatherLoading} conflicts={conflictsByActivity} canEdit={canEdit} />
                 ) : (
-                  <ItineraryBoard tripId={tripId} dayDates={days} category={category} currentUserId={userId} onSelect={openActivity} readOnly={!canEdit} forecast={forecast?.forecast} warnings={weatherWarnings} weatherLoading={weatherLoading} conflicts={conflictsByActivity} onDropScout={handleDropScout} />
+                  <ItineraryBoard tripId={tripId} dayDates={days} category={category} currentUserId={userId} eligibleViaticUsers={eligibleViaticUsers} tripOwnerId={trip.ownerId} onSelect={openActivity} readOnly={!canEdit} forecast={forecast?.forecast} warnings={weatherWarnings} weatherLoading={weatherLoading} conflicts={conflictsByActivity} onDropScout={handleDropScout} />
                 )
               ) : (
                 <div className="rounded-2xl border border-dashed bg-linear-to-b from-card to-muted/30 p-10 text-center">
                   <Heading level={3} className="text-base font-semibold">
-                    {canEdit ? "Add trip dates to build your itinerary" : "Trip dates are not set"}
+                    {canEdit ? t("common.addTripDates") : t("common.tripDatesNotSet")}
                   </Heading>
                   {canEdit && (
                     <Button variant="link" onClick={handleOpenDetails}>
-                      Set dates
+                      {t("common.setDates")}
                     </Button>
                   )}
                 </div>
@@ -528,6 +541,8 @@ export function TripWorkspace({ tripId, userId, initialTab = "overview", initial
             canEdit={canEdit}
             onSelect={openActivity}
             onAddProposal={() => setActivityDialog({ newProposal: true })}
+            eligibleViaticUsers={eligibleViaticUsers}
+            tripOwnerId={trip.ownerId}
           />
         </section>
       )}
@@ -595,6 +610,7 @@ export function TripWorkspace({ tripId, userId, initialTab = "overview", initial
 }
 
 function Overview({ trip, userId, activities, mediaCount, setTab, setJournalView, onOpenTool, onAddActivity, onAddExpense, onAddPhotos, onSetDates, canEdit, onError }: { trip: Trip; userId: string; activities: Activity[]; mediaCount: number; setTab: (tab: Tab) => void; setJournalView: (view: "journal" | "feed") => void; onOpenTool: (tool: SecondaryTool) => void; onAddActivity: () => void; onAddExpense: () => void; onAddPhotos: () => void; onSetDates: () => void; canEdit: boolean; onError: (message: string) => void }) {
+  const { t } = useI18n();
   const { segments } = useTransitSegments(trip.id);
   const transit = segments.filter((segment) => segment.deletedAt === null);
   const [scoutOpen, setScoutOpen] = useState(false);
@@ -617,26 +633,26 @@ function Overview({ trip, userId, activities, mediaCount, setTab, setJournalView
           <div className="flex items-start gap-3">
             <CalendarDays className="size-5 shrink-0 text-primary" />
             <div>
-              <p className="font-semibold text-primary">Set your travel dates</p>
-              <p className="text-sm text-primary/80">Add start and end dates to generate your itinerary.</p>
+              <p className="font-semibold text-primary">{t("common.setTravelDates")}</p>
+              <p className="text-sm text-primary/80">{t("common.addDatesToGenerate")}</p>
             </div>
           </div>
-          <Button variant="outline" onClick={onSetDates}>Set dates</Button>
+          <Button variant="outline" onClick={onSetDates}>{t("common.setDates")}</Button>
         </div>
       )}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Stat icon={CalendarDays} label="Activities" value={String(activities.length)} onClick={() => setTab("itinerary")} />
-        <Stat icon={CircleDollarSign} label="Currency" value={trip.baseCurrency} onClick={() => setTab("money")} />
-        <Stat icon={Users} label="Travelers" value={`${trip.adultCount + trip.childCount} total`} onClick={() => setTab("people")} />
-        <Stat icon={Camera} label="Gallery" value={`${mediaCount} photo${mediaCount === 1 ? "" : "s"}`} onClick={() => setTab("photos")} />
+        <Stat icon={CalendarDays} label={t("common.activities")} value={String(activities.length)} onClick={() => setTab("itinerary")} />
+        <Stat icon={CircleDollarSign} label={t("common.currency")} value={trip.baseCurrency} onClick={() => setTab("money")} />
+        <Stat icon={Users} label={t("common.travelers")} value={`${trip.adultCount + trip.childCount} total`} onClick={() => setTab("people")} />
+        <Stat icon={Camera} label={t("common.gallery")} value={`${mediaCount} photo${mediaCount === 1 ? "" : "s"}`} onClick={() => setTab("photos")} />
       </div>
       <section className="rounded-2xl border bg-card p-5 sm:p-6" aria-labelledby="overview-tools-heading">
-        <Heading level={2} id="overview-tools-heading" className="text-base font-semibold">Trip tools</Heading>
+        <Heading level={2} id="overview-tools-heading" className="text-base font-semibold">{t("common.tripTools")}</Heading>
         <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <ToolCard icon={Backpack} title="Packing" description="Smart packing list" onClick={() => onOpenTool("packing")} />
-          <ToolCard icon={HeartPulse} title="Travel health" description="Docs & expiry tracker" onClick={() => onOpenTool("health")} />
-          <ToolCard icon={Vote} title="Polls" description="Group voting" onClick={() => onOpenTool("polls")} />
-          <ToolCard icon={Lock} title="Secure vault" description="Encrypted documents" onClick={() => onOpenTool("vault")} />
+          <ToolCard icon={Backpack} title={t("common.packing")} description={t("common.packing")} onClick={() => onOpenTool("packing")} />
+          <ToolCard icon={HeartPulse} title={t("common.health")} description={t("common.docsExpiry")} onClick={() => onOpenTool("health")} />
+          <ToolCard icon={Vote} title={t("common.polls")} description={t("common.groupVoting")} onClick={() => onOpenTool("polls")} />
+          <ToolCard icon={Lock} title={t("common.secureVault")} description={t("common.secureDocuments")} onClick={() => onOpenTool("vault")} />
         </div>
       </section>
       {/* FinanceSummaryStrip temporarily hidden (Group spent / True leftover / Planned). */}
@@ -644,8 +660,8 @@ function Overview({ trip, userId, activities, mediaCount, setTab, setJournalView
       {transit.length > 0 && (
         <section className="rounded-2xl border bg-card p-5 sm:p-6" aria-labelledby="overview-transit-heading">
           <div className="flex items-center justify-between gap-3">
-            <Heading level={2} id="overview-transit-heading" className="text-base font-semibold">Transit</Heading>
-            <Button variant="ghost" size="sm" onClick={() => setTab("itinerary")}>View itinerary</Button>
+            <Heading level={2} id="overview-transit-heading" className="text-base font-semibold">{t("common.transit")}</Heading>
+            <Button variant="ghost" size="sm" onClick={() => setTab("itinerary")}>{t("common.viewItinerary")}</Button>
           </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {transit.map((segment) => (
@@ -656,23 +672,23 @@ function Overview({ trip, userId, activities, mediaCount, setTab, setJournalView
       )}
       <div className="rounded-2xl border bg-card p-5 sm:p-6">
         <div className="flex items-center justify-between gap-3">
-          <Heading level={2} className="text-base font-semibold">Recent activity</Heading>
-          <Button variant="ghost" size="sm" onClick={() => { setJournalView("feed"); setTab("journal"); }}>View all</Button>
+          <Heading level={2} className="text-base font-semibold">{t("common.recentActivity")}</Heading>
+          <Button variant="ghost" size="sm" onClick={() => { setJournalView("feed"); setTab("journal"); }}>{t("common.viewAll")}</Button>
         </div>
         <div className="mt-3">
-          <SharedTripFeed tripId={trip.id} userId={userId} limit={4} emptyMessage="No activity yet. Changes you make on this trip appear here." />
+          <SharedTripFeed tripId={trip.id} userId={userId} limit={4} emptyMessage={t("common.noActivityYet")} />
         </div>
       </div>
-      {trip.description && <div className="rounded-2xl border bg-card p-6"><Heading level={2} className="text-base font-semibold">About this trip</Heading><p className="mt-2 text-muted-foreground">{trip.description}</p></div>}
+      {trip.description && <div className="rounded-2xl border bg-card p-6"><Heading level={2} className="text-base font-semibold">{t("common.aboutTrip")}</Heading><p className="mt-2 text-muted-foreground">{trip.description}</p></div>}
       {canEdit && (
         <div className="rounded-2xl border bg-card p-6">
-          <Heading level={2} className="text-base font-semibold">Quick actions</Heading>
+          <Heading level={2} className="text-base font-semibold">{t("common.quickActions")}</Heading>
           <div className="mt-4 flex flex-wrap gap-3">
-            <Button variant="primary" onClick={onAddActivity}><Plus className="size-5" />Add activity</Button>
-            <Button variant="outline" onClick={onAddExpense}>Add expense</Button>
-            <Button variant="outline" onClick={onAddPhotos}>Add photos</Button>
-            <Button variant="outline" onClick={() => setScoutOpen(true)} className="h-11 gap-1 border-transparent bg-linear-to-r from-viatik-blue via-viatik-magenta to-viatik-red px-3 text-white shadow-[0_4px_14px_rgba(168,85,247,0.35)] hover:border-transparent hover:opacity-90">
-              <Image src="/scout_icon.png" alt="Scout the fox" width={40} height={40} className="size-10 shrink-0 object-contain object-center" />Scout AI</Button>
+            <Button variant="primary" onClick={onAddActivity}><Plus className="size-5" />{t("common.addActivity")}</Button>
+            <Button variant="outline" onClick={onAddExpense}>{t("common.addExpense")}</Button>
+            <Button variant="outline" onClick={onAddPhotos}>{t("common.addPhotos")}</Button>
+            <Button variant="ai" onClick={() => setScoutOpen(true)} className="h-11 gap-2 px-4">
+              <Image src="/scout_icon.png" alt={t("common.scoutFox")} width={40} height={40} className="-ml-1 size-10 shrink-0 scale-110 object-contain object-center invert" />{t("common.scout")}</Button>
           </div>
         </div>
       )}

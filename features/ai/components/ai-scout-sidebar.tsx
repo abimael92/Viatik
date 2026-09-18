@@ -20,6 +20,7 @@ import { generateOfflineSuggestions } from "@/features/ai/lib/ai-scout-generator
 import { buildScoutPrompt, buildTripDates } from "@/features/ai/lib/ai-scout-prompt";
 import type { Activity, Trip } from "@/features/domain/entities";
 import { formatMinorUnits } from "@/features/domain/money";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 const TIME_LABELS: Record<ScoutTimeOfDay, string> = {
   morning: "Morning",
@@ -72,6 +73,7 @@ export function AiScoutSidebar({
   modal = false,
 }: AiScoutSidebarProps) {
   const reducedMotion = useReducedMotion();
+  const { t } = useI18n();
 
   const [loading, setLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<AiScoutSuggestion[]>([]);
@@ -189,11 +191,11 @@ export function AiScoutSidebar({
   const header = (
     <header className="flex items-start justify-between gap-3 border-b border-border p-5">
       <div className="flex items-center gap-3">
-        <span className="grid size-24 place-items-center overflow-hidden ">
-          <Image src="/Scout.png" alt="Scout the fox" width={66} height={66} className="size-11 object-contain object-center" />
+        <span className="grid size-25 place-items-center overflow-hidden ">
+          <Image src="/Scout.png" alt="Scout the fox" width={66} height={66} className="size-25 object-contain object-center" />
         </span>
         <div>
-          <h2 className="font-semibold">Scout AI</h2>
+          <h2 className="font-semibold">{t("common.scout")}</h2>
           <p className="text-sm text-muted-foreground">
             Ideas for {trip.destination || "your trip"}
             {dateLabel ? ` · ${dateLabel}` : ""}
@@ -203,7 +205,7 @@ export function AiScoutSidebar({
       <button
         type="button"
         onClick={() => !loading && onOpenChange(false)}
-        aria-label="Close AI Scout"
+        aria-label={t("common.closeAi")}
         className="grid size-11 place-items-center rounded-lg opacity-70 transition hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <X className="size-5" />
@@ -215,12 +217,12 @@ export function AiScoutSidebar({
     <div className="min-h-0 flex-1 overflow-y-auto p-5">
       <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-muted/30 p-3">
         <p className="text-sm text-muted-foreground">
-          Recommendations for <span className="font-medium text-foreground">{trip.destination || "your destination"}</span>
-          {dateLabel ? ` during ${dateLabel}` : ""}.
+          {t("common.recommendationsFor")} <span className="font-medium text-foreground">{trip.destination || "your destination"}</span>
+          {dateLabel ? ` · ${dateLabel}` : ""}.
         </p>
-        <Button variant="outline" size="sm" onClick={() => void run(structuredPrompt)} disabled={loading}>
+        <Button variant="ai" size="sm" onClick={() => void run(structuredPrompt)} disabled={loading}>
           {loading ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <RefreshCw className="size-4" aria-hidden />}
-          {loading ? "Scouting…" : "Re-scout"}
+          {loading ? t("common.scouting", { destination: trip.destination || "your destination" }) : t("common.refreshIdeas")}
         </Button>
       </div>
 
@@ -228,7 +230,7 @@ export function AiScoutSidebar({
         {loading && (
           <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
             <Loader2 className="size-5 animate-spin text-viatik-magenta" aria-hidden />
-            Scouting local ideas for {trip.destination || "your destination"}…
+            {t("common.scouting", { destination: trip.destination || "your destination" })}
           </div>
         )}
         {error && !loading && (
@@ -345,6 +347,7 @@ function SuggestionCard({
   index: number;
   days: string[];
 }) {
+  const { t } = useI18n();
   // Per-day start time overrides, keyed by day date.
   const [times, setTimes] = useState<Record<string, string>>({});
 
@@ -357,7 +360,7 @@ function SuggestionCard({
           event.dataTransfer.effectAllowed = "copy";
           event.dataTransfer.setData(SCOUT_DND_MIME, scoutDndData(suggestion));
         }}
-        title="Drag onto a day column to add"
+        title={t("common.dragToDay")}
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -428,7 +431,7 @@ function SuggestionCard({
                       />
                       <Button
                         size="sm"
-                        variant={added ? "ghost" : "outline"}
+                        variant={added ? "ghost" : "ai"}
                         disabled={added}
                         onClick={() => onAdd(dayDate, value)}
                         className="shrink-0"
@@ -445,8 +448,8 @@ function SuggestionCard({
               </div>
             </div>
           ) : (
-            <Button variant="outline" size="sm" className="w-full" onClick={onToggle}>
-              <Plus className="size-4" />Add to Day
+            <Button variant="ai" size="sm" className="w-full" onClick={onToggle}>
+              <Plus className="size-4" />{t("common.add")}
             </Button>
           )}
         </div>

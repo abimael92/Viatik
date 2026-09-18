@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { liveQuery } from "dexie";
 
 import { useDatabase } from "@/lib/db/database-provider";
-import { getSyncState, subscribeToSync, type SyncStatus } from "@/lib/sync/sync-engine";
+import { getSyncState, subscribeToSync, syncNow, type SyncStatus } from "@/lib/sync/sync-engine";
 
 export interface SyncStatusState {
   status: SyncStatus;
@@ -54,4 +54,59 @@ export function useSyncStatus(): SyncStatusState {
   }, [db]);
 
   return state;
+}
+
+const SYNC_RETRY_SECONDS = 5;
+
+export function useSyncRetryCountdown(sync: SyncStatusState): {
+  countdown: number | null;
+  retryNow: () => void;
+} {
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const timerRef = useRef<number | null>(null);
+  const scheduledRef = useRef(false);
+
+  useEffect(() => {
+    const shouldRetry = sync.isOnline && (sync.status === "error" || sync.pending > 0);
+    if (!shouldRetry) {
+      scheduledRef.current = false;
+      if (timerRef.current !== null) window.clearInterval(timerRef.current);
+      timerRef.current = null;
+      return;
+    }
+    if (scheduledRef.current) return;
+
+    scheduledRef.current = true;
+    let remaining = SYNC_RETRY_SECONDS;
+    setCountdown(remaining);
+    timerRef.current = window.setInterval(() => {
+      remaining -= 1;
+      if (remaining <= 0) {
+        if (timerRef.current !== null) window.clearInterval(timerRef.current);
+        timerRef.current = null;
+        scheduledRef.current = false;
+        setCountdown(null);
+        void syncNow().catch(() => undefined);
+        return;
+      }
+      setCountdown(remaining);
+    }, 1000);
+
+    return () => {
+      if (timerRef.current !== null) window.clearInterval(timerRef.current);
+      timerRef.current = null;
+      scheduledRef.current = false;
+    };
+  }, [sync.isOnline, sync.pending, sync.status, scheduledRef, timerRef]);
+
+  function retryNow() {
+    if (timerRef.current !== null) window.clearInterval(timerRef.current);
+    timerRef.current = null;
+    scheduledRef.current = false;
+    setCountdown(null);
+    void syncNow().catch(() => undefined);
+  }
+
+  const shouldRetry = sync.isOnline && (sync.status === "error" || sync.pending > 0);
+  return { countdown: shouldRetry ? countdown : null, retryNow };
 }

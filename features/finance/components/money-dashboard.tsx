@@ -151,7 +151,6 @@ export function MoneyDashboard({
   const [expenses, setExpenses] = useState<Expense[] | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(autoOpenTools);
-  const [toolsTab, setToolsTab] = useState<"converter" | "tip">("converter");
 
   // Watch expenses for CSV export
   useEffect(() => expenseRepository.watchByTrip(tripId, setExpenses), [tripId]);
@@ -242,39 +241,28 @@ export function MoneyDashboard({
 
       <SettlementView tripId={tripId} userId={userId} currency={baseCurrency} />
 
-      {/* Money tools modal */}
-      <Dialog open={toolsOpen} onOpenChange={setToolsOpen}>
-        <DialogContent className="max-h-[90dvh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Money tools</DialogTitle>
-            <DialogDescription>Convert currencies or split a tip.</DialogDescription>
-          </DialogHeader>
-          <div className="flex w-max rounded-md border p-0.5">
-            <button
-              type="button"
-              onClick={() => setToolsTab("converter")}
-              className={cn(
-                "rounded-md px-4 py-1.5 text-sm font-semibold transition-colors",
-                toolsTab === "converter" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Currency converter
-            </button>
-            <button
-              type="button"
-              onClick={() => setToolsTab("tip")}
-              className={cn(
-                "rounded-md px-4 py-1.5 text-sm font-semibold transition-colors",
-                toolsTab === "tip" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Tip &amp; split calculator
-            </button>
-          </div>
-          {toolsTab === "converter" ? <CurrencyConverter trip={trip} /> : <TipSplitCalculator trip={trip} />}
-        </DialogContent>
-      </Dialog>
+      <MoneyToolsDialog open={toolsOpen} onOpenChange={setToolsOpen} trip={trip} />
     </section>
+  );
+}
+
+export function MoneyToolsDialog({ open, onOpenChange, trip }: { open: boolean; onOpenChange: (open: boolean) => void; trip: Trip }) {
+  const [toolsTab, setToolsTab] = useState<"converter" | "tip">("converter");
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90dvh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Money tools</DialogTitle>
+          <DialogDescription>Convert currencies or split a tip.</DialogDescription>
+        </DialogHeader>
+        <div className="flex w-max rounded-md border p-0.5">
+          <button type="button" onClick={() => setToolsTab("converter")} className={cn("rounded-md px-4 py-1.5 text-sm font-semibold transition-colors", toolsTab === "converter" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>Currency converter</button>
+          <button type="button" onClick={() => setToolsTab("tip")} className={cn("rounded-md px-4 py-1.5 text-sm font-semibold transition-colors", toolsTab === "tip" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>Tip &amp; split calculator</button>
+        </div>
+        {toolsTab === "converter" ? <CurrencyConverter trip={trip} /> : <TipSplitCalculator trip={trip} />}
+      </DialogContent>
+    </Dialog>
   );
 }
 

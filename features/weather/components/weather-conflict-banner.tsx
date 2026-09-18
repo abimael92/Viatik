@@ -23,6 +23,7 @@ import {
   suggestReschedule,
   swapActivityIndoor,
 } from "@/features/weather/lib/rescheduler";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 /**
@@ -36,6 +37,7 @@ export function WeatherConflictBanner({
   conflicts: WeatherConflict[];
   onReview: () => void;
 }) {
+  const { t } = useI18n();
   if (conflicts.length === 0) return null;
   const count = impactedActivityCount(conflicts);
   return (
@@ -47,15 +49,15 @@ export function WeatherConflictBanner({
         <CloudRain className="mt-0.5 size-5 shrink-0 text-destructive" aria-hidden />
         <div>
           <p className="font-semibold text-destructive">
-            Weather may disrupt {count} planned activit{count === 1 ? "y" : "ies"}
+            {t("common.weatherConflictTitle", { count })}
           </p>
           <p className="text-sm text-muted-foreground">
-            Reschedule outdoor plans or swap them for indoor alternatives in one tap.
+            {t("common.weatherConflictDescription")}
           </p>
         </div>
       </div>
       <Button variant="outline" onClick={onReview}>
-        Review
+        {t("common.review")}
       </Button>
     </div>
   );
@@ -82,6 +84,7 @@ export function WeatherConflictModal({
   tripDays: string[];
   forecast?: DailyForecast;
 }) {
+  const { t } = useI18n();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -107,7 +110,7 @@ export function WeatherConflictModal({
     setError(null);
     try {
       const suggestion = suggestReschedule(activity, tripDays, conditions, DEFAULT_CONFLICT_THRESHOLDS);
-      if (!suggestion) throw new Error("No clear day is available. Try swapping indoors instead.");
+      if (!suggestion) throw new Error(t("common.noClearDay"));
       const position = nextDayPosition(activities.filter((a) => a.dayDate === suggestion.dayDate));
       await rescheduleActivity(activity, { dayDate: suggestion.dayDate, startTime: suggestion.startTime, position }, { activity: activityRepository });
     } catch (cause) {
@@ -138,11 +141,10 @@ export function WeatherConflictModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CloudRain className="size-5 text-destructive" aria-hidden />
-            Weather conflict review
+            {t("common.weatherConflictReview")}
           </DialogTitle>
           <DialogDescription>
-            {impacted.length} activit{impacted.length === 1 ? "y is" : "ies are"} at risk. Reschedule to a clear day
-            or swap for an indoor alternative.
+            {t("common.activitiesAtRisk", { count: impacted.length })}
           </DialogDescription>
         </DialogHeader>
 
@@ -172,11 +174,11 @@ export function WeatherConflictModal({
                     size="sm"
                     variant="outline"
                     disabled={busy || !suggestion}
-                    title={suggestion ? `Move to ${suggestion.dayDate}` : "No clear day available"}
+                    title={suggestion ? t("common.rescheduleTo", { day: suggestion.dayDate }) : t("common.noClearDay")}
                     onClick={() => void applyReschedule(conflict, activity)}
                   >
                     {busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <CalendarClock className="size-4" aria-hidden />}
-                    {suggestion ? `Reschedule to ${formatDay(suggestion.dayDate)}` : "No clear day"}
+                    {suggestion ? t("common.rescheduleTo", { day: formatDay(suggestion.dayDate) }) : t("common.noClearDay")}
                   </Button>
                   <Button
                     size="sm"
@@ -185,7 +187,7 @@ export function WeatherConflictModal({
                     onClick={() => void applySwap(activity)}
                   >
                     {busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <RefreshCw className="size-4" aria-hidden />}
-                    Swap indoor: {swap.title}
+                    {t("common.swapIndoor", { title: swap.title })}
                   </Button>
                 </div>
               </div>
@@ -201,7 +203,7 @@ export function WeatherConflictModal({
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={pendingId !== null}>
-            Close
+            {t("common.close")}
           </Button>
         </DialogFooter>
       </DialogContent>

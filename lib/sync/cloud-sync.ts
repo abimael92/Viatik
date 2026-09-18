@@ -4,6 +4,7 @@ import type { Activity, ActivityPersonalBudget, Contact, Expense, ExpenseSettlem
 import type { TripMedia } from "@/features/domain/entities-media";
 import type { TripFeedItem } from "@/features/feed/domain/feed-types";
 import type { TripShareLink } from "@/features/sharing/domain/share-types";
+import type { Notification } from "@/features/notifications/domain/notification-types";
 import { buildActivityFeed, buildExpenseFeed, buildMediaFeed, materializeFeedItem } from "@/features/feed/lib/feed-builder";
 import type { VaultEntry, VaultKeyset } from "@/features/vault/domain/vault-types";
 import type { TripWeatherForecast } from "@/features/weather/domain/weather-types";
@@ -29,6 +30,7 @@ import {
   rowToVaultKeyset,
   rowToTripWeatherForecast,
   rowToShareLink,
+  rowToNotification,
 } from "@/lib/supabase/mappers";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import type { OutboxEntityType } from "@/lib/sync/types";
@@ -65,9 +67,10 @@ const tableDefinitions = [
   { table: "trip_weather_forecasts", entityType: "tripWeatherForecast" as const, map: rowToTripWeatherForecast, store: "tripWeatherForecasts" as const },
   { table: "user_wallets", entityType: "userWallet" as const, map: rowToUserWallet, store: "userWallets" as const },
   { table: "trip_share_links", entityType: "tripShareLink" as const, map: rowToShareLink, store: "shareLinks" as const },
+  { table: "notifications", entityType: "notification" as const, map: rowToNotification, store: "notifications" as const },
 ];
 
-type RemoteEntity = Trip | TripMember | TripInvitation | Activity | ActivityPersonalBudget | Expense | ExpenseShare | TripMedia | ExpenseSettlement | Contact | TripTraveler | VaultEntry | VaultKeyset | TripWeatherForecast | UserWallet | TripShareLink;
+type RemoteEntity = Trip | TripMember | TripInvitation | Activity | ActivityPersonalBudget | Expense | ExpenseShare | TripMedia | ExpenseSettlement | Contact | TripTraveler | VaultEntry | VaultKeyset | TripWeatherForecast | UserWallet | TripShareLink | Notification;
 
 async function signedMediaUrl(client: SupabaseClient, entity: RemoteEntity, signal?: AbortSignal): Promise<RemoteEntity> {
   signal?.throwIfAborted();

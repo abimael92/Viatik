@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import type { Contact } from "@/features/domain/entities";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 export function ContactDetailsDialog({
   open,
@@ -35,6 +36,7 @@ export function ContactDetailsDialog({
   onOpenChange: (open: boolean) => void;
   onEdit?: (contact: Contact) => void;
 }) {
+  const { t } = useI18n();
   if (!contact) return null;
 
   const isLinkedToViatik = Boolean(contact.linkedProfileId);
@@ -61,7 +63,7 @@ export function ContactDetailsDialog({
                   </Badge>
                 ) : (
                   <Badge variant="muted" className="text-[10px] font-medium text-muted-foreground py-0.5 px-2">
-                    Manual Contact
+                    {t("common.manualContact")}
                   </Badge>
                 )}
               </div>
@@ -74,7 +76,7 @@ export function ContactDetailsDialog({
                 </Badge>
               </div>
               <DialogDescription className="text-xs text-muted-foreground">
-                Read-only view of contact and travel preferences.
+                {t("common.readOnlyContact")}
               </DialogDescription>
             </div>
           </div>
@@ -82,12 +84,12 @@ export function ContactDetailsDialog({
 
         <div className="space-y-4 px-4 py-4 sm:px-6 sm:py-5">
           {/* Identity & Account Info */}
-          <Section icon={<User className="size-4" />} title="Identity & Account">
+          <Section icon={<User className="size-4" />} title={t("common.identityAccount")}>
             <div className="grid gap-3 sm:grid-cols-2 text-sm">
               <DetailItem label="Full name" value={contact.fullName} />
               <DetailItem
-                label="Account type"
-                value={isLinkedToViatik ? "Linked Viatik Profile" : "Manual Contact"}
+                label={t("common.accountType")}
+                value={isLinkedToViatik ? t("common.linkedProfile") : t("common.manualContact")}
               />
               <DetailItem label="Relationship" value={contact.relationship} capitalize />
               <DetailItem label="Traveler type" value={contact.travelerType} capitalize />
@@ -95,7 +97,7 @@ export function ContactDetailsDialog({
           </Section>
 
           {/* Contact Details */}
-          <Section icon={<Mail className="size-4" />} title="Contact Details">
+          <Section icon={<Mail className="size-4" />} title={t("common.contactDetails")}>
             <div className="grid gap-3 sm:grid-cols-2 text-sm">
               <DetailItem label="Email" value={contact.email} />
               <DetailItem label="Phone" value={contact.phone} />
@@ -106,7 +108,7 @@ export function ContactDetailsDialog({
           {(contact.emergencyContactName ||
             contact.emergencyContactPhone ||
             contact.emergencyContactRelationship) && (
-            <Section icon={<HeartHandshake className="size-4" />} title="Emergency Contact">
+            <Section icon={<HeartHandshake className="size-4" />} title={t("common.emergencyContact")}>
               <div className="grid gap-3 sm:grid-cols-2 text-sm">
                 <DetailItem label="Contact name" value={contact.emergencyContactName} />
                 <DetailItem
@@ -123,7 +125,7 @@ export function ContactDetailsDialog({
           )}
 
           {/* Travel & Preferences */}
-          <Section icon={<Plane className="size-4" />} title="Travel & Logistics">
+          <Section icon={<Plane className="size-4" />} title={t("common.travelLogistics")}>
             <div className="grid gap-3 sm:grid-cols-2 text-sm">
               <DetailItem label="Date of birth" value={contact.birthDate} />
               <DetailItem label="Preferred language" value={contact.preferredLanguage} />
@@ -141,11 +143,11 @@ export function ContactDetailsDialog({
                 value={contact.allergies?.length ? contact.allergies.join(", ") : null}
               />
               <DetailItem
-                label="Passport country"
+                label={t("common.passportCountry")}
                 value={contact.passportIssuingCountry}
               />
               <DetailItem
-                label="Passport expiration"
+                label={t("common.passportExpiration")}
                 value={contact.passportExpiresOn}
               />
             </div>
@@ -153,7 +155,7 @@ export function ContactDetailsDialog({
 
           {/* Notes */}
           {contact.notes && (
-            <Section icon={<FileText className="size-4" />} title="Notes">
+            <Section icon={<FileText className="size-4" />} title={t("common.notes")}>
               <p className="rounded-lg bg-muted/40 p-3 text-xs leading-relaxed text-foreground whitespace-pre-wrap">
                 {contact.notes}
               </p>
@@ -164,7 +166,7 @@ export function ContactDetailsDialog({
             <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground">
               <ShieldCheck className="size-4 shrink-0 text-primary" />
               <span>
-                Name and avatar are verified and managed by their Viatik registration account.
+                {t("common.verifiedManaged")}
               </span>
             </div>
           )}
@@ -172,7 +174,7 @@ export function ContactDetailsDialog({
 
         <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 border-t bg-muted/20 px-4 py-3 sm:px-6 sm:py-4">
           <Button type="button" variant="outline" className="w-full sm:w-auto min-h-10" onClick={() => onOpenChange(false)}>
-            Close
+            {t("common.close")}
           </Button>
           {onEdit && (
             <Button
