@@ -9,7 +9,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const { data } = await supabase.auth.getUser();
   if (data.user) {
     const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", data.user.id).maybeSingle();
-    const destination = next?.startsWith("/") && !next.startsWith("//") ? next : "/trips";
+    const destination = next?.startsWith("/") && !next.startsWith("//") ? next : "/home";
     redirect(profile?.full_name?.trim() ? destination : `/onboarding?next=${encodeURIComponent(destination)}`);
   }
 

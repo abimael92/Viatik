@@ -23,6 +23,7 @@ import { TripCountdownHero } from "@/features/trips/components/home/trip-countdo
 import { LiveTimelineHud } from "@/features/trips/components/home/live-timeline-hud";
 import { QuickActionHub } from "@/features/trips/components/home/quick-action-hub";
 import { SuggestionsDrawer } from "@/features/community/components/suggestions-drawer";
+import { MoneyToolsDialog } from "@/features/finance/components/money-dashboard";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 
 /**
@@ -38,6 +39,7 @@ export function HomePage({ userId }: { userId: string }) {
   const [pending, setPending] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [moneyToolsOpen, setMoneyToolsOpen] = useState(false);
   const { toast } = useToast();
 
   if (loading) {
@@ -139,7 +141,11 @@ export function HomePage({ userId }: { userId: string }) {
         )}
 
         {/* Quick actions — always visible, at the bottom of the Home container. */}
-        <QuickActionHub userId={userId} primaryTrip={primaryTrip} />
+        <QuickActionHub userId={userId} primaryTrip={primaryTrip} onOpenMoneyTools={() => setMoneyToolsOpen(true)} />
+
+        {primaryTrip && moneyToolsOpen && (
+          <MoneyToolsDialog open={moneyToolsOpen} onOpenChange={setMoneyToolsOpen} trip={primaryTrip} />
+        )}
 
         {!primaryTrip && (
           <SuggestionsDrawer
