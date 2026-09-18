@@ -267,7 +267,7 @@ function PersonalView({
         <p className="font-mono text-2xl font-bold tabular-nums">{formatMinorUnits(walletAmount, walletCurrency)}</p>
         <p className="text-xs text-muted-foreground">{walletCurrency} starting balance</p>
         {canEdit && (
-          <Button variant="outline" size="sm" className="mt-3" onClick={() => setEditing((v) => !v)}>
+          <Button variant="outline" size="sm" className="mt-3 border-yellow-300 bg-yellow-50 text-yellow-700 hover:bg-yellow-100" onClick={() => setEditing((v) => !v)}>
             {hasWallet ? t("common.editBalance") : t("common.setBalance")}
           </Button>
         )}

@@ -112,7 +112,7 @@ export function BudgetSettings({
           </div>
         </div>
         {canEdit && !editing && (
-          <Button variant="ghost" size="sm" onClick={beginEdit}>
+          <Button variant="outline" size="sm" className={totalBudget !== null ? "border-yellow-300 bg-yellow-50 text-yellow-700 hover:bg-yellow-100" : "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"} onClick={beginEdit}>
             {totalBudget !== null ? t("common.edit") : t("common.setBudget")}
           </Button>
         )}
