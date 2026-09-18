@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import { syncNow } from "@/lib/sync/sync-engine";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 const THEME_KEY = "viatik-theme";
@@ -53,6 +54,7 @@ function toggleTheme() {
 
 export function CommandPalette() {
   const router = useRouter();
+  const { t } = useI18n();
   const [view, setView] = React.useState<null | "palette" | "cheatsheet">(null);
   const [query, setQuery] = React.useState("");
   const [active, setActive] = React.useState(0);
@@ -98,15 +100,15 @@ export function CommandPalette() {
 
   const commands: Command[] = React.useMemo(
     () => [
-      { id: "trips", label: "Go to Trips", hint: "G T", icon: Map, keywords: "trips journeys dashboard", run: () => router.push("/trips") },
-      { id: "contacts", label: "Go to Contacts", hint: "G C", icon: ContactRound, keywords: "people contacts travelers", run: () => router.push("/contacts") },
-      { id: "settings", label: "Go to Settings", hint: "G S", icon: Settings, keywords: "account profile settings", run: () => router.push("/settings") },
-      { id: "new-trip", label: "Create a new trip", hint: "C", icon: CirclePlus, keywords: "create new trip start plan", run: () => router.push("/trips") },
-      { id: "sync", label: "Sync now", hint: "", icon: RefreshCw, keywords: "sync cloud push retry", run: () => void syncNow() },
-      { id: "theme", label: "Toggle theme", hint: "", icon: Moon, keywords: "theme dark light mode", run: toggleTheme },
-      { id: "shortcuts", label: "Keyboard shortcuts", hint: "?", icon: Keyboard, keywords: "keys shortcuts help cheatsheet", run: () => setView("cheatsheet") },
+      { id: "trips", label: t("common.goToTrips"), hint: "G T", icon: Map, keywords: "trips journeys dashboard", run: () => router.push("/trips") },
+      { id: "contacts", label: t("common.goToContacts"), hint: "G C", icon: ContactRound, keywords: "people contacts travelers", run: () => router.push("/contacts") },
+      { id: "settings", label: t("common.goToSettings"), hint: "G S", icon: Settings, keywords: "account profile settings", run: () => router.push("/settings") },
+      { id: "new-trip", label: t("common.createNewTrip"), hint: "C", icon: CirclePlus, keywords: "create new trip start plan", run: () => router.push("/trips") },
+      { id: "sync", label: t("common.syncNow"), hint: "", icon: RefreshCw, keywords: "sync cloud push retry", run: () => void syncNow() },
+      { id: "theme", label: t("common.toggleTheme"), hint: "", icon: Moon, keywords: "theme dark light mode", run: toggleTheme },
+      { id: "shortcuts", label: t("common.keyboardShortcuts"), hint: "?", icon: Keyboard, keywords: "keys shortcuts help cheatsheet", run: () => setView("cheatsheet") },
     ],
-    [router]
+    [router, t]
   );
 
   const results = React.useMemo(() => {
@@ -178,8 +180,8 @@ export function CommandPalette() {
       ref={dialogRef}
       role="dialog"
       aria-modal="true"
-      aria-label={view === "cheatsheet" ? "Keyboard shortcuts" : "Command palette"}
-      className="fixed inset-0 z-[80] flex items-start justify-center bg-black/40 px-4 pt-[12vh] backdrop-blur-sm"
+      aria-label={view === "cheatsheet" ? t("common.keyboardShortcuts") : t("common.commandPalette")}
+      className="fixed inset-0 z-80 flex items-start justify-center bg-black/40 px-4 pt-[12vh] backdrop-blur-sm"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) setView(null);
       }}
@@ -211,9 +213,9 @@ export function CommandPalette() {
                   setView(null);
                 }
               }}
-              placeholder="Type a command…"
+              placeholder={t("common.searchCommands")}
               className="h-14 w-full bg-transparent text-sm text-card-foreground outline-none placeholder:text-muted-foreground"
-              aria-label="Search commands"
+              aria-label={t("common.searchCommands")}
               role="combobox"
               aria-expanded="true"
               aria-controls="command-palette-listbox"
@@ -222,9 +224,9 @@ export function CommandPalette() {
             />
             <kbd className="rounded border border-border/60 bg-muted/50 px-1.5 py-0.5 text-[11px] font-semibold text-muted-foreground">ESC</kbd>
           </div>
-          <ul id="command-palette-listbox" className="max-h-[18rem] overflow-y-auto p-2" role="listbox" aria-label="Commands">
+          <ul id="command-palette-listbox" className="max-h-72 overflow-y-auto p-2" role="listbox" aria-label={t("common.commands")}>
             {results.length === 0 && (
-              <li className="px-3 py-8 text-center text-sm text-muted-foreground">No matching commands.</li>
+              <li className="px-3 py-8 text-center text-sm text-muted-foreground">{t("common.noMatchingCommands")}</li>
             )}
             {results.map((command, index) => (
               <li key={command.id} id={`command-${command.id}`} role="option" aria-selected={index === active}>
@@ -248,8 +250,8 @@ export function CommandPalette() {
             ))}
           </ul>
           <div className="flex items-center gap-4 border-t border-border/60 px-4 py-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-            <span className="flex items-center gap-1.5"><CornerDownLeft className="size-3" />Select</span>
-            <span className="flex items-center gap-1.5"><Keyboard className="size-3" />? Cheatsheet</span>
+            <span className="flex items-center gap-1.5"><CornerDownLeft className="size-3" />{t("common.select")}</span>
+            <span className="flex items-center gap-1.5"><Keyboard className="size-3" />? {t("common.cheatsheet")}</span>
           </div>
         </div>
       )}
@@ -258,25 +260,26 @@ export function CommandPalette() {
 }
 
 function Cheatsheet({ onClose, onOpenPalette }: { onClose: () => void; onOpenPalette: () => void }) {
+  const { t } = useI18n();
   const rows: Array<[string, string]> = [
-    ["Open command palette", "⌘ K"],
-    ["Go to Trips", "G T"],
-    ["Go to Contacts", "G C"],
-    ["Go to Settings", "G S"],
-    ["Create a new trip", "C"],
-    ["Toggle theme", "⌘ K → Theme"],
-    ["Close", "ESC"],
+    [t("common.openCommandPalette"), "⌘ K"],
+    [t("common.goToTrips"), "G T"],
+    [t("common.goToContacts"), "G C"],
+    [t("common.goToSettings"), "G S"],
+    [t("common.createNewTrip"), "C"],
+    [t("common.toggleTheme"), "⌘ K → Theme"],
+    [t("common.close"), "ESC"],
   ];
   return (
     <div className="w-full max-w-md overflow-hidden rounded-2xl border border-border/60 bg-card/90 text-card-foreground shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_24px_60px_-12px_rgba(15,23,42,0.3)] backdrop-blur-2xl">
       <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
-        <p className="text-sm font-semibold text-card-foreground">Keyboard shortcuts</p>
+        <p className="text-sm font-semibold text-card-foreground">{t("common.keyboardShortcuts")}</p>
         <button
           type="button"
           onClick={onOpenPalette}
           className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-viatik-magenta hover:text-card-foreground"
         >
-          <Search className="size-3.5" /> Commands
+          <Search className="size-3.5" /> {t("common.commands")}
         </button>
       </div>
       <ul className="divide-y divide-border/60 px-5 py-2">
@@ -293,7 +296,7 @@ function Cheatsheet({ onClose, onOpenPalette }: { onClose: () => void; onOpenPal
           onClick={onClose}
           className="w-full rounded-lg border border-border/60 bg-muted/50 py-2 text-sm font-semibold text-card-foreground transition-colors hover:bg-muted"
         >
-          Close
+          {t("common.close")}
         </button>
       </div>
     </div>

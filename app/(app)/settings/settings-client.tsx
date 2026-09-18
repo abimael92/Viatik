@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 export function SettingsClient({
   phone,
@@ -27,6 +28,7 @@ export function SettingsClient({
   profile?: ProfileDetails | null;
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [copied, setCopied] = useState(false);
@@ -41,9 +43,9 @@ export function SettingsClient({
         const { data, error } = await supabase.auth.registerPasskey();
         if (error) throw error;
         if (!data?.id) throw new Error("Passkey registration did not complete.");
-        setMessage("Passkey added to your account.");
+        setMessage(t("common.passkeyAdded"));
       } catch (error) {
-        setMessage(error instanceof Error ? error.message : "Passkey setup was cancelled.");
+        setMessage(error instanceof Error ? error.message : t("common.passkeyCancelled"));
       }
     });
   }
@@ -62,16 +64,16 @@ export function SettingsClient({
   return (
     <div className="space-y-6">
       <header>
-        <p className="text-sm font-semibold text-primary">Account</p>
-        <Heading level={1} className="mt-1 text-3xl font-bold">Settings</Heading>
-        <p className="mt-2 text-muted-foreground">Manage your profile, sign-in methods, and session.</p>
+        <p className="text-sm font-semibold text-primary">{t("common.account")}</p>
+        <Heading level={1} className="mt-1 text-3xl font-bold">{t("common.settings")}</Heading>
+        <p className="mt-2 text-muted-foreground">{t("common.manageAccount")}</p>
       </header>
       {message && <p role="status" className="rounded-lg border bg-card p-3 text-sm">{message}</p>}
       <Tabs defaultValue="profile" className="w-full">
         <TabsList>
-          <TabsTrigger value="profile"><UserRound className="size-5" />Profile</TabsTrigger>
-          <TabsTrigger value="directory"><ScanLine className="size-5" />Directory</TabsTrigger>
-          <TabsTrigger value="security"><KeyRound className="size-5" />Security</TabsTrigger>
+          <TabsTrigger value="profile"><UserRound className="size-5" />{t("common.profile")}</TabsTrigger>
+          <TabsTrigger value="directory"><ScanLine className="size-5" />{t("common.directory")}</TabsTrigger>
+          <TabsTrigger value="security"><KeyRound className="size-5" />{t("common.security")}</TabsTrigger>
         </TabsList>
         <TabsContent value="profile">
           <section className="rounded-2xl border bg-card p-5 sm:p-7" aria-labelledby="profile-heading">
@@ -79,13 +81,13 @@ export function SettingsClient({
               <div className="flex gap-3">
                 <UserRound className="size-5 text-primary" />
                 <div>
-                  <h2 id="profile-heading" className="font-semibold">Profile</h2>
-                  <p className="text-sm text-muted-foreground">How you appear in shared trips. Shown read-only until you edit.</p>
+                  <h2 id="profile-heading" className="font-semibold">{t("common.profile")}</h2>
+                  <p className="text-sm text-muted-foreground">{t("common.profileHelp")}</p>
                 </div>
               </div>
               {!editing && (
                 <Button type="button" variant="outline" onClick={() => setEditing(true)} disabled={pending}>
-                  <Pencil className="size-5" />Edit
+                  <Pencil className="size-5" />{t("common.edit")}
                 </Button>
               )}
             </div>
@@ -111,24 +113,24 @@ export function SettingsClient({
                   />
                   <div>
                     <p className="font-semibold">{saved.fullName}</p>
-                    <p className="text-sm text-muted-foreground">{saved.phone ?? "No phone on file"}</p>
+                    <p className="text-sm text-muted-foreground">{saved.phone ?? t("common.noPhone")}</p>
                   </div>
                 </div>
                 <dl className="mt-5 grid gap-x-8 gap-y-4 sm:grid-cols-2">
-                  <ProfileRow label="Full name" value={saved.fullName} />
-                  <ProfileRow label="Phone" value={saved.phone} />
-                  <ProfileRow label="Date of birth" value={saved.birthDate} />
-                  <ProfileRow label="Preferred currency" value={saved.preferredCurrency} />
-                  <ProfileRow label="Preferred language" value={saved.preferredLanguage} />
-                  <ProfileRow label="Dietary restrictions" value={saved.dietaryRestrictions?.join(", ")} />
-                  <ProfileRow label="Allergies" value={saved.allergies?.join(", ")} />
+                  <ProfileRow label={t("common.fullName")} value={saved.fullName} />
+                  <ProfileRow label={t("common.phone")} value={saved.phone} />
+                  <ProfileRow label={t("common.dateOfBirth")} value={saved.birthDate} />
+                  <ProfileRow label={t("common.preferredCurrency")} value={saved.preferredCurrency} />
+                  <ProfileRow label={t("common.preferredLanguage")} value={saved.preferredLanguage} />
+                  <ProfileRow label={t("common.dietaryRestrictions")} value={saved.dietaryRestrictions?.join(", ")} />
+                  <ProfileRow label={t("common.allergies")} value={saved.allergies?.join(", ")} />
                   <ProfileRow
-                    label="Emergency contact"
+                    label={t("common.emergencyContact")}
                     value={[saved.emergencyContactName, saved.emergencyContactRelationship].filter(Boolean).join(" · ")}
                   />
-                  <ProfileRow label="Emergency phone" value={saved.emergencyContactPhone} />
+                  <ProfileRow label={t("common.emergencyPhone")} value={saved.emergencyContactPhone} />
                   <ProfileRow
-                    label="Passport"
+                    label={t("common.passport")}
                     value={[saved.passportIssuingCountry, saved.passportExpiresOn].filter(Boolean).join(" · ")}
                   />
                 </dl>
@@ -141,10 +143,9 @@ export function SettingsClient({
             <div className="flex gap-3">
               <ScanLine className="size-5 text-primary" />
               <div>
-                <h2 id="directory-heading" className="font-semibold">Profile directory</h2>
+                <h2 id="directory-heading" className="font-semibold">{t("common.profileDirectory")}</h2>
                 <p className="text-sm text-muted-foreground">
-                  Anyone can link you by scanning your Viatik ID or entering it. Only your public
-                  name, avatar, handle, and preferences are shared — never your email or phone.
+                  {t("common.directoryDescription")}
                 </p>
               </div>
             </div>
@@ -153,12 +154,12 @@ export function SettingsClient({
                 <div className="rounded-xl border p-4">
                   <div className="flex items-center justify-between gap-4">
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold">Your Viatik ID</p>
+                      <p className="text-sm font-semibold">{t("common.yourViatikId")}</p>
                       <p className="font-mono text-sm text-muted-foreground">{viatikId}</p>
                     </div>
                     <Button type="button" variant="outline" size="sm" onClick={() => void copyViatikId()} disabled={copied}>
                       {copied ? <Check className="size-5 text-success" /> : <Copy className="size-5" />}
-                      {copied ? "Copied" : "Copy"}
+                      {copied ? t("common.copied") : t("common.copy")}
                     </Button>
                   </div>
                   <div className="mt-5 flex flex-col items-start gap-3">
@@ -166,10 +167,8 @@ export function SettingsClient({
                       <QRCode value={viatikQrPayload(viatikId)} size={180} />
                     </div>
                     <p className="max-w-sm text-xs leading-5 text-muted-foreground">
-                      <span className="block">Friends can scan this code to link you instantly.</span>
-                      <span className="block">
-                        Only your public name, avatar, handle, and preferences are shared.
-                      </span>
+                      <span className="block">{t("common.scanToLink")}</span>
+                      <span className="block">{t("common.publicProfileShared")}</span>
                     </p>
                   </div>
                 </div>
@@ -182,7 +181,7 @@ export function SettingsClient({
             <div className="flex gap-3">
               <KeyRound className="size-5 text-primary" />
               <div>
-                <h2 id="security-heading" className="font-semibold">Sign-in and security</h2>
+                <h2 id="security-heading" className="font-semibold">{t("common.signInSecurity")}</h2>
                 <p className="text-sm text-muted-foreground">Add a passkey to your verified Supabase account.</p>
               </div>
             </div>
@@ -190,18 +189,18 @@ export function SettingsClient({
               <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
                 <Smartphone className="size-5 text-muted-foreground" />
                 <div className="flex-1">
-                  <p className="font-semibold">SMS authentication</p>
+                  <p className="font-semibold">{t("common.smsAuthentication")}</p>
                   <p className="text-sm text-muted-foreground">{phone ?? "No phone number available"}</p>
                 </div>
-                <span className="text-xs font-semibold text-success">Verified session</span>
+                <span className="text-xs font-semibold text-success">{t("common.verifiedSession")}</span>
               </div>
               <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
                 <KeyRound className="size-5 text-muted-foreground" />
                 <div className="flex-1">
-                  <p className="font-semibold">Passkeys</p>
+                  <p className="font-semibold">{t("common.passkeys")}</p>
                   <p className="text-sm text-muted-foreground">Use your device biometrics for a faster sign-in.</p>
                 </div>
-                <Button variant="outline" onClick={addPasskey} disabled={pending}>Add passkey</Button>
+                <Button variant="outline" onClick={addPasskey} disabled={pending}>{t("common.addPasskey")}</Button>
               </div>
             </div>
           </section>
@@ -234,6 +233,7 @@ function ProfileEditForm({
   onCancel: () => void;
   onSaved: (message: string) => void;
 }) {
+  const { t } = useI18n();
   const [values, setValues] = useState({
     fullName: initial.fullName ?? "",
     phone: initial.phone ?? "",
@@ -324,7 +324,7 @@ function ProfileEditForm({
       <div className="space-y-2">
         <Label htmlFor="settings-preferredCurrency">Preferred currency</Label>
         <select id="settings-preferredCurrency" value={values.preferredCurrency} onChange={(event) => setField("preferredCurrency", event.target.value)} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
-          <option value="">Not specified</option>
+          <option value="">{t("common.notSpecified")}</option>
           <option value="USD">USD — US Dollar</option>
           <option value="EUR">EUR — Euro</option>
           <option value="GBP">GBP — British Pound</option>
@@ -346,11 +346,11 @@ function ProfileEditForm({
         <Input id="settings-allergies" value={values.allergies} onChange={(event) => setField("allergies", event.target.value)} placeholder="nuts, shellfish" />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="settings-emergencyContactName">Emergency contact name</Label>
+        <Label htmlFor="settings-emergencyContactName">{t("common.emergencyContactName")}</Label>
         <Input id="settings-emergencyContactName" value={values.emergencyContactName} onChange={(event) => setField("emergencyContactName", event.target.value)} placeholder="Jane Doe" />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="settings-emergencyContactRelationship">Emergency relationship</Label>
+        <Label htmlFor="settings-emergencyContactRelationship">{t("common.emergencyRelationship")}</Label>
         <Input id="settings-emergencyContactRelationship" value={values.emergencyContactRelationship} onChange={(event) => setField("emergencyContactRelationship", event.target.value)} placeholder="Parent, partner, friend…" />
       </div>
       <div className="space-y-2">
@@ -368,7 +368,7 @@ function ProfileEditForm({
       {message && <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive sm:col-span-2">{message}</p>}
       <div className="flex gap-2 sm:col-span-2">
         <Button type="submit" variant="primary" disabled={pending}>{pending ? "Saving…" : "Save profile"}</Button>
-        <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>Cancel</Button>
+        <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>{t("common.cancel")}</Button>
       </div>
     </form>
   );
