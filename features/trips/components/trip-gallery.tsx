@@ -195,7 +195,7 @@ export function TripGallery({ tripId, userId, canEdit = true, activityId = null,
         <div className="flex w-fit rounded-md border p-0.5" role="group" aria-label={t("common.galleryView")}>
           {(Object.keys(FILTER_LABELS) as GalleryFilter[]).map((option) => (
             <Button key={option} size="sm" variant={filter === option ? "default" : "ghost"} onClick={() => setFilter(option)} aria-pressed={filter === option}>
-              {option === "all" ? t("common.all") : option === "today" ? t("common.today") : t("common.day")}
+              {option === "all" ? t("common.all") : option === "today" ? t("common.today") : FILTER_LABELS.day}
             </Button>
           ))}
         </div>
