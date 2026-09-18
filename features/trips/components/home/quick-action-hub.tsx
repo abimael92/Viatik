@@ -14,6 +14,7 @@ interface QuickAction {
   description: string;
   href: string;
   icon: LucideIcon;
+  onClick?: () => void;
   /** Only show when there is a trip (hidden on Home when no trip exists). */
   requiresTrip?: boolean;
 }
@@ -23,7 +24,7 @@ interface QuickAction {
  * back to the trips dashboard when no trip exists yet). The Emergency Center
  * is surfaced here as a prominent, always-available safety quick action.
  */
-export function QuickActionHub({ userId, primaryTrip }: { userId: string; primaryTrip: Trip | null }) {
+export function QuickActionHub({ userId, primaryTrip, onOpenMoneyTools }: { userId: string; primaryTrip: Trip | null; onOpenMoneyTools: () => void }) {
   const { t } = useI18n();
   const tripFallback = "/trips";
   const actions: QuickAction[] = [
@@ -32,8 +33,9 @@ export function QuickActionHub({ userId, primaryTrip }: { userId: string; primar
       key: "money-tools",
       label: t("common.moneyTools"),
       description: t("common.convertSplit"),
-      href: primaryTrip ? `${tripTabPath(primaryTrip.id, "finance")}&action=money-tools` : tripFallback,
+      href: tripFallback,
       icon: Wrench,
+      onClick: onOpenMoneyTools,
       requiresTrip: true,
     },
     {
@@ -93,21 +95,23 @@ export function QuickActionHub({ userId, primaryTrip }: { userId: string; primar
       />
       {actions
         .filter((action) => !action.requiresTrip || primaryTrip)
-        .map(({ key, label, description, href, icon: Icon }) => (
-        <Link
-          key={key}
-          href={href}
-          className="group flex w-full items-center gap-3 rounded-2xl border bg-card p-4 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:w-[calc(50%-0.375rem)] lg:w-[calc(25%-0.5625rem)]"
-        >
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary transition-transform group-hover:scale-105">
-            <Icon className="size-5" aria-hidden />
-          </span>
-          <span className="min-w-0">
-            <span className="block truncate text-sm font-semibold">{label}</span>
-            <span className="block truncate text-xs text-muted-foreground">{description}</span>
-          </span>
-        </Link>
-      ))}
+        .map(({ key, label, description, href, icon: Icon, onClick }) => {
+          const content = (
+            <>
+              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary transition-transform group-hover:scale-105">
+                <Icon className="size-5" aria-hidden />
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-semibold">{label}</span>
+                <span className="block truncate text-xs text-muted-foreground">{description}</span>
+              </span>
+            </>
+          );
+          if (onClick) {
+            return <button key={key} type="button" onClick={onClick} className="group flex w-full items-center gap-3 rounded-2xl border bg-card p-4 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:w-[calc(50%-0.375rem)] lg:w-[calc(25%-0.5625rem)]">{content}</button>;
+          }
+          return <Link key={key} href={href} className="group flex w-full items-center gap-3 rounded-2xl border bg-card p-4 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:w-[calc(50%-0.375rem)] lg:w-[calc(25%-0.5625rem)]">{content}</Link>;
+        })}
     </section>
   );
 }

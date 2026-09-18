@@ -148,8 +148,6 @@ export function AppShell({
         <NotificationBell userId={userId} />
       </div>
       <div className="mt-3 flex items-center justify-between gap-2 border-t border-side-border pt-2.5">
-        <Link href="/notifications" className="text-xs font-semibold text-side-muted hover:text-side-fg">Notifications</Link>
-        <NotificationBell userId={userId} />
         <LanguageSwitcher dark />
         <SyncStatusPill compact />
       </div>
@@ -235,6 +233,16 @@ export function AppShell({
           <SyncStatusPill compact />
           <NotificationBell userId={userId} />
           <ThemeToggle />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => void signOut()}
+            disabled={pending}
+            aria-label={t("common.signOut")}
+            title={t("common.signOut")}
+          >
+            <LogOut aria-hidden />
+          </Button>
           <Button
             variant="ghost"
             size="icon"
