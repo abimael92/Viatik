@@ -34,6 +34,7 @@ import {
   type AggregateExpense,
   type DailyPacing,
 } from "@/features/finance/lib/finance-aggregators";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 export function FinanceDashboard({
@@ -49,6 +50,7 @@ export function FinanceDashboard({
   days: string[];
   canEdit: boolean;
 }) {
+  const { t } = useI18n();
   const [view, setView] = useState<"personal" | "group">("personal");
   const [expenses, setExpenses] = useState<Expense[] | null>(null);
   const [sharesByExpense, setSharesByExpense] = useState<Record<string, ExpenseShare[]>>({});
@@ -122,10 +124,10 @@ export function FinanceDashboard({
     <section className="space-y-6" aria-labelledby="finance-heading">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 id="finance-heading" className="text-2xl font-bold">Finance</h2>
-          <p className="text-muted-foreground">Private wallet, group spending, and daily pacing.</p>
+          <h2 id="finance-heading" className="text-2xl font-bold">{t("common.finance")}</h2>
+          <p className="text-muted-foreground">{t("common.financeDescription")}</p>
         </div>
-        <div className="flex rounded-full border border-border bg-muted p-1" role="tablist" aria-label="Finance view">
+        <div className="flex rounded-full border border-border bg-muted p-1" role="tablist" aria-label={t("common.financeView")}>
           {(["personal", "group"] as const).map((key) => (
             <button
               key={key}
@@ -137,7 +139,7 @@ export function FinanceDashboard({
                 view === key ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               )}
             >
-              {key === "personal" ? "My Finances" : "Group Finances"}
+              {key === "personal" ? t("common.myFinances") : t("common.groupFinances")}
             </button>
           ))}
         </div>
@@ -193,6 +195,7 @@ function PersonalView({
   trueLeftover: MinorUnits | null;
   canEdit: boolean;
 }) {
+  const { t } = useI18n();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -211,7 +214,7 @@ function PersonalView({
       }
       setEditing(false);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to save wallet.");
+      setError(cause instanceof Error ? cause.message : t("common.unableSaveWallet"));
     } finally {
       setSaving(false);
     }
@@ -238,7 +241,7 @@ function PersonalView({
           <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground"><PiggyBank className="size-5 text-primary" /> True Leftover</span>
           <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold", tl != null && tl >= 0n ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive")}>
             {tl != null ? (tl >= 0n ? <ArrowUpRight className="size-3.5" /> : <ArrowDownRight className="size-3.5" />) : null}
-            {tl == null ? "No wallet yet" : tl >= 0n ? "Safe" : "Over"}
+            {tl == null ? t("common.noWallet") : tl >= 0n ? t("common.safe") : t("common.over")}
           </span>
         </div>
         <div className="my-6">
@@ -247,40 +250,40 @@ function PersonalView({
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
             {tl == null
-              ? "Set a starting balance to see what you can still spend."
+              ? t("common.setStartingBalance")
               : tl >= 0n
-                ? "Remaining after actuals and planned estimates."
-                : "You have exceeded your planned budget."}
+                ? t("common.remainingAfter")
+                : t("common.exceededBudget")}
           </p>
         </div>
         <div className="space-y-2 text-sm">
-          <BreakdownRow label="Starting balance" value={formatMinorUnits(walletAmount, walletCurrency)} />
-          <BreakdownRow label="Actuals (settled)" value={`− ${formatMinorUnits(personalSpent, baseCurrency)}`} accent="text-destructive" />
-          <BreakdownRow label="Planned (estimates)" value={`− ${formatMinorUnits(personalPlanned, baseCurrency)}`} accent="text-destructive" />
+          <BreakdownRow label={t("common.startingBalance")} value={formatMinorUnits(walletAmount, walletCurrency)} />
+          <BreakdownRow label={t("common.actualsSettled")} value={`− ${formatMinorUnits(personalSpent, baseCurrency)}`} accent="text-destructive" />
+          <BreakdownRow label={t("common.plannedEstimates")} value={`− ${formatMinorUnits(personalPlanned, baseCurrency)}`} accent="text-destructive" />
         </div>
       </div>
 
-      <FinanceCard icon={Wallet} label="Wallet" accent>
+      <FinanceCard icon={Wallet} label={t("common.wallet")} accent>
         <p className="font-mono text-2xl font-bold tabular-nums">{formatMinorUnits(walletAmount, walletCurrency)}</p>
         <p className="text-xs text-muted-foreground">{walletCurrency} starting balance</p>
         {canEdit && (
           <Button variant="outline" size="sm" className="mt-3" onClick={() => setEditing((v) => !v)}>
-            {hasWallet ? "Edit balance" : "Set balance"}
+            {hasWallet ? t("common.editBalance") : t("common.setBalance")}
           </Button>
         )}
       </FinanceCard>
 
-      <FinanceCard icon={ReceiptText} label="Actuals spent">
+      <FinanceCard icon={ReceiptText} label={t("common.actualsSpent")}>
         <p className="font-mono text-2xl font-bold tabular-nums">{formatMinorUnits(personalSpent, baseCurrency)}</p>
         <p className="text-xs text-muted-foreground">Your share of settled expenses</p>
       </FinanceCard>
 
-      <FinanceCard icon={Target} label="Planned">
+      <FinanceCard icon={Target} label={t("common.plannedEstimates")}>
         <p className="font-mono text-2xl font-bold tabular-nums">{formatMinorUnits(personalPlanned, baseCurrency)}</p>
         <p className="text-xs text-muted-foreground">Your equal share of upcoming estimates</p>
       </FinanceCard>
 
-      <FinanceCard icon={Scale} label="Leftover (actuals only)">
+      <FinanceCard icon={Scale} label={t("common.leftoverActuals")}>
         <p className={cn("font-mono text-2xl font-bold tabular-nums", leftover != null && leftover < 0n ? "text-destructive" : "")}>
           {leftover != null ? formatMinorUnits(leftover < 0n ? -leftover : leftover, walletCurrency) : "—"}
         </p>
@@ -300,7 +303,7 @@ function PersonalView({
               defaultValue={hasWallet ? decimalFromMinorUnits(walletAmount, walletCurrency) : ""}
               required
             />
-            <Button type="submit" disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
+            <Button type="submit" disabled={saving}>{saving ? t("settings.saving") : t("common.save")}</Button>
           </div>
           {error && <p role="alert" className="mt-2 text-sm text-destructive">{error}</p>}
         </form>
@@ -326,6 +329,7 @@ function GroupView({
   spentDays: number;
   tripDays: number;
 }) {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const budgetUsed = totalBudget != null && totalBudget > 0n ? Math.round(Number((groupTotal * 1000n) / totalBudget)) / 10 : null;
@@ -340,16 +344,16 @@ function GroupView({
             <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
               <div className={cn("h-full rounded-full", budgetUsed != null && budgetUsed > 100 ? "bg-destructive" : "bg-primary")} style={{ width: `${Math.min(100, budgetUsed ?? 0)}%` }} />
             </div>
-            <span className="text-xs text-muted-foreground">{totalBudget != null ? `${budgetUsed ?? 0}% of budget` : "No budget set"}</span>
+            <span className="text-xs text-muted-foreground">{totalBudget != null ? t("common.percentBudget", { percent: budgetUsed ?? 0 }) : t("common.noBudget")}</span>
           </div>
         </div>
 
-        <FinanceCard icon={Target} label="Planned estimates">
+        <FinanceCard icon={Target} label={t("common.plannedEstimates")}>
           <p className="font-mono text-2xl font-bold tabular-nums">{formatMinorUnits(plannedTotal, baseCurrency)}</p>
           <p className="text-xs text-muted-foreground">Upcoming itinerary costs</p>
         </FinanceCard>
 
-        <FinanceCard icon={CalendarDays} label="Days active">
+        <FinanceCard icon={CalendarDays} label={t("common.daysActive")}>
           <p className="font-mono text-2xl font-bold tabular-nums">{spentDays}<span className="text-base font-normal text-muted-foreground"> / {tripDays}</span></p>
           <p className="text-xs text-muted-foreground">Days with recorded expenses</p>
         </FinanceCard>
@@ -388,12 +392,13 @@ function PacingRow({
   open: boolean;
   onToggle: () => void;
 }) {
+  const { t } = useI18n();
   const statusStyles: Record<DailyPacing["status"], string> = {
     under: "bg-success/10 text-success",
     over: "bg-destructive/10 text-destructive",
     at: "bg-muted text-muted-foreground",
   };
-  const statusLabel: Record<DailyPacing["status"], string> = { under: "Under", over: "Over", at: "On budget" };
+  const statusLabel: Record<DailyPacing["status"], string> = { under: t("common.under"), over: t("common.over"), at: t("common.onBudget") };
 
   return (
     <div>
@@ -411,9 +416,9 @@ function PacingRow({
       {open && (
         <div className="space-y-3 border-t px-4 py-3">
           <div className="grid grid-cols-3 gap-3 text-center">
-            <MiniStat label="Spent" value={formatMinorUnits(pacing.spent, pacing.currency)} />
-            <MiniStat label="Budget" value={formatMinorUnits(pacing.budget, pacing.currency)} />
-            <MiniStat label="Remaining" value={formatMinorUnits(pacing.remaining, pacing.currency)} />
+            <MiniStat label={t("common.spent")} value={formatMinorUnits(pacing.spent, pacing.currency)} />
+            <MiniStat label={t("common.budget")} value={formatMinorUnits(pacing.budget, pacing.currency)} />
+            <MiniStat label={t("common.remaining")} value={formatMinorUnits(pacing.remaining, pacing.currency)} />
           </div>
         </div>
       )}
@@ -461,6 +466,7 @@ function formatDate(iso: string): string {
 // ---------------------------------------------------------------------------
 
 export function FinanceSummaryStrip({ tripId, userId, baseCurrency }: { tripId: string; userId: string; baseCurrency: string }) {
+  const { t } = useI18n();
   const [expenses, setExpenses] = useState<Expense[] | null>(null);
   const [sharesByExpense, setSharesByExpense] = useState<Record<string, ExpenseShare[]>>({});
   const [wallets, setWallets] = useState<UserWallet[]>([]);
@@ -504,9 +510,9 @@ export function FinanceSummaryStrip({ tripId, userId, baseCurrency }: { tripId: 
 
   return (
     <div className="grid gap-3 sm:grid-cols-3">
-      <MiniTile label="Group spent" value={formatMinorUnits(groupTotal, baseCurrency)} icon={CircleDollarSign} />
-      <MiniTile label="Your true leftover" value={trueLeftover != null ? formatMinorUnits(trueLeftover < 0n ? -trueLeftover : trueLeftover, wallet?.currency ?? baseCurrency) : "—"} icon={PiggyBank} tone={trueLeftover != null && trueLeftover < 0n ? "danger" : trueLeftover != null ? "good" : "muted"} />
-      <MiniTile label="Planned upcoming" value={formatMinorUnits(personalPlanned, baseCurrency)} icon={Target} />
+      <MiniTile label={t("common.groupSpent")} value={formatMinorUnits(groupTotal, baseCurrency)} icon={CircleDollarSign} />
+      <MiniTile label={t("common.trueLeftover")} value={trueLeftover != null ? formatMinorUnits(trueLeftover < 0n ? -trueLeftover : trueLeftover, wallet?.currency ?? baseCurrency) : "—"} icon={PiggyBank} tone={trueLeftover != null && trueLeftover < 0n ? "danger" : trueLeftover != null ? "good" : "muted"} />
+      <MiniTile label={t("common.plannedUpcoming")} value={formatMinorUnits(personalPlanned, baseCurrency)} icon={Target} />
     </div>
   );
 }

@@ -23,6 +23,7 @@ import {
 } from "@/features/maps/lib/geo-utils";
 import type { Activity, Trip } from "@/features/domain/entities";
 import { isAccommodationCategory } from "@/features/maps/domain/map-types";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 type MarkerKind = "activity" | "accommodation" | "pin";
@@ -87,6 +88,7 @@ export function TripMapView({
   trip: Trip;
   canEdit: boolean;
 }) {
+  const { t } = useI18n();
   const surfaceRef = useRef<HTMLDivElement>(null);
 
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -337,10 +339,10 @@ export function TripMapView({
       : null;
 
   return (
-    <section className="space-y-5" aria-label="Trip map">
+    <section className="space-y-5" aria-label={t("common.tripMap")}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Map</h2>
+          <h2 className="text-2xl font-bold">{t("common.map")}</h2>
           <p className="text-muted-foreground">
             {markers.length === 0
               ? "Plot your itinerary and drop pins to see everything on one offline map."
@@ -413,7 +415,7 @@ export function TripMapView({
           <div className="pointer-events-none absolute inset-0 grid place-items-center">
             <div className="max-w-xs rounded-xl bg-slate-900/80 p-5 text-center text-slate-100">
               <MapPin className="mx-auto size-7 text-slate-300" />
-              <p className="mt-2 font-semibold">No locations yet</p>
+              <p className="mt-2 font-semibold">{t("common.noLocations")}</p>
               <p className="mt-1 text-sm text-slate-300">
                 Add coordinates to your itinerary or{canEdit ? " drop a pin" : ""} to start plotting on this map.
               </p>
@@ -425,10 +427,10 @@ export function TripMapView({
         {dropPoint && (
           <div className="absolute inset-x-0 bottom-4 flex justify-center px-4">
             <div className="w-full max-w-sm rounded-xl border border-border bg-card p-4 shadow-xl">
-              <p className="text-sm font-semibold">Drop a pin here</p>
+              <p className="text-sm font-semibold">{t("common.dropPin")}</p>
               <p className="mt-0.5 text-xs text-muted-foreground">{formatLatLng(dropPoint)}</p>
               <div className="mt-3 space-y-2">
-                <Label htmlFor="pin-title">Label</Label>
+                <Label htmlFor="pin-title">{t("common.label")}</Label>
                 <Input
                   id="pin-title"
                   value={pinTitle}
@@ -451,7 +453,7 @@ export function TripMapView({
                 </select>
               </div>
               <div className="mt-4 flex justify-end gap-2">
-                <Button type="button" variant="ghost" onClick={() => setDropPoint(null)}>Cancel</Button>
+                <Button type="button" variant="ghost" onClick={() => setDropPoint(null)}>{t("common.cancel")}</Button>
                 <Button type="button" variant="primary" disabled={saving || !pinTitle.trim()} onClick={() => void confirmDrop()}>
                   {saving ? "Saving…" : "Save pin"}
                 </Button>
@@ -494,7 +496,7 @@ export function TripMapView({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  aria-label="Delete pin"
+                  aria-label={t("common.deletePin")}
                   onClick={() => void deletePin(selected)}
                 >
                   <Trash2 className="size-4 text-destructive" />
@@ -502,7 +504,7 @@ export function TripMapView({
               )}
             </div>
             <div className="mt-3 flex justify-end">
-              <Button type="button" variant="ghost" size="sm" onClick={() => setSelected(null)}>Close</Button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setSelected(null)}>{t("common.close")}</Button>
             </div>
           </div>
         )}
@@ -511,7 +513,7 @@ export function TripMapView({
       {/* Pins list (only when there are pins) */}
       {pins.length > 0 && (
         <div className="rounded-2xl border bg-card p-4">
-          <h3 className="text-sm font-semibold">Dropped pins</h3>
+          <h3 className="text-sm font-semibold">{t("common.droppedPins")}</h3>
           <ul className="mt-3 space-y-2">
             {pins.map((pin) => {
               const style = PIN_STYLES[pin.category] ?? PIN_STYLES.note;

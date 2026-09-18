@@ -19,6 +19,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { weatherCodeSummary } from "@/features/weather/domain/weather-warnings";
 import type { DailyForecast, TripWeatherForecast, WeatherWarning } from "@/features/weather/domain/weather-types";
 import { getDayWeather, weatherIconName } from "@/features/weather/lib/weather-helpers";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 function WeatherIcon({ icon, className }: { icon: ReturnType<typeof weatherIconName>; className?: string }) {
@@ -53,12 +54,13 @@ export function TripWeatherStrip({
   loading?: boolean;
   emptyMessage?: string;
 }) {
+  const { t } = useI18n();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [hourlyOpen, setHourlyOpen] = useState(false);
   if (loading) {
     return (
       <div className="flex h-28 w-48 items-center justify-center gap-2 rounded-2xl border bg-card/95 text-sm text-muted-foreground shadow-lg backdrop-blur" aria-live="polite">
-        <Loader2 className="size-5 animate-spin" /> Loading weather…
+        <Loader2 className="size-5 animate-spin" /> {t("common.loadingWeather")}
       </div>
     );
   }
@@ -76,14 +78,14 @@ export function TripWeatherStrip({
 
   return (
     <>
-      <button type="button" onClick={() => setDetailsOpen(true)} className="block rounded-2xl text-left transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99]" aria-label={`View weather details for ${formatDay(dayDate)}`}>
+      <button type="button" onClick={() => setDetailsOpen(true)} className="block rounded-2xl text-left transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99]" aria-label={t("common.viewWeatherDetails", { day: formatDay(dayDate) })}>
         <WeatherDayCard dayDate={dayDate} forecast={forecast.forecast} warnings={warnings ?? []} />
       </button>
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Weather for {formatFullDay(dayDate)}</DialogTitle>
-            <DialogDescription>Daily conditions and travel considerations.</DialogDescription>
+            <DialogTitle>{t("common.weatherFor", { day: formatFullDay(dayDate) })}</DialogTitle>
+            <DialogDescription>{t("common.weatherDescription")}</DialogDescription>
           </DialogHeader>
           {day ? (
             <div className="space-y-4">
@@ -92,23 +94,23 @@ export function TripWeatherStrip({
                 <div><p className="text-xl font-bold">{day.summary.label}</p><p className="text-sm text-muted-foreground">High {day.maxTemp !== null ? `${Math.round(day.maxTemp)}°C` : "—"} · Low {day.minTemp !== null ? `${Math.round(day.minTemp)}°C` : "—"}</p></div>
               </div>
               <dl className="grid grid-cols-2 gap-3">
-                <WeatherMetric label="High temperature" value={day.maxTemp !== null ? `${Math.round(day.maxTemp)}°C` : "—"} />
-                <WeatherMetric label="Low temperature" value={day.minTemp !== null ? `${Math.round(day.minTemp)}°C` : "—"} />
-                <WeatherMetric label="Precipitation" value={`${Math.round(day.precipitation)} mm`} />
-                <WeatherMetric label="Maximum wind" value={`${Math.round(day.windSpeed)} km/h`} />
+                <WeatherMetric label={t("common.highTemperature")} value={day.maxTemp !== null ? `${Math.round(day.maxTemp)}°C` : "—"} />
+                <WeatherMetric label={t("common.lowTemperature")} value={day.minTemp !== null ? `${Math.round(day.minTemp)}°C` : "—"} />
+                <WeatherMetric label={t("common.precipitation")} value={`${Math.round(day.precipitation)} mm`} />
+                <WeatherMetric label={t("common.maximumWind")} value={`${Math.round(day.windSpeed)} km/h`} />
               </dl>
-              {day.warnings.length > 0 && <div className="space-y-2"><p className="text-sm font-semibold">Weather warnings</p>{day.warnings.map((warning) => <div key={warning.type} className="rounded-lg border border-warning/50 bg-warning/10 p-3"><p className="text-sm font-semibold">{warning.title}</p><p className="text-xs text-muted-foreground">{warning.message}</p></div>)}</div>}
+              {day.warnings.length > 0 && <div className="space-y-2"><p className="text-sm font-semibold">{t("common.weatherWarnings")}</p>{day.warnings.map((warning) => <div key={warning.type} className="rounded-lg border border-warning/50 bg-warning/10 p-3"><p className="text-sm font-semibold">{warning.title}</p><p className="text-xs text-muted-foreground">{warning.message}</p></div>)}</div>}
               {hourlyRows.length > 0 && (
                 <div className="border-t pt-3">
                   <Button type="button" variant="ghost" className="w-full justify-between" onClick={() => setHourlyOpen((open) => !open)} aria-expanded={hourlyOpen}>
-                    {hourlyOpen ? "Hide hourly forecast" : "Show hourly forecast"} {hourlyOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+                    {hourlyOpen ? t("common.hideHourly") : t("common.showHourly")} {hourlyOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
                   </Button>
                   {hourlyOpen && <div className="mt-2 max-h-72 divide-y overflow-y-auto rounded-lg border">{hourlyRows.map((hour) => <HourlyWeatherRow key={hour.time} hour={hour} />)}</div>}
                 </div>
               )}
-              <p className="text-xs text-muted-foreground">Forecast updated {new Date(forecast.fetchedAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}.</p>
+              <p className="text-xs text-muted-foreground">{t("common.forecastUpdated", { time: new Date(forecast.fetchedAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) })}</p>
             </div>
-          ) : <p className="text-sm text-muted-foreground">No weather data is available for this day.</p>}
+          ) : <p className="text-sm text-muted-foreground">{t("common.noWeather")}</p>}
         </DialogContent>
       </Dialog>
     </>

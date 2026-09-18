@@ -16,6 +16,7 @@ import {
   type PackingItem,
 } from "@/features/packing/domain/packing-types";
 import { generatePackingDrafts, tripDurationDays } from "@/features/packing/lib/packing-generator";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 /**
@@ -24,6 +25,7 @@ import { cn } from "@/lib/utils";
  * items off (offline) and add their own. Fully local-first via Dexie.
  */
 export function PackingListView({ tripId, trip, activities }: { tripId: string; trip: Trip; activities: Activity[] }) {
+  const { t } = useI18n();
   const [items, setItems] = useState<PackingItem[]>([]);
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
@@ -105,15 +107,15 @@ export function PackingListView({ tripId, trip, activities }: { tripId: string; 
           </span>
           <div>
             <Heading level={2} id="packing-heading" className="text-xl font-bold">
-              Packing list
+              {t("common.packingList")}
             </Heading>
             <p className="text-sm text-muted-foreground">
-              A checklist built from your trip — duration, climate, and activities.
+              {t("common.packingDescription")}
             </p>
           </div>
         </div>
         <Button type="button" variant="outline" onClick={() => void regenerate()}>
-          <RefreshCw className="size-4" /> Regenerate
+          <RefreshCw className="size-4" /> {t("common.regenerate")}
         </Button>
       </div>
 
@@ -121,12 +123,12 @@ export function PackingListView({ tripId, trip, activities }: { tripId: string; 
         <div
           className="rounded-xl border bg-card p-4"
           role="group"
-          aria-label={`Packing progress: ${packedCount} of ${totalCount}`}
+          aria-label={t("common.packingProgress", { packed: packedCount, total: totalCount })}
         >
           <div className="flex items-center justify-between text-sm">
             <span className="font-semibold">Progress</span>
             <span className="text-muted-foreground tabular-nums">
-              {packedCount}/{totalCount} packed
+              {packedCount}/{totalCount} {t("common.packed")}
             </span>
           </div>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
@@ -142,10 +144,10 @@ export function PackingListView({ tripId, trip, activities }: { tripId: string; 
         <div className="rounded-2xl border border-dashed p-10 text-center">
           <Luggage className="mx-auto size-8 text-muted-foreground" aria-hidden />
           <Heading level={3} className="mt-3 text-base font-semibold">
-            Nothing to pack yet
+            {t("common.nothingToPack")}
           </Heading>
           <p className="mt-1 text-sm text-muted-foreground">
-            Set trip dates and add a few activities, then press Regenerate to build a checklist.
+            {t("common.packingEmpty")}
           </p>
         </div>
       ) : (
@@ -175,7 +177,7 @@ export function PackingListView({ tripId, trip, activities }: { tripId: string; 
                               checked={item.isPacked}
                               onChange={() => void handleToggle(item)}
                               className="peer size-5 appearance-none rounded-md border border-border bg-background transition-colors checked:border-primary checked:bg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                              aria-label={`Mark ${item.name} as ${item.isPacked ? "unpacked" : "packed"}`}
+                              aria-label={t("common.markPacked", { name: item.name, status: item.isPacked ? t("common.unpacked") : t("common.packed") })}
                             />
                             <Check
                               className="pointer-events-none absolute inset-0 m-auto size-3.5 text-primary-foreground opacity-0 transition-opacity peer-checked:opacity-100"
@@ -197,14 +199,14 @@ export function PackingListView({ tripId, trip, activities }: { tripId: string; 
                             {item.suggestedReason && (
                               <span className="block text-[11px] text-muted-foreground/70">
                                 {item.suggestedReason === "always"
-                                  ? "Essentials"
+                                  ? t("common.essentials")
                                   : item.suggestedReason === "duration"
-                                    ? "Based on trip length"
+                                    ? t("common.basedTripLength")
                                     : item.suggestedReason === "climate"
-                                      ? "Based on destination climate"
+                                      ? t("common.basedClimate")
                                       : item.suggestedReason === "weather"
-                                        ? "Based on the forecast"
-                                        : "Based on your activities"}
+                                        ? t("common.basedForecast")
+                                        : t("common.basedActivities")}
                               </span>
                             )}
                           </span>
@@ -213,7 +215,7 @@ export function PackingListView({ tripId, trip, activities }: { tripId: string; 
                           type="button"
                           onClick={() => void handleRemove(item.id)}
                           className="rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100"
-                          aria-label={`Remove ${item.name}`}
+                          aria-label={t("common.removeItem", { name: item.name })}
                         >
                           <Trash2 className="size-4" aria-hidden />
                         </button>
@@ -229,7 +231,7 @@ export function PackingListView({ tripId, trip, activities }: { tripId: string; 
 
       <div className="rounded-2xl border bg-card p-4">
         <Heading level={3} className="text-sm font-semibold">
-          Add your own
+          {t("common.addYourOwn")}
         </Heading>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
           <Label className="sr-only" htmlFor="packing-category">
@@ -240,7 +242,7 @@ export function PackingListView({ tripId, trip, activities }: { tripId: string; 
             value={newCategory}
             onChange={(event) => setNewCategory(event.target.value as PackingCategory)}
             className="h-10 rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            aria-label="Category"
+            aria-label={t("common.category")}
           >
             {PACKING_CATEGORIES.map((category) => (
               <option key={category} value={category}>
@@ -258,11 +260,11 @@ export function PackingListView({ tripId, trip, activities }: { tripId: string; 
             onKeyDown={(event) => {
               if (event.key === "Enter" && newName.trim()) void handleAdd();
             }}
-            placeholder="e.g. Camera, reusable tote, meds…"
+            placeholder={t("common.itemName")}
             className="flex-1"
           />
           <Button type="button" onClick={() => void handleAdd()} disabled={adding || !newName.trim()}>
-            <Plus className="size-4" /> Add item
+            <Plus className="size-4" /> {t("common.addItem")}
           </Button>
         </div>
       </div>

@@ -4,6 +4,7 @@ import { ArrowLeftRight, Check, Landmark } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Trip } from "@/features/domain/entities";
@@ -24,6 +25,7 @@ import {
  * pair. Fully independent from the tip/split calculator.
  */
 export function CurrencyConverter({ trip }: { trip: Trip }) {
+  const { t } = useI18n();
   const baseCurrency = (trip.baseCurrency || "USD").toUpperCase() as CurrencyCode;
   const [from, setFrom] = useState<CurrencyCode>(
     SUPPORTED_CURRENCIES.includes(baseCurrency) ? baseCurrency : "USD",
@@ -84,12 +86,12 @@ export function CurrencyConverter({ trip }: { trip: Trip }) {
   return (
     <div className="rounded-2xl border bg-card p-5">
       <div className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
-        <Landmark className="size-5 text-primary" /> Currency converter
+        <Landmark className="size-5 text-primary" /> {t("common.currencyConverter")}
       </div>
 
       <div className="mt-4 space-y-3">
         <div>
-          <Label htmlFor="converter-from-amount">Amount</Label>
+          <Label htmlFor="converter-from-amount">{t("common.amount")}</Label>
           <div className="mt-1.5 flex gap-2">
             <Input
               id="converter-from-amount"
@@ -99,20 +101,20 @@ export function CurrencyConverter({ trip }: { trip: Trip }) {
               placeholder="0.00"
               className="flex-1"
             />
-            <CurrencySelect value={from} onChange={setFrom} label="From currency" />
+            <CurrencySelect value={from} onChange={setFrom} label={t("common.fromCurrency")} />
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           <div className="h-px flex-1 bg-border" />
-          <Button type="button" variant="outline" size="sm" onClick={handleSwap} aria-label="Swap currencies">
+          <Button type="button" variant="outline" size="sm" onClick={handleSwap} aria-label={t("common.swapCurrencies")}>
             <ArrowLeftRight className="size-4" />
           </Button>
           <div className="h-px flex-1 bg-border" />
         </div>
 
         <div>
-          <Label htmlFor="converter-to-amount">Converted</Label>
+          <Label htmlFor="converter-to-amount">{t("common.converted")}</Label>
           <div className="mt-1.5 flex gap-2">
             <Input
               id="converter-to-amount"
@@ -121,7 +123,7 @@ export function CurrencyConverter({ trip }: { trip: Trip }) {
               className="flex-1 font-mono font-semibold"
               aria-label={`Converted amount in ${to}`}
             />
-            <CurrencySelect value={to} onChange={setTo} label="To currency" />
+            <CurrencySelect value={to} onChange={setTo} label={t("common.toCurrency")} />
           </div>
         </div>
       </div>
@@ -129,7 +131,7 @@ export function CurrencyConverter({ trip }: { trip: Trip }) {
       <div className="mt-4 rounded-lg bg-muted p-3">
         <div className="flex flex-wrap items-end gap-2">
           <div className="min-w-0 flex-1">
-            <Label htmlFor="converter-rate">Rate · 1 {from} =</Label>
+            <Label htmlFor="converter-rate">{t("common.rate")} · 1 {from} =</Label>
             <div className="mt-1.5 flex items-center gap-2">
               <Input
                 id="converter-rate"
@@ -143,16 +145,16 @@ export function CurrencyConverter({ trip }: { trip: Trip }) {
           </div>
           <Button type="button" size="sm" variant="outline" onClick={() => void handleSaveRate()} disabled={!rateValid}>
             {rateSaved ? <Check className="size-4" /> : null}
-            {rateSaved ? "Saved" : "Save rate"}
+            {rateSaved ? t("common.saved") : t("common.saveRate")}
           </Button>
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
-          Offline default shown — update it and tap Save to keep it accurate.
+          {t("common.offlineRate")}
         </p>
       </div>
 
       <div className="mt-4">
-        <Label>Quick amounts ({from})</Label>
+        <Label>{t("common.quickAmounts")} ({from})</Label>
         <div className="mt-2 flex flex-wrap gap-2">
           {QUICK_AMOUNTS.map((value) => (
             <button
