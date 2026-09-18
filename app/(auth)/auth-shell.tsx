@@ -1,8 +1,14 @@
+"use client";
+
 import { Cloud, Map, Users } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
+import { LanguageSwitcher } from "@/components/app-shell/language-switcher";
+import { useI18n } from "@/lib/i18n/i18n-provider";
+
 export function AuthShell({ children, mode = "login" }: { children: React.ReactNode; mode?: "login" | "register" }) {
+  const { t } = useI18n();
   return (
     <main className="relative min-h-dvh overflow-hidden bg-surface-dark lg:grid lg:grid-cols-[1.08fr_.92fr]">
       <section className="relative flex min-h-[42dvh] flex-col justify-between overflow-hidden px-6 py-7 text-white sm:px-10 lg:min-h-dvh lg:px-14 lg:py-10">
@@ -13,21 +19,24 @@ export function AuthShell({ children, mode = "login" }: { children: React.ReactN
           className="absolute inset-0 bg-[radial-gradient(circle_at_18%_16%,rgba(255,255,255,.3),transparent_32%),radial-gradient(circle_at_88%_82%,rgba(14,165,233,.4),transparent_42%),radial-gradient(circle_at_60%_45%,rgba(244,63,94,.25),transparent_40%)]"
           aria-hidden
         />
-        <Link href="/" className="relative flex items-center gap-3 text-xl font-bold tracking-tight drop-shadow-sm">
-          <Image src="/viatik-logo.png" alt="" width={44} height={44} priority className="size-11 object-contain drop-shadow-lg" />
-          Viatik
-        </Link>
+        <div className="relative flex items-center justify-between gap-3">
+          <Link href="/" className="flex items-center gap-3 text-xl font-bold tracking-tight drop-shadow-sm">
+            <Image src="/viatik-logo.png" alt="" width={44} height={44} priority className="size-11 object-contain drop-shadow-lg" />
+            Viatik
+          </Link>
+          <LanguageSwitcher dark />
+        </div>
         <div className="relative max-w-xl pb-24 lg:pb-0">
-          <p className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-white/75">{mode === "register" ? "Your next adventure starts here" : "Welcome back, traveler"}</p>
-          <h2 className="text-4xl font-bold leading-tight tracking-tight drop-shadow-sm sm:text-5xl lg:text-6xl">{mode === "register" ? "Turn the group chat into a trip everyone can follow." : "Your trips, people, and plans are waiting."}</h2>
+          <p className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-white/75">{mode === "register" ? t("auth.nextAdventure") : t("auth.welcomeBack")}</p>
+          <h2 className="text-4xl font-bold leading-tight tracking-tight drop-shadow-sm sm:text-5xl lg:text-6xl">{mode === "register" ? t("auth.groupChat") : t("auth.waitingPlans")}</h2>
           <div className="mt-8 hidden gap-6 text-sm text-white/85 sm:flex">
-            <span className="flex items-center gap-2"><Map className="size-5" />Shared itineraries</span>
-            <span className="flex items-center gap-2"><Users className="size-5" />Built together</span>
-            <span className="flex items-center gap-2"><Cloud className="size-5" />Ready offline</span>
+            <span className="flex items-center gap-2"><Map className="size-5" />{t("auth.sharedItineraries")}</span>
+            <span className="flex items-center gap-2"><Users className="size-5" />{t("auth.builtTogether")}</span>
+            <span className="flex items-center gap-2"><Cloud className="size-5" />{t("auth.readyOffline")}</span>
           </div>
         </div>
       </section>
-      <section className="relative -mt-16 flex min-h-[58dvh] items-start justify-center rounded-t-[2rem] bg-background px-5 py-9 shadow-2xl sm:px-8 lg:mt-0 lg:min-h-dvh lg:items-center lg:rounded-none lg:py-12">
+      <section className="relative -mt-16 flex min-h-[58dvh] items-start justify-center rounded-t-4xl bg-background px-5 py-9 shadow-2xl sm:px-8 lg:mt-0 lg:min-h-dvh lg:items-center lg:rounded-none lg:py-12">
         <div className="w-full max-w-md">{children}</div>
       </section>
     </main>

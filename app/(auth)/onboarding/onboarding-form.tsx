@@ -9,6 +9,7 @@ import { AvatarPicker, type AvatarChange } from "@/components/ui/avatar-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 const STEPS = ["Identity", "Contact details", "Travel details"];
@@ -49,6 +50,7 @@ const emptyValues: FormValues = {
 
 export function OnboardingForm({ email, next, initialName = "" }: { email: string; next: string; initialName?: string }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [avatar, setAvatar] = useState<File | null>(null);
   const [step, setStep] = useState(1);
   const [message, setMessage] = useState<string | null>(null);
@@ -170,7 +172,7 @@ export function OnboardingForm({ email, next, initialName = "" }: { email: strin
   return (
     <form className="space-y-6" onSubmit={submit}>
       <div>
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">One last step</p>
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">{t("common.travelDetails")}</p>
         <h1 className="mt-3 text-3xl font-bold tracking-tight">Make Viatik yours</h1>
         <p className="mt-2 text-muted-foreground">
           Your name and phone are required — the rest is optional and stays private to you.
@@ -189,7 +191,7 @@ export function OnboardingForm({ email, next, initialName = "" }: { email: strin
             uploadHint="Optional · randomize a playful avatar or upload a photo (up to 2 MB)."
           />
           <Field
-            label="Display name"
+            label={t("common.displayName")}
             name="fullName"
             value={values.fullName}
             onChange={(event) => setField("fullName", event.target.value)}
@@ -229,9 +231,9 @@ export function OnboardingForm({ email, next, initialName = "" }: { email: strin
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Contact name" name="emergencyContactName" value={values.emergencyContactName} onChange={(event) => setField("emergencyContactName", event.target.value)} placeholder="Jane Doe" />
-            <Field label="Relationship" name="emergencyContactRelationship" value={values.emergencyContactRelationship} onChange={(event) => setField("emergencyContactRelationship", event.target.value)} placeholder="Parent, partner, friend…" />
-            <Field label="Emergency phone" name="emergencyContactPhone" type="tel" inputMode="tel" value={values.emergencyContactPhone} onChange={(event) => setField("emergencyContactPhone", event.target.value)} placeholder="+1 555 012 3456" />
+            <Field label={t("common.contactName")} name="emergencyContactName" value={values.emergencyContactName} onChange={(event) => setField("emergencyContactName", event.target.value)} placeholder="Jane Doe" />
+            <Field label={t("common.relationship")} name="emergencyContactRelationship" value={values.emergencyContactRelationship} onChange={(event) => setField("emergencyContactRelationship", event.target.value)} placeholder="Parent, partner, friend…" />
+            <Field label={t("common.emergencyPhone")} name="emergencyContactPhone" type="tel" inputMode="tel" value={values.emergencyContactPhone} onChange={(event) => setField("emergencyContactPhone", event.target.value)} placeholder="+1 555 012 3456" />
           </div>
         </section>
       )}
@@ -243,16 +245,16 @@ export function OnboardingForm({ email, next, initialName = "" }: { email: strin
               <CalendarDays className="size-5" />
             </span>
             <div>
-              <h3 className="text-sm font-semibold">Travel details</h3>
+              <h3 className="text-sm font-semibold">{t("common.travelDetails")}</h3>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
                 Optional context for planning age-aware activities and shared trips.
               </p>
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Date of birth" name="birthDate" type="date" value={values.birthDate} onChange={(event) => setField("birthDate", event.target.value)} max={new Date().toISOString().slice(0, 10)} required error={fieldErrors.birthDate} />
-            <Field label="Preferred language" name="preferredLanguage" value={values.preferredLanguage} onChange={(event) => setField("preferredLanguage", event.target.value)} placeholder="English" maxLength={35} />
-            <SelectField label="Preferred currency" name="preferredCurrency" value={values.preferredCurrency} onChange={(event) => setField("preferredCurrency", event.target.value)}>
+            <Field label={t("common.dateOfBirth")} name="birthDate" type="date" value={values.birthDate} onChange={(event) => setField("birthDate", event.target.value)} max={new Date().toISOString().slice(0, 10)} required error={fieldErrors.birthDate} />
+            <Field label={t("settings.preferredLanguage")} name="preferredLanguage" value={values.preferredLanguage} onChange={(event) => setField("preferredLanguage", event.target.value)} placeholder="English" maxLength={35} />
+            <SelectField label={t("common.preferredCurrency")} name="preferredCurrency" value={values.preferredCurrency} onChange={(event) => setField("preferredCurrency", event.target.value)}>
               <option value="">Not specified</option>
               <option value="USD">USD — US Dollar</option>
               <option value="EUR">EUR — Euro</option>
@@ -261,8 +263,8 @@ export function OnboardingForm({ email, next, initialName = "" }: { email: strin
               <option value="MXN">MXN — Mexican Peso</option>
               <option value="JPY">JPY — Japanese Yen</option>
             </SelectField>
-            <Field label="Dietary restrictions" name="dietaryRestrictions" value={values.dietaryRestrictions} onChange={(event) => setField("dietaryRestrictions", event.target.value)} placeholder="vegetarian, gluten-free" helper="Separate multiple items with commas." />
-            <Field label="Allergies" name="allergies" value={values.allergies} onChange={(event) => setField("allergies", event.target.value)} placeholder="nuts, shellfish" helper="Separate multiple items with commas." />
+            <Field label={t("common.dietaryRestrictions")} name="dietaryRestrictions" value={values.dietaryRestrictions} onChange={(event) => setField("dietaryRestrictions", event.target.value)} placeholder="vegetarian, gluten-free" helper={t("common.separateComma")} />
+            <Field label={t("common.allergies")} name="allergies" value={values.allergies} onChange={(event) => setField("allergies", event.target.value)} placeholder="nuts, shellfish" helper={t("common.separateComma")} />
             <Field label="Passport issuing country" name="passportIssuingCountry" value={values.passportIssuingCountry} onChange={(event) => setField("passportIssuingCountry", event.target.value)} placeholder="US" minLength={2} maxLength={2} helper="Two-letter country code only." />
             <Field label="Passport expiration" name="passportExpiresOn" type="date" value={values.passportExpiresOn} onChange={(event) => setField("passportExpiresOn", event.target.value)} helper="No passport number is stored." />
           </div>
@@ -277,14 +279,14 @@ export function OnboardingForm({ email, next, initialName = "" }: { email: strin
         <div className="flex items-center gap-2">
           {step > 1 && (
             <Button type="button" variant="outline" disabled={pending} onClick={() => goToStep(step - 1)}>
-              Back
+              {t("common.back")}
             </Button>
           )}
           {step < STEPS.length ? (
-            <Button type="button" variant="primary" onClick={handleNext}>Next</Button>
+            <Button type="button" variant="primary" onClick={handleNext}>{t("common.next")}</Button>
           ) : (
             <Button type="submit" variant="primary" disabled={pending || !allVisited}>
-              {pending ? "Saving your profile…" : "Continue to Viatik"}
+              {pending ? t("settings.saving") : t("common.continue")}
             </Button>
           )}
         </div>
