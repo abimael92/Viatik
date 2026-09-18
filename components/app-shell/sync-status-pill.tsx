@@ -8,9 +8,8 @@ import { liveQuery } from "dexie";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useDatabase } from "@/lib/db/database-provider";
-import { syncNow } from "@/lib/sync/sync-engine";
 import type { OutboxMutation } from "@/lib/sync/types";
-import { useSyncStatus } from "@/lib/sync/use-sync-status";
+import { useSyncRetryCountdown, useSyncStatus } from "@/lib/sync/use-sync-status";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
@@ -28,8 +27,10 @@ export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const [triggerRect, setTriggerRect] = useState<DOMRect | null>(null);
   const [queue, setQueue] = useState<OutboxMutation[]>([]);
-  const [resyncCountdown, setResyncCountdown] = useState<number | null>(null);
-  const resyncScheduledRef = useRef(false);
+  const { countdown: resyncCountdown, retryNow } = useSyncRetryCountdown({
+    ...sync,
+    pending: Math.max(sync.pending, queue.length),
+  });
 
   // Measure the trigger so the dropdown can be rendered fixed (via a portal)
   // near it, since the sidebar clips absolutely-positioned children.
@@ -46,35 +47,6 @@ export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
     });
     return () => sub.unsubscribe();
   }, [db]);
-
-  const hasPendingChanges = sync.pending > 0 || queue.length > 0;
-
-  useEffect(() => {
-    if (!hasPendingChanges) {
-      resyncScheduledRef.current = false;
-      return;
-    }
-    if (resyncScheduledRef.current) return;
-
-    resyncScheduledRef.current = true;
-    let remaining = 5;
-    setResyncCountdown(remaining);
-    const timer = window.setInterval(() => {
-      remaining -= 1;
-      if (remaining <= 0) {
-        window.clearInterval(timer);
-        setResyncCountdown(null);
-        void syncNow();
-        return;
-      }
-      setResyncCountdown(remaining);
-    }, 1000);
-
-    return () => {
-      window.clearInterval(timer);
-      setResyncCountdown(null);
-    };
-  }, [hasPendingChanges]);
 
   const offline = !sync.isOnline;
   const interactive =
@@ -105,7 +77,7 @@ export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
       return (
         <Badge variant="warning">
           <StatusDot tone="warning" pulse />
-          {compactLabel(t("common.syncIssue"))}
+          {compactLabel(resyncCountdown !== null ? t("common.resyncIn", { count: resyncCountdown }) : t("common.syncIssue"))}
           <RefreshCw className="size-3" aria-hidden />
         </Badge>
       );
@@ -207,8 +179,7 @@ export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
               variant="primary"
               className="w-full"
               onClick={() => {
-                setResyncCountdown(null);
-                void syncNow();
+                retryNow();
               }}
             >
               <RefreshCw className="size-5" />
