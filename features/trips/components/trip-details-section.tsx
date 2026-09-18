@@ -173,7 +173,7 @@ export function TripDetailsSection({
           </p>
         </div>
         {canEdit && !editing && (
-          <Button type="button" variant="outline" onClick={() => setEditing(true)}>
+          <Button type="button" variant="outline" className="border-yellow-300 bg-yellow-50 text-yellow-700 hover:bg-yellow-100" onClick={() => setEditing(true)}>
             <Pencil className="size-5" /> Edit
           </Button>
         )}

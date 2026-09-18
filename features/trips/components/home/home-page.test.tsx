@@ -164,6 +164,7 @@ describe("HomePage", () => {
     expect(screen.getByRole("dialog")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Money tools" })).toBeTruthy();
     expect(screen.getByText("Trip vault")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Notifications/ }).getAttribute("href")).toBe("/notifications");
     // Emergency Center quick action is prominent and present.
     expect(screen.getByText("Emergency")).toBeTruthy();
     expect(screen.getByText("Safety info & contacts")).toBeTruthy();
