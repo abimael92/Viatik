@@ -459,24 +459,27 @@ export function TripWorkspace({ tripId, userId, initialTab = "overview", initial
       )}
       {tab === "itinerary" && (
         <section className="space-y-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <Heading level={2} className="text-2xl font-bold">
                 {t("common.itinerary")}
               </Heading>
               <p className="text-muted-foreground">{t("common.seeOpenTime")}</p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <div className="flex rounded-md border p-0.5">
-                <Button size="sm" variant={itineraryView === "calendar" ? "default" : "ghost"} onClick={() => setItineraryView("calendar")}>
+            <div className="w-fit max-w-full rounded-2xl border border-border/70 bg-muted/20 p-2 shadow-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex shrink-0 rounded-xl border border-border/70 bg-background p-1 shadow-xs">
+                <Button size="sm" className="h-10 min-w-28 rounded-lg" variant={itineraryView === "calendar" ? "default" : "ghost"} onClick={() => setItineraryView("calendar")}>
+                  <CalendarDays className="size-4" aria-hidden />
                   {t("common.calendar")}
                 </Button>
-                <Button size="sm" variant={itineraryView === "board" ? "default" : "ghost"} onClick={() => setItineraryView("board")}>
+                <Button size="sm" className="h-10 min-w-28 rounded-lg" variant={itineraryView === "board" ? "default" : "ghost"} onClick={() => setItineraryView("board")}>
+                  <Backpack className="size-4" aria-hidden />
                   {t("common.board")}
                 </Button>
               </div>
               {itineraryView === "board" && (
-                <select aria-label="Filter by category" value={category} onChange={(event) => setCategory(event.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm">
+                <select aria-label="Filter by category" value={category} onChange={(event) => setCategory(event.target.value)} className="h-11 min-w-60 rounded-xl border border-border/70 bg-background px-3 text-sm shadow-xs">
                   <option value="all">{t("common.allCategories")}</option>
                   {Array.from(new Set(activities.map((item) => item.category))).map((item) => (
                     <option key={item}>{item}</option>
@@ -486,6 +489,7 @@ export function TripWorkspace({ tripId, userId, initialTab = "overview", initial
               {activities.length > 0 && (
                 <Button
                   variant="outline"
+                  className="h-11 rounded-xl border-pink-300 bg-pink-50 px-4 text-pink-700 shadow-xs hover:bg-pink-100"
                   onClick={() =>
                     downloadActivitiesIcs(
                       activities.filter((a) => a.deletedAt === null),
@@ -497,17 +501,20 @@ export function TripWorkspace({ tripId, userId, initialTab = "overview", initial
                   {t("common.export")}
                 </Button>
               )}
+              </div>
               {canEdit && (
-                <Button variant="primary" onClick={() => setActivityDialog("new")}>
-                  <Plus className="size-5" />
-                  {t("common.activity")}
-                </Button>
-              )}
-              {canEdit && (
-                <Button variant="ai" onClick={() => setScoutOpen((open) => !open)} aria-expanded={scoutVisible} className="h-11 gap-2 px-4">
-                  <Image src="/scout_icon.png" alt={t("common.scoutFox")} width={60} height={60} className="-ml-1 size-12 shrink-0 scale-110 object-contain object-center invert" />
-                  {scoutVisible ? t("common.byeScout") : t("common.scout")}
-                </Button>
+                <div className="mt-2 flex justify-start gap-2">
+                  <Button variant="primary" className="h-11 rounded-xl px-4" onClick={() => setActivityDialog("new")}>
+                    <Plus className="size-5" />
+                    {t("common.activity")}
+                  </Button>
+                  <Button variant="ai" onClick={() => setScoutOpen((open) => !open)} aria-expanded={scoutVisible} className="h-11 min-w-44 items-center justify-center gap-1 overflow-visible rounded-xl border-2 border-sky-300 bg-sky-50 px-4 text-sky-950 shadow-sm hover:bg-sky-100">
+                    <span className="flex items-center justify-center gap-1 overflow-visible leading-none">
+                      <Image src="/scout_icon.png" alt={t("common.scoutFox")} width={48} height={48} className="block size-16 shrink-0 translate-y-2 object-contain object-center invert" />
+                      <span>{scoutVisible ? t("common.byeScout") : t("common.scout")}</span>
+                    </span>
+                  </Button>
+                </div>
               )}
             </div>
           </div>
@@ -685,10 +692,11 @@ function Overview({ trip, userId, activities, mediaCount, setTab, setJournalView
           <Heading level={2} className="text-base font-semibold">{t("common.quickActions")}</Heading>
           <div className="mt-4 flex flex-wrap gap-3">
             <Button variant="primary" onClick={onAddActivity}><Plus className="size-5" />{t("common.addActivity")}</Button>
-            <Button variant="outline" onClick={onAddExpense}>{t("common.addExpense")}</Button>
-            <Button variant="outline" onClick={onAddPhotos}>{t("common.addPhotos")}</Button>
-            <Button variant="ai" onClick={() => setScoutOpen(true)} className="h-11 gap-2 px-4">
-              <Image src="/scout_icon.png" alt={t("common.scoutFox")} width={40} height={40} className="-ml-1 size-10 shrink-0 scale-110 object-contain object-center invert" />{t("common.scout")}</Button>
+            <Button variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100" onClick={onAddExpense}>{t("common.addExpense")}</Button>
+            <Button variant="outline" className="border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100" onClick={onAddPhotos}>{t("common.addPhotos")}</Button>
+            <Button variant="ai" onClick={() => setScoutOpen(true)} className="h-11 justify-center px-4">
+              <span className="flex items-center justify-center gap-1 overflow-visible leading-none"><Image src="/scout_icon.png" alt={t("common.scoutFox")} width={48} height={48} className="block size-16 shrink-0 translate-y-2 object-contain object-center invert" /><span>{t("common.scout")}</span></span>
+            </Button>
           </div>
         </div>
       )}

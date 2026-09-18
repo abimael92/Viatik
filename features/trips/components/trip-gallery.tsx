@@ -175,7 +175,7 @@ export function TripGallery({ tripId, userId, canEdit = true, activityId = null,
               onChange={(e) => handleFiles(e.target.files)}
               disabled={compressing}
             />
-            <Button asChild variant="outline" size="sm" disabled={compressing}>
+            <Button asChild variant="outline" size="sm" className="border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100" disabled={compressing}>
               <span>
                 <ImagePlus className="size-5" />
                 {compressing ? t("common.compressing") : t("common.addPhotos")}
