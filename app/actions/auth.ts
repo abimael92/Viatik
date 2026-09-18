@@ -461,6 +461,7 @@ export type ProfileDetails = {
   passportExpiresOn?: string;
   preferredCurrency?: string;
   preferredLanguage?: string;
+  muteTripNotifications?: boolean;
 };
 
 /** Replace the signed-in user's saved profile details (empty values are cleared). */
@@ -504,6 +505,7 @@ export async function updateProfileDetails(
       passport_expires_on: details.passportExpiresOn || null,
       preferred_currency: details.preferredCurrency || undefined,
       preferred_language: details.preferredLanguage || undefined,
+      mute_trip_notifications: details.muteTripNotifications ?? false,
     };
     const { error } = await supabase.from("profiles").update(update).eq("id", data.user.id);
     if (error) return { success: false, error: error.message };
