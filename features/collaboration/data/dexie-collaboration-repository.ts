@@ -32,7 +32,7 @@ export class DexieCollaborationRepository implements CollaborationRepository {
     // members. Reading `profiles` directly is now self-only for RLS.
     const { data, error } = await getSupabaseBrowserClient().rpc("get_profile_public_data", { p_ids: userIds });
     if (error) throw new Error(error.message);
-    return (data ?? []).map((profile: { id: string; full_name: string | null; avatar_url: string | null }) => ({ id: String(profile.id), fullName: profile.full_name == null ? null : String(profile.full_name), avatarUrl: profile.avatar_url == null ? null : String(profile.avatar_url), email: null }));
+    return (data ?? []).map((profile: { id: string; full_name: string | null; avatar_url: string | null; avatar_seed?: string | null }) => ({ id: String(profile.id), fullName: profile.full_name == null ? null : String(profile.full_name), avatarUrl: profile.avatar_url == null ? null : String(profile.avatar_url), avatarSeed: profile.avatar_seed == null ? null : String(profile.avatar_seed), email: null }));
   }
 
   listInvitations(tripId?: string): Promise<TripInvitation[]> {
