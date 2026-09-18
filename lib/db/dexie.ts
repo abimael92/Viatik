@@ -11,6 +11,7 @@ import type { TripFeedItem } from "@/features/feed/domain/feed-types";
 import type { PackingItem } from "@/features/packing/domain/packing-types";
 import type { TravelDocument } from "@/features/health/domain/health-types";
 import type { Poll, PollVote } from "@/features/polls/domain/poll-types";
+import type { Notification } from "@/features/notifications/domain/notification-types";
 import type { CurrencyRate } from "@/features/finance/domain/currency-types";
 import type { TripShareLink } from "@/features/sharing/domain/share-types";
 import type { TransitSegment } from "@/features/transit/domain/transit-types";
@@ -85,6 +86,7 @@ export class ViatikDatabase extends Dexie {
   decisions!: EntityTable<Decision, "id">;
   decisionOptions!: EntityTable<DecisionOption, "id">;
   decisionVotes!: EntityTable<DecisionVote, "id">;
+  notifications!: EntityTable<Notification, "id">;
 
   constructor(name: string) {
     super(name);
@@ -440,6 +442,11 @@ export class ViatikDatabase extends Dexie {
       decisions: "id, tripId, type, status, [tripId+status], updatedAt, deletedAt",
       decisionOptions: "id, decisionId, position, [decisionId+position], updatedAt, deletedAt",
       decisionVotes: "id, decisionId, optionId, userId, [decisionId+userId], updatedAt, deletedAt",
+    });
+
+    // v35: synchronized, owner-scoped Notification Center records.
+    this.version(35).stores({
+      notifications: "id, userId, type, isRead, [userId+isRead], updatedAt",
     });
   }
 }
