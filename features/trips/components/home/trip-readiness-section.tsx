@@ -7,6 +7,8 @@ import { Check, ChevronDown, Play, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { TripReadiness } from "@/features/trips/lib/readiness";
 import { tripTabPath } from "@/features/trips/lib/home-trips";
+import { readinessCopy } from "@/features/trips/lib/readiness-copy";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 /**
@@ -27,6 +29,7 @@ export function TripReadinessSection({
   onStart?: () => void;
   readyToStart?: boolean;
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
 
   return (
@@ -35,14 +38,14 @@ export function TripReadinessSection({
         "overflow-hidden",
         embedded ? "border-t border-border/60 bg-muted/20" : "rounded-2xl border bg-card"
       )}
-      aria-label="Trip readiness"
+      aria-label={t("common.tripReadiness")}
     >
       <div className="px-5 pt-4 sm:px-7">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
-            <h2 className="text-sm font-semibold">Trip readiness</h2>
+            <h2 className="text-sm font-semibold">{t("common.tripReadiness")}</h2>
             <p className="mt-0.5 truncate text-xs text-muted-foreground">
-              {readiness.completed} of {readiness.total} essentials covered
+              {t("common.essentialsCovered", { covered: readiness.completed, total: readiness.total })}
             </p>
           </div>
           <p className="text-2xl font-bold tabular-nums tracking-tight sm:text-3xl">{readiness.score}%</p>
@@ -52,7 +55,7 @@ export function TripReadinessSection({
           aria-valuenow={readiness.score}
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-label="Trip readiness"
+          aria-label={t("common.tripReadiness")}
           className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted"
         >
           <div
@@ -73,7 +76,7 @@ export function TripReadinessSection({
             onClick={onStart}
           >
             <Play className="size-4" aria-hidden />
-            Start trip
+            {t("common.startPlanningTrip")}
           </Button>
         )}
       </div>
@@ -85,7 +88,7 @@ export function TripReadinessSection({
         aria-controls="trip-readiness-checklist"
         className="mt-3 flex w-full items-center justify-between gap-2 px-5 py-3 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-7"
       >
-        {open ? "Hide checklist" : "View checklist"}
+        {open ? t("common.hideChecklist") : t("common.viewChecklist")}
         <ChevronDown
           className={cn("size-4 text-muted-foreground transition-transform duration-200", open && "rotate-180")}
           aria-hidden
@@ -96,6 +99,7 @@ export function TripReadinessSection({
         <ul id="trip-readiness-checklist" className="grid gap-1 border-t border-border/40 px-5 py-4 sm:grid-cols-2 sm:px-7">
           {readiness.items.map((item) => {
             const complete = item.status === "complete";
+            const copy = readinessCopy(item.key);
             return (
               <li key={item.key}>
                 <Link
@@ -116,9 +120,9 @@ export function TripReadinessSection({
                   </span>
                   <span className="min-w-0">
                     <span className={cn("block font-medium", complete ? "line-through decoration-muted-foreground/50" : "text-foreground")}>
-                      {item.label}
+                      {copy ? t(copy.label) : item.label}
                     </span>
-                    {!complete && <span className="block text-xs text-muted-foreground">{item.hint}</span>}
+                    {!complete && <span className="block text-xs text-muted-foreground">{copy ? t(copy.hint) : item.hint}</span>}
                   </span>
                 </Link>
               </li>

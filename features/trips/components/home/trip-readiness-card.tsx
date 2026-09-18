@@ -5,6 +5,8 @@ import { Check, TriangleAlert } from "lucide-react";
 
 import type { TripReadiness } from "@/features/trips/lib/readiness";
 import { tripTabPath } from "@/features/trips/lib/home-trips";
+import { readinessCopy } from "@/features/trips/lib/readiness-copy";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 /**
@@ -18,11 +20,12 @@ export function TripReadinessCard({
   readiness: TripReadiness;
   tripId: string;
 }) {
+  const { t } = useI18n();
   return (
-    <section className="rounded-2xl border bg-card p-5" aria-label="Trip readiness">
+    <section className="rounded-2xl border bg-card p-5" aria-label={t("common.tripReadiness")}>
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h2 className="text-base font-semibold">Trip readiness</h2>
+          <h2 className="text-base font-semibold">{t("common.tripReadiness")}</h2>
         </div>
         <p className="text-3xl font-bold tabular-nums tracking-tight">{readiness.score}%</p>
       </div>
@@ -32,7 +35,7 @@ export function TripReadinessCard({
         aria-valuenow={readiness.score}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-label="Trip readiness"
+        aria-label={t("common.tripReadiness")}
         className="mt-4 h-2 overflow-hidden rounded-full bg-muted"
       >
 
@@ -44,13 +47,14 @@ export function TripReadinessCard({
           style={{ width: `${readiness.score}%` }}
         />
         <p className="mt-0.5 text-sm text-muted-foreground">
-            {readiness.completed} of {readiness.total} essentials covered
+            {t("common.essentialsCovered", { covered: readiness.completed, total: readiness.total })}
           </p>
       </div>
 
       <ul className="mt-5 space-y-2">
         {readiness.items.map((item) => {
           const complete = item.status === "complete";
+          const copy = readinessCopy(item.key);
           return (
             <li key={item.key}>
               <Link
@@ -71,9 +75,9 @@ export function TripReadinessCard({
                 </span>
                 <span className="min-w-0">
                   <span className={cn("block font-medium", complete ? "line-through decoration-muted-foreground/50" : "text-foreground")}>
-                    {item.label}
+                    {copy ? t(copy.label) : item.label}
                   </span>
-                  {!complete && <span className="block text-xs text-muted-foreground">{item.hint}</span>}
+                  {!complete && <span className="block text-xs text-muted-foreground">{copy ? t(copy.hint) : item.hint}</span>}
                 </span>
               </Link>
             </li>

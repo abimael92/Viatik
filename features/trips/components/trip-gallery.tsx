@@ -11,6 +11,7 @@ import type { TripMedia } from "@/features/domain/entities-media";
 import { mediaRepository } from "@/features/media/data/dexie-media-repository";
 import { extractCaptureDate } from "@/features/media/lib/exif";
 import { useSyncStatus } from "@/lib/sync/use-sync-status";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 interface TripGalleryProps {
   tripId: string;
@@ -38,6 +39,7 @@ const FILTER_LABELS: Record<GalleryFilter, string> = {
 const NO_DATE_LABEL = "No date / Older";
 
 export function TripGallery({ tripId, userId, canEdit = true, activityId = null, autoOpen = false, onAutoOpened }: TripGalleryProps) {
+  const { t } = useI18n();
   const [compressing, setCompressing] = useState(false);
   const [media, setMedia] = useState<TripMedia[] | null>(null);
   const [progress, setProgress] = useState(0);
@@ -176,24 +178,24 @@ export function TripGallery({ tripId, userId, canEdit = true, activityId = null,
             <Button asChild variant="outline" size="sm" disabled={compressing}>
               <span>
                 <ImagePlus className="size-5" />
-                {compressing ? "Compressing..." : "Add photos"}
+                {compressing ? t("common.compressing") : t("common.addPhotos")}
               </span>
             </Button>
           </label>
         )}
       </div>
 
-      {compressing && <div role="status" className="rounded-lg bg-muted p-3 text-sm">Compressing photos… {progress}%</div>}
+      {compressing && <div role="status" className="rounded-lg bg-muted p-3 text-sm">{t("common.compressing")} {progress}%</div>}
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-      {(media ?? []).some((item) => item.uploadStatus !== "uploaded") && <p className="text-xs text-muted-foreground">{sync.isOnline ? "Photos upload automatically in the background." : "Photos are safe on this device and will upload when online."}</p>}
+      {(media ?? []).some((item) => item.uploadStatus !== "uploaded") && <p className="text-xs text-muted-foreground">{sync.isOnline ? t("common.photosBackground") : t("common.photosOffline")}</p>}
 
-      {media === null && <div role="status" className="h-32 animate-pulse rounded-xl bg-muted" aria-label="Loading gallery" />}
+      {media === null && <div role="status" className="h-32 animate-pulse rounded-xl bg-muted" aria-label={t("common.loadingGallery")} />}
 
       {media !== null && media.length > 0 && (
-        <div className="flex w-fit rounded-md border p-0.5" role="group" aria-label="Gallery view">
+        <div className="flex w-fit rounded-md border p-0.5" role="group" aria-label={t("common.galleryView")}>
           {(Object.keys(FILTER_LABELS) as GalleryFilter[]).map((option) => (
             <Button key={option} size="sm" variant={filter === option ? "default" : "ghost"} onClick={() => setFilter(option)} aria-pressed={filter === option}>
-              {FILTER_LABELS[option]}
+              {option === "all" ? t("common.all") : option === "today" ? t("common.today") : t("common.day")}
             </Button>
           ))}
         </div>
@@ -226,24 +228,24 @@ export function TripGallery({ tripId, userId, canEdit = true, activityId = null,
 
       {media !== null && media.length === 0 && (
         <p className="text-sm text-muted-foreground">
-          {canEdit ? "No photos yet. Add some and they will be available offline after compression." : "No photos yet."}
+          {canEdit ? t("common.noPhotosOffline") : t("common.noPhotos")}
         </p>
       )}
 
       {media !== null && media.length > 0 && visibleItems.length === 0 && (
-        <p className="text-sm text-muted-foreground">No photos match this view.</p>
+        <p className="text-sm text-muted-foreground">{t("common.noPhotosView")}</p>
       )}
 
       <Dialog open={lightbox.open} onOpenChange={(open) => setLightbox((current) => ({ ...current, open }))}>
         <DialogContent className="max-w-5xl border-0 bg-transparent p-0 shadow-none" onKeyDown={handleKeyDown}>
-          <DialogTitle className="sr-only">Photo preview</DialogTitle>
-          <DialogDescription className="sr-only">Use the left and right arrow keys to browse photos. Press Escape to close.</DialogDescription>
+          <DialogTitle className="sr-only">{t("common.photoPreview")}</DialogTitle>
+          <DialogDescription className="sr-only">{t("common.photoBrowseHelp")}</DialogDescription>
           <div className="relative flex items-center justify-center">
             {currentItem && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={currentUrl}
-                alt={currentItem.caption ?? "Trip photo"}
+                alt={currentItem.caption ?? t("common.tripPhoto")}
                 className="max-h-[85vh] max-w-full rounded-lg object-contain"
               />
             )}
@@ -251,7 +253,7 @@ export function TripGallery({ tripId, userId, canEdit = true, activityId = null,
               type="button"
               onClick={previous}
               className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-background/80 p-3 text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              aria-label="Previous photo"
+              aria-label={t("common.previousPhoto")}
             >
               <ChevronLeft className="size-6" />
             </button>
@@ -259,7 +261,7 @@ export function TripGallery({ tripId, userId, canEdit = true, activityId = null,
               type="button"
               onClick={next}
               className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-background/80 p-3 text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              aria-label="Next photo"
+              aria-label={t("common.nextPhoto")}
             >
               <ChevronRight className="size-6" />
             </button>
@@ -284,6 +286,7 @@ function GalleryImage({
   onRetry: (id: string) => void;
   onOpen: () => void;
 }) {
+  const { t } = useI18n();
   const objectUrl = useMemo(() => item.uploadedUrl ?? (item.blob ? URL.createObjectURL(item.blob) : ""), [item.blob, item.uploadedUrl]);
   useEffect(() => () => { if (!item.uploadedUrl && objectUrl) URL.revokeObjectURL(objectUrl); }, [item.uploadedUrl, objectUrl]);
 
@@ -299,21 +302,21 @@ function GalleryImage({
         type="button"
         onClick={onOpen}
         className="h-full w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-        aria-label={`View ${item.caption ?? "trip photo"} in lightbox`}
+        aria-label={t("common.viewPhoto", { name: item.caption ?? t("common.tripPhoto") })}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={objectUrl}
-          alt={item.caption ?? "Trip photo"}
+          alt={item.caption ?? t("common.tripPhoto")}
           className="h-full w-full object-cover"
         />
       </button>
-      {canEdit && item.uploadStatus === "failed" && <button onClick={() => onRetry(item.id)} className="absolute left-2 top-2 rounded-full bg-background/90 p-1.5" aria-label="Retry photo upload" title={item.uploadError ?? "Upload failed"}><RotateCcw className="size-5" /></button>}
+      {canEdit && item.uploadStatus === "failed" && <button onClick={() => onRetry(item.id)} className="absolute left-2 top-2 rounded-full bg-background/90 p-1.5" aria-label={t("common.retryUpload")} title={item.uploadError ?? t("common.uploadFailed")}><RotateCcw className="size-5" /></button>}
       {item.uploadStatus === "uploading" && <div className="absolute inset-x-2 bottom-2 h-1.5 overflow-hidden rounded-full bg-background/70"><div className="h-full bg-primary" style={{ width: `${item.uploadProgress}%` }} /></div>}
       {canEdit && <button
         onClick={() => onDelete(item.id)}
         className="absolute right-2 top-2 rounded-full bg-background/80 p-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-        aria-label="Delete photo"
+        aria-label={t("common.deletePhoto")}
       >
         <Trash2 className="size-5 text-destructive" />
       </button>}

@@ -6,6 +6,7 @@ import { ContactRound, Plus, ShieldAlert, ShieldCheck, UserPlus, Wrench, type Lu
 import { EmergencyCenter } from "@/features/emergency/components/emergency-center";
 import type { Trip } from "@/features/domain/entities";
 import { tripTabPath } from "@/features/trips/lib/home-trips";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 interface QuickAction {
   key: string;
@@ -23,51 +24,52 @@ interface QuickAction {
  * is surfaced here as a prominent, always-available safety quick action.
  */
 export function QuickActionHub({ userId, primaryTrip }: { userId: string; primaryTrip: Trip | null }) {
+  const { t } = useI18n();
   const tripFallback = "/trips";
   const actions: QuickAction[] = [
 
     {
       key: "money-tools",
-      label: "Money tools",
-      description: "Convert currency & split tips",
+      label: t("common.moneyTools"),
+      description: t("common.convertSplit"),
       href: primaryTrip ? `${tripTabPath(primaryTrip.id, "finance")}&action=money-tools` : tripFallback,
       icon: Wrench,
       requiresTrip: true,
     },
     {
       key: "new-trip",
-      label: "New trip",
-      description: "Start planning",
+      label: t("common.newTrip"),
+      description: t("common.startPlanningTrip"),
       href: tripFallback,
       icon: Plus,
       requiresTrip: true,
     },
     {
       key: "vault",
-      label: "Trip vault",
-      description: "Secure documents",
+      label: t("common.tripVault"),
+      description: t("common.secureDocuments"),
       href: primaryTrip ? tripTabPath(primaryTrip.id, "vault") : tripFallback,
       icon: ShieldCheck,
       requiresTrip: true,
     },
     {
       key: "invite",
-      label: "Invite crew",
-      description: "Add travelers",
+      label: t("common.inviteCrew"),
+      description: t("common.addTravelers"),
       href: primaryTrip ? tripTabPath(primaryTrip.id, "travelers") : tripFallback,
       icon: UserPlus,
     },
     {
       key: "contact",
-      label: "Add contact",
-      description: "Save a traveler",
+      label: t("common.addContact"),
+      description: t("common.saveTraveler"),
       href: "/contacts",
       icon: ContactRound,
     },
   ];
 
   return (
-    <section aria-label="Quick actions" className="flex flex-wrap justify-center gap-3">
+    <section aria-label={t("common.quickActions")} className="flex flex-wrap justify-center gap-3">
       <EmergencyCenter
         ownerId={userId}
         tripId={primaryTrip?.id ?? null}
@@ -83,8 +85,8 @@ export function QuickActionHub({ userId, primaryTrip }: { userId: string; primar
               <ShieldAlert className="size-5" aria-hidden />
             </span>
             <span className="min-w-0">
-              <span className="block truncate text-sm font-semibold">Emergency</span>
-              <span className="block truncate text-xs text-muted-foreground">Safety info & contacts</span>
+              <span className="block truncate text-sm font-semibold">{t("common.emergency")}</span>
+              <span className="block truncate text-xs text-muted-foreground">{t("common.safetyContacts")}</span>
             </span>
           </button>
         )}
