@@ -175,7 +175,7 @@ export function TripGallery({ tripId, userId, canEdit = true, activityId = null,
               onChange={(e) => handleFiles(e.target.files)}
               disabled={compressing}
             />
-            <Button asChild variant="outline" size="sm" disabled={compressing}>
+            <Button asChild variant="outline" size="sm" className="border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100" disabled={compressing}>
               <span>
                 <ImagePlus className="size-5" />
                 {compressing ? t("common.compressing") : t("common.addPhotos")}
@@ -195,7 +195,7 @@ export function TripGallery({ tripId, userId, canEdit = true, activityId = null,
         <div className="flex w-fit rounded-md border p-0.5" role="group" aria-label={t("common.galleryView")}>
           {(Object.keys(FILTER_LABELS) as GalleryFilter[]).map((option) => (
             <Button key={option} size="sm" variant={filter === option ? "default" : "ghost"} onClick={() => setFilter(option)} aria-pressed={filter === option}>
-              {option === "all" ? t("common.all") : option === "today" ? t("common.today") : t("common.day")}
+              {option === "all" ? t("common.all") : option === "today" ? t("common.today") : FILTER_LABELS.day}
             </Button>
           ))}
         </div>

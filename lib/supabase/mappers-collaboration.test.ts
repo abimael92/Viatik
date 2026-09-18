@@ -6,7 +6,7 @@ const timestamp = "2026-01-01T00:00:00.000Z";
 
 describe("collaboration mappers", () => {
   it("round-trips memberships", () => {
-    const member = { id: "member-1", tripId: "trip-1", userId: "user-1", role: "editor" as const, invitedBy: "owner-1", joinedAt: timestamp, roleChangedAt: null, roleChangedBy: null, removedAt: null, removedBy: null, version: 1, createdAt: timestamp, updatedAt: timestamp };
+    const member = { id: "member-1", tripId: "trip-1", userId: "user-1", viatikId: null, role: "editor" as const, invitedBy: "owner-1", joinedAt: timestamp, roleChangedAt: null, roleChangedBy: null, removedAt: null, removedBy: null, version: 1, createdAt: timestamp, updatedAt: timestamp };
     expect(rowToTripMember(tripMemberToRow(member))).toEqual(member);
   });
 

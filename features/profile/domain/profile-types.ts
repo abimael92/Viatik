@@ -20,6 +20,7 @@ export interface LocalProfile {
   passportExpiresOn: string | null;
   /** The user's preferred currency from Settings (used for budgets). */
   preferredCurrency?: string | null;
+  muteTripNotifications?: boolean;
   updatedAt: string;
 }
 

@@ -43,6 +43,7 @@ export interface ProfileSummary {
   id: string;
   fullName: string | null;
   avatarUrl: string | null;
+  avatarSeed?: string | null;
   email: string | null;
 }
 
@@ -162,7 +163,7 @@ export interface ActivityParticipant {
   status: ActivityParticipationStatus;
 }
 
-export type ActivityPollStatus = "confirmed" | "proposed" | "voting" | "approved" | "rejected" | "tie_breaker_needed";
+export type ActivityPollStatus = "confirmed" | "proposed" | "voting" | "approved" | "rejected" | "tie_breaker_needed" | "cancelled";
 export type ActivityVoteChoice = "approve" | "decline" | "suggested";
 
 export interface ActivityPollOption {

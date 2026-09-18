@@ -11,7 +11,7 @@ export default async function SettingsPage() {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "full_name, avatar_url, avatar_seed, phone, birth_date, emergency_contact_name, emergency_contact_relationship, emergency_contact_phone, dietary_restrictions, allergies, passport_issuing_country, passport_expires_on, preferred_currency, preferred_language, viatik_id"
+      "full_name, avatar_url, avatar_seed, phone, birth_date, emergency_contact_name, emergency_contact_relationship, emergency_contact_phone, dietary_restrictions, allergies, passport_issuing_country, passport_expires_on, preferred_currency, preferred_language, mute_trip_notifications, viatik_id"
     )
     .eq("id", data.user.id)
     .maybeSingle();
@@ -33,6 +33,7 @@ export default async function SettingsPage() {
         passportExpiresOn: profile.passport_expires_on ?? undefined,
         preferredCurrency: profile.preferred_currency ?? undefined,
         preferredLanguage: profile.preferred_language ?? undefined,
+        muteTripNotifications: Boolean(profile.mute_trip_notifications),
       }
     : null;
   return (

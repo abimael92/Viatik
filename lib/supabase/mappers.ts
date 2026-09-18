@@ -453,14 +453,59 @@ export function tripMemberToRow(member: TripMember): Record<string, unknown> {
   return { id: member.id, trip_id: member.tripId, user_id: member.userId, role: member.role, invited_by: member.invitedBy, joined_at: member.joinedAt, role_changed_at: member.roleChangedAt, role_changed_by: member.roleChangedBy, removed_at: member.removedAt, removed_by: member.removedBy, version: member.version, created_at: member.createdAt, updated_at: member.updatedAt };
 }
 export function rowToTripMember(row: Record<string, unknown>): TripMember {
-  return { id: String(row.id), tripId: String(row.trip_id), userId: String(row.user_id), viatikId: row.viatik_id == null ? null : String(row.viatik_id), role: String(row.role) as TripMember["role"], invitedBy: row.invited_by == null ? null : String(row.invited_by), joinedAt: String(row.joined_at), roleChangedAt: row.role_changed_at == null ? null : String(row.role_changed_at), roleChangedBy: row.role_changed_by == null ? null : String(row.role_changed_by), removedAt: row.removed_at == null ? null : String(row.removed_at), removedBy: row.removed_by == null ? null : String(row.removed_by), version: Number(row.version ?? 1), createdAt: String(row.created_at), updatedAt: String(row.updated_at) };
+  return {
+    id: String(row.id),
+    tripId: String(row.trip_id),
+    userId: String(row.user_id),
+    viatikId: row.viatik_id == null ? null : String(row.viatik_id),
+    role: String(row.role) as TripMember["role"],
+    invitedBy: row.invited_by == null ? null : String(row.invited_by),
+    joinedAt: String(row.joined_at),
+    roleChangedAt:
+      row.role_changed_at == null ? null : String(row.role_changed_at),
+    roleChangedBy:
+      row.role_changed_by == null ? null : String(row.role_changed_by),
+    removedAt: row.removed_at == null ? null : String(row.removed_at),
+    removedBy: row.removed_by == null ? null : String(row.removed_by),
+    version: Number(row.version ?? 1),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  };
 }
 
-export function notificationToRow(notification: Notification): Record<string, unknown> {
-  return { id: notification.id, user_id: notification.userId, type: notification.type, reference_id: notification.referenceId, is_read: notification.isRead, message: notification.message, created_at: notification.createdAt, updated_at: notification.updatedAt, version: notification.version };
+export function notificationToRow(
+  notification: Notification,
+): Record<string, unknown> {
+  return {
+    id: notification.id,
+    user_id: notification.userId,
+    type: notification.type,
+    reference_id: notification.referenceId,
+    is_read: notification.isRead,
+    push_sent_at: notification.pushSentAt,
+    message: notification.message,
+    created_at: notification.createdAt,
+    updated_at: notification.updatedAt,
+    version: notification.version,
+  };
 }
-export function rowToNotification(row: Record<string, unknown>): Notification {
-  return { id: String(row.id), userId: String(row.user_id), type: String(row.type) as Notification["type"], referenceId: String(row.reference_id), isRead: Boolean(row.is_read), message: String(row.message), createdAt: String(row.created_at), updatedAt: String(row.updated_at), version: Number(row.version ?? 1) };
+
+export function rowToNotification(
+  row: Record<string, unknown>,
+): Notification {
+  return {
+    id: String(row.id),
+    userId: String(row.user_id),
+    type: String(row.type) as Notification["type"],
+    referenceId: String(row.reference_id),
+    isRead: Boolean(row.is_read),
+    pushSentAt:
+      row.push_sent_at == null ? null : String(row.push_sent_at),
+    message: String(row.message),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+    version: Number(row.version ?? 1),
+  };
 }
 export function invitationToRow(invitation: TripInvitation): Record<string, unknown> {
   return { id: invitation.id, trip_id: invitation.tripId, email: invitation.email, role: invitation.role, status: invitation.status, invited_by: invitation.invitedBy, invited_user_id: invitation.invitedUserId, expires_at: invitation.expiresAt, status_changed_at: invitation.statusChangedAt, status_changed_by: invitation.statusChangedBy, accepted_at: invitation.acceptedAt, accepted_by: invitation.acceptedBy, rejected_at: invitation.rejectedAt, rejected_by: invitation.rejectedBy, revoked_at: invitation.revokedAt, revoked_by: invitation.revokedBy, version: invitation.version, created_at: invitation.createdAt, updated_at: invitation.updatedAt };

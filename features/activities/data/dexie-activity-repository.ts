@@ -105,6 +105,14 @@ export class DexieActivityRepository implements ActivityRepository {
     });
   }
 
+  async cancelProposal(id: string): Promise<Activity> {
+    const activity = await getDb().activities.get(id);
+    if (!activity) throw new Error(`Activity ${id} not found`);
+    const actorId = getSyncUser();
+    if (!actorId || actorId !== activity.createdBy) throw new Error("Only the proposal creator can cancel it");
+    return this.update(id, { pollStatus: "cancelled", votingEndsAt: null });
+  }
+
   async move(id: string, dayDate: string, position: number): Promise<Activity> {
     return this.update(id, { dayDate, position });
   }

@@ -336,7 +336,7 @@ function TransitDetailsDialog({ segment, canEdit, onClose, onEdit, onDelete }: {
         </dl>
         <DialogFooter>
           {canEdit && <Button type="button" variant="destructive" onClick={() => { if (window.confirm(`Delete ${label}?`)) void onDelete(segment); }}><Trash2 className="size-4" />Delete</Button>}
-          {canEdit && <Button type="button" variant="outline" onClick={() => onEdit(segment)}><Pencil className="size-4" />Edit</Button>}
+          {canEdit && <Button type="button" variant="outline" className="border-yellow-300 bg-yellow-50 text-yellow-700 hover:bg-yellow-100" onClick={() => onEdit(segment)}><Pencil className="size-4" />Edit</Button>}
           <Button type="button" onClick={onClose}>Close</Button>
         </DialogFooter>
       </DialogContent>

@@ -15,8 +15,7 @@ import { Button } from "@/components/ui/button";
 import { IconTile } from "@/components/ui/icon-tile";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { deleteDatabase } from "@/lib/db/dexie";
-import { syncNow } from "@/lib/sync/sync-engine";
-import { useSyncStatus } from "@/lib/sync/use-sync-status";
+import { useSyncRetryCountdown, useSyncStatus } from "@/lib/sync/use-sync-status";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
@@ -60,6 +59,7 @@ export function AppShell({
   const [menuOpen, setMenuOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const sync = useSyncStatus();
+  const { countdown: syncRetryCountdown, retryNow } = useSyncRetryCountdown(sync);
   const { t } = useI18n();
 
   function signOut() {
@@ -101,11 +101,11 @@ export function AppShell({
               disabled
               title={t("common.comingSoon")}
               aria-disabled="true"
-              className={cn(navLinkClasses(false), "cursor-not-allowed opacity-60")}
+              className={cn(navLinkClasses(false), "min-w-0 overflow-hidden cursor-not-allowed opacity-60")}
             >
               {navIcon(Icon)}
-              {label}
-              <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <span className="min-w-0 flex-1 truncate">{label}</span>
+              <span className="ml-auto w-16 min-w-0 max-w-16 shrink-0 truncate rounded-full bg-muted px-2 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-muted-foreground">
                 {t("common.comingSoon")}
               </span>
             </button>
@@ -147,7 +147,7 @@ export function AppShell({
         </span>
         <NotificationBell userId={userId} />
       </div>
-      <div className="mt-3 flex items-center justify-between gap-2 border-t border-side-border pt-2.5">
+      <div className="mt-3 flex items-center justify-start gap-0 border-t border-side-border pt-2.5">
         <LanguageSwitcher dark />
         <SyncStatusPill compact />
       </div>
@@ -174,10 +174,13 @@ export function AppShell({
       {sync.isOnline && sync.status === "error" && (
         <div
           role="alert"
-          className="flex items-center justify-center gap-3 border-b border-border/40 bg-destructive/10 px-4 py-2 text-sm text-destructive backdrop-blur-md"
+          className="flex flex-col items-center justify-center gap-2 border-b border-border/40 bg-destructive/10 px-4 py-3 text-sm text-destructive backdrop-blur-md"
         >
           <span>{t("sync.error")}</span>
-          <Button size="sm" variant="outline" onClick={() => void syncNow()}>
+          {syncRetryCountdown !== null && (
+            <span aria-live="polite">{t("common.resyncIn", { count: syncRetryCountdown })}</span>
+          )}
+          <Button size="sm" variant="outline" onClick={retryNow}>
             {t("common.retry")}
           </Button>
         </div>
@@ -230,19 +233,8 @@ export function AppShell({
         </Link>
         <div className="flex items-center gap-1">
           <LanguageSwitcher dark />
-          <SyncStatusPill compact />
           <NotificationBell userId={userId} />
           <ThemeToggle />
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => void signOut()}
-            disabled={pending}
-            aria-label={t("common.signOut")}
-            title={t("common.signOut")}
-          >
-            <LogOut aria-hidden />
-          </Button>
           <Button
             variant="ghost"
             size="icon"
@@ -262,7 +254,18 @@ export function AppShell({
           className="fixed inset-x-0 top-16 z-30 border-b border-side-border bg-side p-4 shadow-lg backdrop-blur-xl lg:hidden"
         >
           {navigation}
-          <div className="mt-4 border-t border-side-border pt-3">{userCard}</div>
+          <div className="mt-4 border-t border-side-border pt-3">
+            {userCard}
+            <Button
+              variant="ghost"
+              className="mt-3 w-full justify-between rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-destructive hover:border-destructive/60 hover:bg-destructive/20 hover:text-destructive"
+              onClick={() => void signOut()}
+              disabled={pending}
+            >
+              <span className="text-xs font-semibold">{t("common.signOut")}</span>
+              <LogOut className="size-5" />
+            </Button>
+          </div>
         </div>
       )}
 

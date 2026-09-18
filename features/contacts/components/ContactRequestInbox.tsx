@@ -156,7 +156,7 @@ export function ContactRequestInbox({
                     variant="ghost"
                     size="icon"
                     aria-label={t("common.editContact", { name: contact.fullName })}
-                    className="size-9 sm:size-10 text-muted-foreground hover:text-foreground"
+                    className="size-9 bg-yellow-50 text-yellow-700 hover:bg-yellow-100 hover:text-yellow-800 sm:size-10"
                     onClick={() => onEdit(contact)}
                   >
                     <Pencil className="size-4" />

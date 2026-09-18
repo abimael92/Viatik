@@ -31,9 +31,13 @@ export function NotificationCenter({ userId }: { userId: string }) {
     try { await notificationRepository.markRead(item.id); } catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to update notification."); }
   }
 
+  async function markAllRead() {
+    try { await notificationRepository.markAllRead(userId); } catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to update notifications."); }
+  }
+
   return (
     <div className="space-y-6">
-      <div><Heading level={1} className="text-3xl font-bold">Notifications</Heading><p className="mt-1 text-muted-foreground">Stay on top of trip decisions, connections, and shared expenses.</p></div>
+      <div className="flex flex-wrap items-end justify-between gap-3"><div><Heading level={1} className="text-3xl font-bold">Notifications</Heading><p className="mt-1 text-muted-foreground">Stay on top of trip decisions, connections, and shared expenses.</p></div><Button variant="outline" onClick={() => void markAllRead()} disabled={!items.some((item) => !item.isRead)}>Mark all as read</Button></div>
       {error && <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
       <div className="overflow-hidden rounded-2xl border bg-card">
         {items.length === 0 ? <div className="p-10 text-center text-sm text-muted-foreground"><Bell className="mx-auto size-8 opacity-50" aria-hidden /><p className="mt-3">You’re all caught up.</p></div> : <ul role="list" className="divide-y divide-border/60">{items.map((item) => <NotificationRow key={item.id} item={item} onRead={() => void markRead(item)} />)}</ul>}

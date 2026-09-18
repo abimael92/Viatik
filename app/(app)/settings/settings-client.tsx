@@ -86,7 +86,7 @@ export function SettingsClient({
                 </div>
               </div>
               {!editing && (
-                <Button type="button" variant="outline" onClick={() => setEditing(true)} disabled={pending}>
+                <Button type="button" variant="outline" className="border-yellow-300 bg-yellow-50 text-yellow-700 hover:bg-yellow-100" onClick={() => setEditing(true)} disabled={pending}>
                   <Pencil className="size-5" />{t("common.edit")}
                 </Button>
               )}
@@ -240,6 +240,7 @@ function ProfileEditForm({
     birthDate: initial.birthDate ?? "",
     preferredCurrency: initial.preferredCurrency ?? "",
     preferredLanguage: initial.preferredLanguage ?? "",
+    muteTripNotifications: initial.muteTripNotifications ?? false,
     dietaryRestrictions: initial.dietaryRestrictions?.join(", ") ?? "",
     allergies: initial.allergies?.join(", ") ?? "",
     emergencyContactName: initial.emergencyContactName ?? "",
@@ -283,6 +284,7 @@ function ProfileEditForm({
         birthDate: values.birthDate || undefined,
         preferredCurrency: values.preferredCurrency || undefined,
         preferredLanguage: values.preferredLanguage || undefined,
+        muteTripNotifications: values.muteTripNotifications,
         dietaryRestrictions: parseTags(values.dietaryRestrictions),
         allergies: parseTags(values.allergies),
         emergencyContactName: values.emergencyContactName,
@@ -337,6 +339,10 @@ function ProfileEditForm({
         <Label htmlFor="settings-preferredLanguage">Preferred language</Label>
         <Input id="settings-preferredLanguage" value={values.preferredLanguage} onChange={(event) => setField("preferredLanguage", event.target.value)} placeholder="English" maxLength={35} />
       </div>
+      <label className="flex items-center gap-3 rounded-xl border p-3 text-sm sm:col-span-2">
+        <input type="checkbox" checked={values.muteTripNotifications} onChange={(event) => setValues((current) => ({ ...current, muteTripNotifications: event.target.checked }))} />
+        <span><span className="block font-semibold">Mute trip notifications</span><span className="text-xs text-muted-foreground">10 PM – 8 AM</span></span>
+      </label>
       <div className="space-y-2">
         <Label htmlFor="settings-dietaryRestrictions">Dietary restrictions</Label>
         <Input id="settings-dietaryRestrictions" value={values.dietaryRestrictions} onChange={(event) => setField("dietaryRestrictions", event.target.value)} placeholder="vegetarian, gluten-free" />

@@ -27,10 +27,19 @@ export class DexieNotificationRepository {
 
   async create(input: { id?: string; userId: string; type: NotificationType; referenceId: string; message: string }): Promise<Notification> {
     const now = new Date().toISOString();
-    const item: Notification = { id: input.id ?? crypto.randomUUID(), userId: input.userId, type: input.type, referenceId: input.referenceId, isRead: false, message: input.message.trim(), createdAt: now, updatedAt: now, version: 1 };
+    const item: Notification = { id: input.id ?? crypto.randomUUID(), userId: input.userId, type: input.type, referenceId: input.referenceId, isRead: false, pushSentAt: null, message: input.message.trim(), createdAt: now, updatedAt: now, version: 1 };
     return TransactionContext.runInTransaction([db().notifications], async (tx) => {
       await tx.table<Notification>("notifications").put(item);
       return item;
+    });
+  }
+
+  async markAllRead(userId: string): Promise<void> {
+    const items = await db().notifications.where("userId").equals(userId).filter((item) => !item.isRead).toArray();
+    if (!items.length) return;
+    const now = new Date().toISOString();
+    await TransactionContext.runInTransaction([db().notifications], async (tx) => {
+      await tx.table<Notification>("notifications").bulkPut(items.map((item) => ({ ...item, isRead: true, updatedAt: now, version: item.version + 1 })));
     });
   }
 

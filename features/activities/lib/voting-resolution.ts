@@ -1,9 +1,8 @@
 import type { Activity, ActivityPollOption, ActivityPollVote } from "@/features/domain/entities";
 
 export type VotingResolution =
-  | { status: "approved"; option: ActivityPollOption | null }
-  | { status: "rejected"; option: null }
-  | { status: "tie_breaker_needed"; option: null };
+  | { status: "approved"; option: ActivityPollOption | null; tieBreaker: boolean }
+  | { status: "rejected"; option: null; tieBreaker: false };
 
 export function resolveActivityVote(activity: Pick<Activity, "pollOptions" | "pollVotes">, eligibleUserCount: number): VotingResolution | null {
   const options = activity.pollOptions ?? [];
@@ -17,9 +16,12 @@ export function resolveActivityVote(activity: Pick<Activity, "pollOptions" | "po
   }
   const max = Math.max(0, ...counts.values());
   const winners = options.filter((option) => (counts.get(option.id) ?? 0) === max);
-  if (winners.length > 1 || (winners.length === 1 && max === 0)) return { status: "tie_breaker_needed", option: null };
-  if (winners.length === 0) return { status: "rejected", option: null };
-  return { status: "approved", option: winners[0] };
+  if (winners.length > 1 || (winners.length === 1 && max === 0)) {
+    const option = winners[Math.floor(Math.random() * winners.length)] ?? null;
+    return { status: "approved", option, tieBreaker: true };
+  }
+  if (winners.length === 0) return { status: "rejected", option: null, tieBreaker: false };
+  return { status: "approved", option: winners[0], tieBreaker: false };
 }
 
 export function eligibleVoteCount(members: ReadonlyArray<{ viatikId?: string | null }>): number {

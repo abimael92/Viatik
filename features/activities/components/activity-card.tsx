@@ -4,11 +4,13 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, MapPin, Clock, CloudRain } from "lucide-react";
 import { motion } from "motion/react";
+import { useEffect, useState } from "react";
 
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { ActivityVoteCard } from "@/features/activities/components/activity-vote-card";
+import { collaborationRepository } from "@/features/collaboration/data/dexie-collaboration-repository";
 import { formatActivityTime } from "@/features/activities/lib/activity-time";
-import type { Activity } from "@/features/domain/entities";
+import type { Activity, ProfileSummary } from "@/features/domain/entities";
 import type { WeatherConflict } from "@/features/weather/domain/weather-conflict-types";
 import { getActivityCategoryColors, isUserAttending } from "@/features/trips/lib/activity-category-colors";
 import { cn } from "@/lib/utils";
@@ -25,6 +27,16 @@ interface ActivityCardProps {
 }
 
 export function ActivityCard({ activity, onSelect, draggable = true, conflict, currentUserId, eligibleViaticUsers, tripOwnerId }: ActivityCardProps) {
+  const [creatorProfile, setCreatorProfile] = useState<ProfileSummary | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void collaborationRepository.listProfiles([activity.createdBy]).then((profiles) => {
+      if (!cancelled) setCreatorProfile(profiles[0] ?? null);
+    }).catch(() => {
+      if (!cancelled) setCreatorProfile(null);
+    });
+    return () => { cancelled = true; };
+  }, [activity.createdBy]);
   const colors = getActivityCategoryColors(activity.category);
   const muted = Boolean(currentUserId && !isUserAttending(activity, currentUserId));
   const {
@@ -82,7 +94,7 @@ export function ActivityCard({ activity, onSelect, draggable = true, conflict, c
             {activity.description || activity.location || activity.category}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-            <UserAvatar seed={activity.createdBy} name="Collaborator" size="sm" />
+            <UserAvatar seed={creatorProfile?.avatarSeed} src={creatorProfile?.avatarUrl} name={creatorProfile?.fullName ?? "Collaborator"} size="sm" />
             {activity.startTime && (
               <span className="flex items-center gap-1">
                 <Clock className="size-3" />

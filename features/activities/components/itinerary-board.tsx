@@ -221,6 +221,7 @@ export function ItineraryBoard({
       </div>
       <DragOverlay dropAnimation={{ duration: 150, easing: "cubic-bezier(0.18, 0.8, 0.25, 1)" }}>
         {activeActivity ? <ActivityCard activity={activeActivity} currentUserId={currentUserId} eligibleViaticUsers={eligibleViaticUsers} tripOwnerId={tripOwnerId} /> : null}
+        {activeActivity ? <ActivityCard activity={activeActivity} currentUserId={currentUserId} /> : null}
       </DragOverlay>
     </DndContext>
   );

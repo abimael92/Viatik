@@ -8,6 +8,8 @@ export interface ActivityRepository {
   watchByTrip(tripId: string, onChange: (activities: Activity[]) => void): () => void;
   create(input: NewActivity): Promise<Activity>;
   update(id: string, patch: Partial<Omit<Activity, "id" | "tripId">>): Promise<Activity>;
+  /** Cancel an activity proposal; only its creator may perform this transition. */
+  cancelProposal(id: string): Promise<Activity>;
   /**
    * Move an activity to a new day and/or position (drag-and-drop). `position`
    * is a fractional sort key: pass the midpoint between the two neighboring

@@ -6,10 +6,12 @@ import { createPortal } from "react-dom";
 import { liveQuery } from "dexie";
 
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { useDatabase } from "@/lib/db/database-provider";
+import { syncNow } from "@/lib/sync/sync-engine";
 import type { OutboxMutation } from "@/lib/sync/types";
-import { useSyncRetryCountdown, useSyncStatus } from "@/lib/sync/use-sync-status";
+import { useSyncStatus } from "@/lib/sync/use-sync-status";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
@@ -27,10 +29,6 @@ export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const [triggerRect, setTriggerRect] = useState<DOMRect | null>(null);
   const [queue, setQueue] = useState<OutboxMutation[]>([]);
-  const { countdown: resyncCountdown, retryNow } = useSyncRetryCountdown({
-    ...sync,
-    pending: Math.max(sync.pending, queue.length),
-  });
 
   // Measure the trigger so the dropdown can be rendered fixed (via a portal)
   // near it, since the sidebar clips absolutely-positioned children.
@@ -53,7 +51,7 @@ export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
     offline || sync.status === "error" || sync.conflicts > 0 || sync.pending > 0 || queue.length > 0;
 
   function compactLabel(value: string) {
-    return <span className={compact ? "max-w-28 truncate text-xs font-semibold" : undefined} title={compact ? value : undefined}>{value}</span>;
+    return <span className={compact ? "w-14 min-w-0 max-w-14 truncate text-[8px] font-semibold" : undefined} title={compact ? value : undefined}>{value}</span>;
   }
 
   function renderPill() {
@@ -77,7 +75,7 @@ export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
       return (
         <Badge variant="warning">
           <StatusDot tone="warning" pulse />
-          {compactLabel(resyncCountdown !== null ? t("common.resyncIn", { count: resyncCountdown }) : t("common.syncIssue"))}
+          {compactLabel(t("common.syncIssue"))}
           <RefreshCw className="size-3" aria-hidden />
         </Badge>
       );
@@ -101,15 +99,15 @@ export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
       );
     }
     return (
-      <Badge variant="success">
-        <StatusDot tone="success" />
+      <StatusBadge>
+        <span className="mr-1.5 inline-block size-2 rounded-full bg-green-700" aria-hidden />
         {compactLabel(t("common.synced"))}
-      </Badge>
+      </StatusBadge>
     );
   }
 
   return (
-    <div className="relative" ref={triggerRef}>
+    <div className={cn("relative", compact && "scale-90 origin-left")} ref={triggerRef}>
       <button
         type="button"
         onClick={() => interactive && setOpen((value) => !value)}
@@ -179,13 +177,11 @@ export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
               variant="primary"
               className="w-full"
               onClick={() => {
-                retryNow();
+                void syncNow();
               }}
             >
               <RefreshCw className="size-5" />
-              {resyncCountdown !== null
-                ? t("common.resyncIn", { count: resyncCountdown })
-                : t("common.resyncNow")}
+              {t("common.resyncNow")}
             </Button>
           </div>
         </div>,

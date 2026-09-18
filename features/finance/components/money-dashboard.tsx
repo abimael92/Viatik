@@ -409,7 +409,7 @@ function FinancialHero({
           </p>
         </div>
         {canEdit && !editing && (
-          <Button variant="outline" size="sm" onClick={beginEdit}>
+          <Button variant="outline" size="sm" className="border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100" onClick={beginEdit}>
             <Pencil className="size-4" /> Edit budget
           </Button>
         )}
