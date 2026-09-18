@@ -31,6 +31,8 @@ interface DayColumnProps {
   /** Receives a scout suggestion dropped onto this column. */
   onDropScout?: (dayDate: string, payload: ScoutDndPayload) => void;
   currentUserId?: string;
+  eligibleViaticUsers?: number;
+  tripOwnerId?: string;
 }
 
 export function DayColumn({
@@ -46,6 +48,8 @@ export function DayColumn({
   conflicts,
   onDropScout,
   currentUserId,
+  eligibleViaticUsers,
+  tripOwnerId,
 }: DayColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: dayDate, data: { dayDate } });
   const setDragOverDay = useUiStore((s) => s.setDragOverDay);
@@ -92,7 +96,7 @@ export function DayColumn({
         onDropScout?.(dayDate, payload);
       }}
       className={cn(
-        "flex h-full min-h-[12rem] flex-col gap-3 rounded-xl border border-border bg-muted/30 p-3",
+        "flex h-full min-h-48 flex-col gap-3 rounded-xl border border-border bg-muted/30 p-3",
         isOver && "border-primary bg-primary/5 ring-2 ring-primary/20",
         scoutOver && "border-primary bg-primary/5 ring-2 ring-primary/20"
       )}
@@ -134,6 +138,8 @@ export function DayColumn({
               draggable={draggable}
               conflict={conflicts?.[activity.id]}
               currentUserId={currentUserId}
+              eligibleViaticUsers={eligibleViaticUsers}
+              tripOwnerId={tripOwnerId}
             />
           ))}
           {emptyText && (

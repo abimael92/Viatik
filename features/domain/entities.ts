@@ -95,6 +95,8 @@ export interface TripMember {
   id: string;
   tripId: string;
   userId: string;
+  /** Public Viatik identity; null means this member is not eligible for group voting. */
+  viatikId?: string | null;
   role: TripMemberRole;
   invitedBy: string | null;
   joinedAt: string;
@@ -160,7 +162,7 @@ export interface ActivityParticipant {
   status: ActivityParticipationStatus;
 }
 
-export type ActivityPollStatus = "confirmed" | "proposed" | "voting" | "approved" | "rejected";
+export type ActivityPollStatus = "confirmed" | "proposed" | "voting" | "approved" | "rejected" | "tie_breaker_needed";
 export type ActivityVoteChoice = "approve" | "decline" | "suggested";
 
 export interface ActivityPollOption {

@@ -34,18 +34,25 @@ const activity: Activity = {
 
 describe("ActivityVoteCard", () => {
   it("shows proposal status, voter avatars, and casts approval", async () => {
-    render(<ActivityVoteCard activity={activity} currentUserId="user-1" />);
+    render(<ActivityVoteCard activity={activity} currentUserId="user-1" eligibleViaticUsers={2} />);
     expect(screen.getByText("Pending group approval")).toBeTruthy();
     expect(screen.getByText("Current plan: Museum")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Approve" }));
     await waitFor(() => expect(activityRepository.update).toHaveBeenCalledWith("activity-1", expect.objectContaining({
-      pollStatus: "voting",
+      pollStatus: "approved",
       pollVotes: expect.arrayContaining([expect.objectContaining({ userId: "user-1", choice: "approve", optionId: "option-1" })]),
     })));
   });
 
+  it("disables voting when fewer than two Viatik users are eligible", () => {
+    render(<ActivityVoteCard activity={activity} currentUserId="user-1" eligibleViaticUsers={1} />);
+    const approve = screen.getByRole("button", { name: "Approve" });
+    expect((approve as HTMLButtonElement).disabled).toBe(true);
+    expect(approve.parentElement?.getAttribute("title")).toBe("Requires at least 2 Viatik users");
+  });
+
   it("adds and votes for a suggested alternative", async () => {
-    render(<ActivityVoteCard activity={activity} currentUserId="user-1" />);
+    render(<ActivityVoteCard activity={activity} currentUserId="user-1" eligibleViaticUsers={2} />);
     fireEvent.click(screen.getByRole("button", { name: "Suggest alternative" }));
     fireEvent.change(screen.getByLabelText("Alternative"), { target: { value: "Gallery" } });
     fireEvent.click(screen.getByRole("button", { name: "Submit alternative" }));
