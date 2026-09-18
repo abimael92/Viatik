@@ -6,7 +6,7 @@ import type { Activity } from "@/features/domain/entities";
 import { activityRepository } from "@/features/activities/data/dexie-activity-repository";
 
 vi.mock("@/features/activities/data/dexie-activity-repository", () => ({
-  activityRepository: { update: vi.fn().mockResolvedValue(undefined) },
+  activityRepository: { update: vi.fn().mockResolvedValue(undefined), cancelProposal: vi.fn().mockResolvedValue(undefined) },
 }));
 
 const timestamp = "2026-09-15T12:00:00.000Z";
@@ -34,14 +34,33 @@ const activity: Activity = {
 
 describe("ActivityVoteCard", () => {
   it("shows proposal status, voter avatars, and casts approval", async () => {
-    render(<ActivityVoteCard activity={activity} currentUserId="user-1" eligibleViaticUsers={2} />);
+    const { container } = render(<ActivityVoteCard activity={activity} currentUserId="user-1" eligibleViaticUsers={2} profiles={[{ id: "user-2", fullName: "Mika Sato", avatarUrl: "https://example.com/mika.png", avatarSeed: "adventurer|mika", email: null }]} />);
     expect(screen.getByText("Pending group approval")).toBeTruthy();
     expect(screen.getByText("Current plan: Museum")).toBeTruthy();
+    expect(container.querySelector('img[src="https://example.com/mika.png"]')).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Approve" }));
     await waitFor(() => expect(activityRepository.update).toHaveBeenCalledWith("activity-1", expect.objectContaining({
-      pollStatus: "approved",
+      pollStatus: "voting",
       pollVotes: expect.arrayContaining([expect.objectContaining({ userId: "user-1", choice: "approve", optionId: "option-1" })]),
     })));
+  });
+
+  it("uses initials instead of a generated avatar when the account has no avatar set", () => {
+    render(<ActivityVoteCard activity={activity} currentUserId="user-1" eligibleViaticUsers={2} profiles={[{ id: "user-2", fullName: "Abimael Garcia", avatarUrl: null, avatarSeed: null, email: null }]} />);
+    expect(screen.getByText("AG")).toBeTruthy();
+  });
+
+  it("lets only the proposal creator cancel the suggestion", async () => {
+    render(<ActivityVoteCard activity={activity} currentUserId="user-2" eligibleViaticUsers={2} />);
+    const cancel = screen.getByRole("button", { name: "Cancel suggestion" });
+    expect(cancel).toBeTruthy();
+    fireEvent.click(cancel);
+    await waitFor(() => expect(activityRepository.cancelProposal).toHaveBeenCalledWith("activity-1"));
+  });
+
+  it("does not show cancellation to another voter", () => {
+    render(<ActivityVoteCard activity={activity} currentUserId="user-1" eligibleViaticUsers={2} />);
+    expect(screen.queryByRole("button", { name: "Cancel suggestion" })).toBeNull();
   });
 
   it("disables voting when fewer than two Viatik users are eligible", () => {
@@ -52,7 +71,7 @@ describe("ActivityVoteCard", () => {
   });
 
   it("adds and votes for a suggested alternative", async () => {
-    render(<ActivityVoteCard activity={activity} currentUserId="user-1" eligibleViaticUsers={2} />);
+    render(<ActivityVoteCard activity={activity} currentUserId="user-1" />);
     fireEvent.click(screen.getByRole("button", { name: "Suggest alternative" }));
     fireEvent.change(screen.getByLabelText("Alternative"), { target: { value: "Gallery" } });
     fireEvent.click(screen.getByRole("button", { name: "Submit alternative" }));
