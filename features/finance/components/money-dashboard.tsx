@@ -96,6 +96,10 @@ const TONE_TEXT: Record<BudgetTone, string> = {
 
 const DAY_MS = 86_400_000;
 
+function formatMoney(amount: MinorUnits, currency: string): string {
+  return `${formatMinorUnits(amount, currency)} ${currency.toUpperCase()}`;
+}
+
 /** Whole trip-day index for `today` relative to `start` (1-based, clamped ≥ 0). */
 function dayNumber(start: string | null, today: string): number {
   if (!start) return 0;
@@ -172,6 +176,14 @@ export function MoneyDashboard({
 
   return (
     <section className="space-y-6" aria-labelledby="budget-heading">
+      {!canEdit && (
+        <div role="status" className="rounded-2xl border bg-muted/50 p-4 text-sm text-muted-foreground">
+          You have view-only access. You can review expenses and balances, but only owners and editors can change financial data.
+        </div>
+      )}
+      <p className="text-muted-foreground">
+        Track group spending, manage your trip budget, record expenses, and see how much each traveler owes or is owed.
+      </p>
       <FinancialHero
         tripId={tripId}
         userId={userId}
@@ -399,12 +411,11 @@ function FinancialHero({
             )}
           </div>
           <p className="mt-1 font-mono text-3xl font-bold tracking-tight tabular-nums sm:text-4xl">
-            {formatAmount(convertBudget(totalSpent, baseCurrency, displayCurrency), displayCurrency)}
-            <span className="ml-2 text-sm font-medium text-muted-foreground">{displayCurrency}</span>
+            {formatAmount(convertBudget(totalSpent, baseCurrency, displayCurrency), displayCurrency)} {displayCurrency}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
             {totalBudget !== null
-              ? `of ${formatAmount(convertBudget(totalBudget, baseCurrency, displayCurrency), displayCurrency)} budget`
+              ? `of ${formatMoney(convertBudget(totalBudget, baseCurrency, displayCurrency), displayCurrency)} budget`
               : "(no budget set)"}
           </p>
         </div>
@@ -423,7 +434,7 @@ function FinancialHero({
         {remaining !== null && (
           <span className={cn("font-semibold", TONE_TEXT[tone])}>
             {remaining >= 0n ? "Left: " : "Over: "}
-            {formatMinorUnits(remaining < 0n ? -remaining : remaining, baseCurrency)}
+            {formatMoney(remaining < 0n ? -remaining : remaining, baseCurrency)}
           </span>
         )}
       </div>
@@ -431,13 +442,13 @@ function FinancialHero({
       <div className="relative mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
         <HeroStat
           label="Your standing"
-          value={formatMinorUnits(personalStanding < 0n ? -personalStanding : personalStanding, baseCurrency)}
+          value={formatMoney(personalStanding < 0n ? -personalStanding : personalStanding, baseCurrency)}
           detail={standingDetail}
           tone={standingTone}
         />
         <HeroStat
           label={dailyTarget !== null ? "Daily target" : "Trip days"}
-          value={dailyTarget !== null ? `${formatMinorUnits(dailyTarget, baseCurrency)}/day` : String(dayCount)}
+          value={dailyTarget !== null ? `${formatMoney(dailyTarget, baseCurrency)}/day` : String(dayCount)}
         />
       </div>
 
@@ -474,8 +485,8 @@ function FinancialHero({
             </p>
             {recommendedDaily !== null ? (
               <p className="text-xs text-primary">
-                Recommended: <span className="font-semibold">{formatMinorUnits(recommendedDaily, baseCurrency)}</span>/day
-                {" "}— keeps ~10% of your {formatMinorUnits(totalBudget!, baseCurrency)} budget as a buffer over {dayCount} day{dayCount === 1 ? "" : "s"}.
+                Recommended: <span className="font-semibold">{formatMoney(recommendedDaily, baseCurrency)}</span>/day
+                {" "}— keeps ~10% of your {formatMoney(totalBudget!, baseCurrency)} budget as a buffer over {dayCount} day{dayCount === 1 ? "" : "s"}.
               </p>
             ) : (
               <p className="text-xs text-muted-foreground">
@@ -528,7 +539,7 @@ function BudgetConversion({ input, from, to }: { input: string; from: string; to
   if (converted === null) return null;
   return (
     <p className="text-xs text-muted-foreground">
-      ≈ {formatAmount(converted, to)} in {to}
+      ≈ {formatAmount(converted, to)} {to.toUpperCase()}
     </p>
   );
 }
@@ -732,9 +743,9 @@ function CategoryEnvelope({
           <div>
             <p className="text-sm font-semibold">{SPENDING_CATEGORY_LABELS[category]}</p>
             <p className="font-mono text-sm font-bold tabular-nums">
-              {formatMinorUnits(spent, baseCurrency)}
+              {formatMoney(spent, baseCurrency)}
               <span className="font-normal text-muted-foreground">
-                {allocated !== null ? ` / ${formatMinorUnits(allocated, baseCurrency)}` : ""}
+                {allocated !== null ? ` / ${formatMoney(allocated, baseCurrency)}` : ""}
               </span>
             </p>
           </div>
@@ -804,9 +815,9 @@ function buildPacingAlerts(
   const usage = getBudgetUsage(totalSpent, totalBudget);
 
   if (remaining < 0n) {
-    alerts.push({ tone: "danger", message: `You're over budget by ${formatMinorUnits(-remaining, baseCurrency)}.` });
+    alerts.push({ tone: "danger", message: `You're over budget by ${formatMoney(-remaining, baseCurrency)}.` });
   } else if (usage !== null && usage >= 0.8) {
-    alerts.push({ tone: "warn", message: `Close to budget — ${formatMinorUnits(remaining, baseCurrency)} left.` });
+    alerts.push({ tone: "warn", message: `Close to budget — ${formatMoney(remaining, baseCurrency)} left.` });
   }
 
   if (dailyTarget !== null && startDate && endDate) {
@@ -819,7 +830,7 @@ function buildPacingAlerts(
       if (diff > 0n) {
         alerts.push({
           tone: "warn",
-          message: `Over daily pace by ${formatMinorUnits(diff, baseCurrency)} — expected ${formatMinorUnits(expected, baseCurrency)} by day ${elapsedDays}.`,
+          message: `Over daily pace by ${formatMoney(diff, baseCurrency)} — expected ${formatMoney(expected, baseCurrency)} by day ${elapsedDays}.`,
         });
       }
     }
