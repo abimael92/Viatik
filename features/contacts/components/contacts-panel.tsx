@@ -13,6 +13,10 @@ import { contactRepository } from "@/features/contacts/data/dexie-contact-reposi
 import type { CurrentPublicProfile } from "@/features/contacts/lib/profile-directory";
 import type { Contact } from "@/features/domain/entities";
 
+export function contactsPageContacts(contacts: Contact[]): Contact[] {
+  return contacts.filter((contact) => Boolean(contact.linkedProfileId));
+}
+
 export function ContactsPanel({ userId, ownProfile }: { userId: string; ownProfile: CurrentPublicProfile }) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [editing, setEditing] = useState<Contact | null | undefined>(undefined);
@@ -76,7 +80,7 @@ export function ContactsPanel({ userId, ownProfile }: { userId: string; ownProfi
 
       <ContactRequestInbox
         ownerId={userId}
-        contacts={contacts}
+        contacts={contactsPageContacts(contacts)}
         onView={(contact) => setViewing(contact)}
         onEdit={(contact) => setEditing(contact)}
         onRemove={(contact) => void remove(contact)}
@@ -98,6 +102,7 @@ export function ContactsPanel({ userId, ownProfile }: { userId: string; ownProfi
         userId={userId}
         contact={editing}
         ownProfile={ownProfile}
+        relationshipOnly={Boolean(editing?.linkedProfileId)}
         onOpenChange={(open) => !open && setEditing(undefined)}
       />
     </div>

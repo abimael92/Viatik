@@ -1,6 +1,18 @@
 "use client";
 
-import { BedDouble, Car, Pencil, Plus, ReceiptText, ShoppingBag, Ticket, Trash2, UtensilsCrossed, UserRound, X } from "lucide-react";
+import {
+  BedDouble,
+  Car,
+  Pencil,
+  Plus,
+  ReceiptText,
+  ShoppingBag,
+  Ticket,
+  Trash2,
+  UtensilsCrossed,
+  UserRound,
+  X,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -19,15 +31,33 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { collaborationRepository } from "@/features/collaboration/data/dexie-collaboration-repository";
+import {
+  contactRepository,
+  tripTravelerRepository,
+} from "@/features/contacts/data/dexie-contact-repository";
 import type {
   Expense,
   ExpenseShare,
   ExpenseSplitType,
   ProfileSummary,
   TripMember,
+  TripTraveler,
 } from "@/features/domain/entities";
-import { SPENDING_CATEGORIES, SPENDING_CATEGORY_LABELS, SPENDING_CATEGORY_KEYS, SPENDING_SUBCATEGORY_LABELS, type SpendingCategory, type SpendingSubcategory } from "@/features/domain/categories";
-import { decimalFromMinorUnits, formatMinorUnits, getCurrencyExponent, parseMinorUnits, toBaseMinorUnits } from "@/features/domain/money";
+import {
+  SPENDING_CATEGORIES,
+  SPENDING_CATEGORY_LABELS,
+  SPENDING_CATEGORY_KEYS,
+  SPENDING_SUBCATEGORY_LABELS,
+  type SpendingCategory,
+  type SpendingSubcategory,
+} from "@/features/domain/categories";
+import {
+  decimalFromMinorUnits,
+  formatMinorUnits,
+  getCurrencyExponent,
+  parseMinorUnits,
+  toBaseMinorUnits,
+} from "@/features/domain/money";
 import { lookupRate } from "@/features/finance/lib/currency-converter";
 import { expenseRepository } from "@/features/expenses/data/dexie-expense-repository";
 import { calculateBalances, calculateSplit } from "@/features/expenses/lib/expense-calculator";
@@ -49,14 +79,23 @@ function formatMoney(amount: bigint, currency: string): string {
 }
 
 function splitLabel(splitType: ExpenseSplitType): string {
-  return splitType === "equal" ? "Equal split" : splitType === "exact" ? "Custom split" : `${splitType[0].toUpperCase()}${splitType.slice(1)} split`;
+  return splitType === "equal"
+    ? "Equal split"
+    : splitType === "exact"
+      ? "Custom split"
+      : `${splitType[0].toUpperCase()}${splitType.slice(1)} split`;
 }
 
 function getConvertedExpenseAmount(expense: Expense, baseCurrency: string): bigint | null {
   if (expense.currency === baseCurrency) return expense.amountMinor;
   if (expense.exchangeRateToBase == null) return null;
   try {
-    return toBaseMinorUnits(expense.amountMinor, expense.currency, expense.exchangeRateToBase, baseCurrency);
+    return toBaseMinorUnits(
+      expense.amountMinor,
+      expense.currency,
+      expense.exchangeRateToBase,
+      baseCurrency
+    );
   } catch {
     return null;
   }
@@ -74,6 +113,7 @@ export function ExpensePanel({
   userId,
   currency,
   locationCurrency,
+  defaultCurrency,
   canEdit = true,
   autoOpen = false,
   onAutoOpen,
@@ -85,6 +125,8 @@ export function ExpensePanel({
   currency: string;
   /** The trip destination's local currency — default for new expenses. */
   locationCurrency?: string;
+  /** Explicit default for a new expense, used by action intents that promise base currency. */
+  defaultCurrency?: string;
   canEdit?: boolean;
   autoOpen?: boolean;
   onAutoOpen?: () => void;
@@ -95,6 +137,7 @@ export function ExpensePanel({
 }) {
   const [expenses, setExpenses] = useState<Expense[] | null>(null);
   const [members, setMembers] = useState<TripMember[]>([]);
+  const [travelers, setTravelers] = useState<TripTraveler[]>([]);
   const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
   const localProfile = useLocalProfile(userId);
   const [dialog, setDialog] = useState<Expense | "new" | null>(null);
@@ -121,15 +164,21 @@ export function ExpensePanel({
 
   useEffect(() => expenseRepository.watchByTrip(tripId, setExpenses), [tripId]);
   useEffect(() => collaborationRepository.watchMembers(tripId, setMembers), [tripId]);
+  useEffect(() => tripTravelerRepository.watch(tripId, setTravelers), [tripId]);
   useEffect(() => {
-    const memberIds = [...new Set(members.map((member) => member.userId).filter((id): id is string => Boolean(id)))];
+    const memberIds = [
+      ...new Set(members.map((member) => member.userId).filter((id): id is string => Boolean(id))),
+    ];
     if (memberIds.length === 0) return;
     let cancelled = false;
-    void collaborationRepository.listProfiles(memberIds).then((nextProfiles) => {
-      if (!cancelled) setProfiles(nextProfiles);
-    }).catch(() => {
-      if (!cancelled) setProfiles([]);
-    });
+    void collaborationRepository
+      .listProfiles(memberIds)
+      .then((nextProfiles) => {
+        if (!cancelled) setProfiles(nextProfiles);
+      })
+      .catch(() => {
+        if (!cancelled) setProfiles([]);
+      });
     return () => {
       cancelled = true;
     };
@@ -139,7 +188,11 @@ export function ExpensePanel({
     Promise.all(
       (expenses ?? []).map(async (expense) => {
         const shares = await expenseRepository.listSharesByExpense(expense.id);
-        return [expense.id, shares, { amountMinor: expense.amountMinor, paidBy: expense.paidBy, shares }] as const;
+        return [
+          expense.id,
+          shares,
+          { amountMinor: expense.amountMinor, paidBy: expense.paidBy, shares },
+        ] as const;
       })
     ).then((items) => {
       if (cancelled) return;
@@ -155,18 +208,31 @@ export function ExpensePanel({
     () => (expenses ?? []).reduce((sum, expense) => sum + expense.amountMinor, 0n),
     [expenses]
   );
-  const profileById = useMemo(() => new Map(profiles.map((profile) => [profile.id, profile])), [profiles]);
+  const profileById = useMemo(
+    () => new Map(profiles.map((profile) => [profile.id, profile])),
+    [profiles]
+  );
   const names = useMemo(() => {
-    const next = new Map(profiles.map((profile) => [profile.id, profile.fullName?.trim() || "Traveler"]));
+    const next = new Map(
+      profiles.map((profile) => [profile.id, profile.fullName?.trim() || "Traveler"])
+    );
     if (localProfile) next.set(userId, localProfile.fullName?.trim() || "Traveler");
     return next;
   }, [localProfile, profiles, userId]);
   const identityFor = (id: string) => {
     if (id === userId && localProfile) {
-      return { name: localProfile.fullName?.trim() || "Traveler", avatarUrl: localProfile.avatarUrl, avatarSeed: localProfile.avatarSeed };
+      return {
+        name: localProfile.fullName?.trim() || "Traveler",
+        avatarUrl: localProfile.avatarUrl,
+        avatarSeed: localProfile.avatarSeed,
+      };
     }
     const profile = profileById.get(id);
-    return { name: profile?.fullName?.trim() || "Traveler", avatarUrl: profile?.avatarUrl ?? null, avatarSeed: profile?.avatarSeed ?? null };
+    return {
+      name: profile?.fullName?.trim() || "Traveler",
+      avatarUrl: profile?.avatarUrl ?? null,
+      avatarSeed: profile?.avatarSeed ?? null,
+    };
   };
 
   const visibleExpenses = useMemo(
@@ -184,7 +250,9 @@ export function ExpensePanel({
             <Heading level={2} id="expenses-heading" className="text-2xl font-bold">
               Expenses
             </Heading>
-            <p className="text-muted-foreground">Track shared costs and settle balances together.</p>
+            <p className="text-muted-foreground">
+              Track shared costs and settle balances together.
+            </p>
           </div>
           {canEdit && (
             <Button variant="primary" onClick={() => setDialog("new")}>
@@ -208,13 +276,18 @@ export function ExpensePanel({
 
       {!embedded && Object.keys(balances).length > 1 && (
         <div className="rounded-2xl border bg-card p-5">
-          <Heading level={3} className="text-base font-semibold">Settlement summary</Heading>
+          <Heading level={3} className="text-base font-semibold">
+            Settlement summary
+          </Heading>
           <div className="mt-3 space-y-2">
             {Object.entries(balances).map(([memberId, balance]) => (
               <div key={memberId} className="flex justify-between text-sm">
                 <span>{memberId === userId ? "You" : (names.get(memberId) ?? memberId)}</span>
                 <span className={balance >= 0n ? "text-success" : "text-destructive"}>
-                  {balance >= 0n ? "receives" : "owes"} <span className="font-mono tracking-tight tabular-nums">{formatMinorUnits(balance < 0n ? -balance : balance, currency)}</span>
+                  {balance >= 0n ? "receives" : "owes"}{" "}
+                  <span className="font-mono tracking-tight tabular-nums">
+                    {formatMinorUnits(balance < 0n ? -balance : balance, currency)}
+                  </span>
                 </span>
               </div>
             ))}
@@ -230,7 +303,9 @@ export function ExpensePanel({
             <ReceiptText className="size-8" aria-hidden />
           </span>
           <Heading level={3} className="text-lg font-semibold">
-            {hasFilter && (expenses ?? []).length > 0 ? "Nothing in this category yet" : "No shared expenses yet"}
+            {hasFilter && (expenses ?? []).length > 0
+              ? "Nothing in this category yet"
+              : "No shared expenses yet"}
           </Heading>
           <p className="max-w-xs text-sm text-muted-foreground">
             {hasFilter && (expenses ?? []).length > 0
@@ -275,19 +350,37 @@ export function ExpensePanel({
                           </span>
                         ) : null}
                         <span className="inline-flex items-center gap-1.5 align-middle">
-                          <UserAvatar seed={payer.avatarSeed} src={payer.avatarUrl} name={payer.name} size="sm" className="size-8" />
+                          <UserAvatar
+                            seed={payer.avatarSeed}
+                            src={payer.avatarUrl}
+                            name={payer.name}
+                            size="sm"
+                            className="size-8"
+                          />
                           Paid by {payer.name} · {splitLabel(expense.splitType)}
                         </span>
                       </p>
                     </div>
-                    <strong className="shrink-0 font-mono tracking-tight tabular-nums">{formatExpenseSummary(expense, currency)}</strong>
+                    <strong className="shrink-0 font-mono tracking-tight tabular-nums">
+                      {formatExpenseSummary(expense, currency)}
+                    </strong>
                   </button>
                   {canEdit && (
                     <div className="flex shrink-0 items-center gap-1">
-                      <Button variant="ghost" size="icon" aria-label={`Edit ${expense.description}`} onClick={() => setDialog(expense)}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Edit ${expense.description}`}
+                        onClick={() => setDialog(expense)}
+                      >
                         <Pencil className="size-5" />
                       </Button>
-                      <Button variant="ghost" size="icon" aria-label={`Delete ${expense.description}`} onClick={() => setDeleteExpense(expense)}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Delete ${expense.description}`}
+                        onClick={() => setDeleteExpense(expense)}
+                      >
                         <Trash2 className="size-5 text-destructive" />
                       </Button>
                     </div>
@@ -298,19 +391,30 @@ export function ExpensePanel({
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div>
                         <p className="text-xs text-muted-foreground">Split details</p>
-                        <p className="font-medium">{splitLabel(expense.splitType)} · {shares.length || 1} traveler{shares.length === 1 ? "" : "s"}</p>
+                        <p className="font-medium">
+                          {splitLabel(expense.splitType)} · {shares.length || 1} traveler
+                          {shares.length === 1 ? "" : "s"}
+                        </p>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Sync status</p>
-                        <span className="mt-1 inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">Saved locally</span>
+                        <span className="mt-1 inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                          Saved locally
+                        </span>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Original amount</p>
-                        <p className="font-mono font-semibold tabular-nums">{formatMoney(expense.amountMinor, expense.currency)}</p>
+                        <p className="font-mono font-semibold tabular-nums">
+                          {formatMoney(expense.amountMinor, expense.currency)}
+                        </p>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Trip currency</p>
-                        <p className="font-mono font-semibold tabular-nums">{convertedAmount !== null ? formatMoney(convertedAmount, currency) : "Conversion unavailable"}</p>
+                        <p className="font-mono font-semibold tabular-nums">
+                          {convertedAmount !== null
+                            ? formatMoney(convertedAmount, currency)
+                            : "Conversion unavailable"}
+                        </p>
                       </div>
                     </div>
                     {shares.length > 0 && (
@@ -320,8 +424,19 @@ export function ExpensePanel({
                           const person = identityFor(share.userId);
                           return (
                             <div key={share.id} className="flex items-center justify-between gap-3">
-                              <span className="flex min-w-0 items-center gap-2"><UserAvatar seed={person.avatarSeed} src={person.avatarUrl} name={person.name} size="sm" className="size-8" />{person.name}</span>
-                              <span className="font-mono tabular-nums">{formatMoney(share.shareAmountMinor, expense.currency)}</span>
+                              <span className="flex min-w-0 items-center gap-2">
+                                <UserAvatar
+                                  seed={person.avatarSeed}
+                                  src={person.avatarUrl}
+                                  name={person.name}
+                                  size="sm"
+                                  className="size-8"
+                                />
+                                {person.name}
+                              </span>
+                              <span className="font-mono tabular-nums">
+                                {formatMoney(share.shareAmountMinor, expense.currency)}
+                              </span>
                             </div>
                           );
                         })}
@@ -343,22 +458,29 @@ export function ExpensePanel({
         userId={userId}
         currency={currency}
         locationCurrency={locationCurrency}
+        defaultCurrency={defaultCurrency}
         members={members}
+        travelers={travelers}
         names={names}
         onClose={() => setDialog(null)}
-        onError={(message) => toast({ title: "Unable to save expense", description: message, variant: "error" })}
+        onError={(message) =>
+          toast({ title: "Unable to save expense", description: message, variant: "error" })
+        }
       />
       <ConfirmDialog
         open={deleteExpense !== null}
         onOpenChange={(open) => !open && setDeleteExpense(null)}
         title="Delete expense?"
-        description={deleteExpense ? `Delete ${deleteExpense.description}? This cannot be undone.` : ""}
+        description={
+          deleteExpense ? `Delete ${deleteExpense.description}? This cannot be undone.` : ""
+        }
         confirmLabel="Delete"
         onConfirm={() => {
           if (!deleteExpense) return;
           const expense = deleteExpense;
           setDeleteExpense(null);
-          void expenseRepository.remove(expense.id)
+          void expenseRepository
+            .remove(expense.id)
             .then(() => toast({ title: "Expense deleted", variant: "success" }))
             .catch(() => toast({ title: "Unable to delete expense", variant: "error" }));
         }}
@@ -374,7 +496,9 @@ function ExpenseDialog({
   userId,
   currency,
   locationCurrency,
+  defaultCurrency,
   members,
+  travelers,
   names,
   onClose,
   onError,
@@ -385,7 +509,9 @@ function ExpenseDialog({
   userId: string;
   currency: string;
   locationCurrency?: string;
+  defaultCurrency?: string;
   members: TripMember[];
+  travelers: TripTraveler[];
   names: Map<string, string>;
   onClose: () => void;
   onError: (message: string) => void;
@@ -394,18 +520,25 @@ function ExpenseDialog({
   const [mode, setMode] = useState<ExpenseSplitType>(expense?.splitType ?? "equal");
   const [participantSelection, setParticipants] = useState<string[] | null>(null);
   const [extraPeople, setExtraPeople] = useState<string[]>([]);
+  const [addedTravelers, setAddedTravelers] = useState<TripTraveler[]>([]);
   const [quickAddName, setQuickAddName] = useState("");
   const [splitEnabled, setSplitEnabled] = useState(false);
   const [shareInputs, setShareInputs] = useState<Map<string, string>>(new Map());
   const [shareCounts, setShareCounts] = useState<Record<string, string>>({});
   // Default new expenses to the destination's local currency when it's supported.
-  const defaultCurrency = (CURRENCIES as readonly string[]).includes(locationCurrency ?? "")
-    ? (locationCurrency as string)
-    : currency;
-  const [expenseCurrency, setExpenseCurrency] = useState(expense?.currency ?? defaultCurrency);
-  const [selectedCategory, setSelectedCategory] = useState<SpendingCategory | null>(expense?.category ?? null);
+  const fallbackCurrency: string =
+    defaultCurrency ??
+    ((CURRENCIES as readonly string[]).includes(locationCurrency ?? "")
+      ? (locationCurrency ?? currency)
+      : currency);
+  const [expenseCurrency, setExpenseCurrency] = useState(expense?.currency ?? fallbackCurrency);
+  const [selectedCategory, setSelectedCategory] = useState<SpendingCategory | null>(
+    expense?.category ?? null
+  );
   const [paidBy, setPaidBy] = useState(expense?.paidBy ?? userId);
-  const [amountInput, setAmountInput] = useState(expense ? decimalFromMinorUnits(expense.amountMinor, expense.currency) : "");
+  const [amountInput, setAmountInput] = useState(
+    expense ? decimalFromMinorUnits(expense.amountMinor, expense.currency) : ""
+  );
 
   const isForeign = expenseCurrency !== currency;
 
@@ -441,8 +574,33 @@ function ExpenseDialog({
     }
   }, [parsedAmount, exchangeRateToBase, expenseCurrency, currency]);
 
-  const participants = [...(participantSelection ?? members.map((member) => member.userId)), ...extraPeople];
-  const step = getCurrencyExponent(expenseCurrency) === 0 ? "1" : `0.${"0".repeat(getCurrencyExponent(expenseCurrency) - 1)}1`;
+  const allTravelers = useMemo(
+    () =>
+      Array.from(
+        new Map(
+          [...travelers, ...addedTravelers].map((traveler) => [traveler.id, traveler])
+        ).values()
+      ),
+    [addedTravelers, travelers]
+  );
+  const travelerByKey = useMemo(
+    () => new Map(allTravelers.map((traveler) => [`traveler:${traveler.id}`, traveler])),
+    [allTravelers]
+  );
+  const savedTravelerKeys = allTravelers.map((traveler) => `traveler:${traveler.id}`);
+  const participants = Array.from(
+    new Set([
+      ...(participantSelection ?? [
+        ...members.map((member) => member.userId),
+        ...savedTravelerKeys,
+      ]),
+      ...extraPeople,
+    ])
+  );
+  const step =
+    getCurrencyExponent(expenseCurrency) === 0
+      ? "1"
+      : `0.${"0".repeat(getCurrencyExponent(expenseCurrency) - 1)}1`;
 
   /** Split target when the toggle is on; otherwise the cost is personal (just me). */
   const effectiveSplit = splitEnabled;
@@ -452,14 +610,41 @@ function ExpenseDialog({
 
   function nameFor(id: string): string {
     if (id === userId) return "You";
-    return extraPeople.includes(id) ? id : (names.get(id) ?? id);
+    return travelerByKey.get(id)?.displayName ?? names.get(id) ?? id;
   }
 
-  function addExtraPerson() {
+  async function addExtraPerson() {
     const name = quickAddName.trim();
     if (!name) return;
-    if (!participants.includes(name)) setExtraPeople((people) => [...people, name]);
-    setQuickAddName("");
+    const existing = travelers.find(
+      (traveler) => traveler.displayName.trim().toLowerCase() === name.toLowerCase()
+    );
+    try {
+      const traveler =
+        existing ??
+        (await (async () => {
+          const contact = await contactRepository.create({
+            id: crypto.randomUUID(),
+            ownerId: userId,
+            fullName: name,
+          });
+          return tripTravelerRepository.attach({
+            id: crypto.randomUUID(),
+            tripId,
+            contact,
+            createdBy: userId,
+          });
+        })());
+      const key = `traveler:${traveler.id}`;
+      setAddedTravelers((current) =>
+        current.some((item) => item.id === traveler.id) ? current : [...current, traveler]
+      );
+      if (!participants.includes(key)) setExtraPeople((people) => [...people, key]);
+      if (paidBy.trim().toLowerCase() === name.toLowerCase()) setPaidBy(key);
+      setQuickAddName("");
+    } catch (cause) {
+      onError(cause instanceof Error ? cause.message : "Unable to save traveler.");
+    }
   }
 
   function removeExtraPerson(name: string) {
@@ -487,7 +672,9 @@ function ExpenseDialog({
             min="0"
             step={step}
             value={shareValue}
-            onChange={(event) => setShareInputs((current) => new Map(current).set(id, event.target.value))}
+            onChange={(event) =>
+              setShareInputs((current) => new Map(current).set(id, event.target.value))
+            }
             className="h-9 w-24 rounded-md border bg-background px-2 text-right text-sm"
             disabled={disabled}
             aria-label={`Share amount for ${nameFor(id)}`}
@@ -506,7 +693,9 @@ function ExpenseDialog({
             max="100"
             step="0.1"
             value={shareValue}
-            onChange={(event) => setShareInputs((current) => new Map(current).set(id, event.target.value))}
+            onChange={(event) =>
+              setShareInputs((current) => new Map(current).set(id, event.target.value))
+            }
             className="h-9 w-24 rounded-md border bg-background px-2 text-right text-sm"
             disabled={disabled}
             aria-label={`Share percent for ${nameFor(id)}`}
@@ -524,7 +713,9 @@ function ExpenseDialog({
             min="1"
             step="1"
             value={shareCounts[id] ?? "1"}
-            onChange={(event) => setShareCounts((current) => ({ ...current, [id]: event.target.value }))}
+            onChange={(event) =>
+              setShareCounts((current) => ({ ...current, [id]: event.target.value }))
+            }
             className="h-9 w-20 rounded-md border bg-background px-2 text-right text-sm"
             disabled={disabled}
             aria-label={`Share count for ${nameFor(id)}`}
@@ -561,8 +752,14 @@ function ExpenseDialog({
     const description = String(data.get("description"));
     const rawCategory = String(data.get("category") || "");
     const rawSubcategory = String(data.get("subcategory") || "");
-    const category = (SPENDING_CATEGORY_KEYS.includes(rawCategory as SpendingCategory) ? rawCategory : null) as SpendingCategory | null;
-    const subcategory = (category && (SPENDING_CATEGORIES[category] as readonly string[]).includes(rawSubcategory) ? rawSubcategory : null) as SpendingSubcategory | null;
+    const category = (
+      SPENDING_CATEGORY_KEYS.includes(rawCategory as SpendingCategory) ? rawCategory : null
+    ) as SpendingCategory | null;
+    const subcategory = (
+      category && (SPENDING_CATEGORIES[category] as readonly string[]).includes(rawSubcategory)
+        ? rawSubcategory
+        : null
+    ) as SpendingSubcategory | null;
     const date = String(data.get("date") || new Date().toISOString().slice(0, 10));
     try {
       const amountMinor = parseMinorUnits(String(data.get("amount")), expenseCurrency);
@@ -571,16 +768,23 @@ function ExpenseDialog({
       const exactMinor =
         effectiveMode === "exact"
           ? Object.fromEntries(
-              effectiveParticipants.map((id) => [id, parseMinorUnits(String(data.get(`share-${id}`)), expenseCurrency)])
+              effectiveParticipants.map((id) => [
+                id,
+                parseMinorUnits(String(data.get(`share-${id}`)), expenseCurrency),
+              ])
             )
           : undefined;
       const percentages =
         effectiveMode === "percentage"
-          ? Object.fromEntries(effectiveParticipants.map((id) => [id, Number(data.get(`share-${id}`))]))
+          ? Object.fromEntries(
+              effectiveParticipants.map((id) => [id, Number(data.get(`share-${id}`))])
+            )
           : undefined;
       const shareCountsInput =
         effectiveMode === "shares"
-          ? Object.fromEntries(effectiveParticipants.map((id) => [id, Number(shareCounts[id] ?? 1)]))
+          ? Object.fromEntries(
+              effectiveParticipants.map((id) => [id, Number(shareCounts[id] ?? 1)])
+            )
           : undefined;
       const shares = calculateSplit({
         totalMinor: amountMinor,
@@ -598,6 +802,9 @@ function ExpenseDialog({
           currency: expenseCurrency,
           exchangeRateToBase,
           paidBy: effectivePaidBy,
+          paidByTravelerId: effectivePaidBy.startsWith("traveler:")
+            ? effectivePaidBy.slice("traveler:".length)
+            : null,
           splitType: effectiveMode,
           category,
           subcategory,
@@ -613,6 +820,9 @@ function ExpenseDialog({
           currency: expenseCurrency,
           exchangeRateToBase,
           paidBy: effectivePaidBy,
+          paidByTravelerId: effectivePaidBy.startsWith("traveler:")
+            ? effectivePaidBy.slice("traveler:".length)
+            : null,
           splitType: effectiveMode,
           category,
           subcategory,
@@ -647,8 +857,16 @@ function ExpenseDialog({
             label={`Amount (${expenseCurrency})`}
             name="amount"
             type="number"
-            min={getCurrencyExponent(expenseCurrency) === 0 ? "1" : `0.${"0".repeat(getCurrencyExponent(expenseCurrency) - 1)}1`}
-            step={getCurrencyExponent(expenseCurrency) === 0 ? "1" : `0.${"0".repeat(getCurrencyExponent(expenseCurrency) - 1)}1`}
+            min={
+              getCurrencyExponent(expenseCurrency) === 0
+                ? "1"
+                : `0.${"0".repeat(getCurrencyExponent(expenseCurrency) - 1)}1`
+            }
+            step={
+              getCurrencyExponent(expenseCurrency) === 0
+                ? "1"
+                : `0.${"0".repeat(getCurrencyExponent(expenseCurrency) - 1)}1`
+            }
             value={amountInput}
             onChange={(event) => setAmountInput(event.target.value)}
             required
@@ -662,17 +880,26 @@ function ExpenseDialog({
               onChange={(event) => setExpenseCurrency(event.target.value)}
               className="h-10 w-full rounded-md border bg-background px-3 text-sm"
             >
-              {CURRENCIES.map((code) => <option key={code} value={code}>{code}</option>)}
+              {expenseCurrency && !(CURRENCIES as readonly string[]).includes(expenseCurrency) && (
+                <option value={expenseCurrency}>{expenseCurrency}</option>
+              )}
+              {CURRENCIES.map((code) => (
+                <option key={code} value={code}>
+                  {code}
+                </option>
+              ))}
             </select>
             {isForeign && (
               <div className="rounded-lg border bg-muted p-3 text-sm">
                 <Label className="text-muted-foreground">Exchange rate</Label>
                 <p className="mt-1 font-mono text-sm font-semibold tabular-nums text-foreground">
-                  1 {expenseCurrency} = {exchangeRateToBase != null ? formatRate(exchangeRateToBase) : "—"} {currency}
+                  1 {expenseCurrency} ={" "}
+                  {exchangeRateToBase != null ? formatRate(exchangeRateToBase) : "—"} {currency}
                 </p>
                 {convertedAmount !== null && parsedAmount !== null ? (
                   <p className="mt-1 text-xs font-semibold text-foreground">
-                    {formatMinorUnits(parsedAmount, expenseCurrency)} ≈ {formatMinorUnits(convertedAmount, currency)}
+                    {formatMinorUnits(parsedAmount, expenseCurrency)} ≈{" "}
+                    {formatMinorUnits(convertedAmount, currency)}
                   </p>
                 ) : (
                   <p className="mt-1 text-xs text-muted-foreground">
@@ -682,29 +909,46 @@ function ExpenseDialog({
               </div>
             )}
           </div>
-          <Field label="Date" name="date" type="date" defaultValue={expense ? expense.date : new Date().toISOString().slice(0, 10)} required />
+          <Field
+            label="Date"
+            name="date"
+            type="date"
+            defaultValue={expense ? expense.date : new Date().toISOString().slice(0, 10)}
+            required
+          />
           <div className="space-y-2">
             <Label htmlFor="category">Category</Label>
             <select
               id="category"
               name="category"
               value={selectedCategory ?? ""}
-              onChange={(event) => setSelectedCategory((event.target.value as SpendingCategory) || null)}
+              onChange={(event) =>
+                setSelectedCategory((event.target.value as SpendingCategory) || null)
+              }
               className="h-10 w-full rounded-md border bg-background px-3 text-sm"
             >
               <option value="">None</option>
               {SPENDING_CATEGORY_KEYS.map((category) => (
-                <option key={category} value={category}>{SPENDING_CATEGORY_LABELS[category]}</option>
+                <option key={category} value={category}>
+                  {SPENDING_CATEGORY_LABELS[category]}
+                </option>
               ))}
             </select>
           </div>
           {selectedCategory && (
             <div className="space-y-2">
               <Label htmlFor="subcategory">Subcategory</Label>
-              <select id="subcategory" name="subcategory" defaultValue={expense?.subcategory ?? ""} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
+              <select
+                id="subcategory"
+                name="subcategory"
+                defaultValue={expense?.subcategory ?? ""}
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              >
                 <option value="">None</option>
                 {SPENDING_CATEGORIES[selectedCategory].map((subcategory) => (
-                  <option key={subcategory} value={subcategory}>{SPENDING_SUBCATEGORY_LABELS[subcategory]}</option>
+                  <option key={subcategory} value={subcategory}>
+                    {SPENDING_SUBCATEGORY_LABELS[subcategory]}
+                  </option>
                 ))}
               </select>
             </div>
@@ -744,9 +988,14 @@ function ExpenseDialog({
                       {nameFor(member.userId)}
                     </option>
                   ))}
-                  {extraPeople.map((name) => (
-                    <option key={name} value={name}>{name}</option>
-                  ))}
+                  {allTravelers.map((traveler) => {
+                    const key = `traveler:${traveler.id}`;
+                    return (
+                      <option key={key} value={key}>
+                        {traveler.displayName}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
               <div className="space-y-2">
@@ -757,7 +1006,8 @@ function ExpenseDialog({
                   onChange={(event) => {
                     const next = event.target.value as ExpenseSplitType;
                     setMode(next);
-                    if (next === "shares") setShareCounts(Object.fromEntries(participants.map((id) => [id, "1"])));
+                    if (next === "shares")
+                      setShareCounts(Object.fromEntries(participants.map((id) => [id, "1"])));
                   }}
                   className="h-10 w-full rounded-md border bg-background px-3 text-sm"
                 >
@@ -785,27 +1035,64 @@ function ExpenseDialog({
                         }
                         aria-label={`Include ${nameFor(member.userId)}`}
                       />
-                      <span className="min-w-0 flex-1 truncate text-sm">{nameFor(member.userId)}</span>
+                      <span className="min-w-0 flex-1 truncate text-sm">
+                        {nameFor(member.userId)}
+                      </span>
                       {selected && renderShareInput(member.userId, false)}
                     </div>
                   );
                 })}
 
-                {extraPeople.map((name) => (
-                  <div key={name} className="flex items-center gap-3 rounded-lg border bg-muted/20 p-3">
-                    <span className="min-w-0 flex-1 truncate text-sm font-medium">{name}</span>
-                    {renderShareInput(name, false)}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Remove ${name}`}
-                      onClick={() => removeExtraPerson(name)}
+                {allTravelers.map((traveler) => {
+                  const key = `traveler:${traveler.id}`;
+                  const selected = participants.includes(key);
+                  return (
+                    <div
+                      key={key}
+                      className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50/60 p-3 dark:border-amber-900/50 dark:bg-amber-950/20"
                     >
-                      <X className="size-4" />
-                    </Button>
-                  </div>
-                ))}
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={() =>
+                          setParticipants((current) =>
+                            selected
+                              ? (current ?? participants).filter((id) => id !== key)
+                              : [...(current ?? participants), key]
+                          )
+                        }
+                        aria-label={`Include ${traveler.displayName}`}
+                      />
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                        {traveler.displayName}
+                      </span>
+                      {selected && renderShareInput(key, false)}
+                    </div>
+                  );
+                })}
+
+                {extraPeople
+                  .filter((key) => !travelerByKey.has(key))
+                  .map((key) => (
+                    <div
+                      key={key}
+                      className="flex items-center gap-3 rounded-lg border bg-muted/20 p-3"
+                    >
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                        {nameFor(key)}
+                      </span>
+                      {renderShareInput(key, false)}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Remove ${nameFor(key)}`}
+                        onClick={() => removeExtraPerson(key)}
+                      >
+                        <X className="size-4" />
+                      </Button>
+                    </div>
+                  ))}
 
                 <div className="flex items-center gap-2 rounded-lg border border-dashed p-2.5">
                   <Input
@@ -832,7 +1119,8 @@ function ExpenseDialog({
                 </div>
                 {members.length <= 1 && (
                   <p className="text-xs text-muted-foreground">
-                    No other travelers yet — add anyone else (a friend, coworker, family…) to split this cost.
+                    No other travelers yet — add anyone else (a friend, coworker, family…) to split
+                    this cost.
                   </p>
                 )}
               </fieldset>

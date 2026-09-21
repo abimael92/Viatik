@@ -1,10 +1,19 @@
 import "fake-indexeddb/auto";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { contactRepository } from "@/features/contacts/data/dexie-contact-repository";
-import type { Connection, ConnectionSnapshot, ViatikProfileLookup } from "@/features/domain/entities";
-import { deleteDatabase, getDatabase, setCurrentDatabase, type ViatikDatabase } from "@/lib/db/dexie";
+import type {
+  Connection,
+  ConnectionSnapshot,
+  ViatikProfileLookup,
+} from "@/features/domain/entities";
+import {
+  deleteDatabase,
+  getDatabase,
+  setCurrentDatabase,
+  type ViatikDatabase,
+} from "@/lib/db/dexie";
 import { configureSyncUser } from "@/lib/sync/sync-context";
 
 const ownerId = "connection-metadata-owner";
@@ -43,9 +52,21 @@ afterEach(async () => {
 });
 
 describe("DexieContactRepository connection metadata", () => {
+  it("requests an immediate sync when a friend request is queued", async () => {
+    const syncRequested = vi.fn();
+    window.addEventListener("viatik:sync-request", syncRequested);
+
+    await contactRepository.sendConnectionRequest(ownerId, profile, ownSnapshot);
+
+    expect(syncRequested).toHaveBeenCalledTimes(1);
+    window.removeEventListener("viatik:sync-request", syncRequested);
+  });
+
   it("stamps a new Viatik ID request with pending lifecycle metadata", async () => {
     const contact = await contactRepository.sendConnectionRequest(ownerId, profile, ownSnapshot);
-    const mutation = await db.outboxMutations.filter((item) => item.entityId === contact.id).first();
+    const mutation = await db.outboxMutations
+      .filter((item) => item.entityId === contact.id)
+      .first();
     const connection = mutation?.payload as unknown as Connection;
 
     expect(connection).toMatchObject({
@@ -66,22 +87,25 @@ describe("DexieContactRepository connection metadata", () => {
   it.each([
     { accept: true, status: "accepted", field: "acceptedAt", actor: "acceptedBy" },
     { accept: false, status: "blocked", field: "blockedAt", actor: "blockedBy" },
-  ] as const)("stamps a $status response and increments the version", async ({ accept, status, field, actor }) => {
-    const contact = await contactRepository.sendConnectionRequest(ownerId, profile, ownSnapshot);
-    await db.contacts.update(contact.id, { connectionDirection: "inbound" });
+  ] as const)(
+    "stamps a $status response and increments the version",
+    async ({ accept, status, field, actor }) => {
+      const contact = await contactRepository.sendConnectionRequest(ownerId, profile, ownSnapshot);
+      await db.contacts.update(contact.id, { connectionDirection: "inbound" });
 
-    await contactRepository.respondToConnectionRequest(contact.id, ownerId, accept);
+      await contactRepository.respondToConnectionRequest(contact.id, ownerId, accept);
 
-    const mutation = await db.outboxMutations
-      .where("entityType")
-      .equals("connectionResponse")
-      .filter((item) => item.entityId === contact.id)
-      .first();
-    const connection = mutation?.payload as unknown as Connection;
-    expect(connection.status).toBe(status);
-    expect(connection.statusChangedBy).toBe(ownerId);
-    expect(connection[field]).toBe(connection.updatedAt);
-    expect(connection[actor]).toBe(ownerId);
-    expect(connection.version).toBe(2);
-  });
+      const mutation = await db.outboxMutations
+        .where("entityType")
+        .equals("connectionResponse")
+        .filter((item) => item.entityId === contact.id)
+        .first();
+      const connection = mutation?.payload as unknown as Connection;
+      expect(connection.status).toBe(status);
+      expect(connection.statusChangedBy).toBe(ownerId);
+      expect(connection[field]).toBe(connection.updatedAt);
+      expect(connection[actor]).toBe(ownerId);
+      expect(connection.version).toBe(2);
+    }
+  );
 });

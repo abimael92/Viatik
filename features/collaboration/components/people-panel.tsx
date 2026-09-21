@@ -1,6 +1,6 @@
 "use client";
 
-import { Link as LinkIcon, MailPlus, Trash2, UserPlus, Users } from "lucide-react";
+import { Link as LinkIcon, MailPlus, Pencil, Trash2, UserPlus, Users } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
@@ -16,7 +16,7 @@ import {
   contactRepository,
   tripTravelerRepository,
 } from "@/features/contacts/data/dexie-contact-repository";
-import type { Contact, TripInvitation, TripMember, TripTraveler } from "@/features/domain/entities";
+import type { Contact, ProfileSummary, TripInvitation, TripMember, TripTraveler } from "@/features/domain/entities";
 import { cn } from "@/lib/utils";
 
 /**
@@ -29,20 +29,41 @@ export function PeoplePanel({ tripId, userId, canEdit }: { tripId: string; userI
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [travelers, setTravelers] = useState<TripTraveler[]>([]);
   const [members, setMembers] = useState<TripMember[]>([]);
+  const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
   const [invitations, setInvitations] = useState<TripInvitation[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<Contact | null>(null);
 
   useEffect(() => contactRepository.watch(userId, setContacts), [userId]);
   useEffect(() => tripTravelerRepository.watch(tripId, setTravelers), [tripId]);
   useEffect(() => collaborationRepository.watchMembers(tripId, setMembers), [tripId]);
   useEffect(() => collaborationRepository.watchInvitations(tripId, setInvitations), [tripId]);
+  useEffect(() => {
+    const memberIds = [...new Set(members.map((member) => member.userId))];
+    if (!memberIds.length) return;
+    let cancelled = false;
+    void collaborationRepository.listProfiles(memberIds).then((next) => {
+      if (!cancelled) setProfiles(next);
+    }).catch(() => {
+      if (!cancelled) setProfiles([]);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [members]);
 
   const available = useMemo(
     () => contacts.filter((contact) => !travelers.some((traveler) => traveler.contactId === contact.id)),
     [contacts, travelers]
   );
   const contactById = useMemo(() => new Map(contacts.map((contact) => [contact.id, contact])), [contacts]);
+  const profileById = useMemo(() => new Map(profiles.map((profile) => [profile.id, profile])), [profiles]);
+  const linkedMemberIds = useMemo(
+    () => new Set(travelers.map((traveler) => contactById.get(traveler.contactId)?.linkedProfileId).filter((id): id is string => Boolean(id))),
+    [contactById, travelers]
+  );
+  const unrepresentedMembers = members.filter((member) => !linkedMemberIds.has(member.userId));
 
   async function attachTraveler(contact: Contact) {
     await tripTravelerRepository.attach({
@@ -134,6 +155,16 @@ export function PeoplePanel({ tripId, userId, canEdit }: { tripId: string; userI
               {showToggle && linkedProfileId && (
                 <AdminToggle checked={adminOn} onChange={(admin) => void toggleAdmin(traveler, linkedProfileId, admin)} />
               )}
+              {canEdit && contact && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`${isViatik ? "Edit relationship" : "Edit traveler"} for ${traveler.displayName}`}
+                  onClick={() => setEditing(contact)}
+                >
+                  <Pencil className="size-5" />
+                </Button>
+              )}
               {canEdit && (
                 <Button variant="ghost" size="icon" aria-label={`Remove ${traveler.displayName}`} onClick={() => void tripTravelerRepository.remove(traveler.id)}>
                   <Trash2 className="size-5 text-destructive" />
@@ -142,7 +173,21 @@ export function PeoplePanel({ tripId, userId, canEdit }: { tripId: string; userI
             </div>
           );
         })}
-        {!travelers.length && (
+        {unrepresentedMembers.map((member) => {
+          const profile = profileById.get(member.userId);
+          const name = profile?.fullName?.trim() || (member.userId === userId ? "You" : "Viatik traveler");
+          return (
+            <div key={`member-${member.id}`} className="flex flex-wrap items-center gap-3 p-4">
+              <UserAvatar seed={profile?.avatarSeed} src={profile?.avatarUrl} name={name} size="md" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-semibold">{name}</p>
+                <p className="truncate text-xs text-muted-foreground">Viatik account</p>
+              </div>
+              <span className="rounded-full bg-muted px-3 py-1 text-xs font-semibold capitalize">{member.role}</span>
+            </div>
+          );
+        })}
+        {!travelers.length && !unrepresentedMembers.length && (
           <div className="p-8 text-center text-sm text-muted-foreground">
             <Users className="mx-auto mb-2 size-7" />
             No named travelers added.
@@ -221,12 +266,20 @@ export function PeoplePanel({ tripId, userId, canEdit }: { tripId: string; userI
       )}
 
       <ContactEditorDialog
-        key={creating ? "new" : "closed"}
-        open={creating}
+        key={editing?.id ?? (creating ? "new" : "closed")}
+        open={creating || editing !== null}
         userId={userId}
-        attachToTrip
-        onOpenChange={setCreating}
+        contact={editing}
+        relationshipOnly={Boolean(editing?.linkedProfileId)}
+        attachToTrip={creating}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCreating(false);
+            setEditing(null);
+          }
+        }}
         onSaved={async (contact) => {
+          if (!creating) return;
           try {
             await attachTraveler(contact);
           } catch (cause) {

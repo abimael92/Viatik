@@ -29,7 +29,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Heading } from "@/components/ui/heading";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -55,7 +61,12 @@ import { CurrencyConverter } from "@/features/finance/components/currency-conver
 import { TipSplitCalculator } from "@/features/finance/components/tip-calculator";
 import { currencyRateRepository } from "@/features/finance/data/dexie-currency-rate-repository";
 import { tripBudgetRepository } from "@/features/finance/data/dexie-finance-repository";
-import { budgetUserCurrency, convertBudget, minorToInput, recommendedDailyBudget } from "@/features/finance/lib/budget-currency";
+import {
+  budgetUserCurrency,
+  convertBudget,
+  minorToInput,
+  recommendedDailyBudget,
+} from "@/features/finance/lib/budget-currency";
 import { getBudgetUsage } from "@/features/finance/lib/finance-aggregators";
 import {
   formatAmount,
@@ -144,6 +155,7 @@ export function MoneyDashboard({
   days,
   canEdit,
   autoOpenExpense = false,
+  defaultExpenseCurrency,
   autoOpenTools = false,
   onConsumeAutoOpenExpense,
 }: {
@@ -153,6 +165,7 @@ export function MoneyDashboard({
   days: string[];
   canEdit: boolean;
   autoOpenExpense?: boolean;
+  defaultExpenseCurrency?: string;
   autoOpenTools?: boolean;
   onConsumeAutoOpenExpense?: () => void;
 }) {
@@ -176,13 +189,30 @@ export function MoneyDashboard({
 
   // A budget of zero (or unset) means "no budget yet" — avoid treating a 0 cap
   // as a budget that is already exceeded.
-  const totalBudget = budget?.totalBudgetMinor != null && budget.totalBudgetMinor > 0n ? budget.totalBudgetMinor : null;
-  const dailyTarget = budget?.dailyTargetMinor != null && budget.dailyTargetMinor > 0n ? budget.dailyTargetMinor : null;
-  const usage = useMemo(() => getBudgetUsage(totalSpent, totalBudget ?? 0n), [totalSpent, totalBudget]);
+  const totalBudget =
+    budget?.totalBudgetMinor != null && budget.totalBudgetMinor > 0n
+      ? budget.totalBudgetMinor
+      : null;
+  const dailyTarget =
+    budget?.dailyTargetMinor != null && budget.dailyTargetMinor > 0n
+      ? budget.dailyTargetMinor
+      : null;
+  const usage = useMemo(
+    () => getBudgetUsage(totalSpent, totalBudget ?? 0n),
+    [totalSpent, totalBudget]
+  );
   const remaining = totalBudget !== null ? totalBudget - totalSpent : null;
 
   const pacingAlerts = useMemo<PacingAlert[]>(
-    () => buildPacingAlerts(totalSpent, totalBudget, dailyTarget, trip.startDate, trip.endDate, baseCurrency),
+    () =>
+      buildPacingAlerts(
+        totalSpent,
+        totalBudget,
+        dailyTarget,
+        trip.startDate,
+        trip.endDate,
+        baseCurrency
+      ),
     [totalSpent, totalBudget, dailyTarget, trip.startDate, trip.endDate, baseCurrency]
   );
 
@@ -192,17 +222,28 @@ export function MoneyDashboard({
   return (
     <section className="space-y-8" aria-labelledby="spending-overview-heading">
       {!canEdit && (
-        <div role="status" className="rounded-2xl border bg-muted/50 p-4 text-sm text-muted-foreground">
-          You have view-only access. You can review expenses and balances, but only owners and editors can change financial data.
+        <div
+          role="status"
+          className="rounded-2xl border bg-muted/50 p-4 text-sm text-muted-foreground"
+        >
+          You have view-only access. You can review expenses and balances, but only owners and
+          editors can change financial data.
         </div>
       )}
       <p className="text-muted-foreground">
-        Track group spending, manage your trip budget, record expenses, and see how much each traveler owes or is owed.
+        Track group spending, manage your trip budget, record expenses, and see how much each
+        traveler owes or is owed.
       </p>
       <section aria-labelledby="spending-overview-heading" className="space-y-4">
-        <SectionHeading id="spending-overview-heading" title="Spending overview" description="See your current trip total, budget usage, and group standing at a glance." />
+        <SectionHeading
+          id="spending-overview-heading"
+          title="Spending overview"
+          description="See your current trip total, budget usage, and group standing at a glance."
+        />
         <section aria-labelledby="budget-progress-heading" className="space-y-3">
-          <Heading level={3} id="budget-progress-heading" className="text-lg font-bold">Budget progress</Heading>
+          <Heading level={3} id="budget-progress-heading" className="text-lg font-bold">
+            Budget progress
+          </Heading>
           <FinancialHero
             tripId={tripId}
             userId={userId}
@@ -226,11 +267,18 @@ export function MoneyDashboard({
       <div className="flex flex-col gap-3 rounded-2xl border bg-card p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
         <div>
           <p className="text-sm font-semibold">Trip actions</p>
-          <p className="text-xs text-muted-foreground">Record a cost or review how the group settles up.</p>
+          <p className="text-xs text-muted-foreground">
+            Record a cost or review how the group settles up.
+          </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           {canEdit && (
-            <Button size="lg" variant="primary" className="gap-2 shadow-lg shadow-primary/25" onClick={() => setAddOpen(true)}>
+            <Button
+              size="lg"
+              variant="primary"
+              className="gap-2 shadow-lg shadow-primary/25"
+              onClick={() => setAddOpen(true)}
+            >
               <Plus className="size-5" />
               Add Expense
             </Button>
@@ -238,7 +286,9 @@ export function MoneyDashboard({
           <Button
             size="lg"
             variant="outline"
-            onClick={() => settlementRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            onClick={() =>
+              settlementRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+            }
           >
             View Settlement
           </Button>
@@ -253,7 +303,9 @@ export function MoneyDashboard({
                 <Wrench className="size-4" /> Money tools
               </DropdownMenuItem>
               {expenses && expenses.length > 0 && (
-                <DropdownMenuItem onSelect={() => downloadExpensesCsv(expenses.filter((e) => e.deletedAt === null))}>
+                <DropdownMenuItem
+                  onSelect={() => downloadExpensesCsv(expenses.filter((e) => e.deletedAt === null))}
+                >
                   <Download className="size-4" /> Export CSV
                 </DropdownMenuItem>
               )}
@@ -263,12 +315,17 @@ export function MoneyDashboard({
       </div>
 
       <section aria-labelledby="recent-expenses-heading" className="space-y-3">
-        <SectionHeading id="recent-expenses-heading" title="Recent expenses" description="Expand an expense to review its split, currency conversion, and local save status." />
+        <SectionHeading
+          id="recent-expenses-heading"
+          title="Recent expenses"
+          description="Expand an expense to review its split, currency conversion, and local save status."
+        />
         <ExpensePanel
           tripId={tripId}
           userId={userId}
           currency={baseCurrency}
           locationCurrency={locationCurrency}
+          defaultCurrency={defaultExpenseCurrency}
           canEdit={canEdit}
           embedded
           autoOpen={autoOpenExpense || addOpen}
@@ -279,8 +336,16 @@ export function MoneyDashboard({
         />
       </section>
 
-      <section ref={settlementRef} aria-labelledby="settlement-section-heading" className="scroll-mt-6 space-y-3">
-        <SectionHeading id="settlement-section-heading" title="Settlement" description="See who owes or is owed and the fewest transfers needed to settle the trip." />
+      <section
+        ref={settlementRef}
+        aria-labelledby="settlement-section-heading"
+        className="scroll-mt-6 space-y-3"
+      >
+        <SectionHeading
+          id="settlement-section-heading"
+          title="Settlement"
+          description="See who owes or is owed and the fewest transfers needed to settle the trip."
+        />
         <SettlementView tripId={tripId} userId={userId} currency={baseCurrency} />
       </section>
 
@@ -289,7 +354,15 @@ export function MoneyDashboard({
   );
 }
 
-export function MoneyToolsDialog({ open, onOpenChange, trip }: { open: boolean; onOpenChange: (open: boolean) => void; trip: Trip }) {
+export function MoneyToolsDialog({
+  open,
+  onOpenChange,
+  trip,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  trip: Trip;
+}) {
   const [toolsTab, setToolsTab] = useState<"converter" | "tip">("converter");
 
   return (
@@ -300,10 +373,36 @@ export function MoneyToolsDialog({ open, onOpenChange, trip }: { open: boolean; 
           <DialogDescription>Convert currencies or split a tip.</DialogDescription>
         </DialogHeader>
         <div className="flex w-max rounded-md border p-0.5">
-          <button type="button" onClick={() => setToolsTab("converter")} className={cn("rounded-md px-4 py-1.5 text-sm font-semibold transition-colors", toolsTab === "converter" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>Currency converter</button>
-          <button type="button" onClick={() => setToolsTab("tip")} className={cn("rounded-md px-4 py-1.5 text-sm font-semibold transition-colors", toolsTab === "tip" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>Tip &amp; split calculator</button>
+          <button
+            type="button"
+            onClick={() => setToolsTab("converter")}
+            className={cn(
+              "rounded-md px-4 py-1.5 text-sm font-semibold transition-colors",
+              toolsTab === "converter"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Currency converter
+          </button>
+          <button
+            type="button"
+            onClick={() => setToolsTab("tip")}
+            className={cn(
+              "rounded-md px-4 py-1.5 text-sm font-semibold transition-colors",
+              toolsTab === "tip"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Tip &amp; split calculator
+          </button>
         </div>
-        {toolsTab === "converter" ? <CurrencyConverter trip={trip} /> : <TipSplitCalculator trip={trip} />}
+        {toolsTab === "converter" ? (
+          <CurrencyConverter trip={trip} />
+        ) : (
+          <TipSplitCalculator trip={trip} />
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -370,7 +469,14 @@ function FinancialHero({
   const showConvertButton = settingsCurrency != null && settingsCurrency !== locationCurrency;
   // Currency the "Trip spending" amount is currently shown in (swappable).
   const displayCurrency = swapped && settingsCurrency ? settingsCurrency : baseCurrency;
-  const budgetStatus = totalBudget === null ? "No budget set" : tone === "danger" ? "Over budget" : tone === "warn" ? "Near budget limit" : "Under budget";
+  const budgetStatus =
+    totalBudget === null
+      ? "No budget set"
+      : tone === "danger"
+        ? "Over budget"
+        : tone === "warn"
+          ? "Near budget limit"
+          : "Under budget";
 
   function beginEdit() {
     setTotalInput(
@@ -412,7 +518,8 @@ function FinancialHero({
   // Recommended daily pace: total budget spread across the trip days, leaving a
   // buffer so there's money left over at the end.
   const dayCount = days.length;
-  const recommendedDaily = totalBudget !== null && dayCount > 0 ? recommendedDailyBudget(totalBudget, dayCount) : null;
+  const recommendedDaily =
+    totalBudget !== null && dayCount > 0 ? recommendedDailyBudget(totalBudget, dayCount) : null;
 
   const standingDetail =
     personalStanding > 0n ? "You're owed" : personalStanding < 0n ? "You owe" : "Settled up";
@@ -429,7 +536,13 @@ function FinancialHero({
       <div className="relative flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
-            <p className="text-sm font-semibold text-muted-foreground">Trip spending</p>
+            <p className="text-sm font-semibold text-muted-foreground">
+              {remaining !== null
+                ? remaining >= 0n
+                  ? "Budget remaining"
+                  : "Over budget by"
+                : "Trip spending"}
+            </p>
             {showConvertButton && (
               <button
                 type="button"
@@ -443,7 +556,11 @@ function FinancialHero({
             )}
           </div>
           <p className="mt-1 font-mono text-3xl font-bold tracking-tight tabular-nums sm:text-4xl">
-            {formatAmount(convertBudget(totalSpent, baseCurrency, displayCurrency), displayCurrency)} {displayCurrency}
+            {formatAmount(
+              convertBudget(totalSpent, baseCurrency, displayCurrency),
+              displayCurrency
+            )}{" "}
+            {displayCurrency}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
             {totalBudget !== null
@@ -452,19 +569,29 @@ function FinancialHero({
           </p>
         </div>
         {canEdit && !editing && (
-          <Button variant="outline" size="sm" className="border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100" onClick={beginEdit}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+            onClick={beginEdit}
+          >
             <Pencil className="size-4" /> {totalBudget !== null ? "Edit budget" : "Set budget"}
           </Button>
         )}
       </div>
 
       <div className="relative mt-5 h-3 w-full overflow-hidden rounded-full bg-muted" aria-hidden>
-        <div className={cn("h-full rounded-full transition-all", TONE_BAR[tone])} style={{ width: `${barWidth}%` }} />
+        <div
+          className={cn("h-full rounded-full transition-all", TONE_BAR[tone])}
+          style={{ width: `${barWidth}%` }}
+        />
       </div>
       <div className="relative mt-1.5 flex flex-col gap-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
         <span className="flex items-center gap-2">
           {pct !== null ? `${pct}% used` : "No budget set"}
-          <span className={cn("rounded-full px-2.5 py-1 font-semibold", TONE_PILL[tone])}>{budgetStatus}</span>
+          <span className={cn("rounded-full px-2.5 py-1 font-semibold", TONE_PILL[tone])}>
+            {budgetStatus}
+          </span>
         </span>
         {remaining !== null && (
           <span className={cn("font-semibold", TONE_TEXT[tone])}>
@@ -477,13 +604,27 @@ function FinancialHero({
       <div className="relative mt-5 flex flex-col gap-3 sm:grid sm:grid-cols-3">
         <HeroStat
           label="Your standing"
-          value={formatMoney(personalStanding < 0n ? -personalStanding : personalStanding, baseCurrency)}
+          value={formatMoney(
+            personalStanding < 0n ? -personalStanding : personalStanding,
+            baseCurrency
+          )}
           detail={standingDetail}
           tone={standingTone}
+          className={
+            standingTone === "ok"
+              ? "border-emerald-200 bg-emerald-50/70 dark:border-emerald-900/50 dark:bg-emerald-950/20 [html[data-theme=light]_&]:!border-emerald-300 [html[data-theme=light]_&]:!bg-emerald-100/90"
+              : standingTone === "danger"
+                ? "border-destructive/30 bg-destructive/5"
+                : "border-border bg-card/60"
+          }
         />
         <HeroStat
           label={dailyTarget !== null ? "Daily target" : "Trip days"}
-          value={dailyTarget !== null ? `${formatMoney(dailyTarget, baseCurrency)}/day` : String(dayCount)}
+          value={
+            dailyTarget !== null
+              ? `${formatMoney(dailyTarget, baseCurrency)}/day`
+              : String(dayCount)
+          }
         />
       </div>
 
@@ -499,11 +640,7 @@ function FinancialHero({
               placeholder="e.g. 2000.00"
             />
             {usesUserCurrency && totalInput.trim() && totalInput.trim() !== "." && (
-              <BudgetConversion
-                input={totalInput}
-                from={userCurrency}
-                to={baseCurrency}
-              />
+              <BudgetConversion input={totalInput} from={userCurrency} to={baseCurrency} />
             )}
           </div>
           <div className="space-y-1.5">
@@ -520,8 +657,10 @@ function FinancialHero({
             </p>
             {recommendedDaily !== null ? (
               <p className="text-xs text-primary">
-                Recommended: <span className="font-semibold">{formatMoney(recommendedDaily, baseCurrency)}</span>/day
-                {" "}— keeps ~10% of your {formatMoney(totalBudget!, baseCurrency)} budget as a buffer over {dayCount} day{dayCount === 1 ? "" : "s"}.
+                Recommended:{" "}
+                <span className="font-semibold">{formatMoney(recommendedDaily, baseCurrency)}</span>
+                /day — keeps ~10% of your {formatMoney(totalBudget!, baseCurrency)} budget as a
+                buffer over {dayCount} day{dayCount === 1 ? "" : "s"}.
               </p>
             ) : (
               <p className="text-xs text-muted-foreground">
@@ -529,7 +668,11 @@ function FinancialHero({
               </p>
             )}
           </div>
-          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+          {error && (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
           <div className="flex items-center gap-2">
             <Button type="button" size="sm" onClick={() => void handleSave()} disabled={saving}>
               {saving ? "Saving…" : "Save budget"}
@@ -584,21 +727,27 @@ function HeroStat({
   value,
   detail,
   tone,
+  className,
 }: {
   label: string;
   value: string;
   detail?: string;
   tone?: "ok" | "danger" | "muted";
+  className?: string;
 }) {
   return (
-    <div className="rounded-2xl border bg-card/60 p-3">
+    <div className={cn("rounded-2xl border bg-card/60 p-3", className)}>
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-1 font-mono text-lg font-bold tabular-nums">{value}</p>
       {detail && (
         <p
           className={cn(
             "text-xs",
-            tone === "danger" ? "text-destructive" : tone === "ok" ? "text-success" : "text-muted-foreground"
+            tone === "danger"
+              ? "text-destructive"
+              : tone === "ok"
+                ? "text-success"
+                : "text-muted-foreground"
           )}
         >
           {detail}
@@ -608,7 +757,15 @@ function HeroStat({
   );
 }
 
-function SectionHeading({ id, title, description }: { id: string; title: string; description: string }) {
+function SectionHeading({
+  id,
+  title,
+  description,
+}: {
+  id: string;
+  title: string;
+  description: string;
+}) {
   return (
     <div>
       <Heading level={2} id={id} className="text-xl font-bold">
@@ -623,13 +780,7 @@ function SectionHeading({ id, title, description }: { id: string; title: string;
 // Currency & exchange-rate card
 // ---------------------------------------------------------------------------
 
-export function CurrencyCard({
-  trip,
-  baseCurrency,
-}: {
-  trip: Trip;
-  baseCurrency: string;
-}) {
+export function CurrencyCard({ trip, baseCurrency }: { trip: Trip; baseCurrency: string }) {
   const customs = useMemo(() => getTipCustoms(trip.destination), [trip.destination]);
   const nativeCurrency = (customs.currencies[0] ?? baseCurrency).toUpperCase() as CurrencyCode;
   const [rate, setRate] = useState<number | null>(null);
@@ -643,7 +794,7 @@ export function CurrencyCard({
       }
       const cached = await currencyRateRepository.getRate(nativeCurrency, baseCurrency);
       if (cancelled) return;
-      setRate(cached?.rate ?? (safeLookupRate(nativeCurrency, baseCurrency) ?? null));
+      setRate(cached?.rate ?? safeLookupRate(nativeCurrency, baseCurrency) ?? null);
     })();
     return () => {
       cancelled = true;
@@ -657,7 +808,10 @@ export function CurrencyCard({
       </div>
 
       <div className="mt-4 flex items-center gap-3">
-        <span className="grid size-11 place-items-center rounded-xl bg-primary/10 text-2xl" aria-hidden>
+        <span
+          className="grid size-11 place-items-center rounded-xl bg-primary/10 text-2xl"
+          aria-hidden
+        >
           {customs.flag}
         </span>
         <div className="min-w-0">
@@ -673,7 +827,8 @@ export function CurrencyCard({
                 <span className="font-mono font-semibold text-foreground tabular-nums">
                   {rate !== null ? formatRate(rate) : "—"}
                 </span>{" "}
-                {baseCurrency.toUpperCase()} <span className="text-muted-foreground">(your currency)</span>
+                {baseCurrency.toUpperCase()}{" "}
+                <span className="text-muted-foreground">(your currency)</span>
               </>
             )}
           </p>
@@ -681,7 +836,9 @@ export function CurrencyCard({
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <Badge variant="default">Tip in {trip.destination || customs.destination}: {customs.expectedTip}</Badge>
+        <Badge variant="default">
+          Tip in {trip.destination || customs.destination}: {customs.expectedTip}
+        </Badge>
         <Badge variant={customs.serviceIncluded ? "success" : "muted"}>
           {customs.serviceIncluded ? "Service included" : "Service not included"}
         </Badge>
@@ -728,7 +885,9 @@ export function CategoryEnvelopes({
             allocated={allocations.get(category) ?? null}
             baseCurrency={baseCurrency}
             canEdit={canEdit}
-            onSetCap={(amountMinor) => setCategoryCap(tripId, budget, category, amountMinor, userId)}
+            onSetCap={(amountMinor) =>
+              setCategoryCap(tripId, budget, category, amountMinor, userId)
+            }
           />
         ))}
       </div>
@@ -797,17 +956,30 @@ function CategoryEnvelope({
           </div>
         </div>
         {canEdit && !editing && (
-          <Button variant="ghost" size="icon" aria-label={`Set ${SPENDING_CATEGORY_LABELS[category]} cap`} onClick={beginEdit}>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={`Set ${SPENDING_CATEGORY_LABELS[category]} cap`}
+            onClick={beginEdit}
+          >
             <Pencil className="size-4" />
           </Button>
         )}
       </div>
 
       <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted" aria-hidden>
-        <div className={cn("h-full rounded-full transition-all", TONE_BAR[tone])} style={{ width: `${barWidth}%` }} />
+        <div
+          className={cn("h-full rounded-full transition-all", TONE_BAR[tone])}
+          style={{ width: `${barWidth}%` }}
+        />
       </div>
 
-      <p className={cn("mt-1.5 text-xs", allocated === null ? "text-muted-foreground" : TONE_TEXT[tone])}>
+      <p
+        className={cn(
+          "mt-1.5 text-xs",
+          allocated === null ? "text-muted-foreground" : TONE_TEXT[tone]
+        )}
+      >
         {allocated === null
           ? "No cap set"
           : usage !== null && usage >= 1
@@ -827,10 +999,18 @@ function CategoryEnvelope({
               placeholder="0.00"
             />
           </div>
-          {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
+          {error && (
+            <p role="alert" className="text-xs text-destructive">
+              {error}
+            </p>
+          )}
           <div className="flex items-center gap-2">
-            <Button type="button" size="sm" onClick={handleSave}><Check className="size-4" /> Save</Button>
-            <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(false)}><X className="size-4" /></Button>
+            <Button type="button" size="sm" onClick={handleSave}>
+              <Check className="size-4" /> Save
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(false)}>
+              <X className="size-4" />
+            </Button>
           </div>
         </div>
       )}
@@ -853,7 +1033,10 @@ function buildPacingAlerts(
   const alerts: PacingAlert[] = [];
 
   if (totalBudget === null) {
-    alerts.push({ tone: "warn", message: "No budget set — add a total trip budget to track planned versus spent." });
+    alerts.push({
+      tone: "warn",
+      message: "No budget set — add a total trip budget to track planned versus spent.",
+    });
     return alerts;
   }
 
@@ -861,9 +1044,15 @@ function buildPacingAlerts(
   const usage = getBudgetUsage(totalSpent, totalBudget);
 
   if (remaining < 0n) {
-    alerts.push({ tone: "danger", message: `You're over budget by ${formatMoney(-remaining, baseCurrency)}.` });
+    alerts.push({
+      tone: "danger",
+      message: `You're over budget by ${formatMoney(-remaining, baseCurrency)}.`,
+    });
   } else if (usage !== null && usage >= 0.8) {
-    alerts.push({ tone: "warn", message: `Close to budget — ${formatMoney(remaining, baseCurrency)} left.` });
+    alerts.push({
+      tone: "warn",
+      message: `Close to budget — ${formatMoney(remaining, baseCurrency)} left.`,
+    });
   }
 
   if (dailyTarget !== null && startDate && endDate) {
@@ -906,8 +1095,15 @@ async function setCategoryCap(
   amountMinor: MinorUnits,
   userId: string
 ): Promise<void> {
-  const next = [...(budget?.categoryAllocations ?? [])].filter((allocation) => allocation.category !== category);
-  next.push({ category, allocationMinor: amountMinor, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+  const next = [...(budget?.categoryAllocations ?? [])].filter(
+    (allocation) => allocation.category !== category
+  );
+  next.push({
+    category,
+    allocationMinor: amountMinor,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
   if (budget) {
     await tripBudgetRepository.update(budget.id, { categoryAllocations: next });
   } else {

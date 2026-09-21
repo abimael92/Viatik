@@ -1,7 +1,8 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ContactEditorDialog } from "@/features/contacts/components/contact-editor-dialog";
+import { contactRepository } from "@/features/contacts/data/dexie-contact-repository";
 
 if (typeof window !== "undefined") {
   window.ResizeObserver ??= class {
@@ -124,7 +125,7 @@ describe("ContactEditorDialog", () => {
     expect((within(dialog).getByLabelText("Full name") as HTMLInputElement).value).toBe("Jordan Rivera");
   });
 
-  it("disables full name and avatar editing when contact is linked to a Viatik account", () => {
+  it("disables full name and avatar editing when contact is linked to a Viatik account", async () => {
     const viatikContact = {
       id: "c-1",
       ownerId: "user-1",
@@ -162,21 +163,28 @@ describe("ContactEditorDialog", () => {
         open
         userId="user-1"
         contact={viatikContact}
+        relationshipOnly
         onOpenChange={vi.fn()}
       />
     );
 
     const dialog = screen.getByRole("dialog");
-    const nameInput = within(dialog).getByLabelText("Full name") as HTMLInputElement;
 
-    // Name is disabled because it is synced from the Viatik registration account
-    expect(nameInput.disabled).toBe(true);
-    expect(nameInput.value).toBe("Elena Lopez");
-    expect(within(dialog).getByText(/Managed by Viatik account · read-only/)).toBeTruthy();
+    // The linked identity and every other step are omitted from this edit flow.
+    expect(within(dialog).queryByLabelText("Full name")).toBeNull();
+    expect(within(dialog).queryByText(/Managed by Viatik account · read-only/)).toBeNull();
 
-    // Relationship is still editable
+    // Relationship is the only editable field and no other setup steps are shown.
     const relationshipSelect = within(dialog).getByLabelText("Relationship") as HTMLSelectElement;
     expect(relationshipSelect.disabled).toBe(false);
+    expect(within(dialog).queryByRole("navigation", { name: "Contact setup progress" })).toBeNull();
+    expect(within(dialog).getByRole("button", { name: "Save relationship" })).toBeTruthy();
+
+    vi.mocked(contactRepository.update).mockResolvedValue(viatikContact);
+    fireEvent.change(relationshipSelect, { target: { value: "family" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save relationship" }));
+    await waitFor(() => expect(contactRepository.update).toHaveBeenCalled());
+    expect(vi.mocked(contactRepository.update).mock.calls[0][2]).toEqual(expect.objectContaining({ relationship: "family" }));
   });
 
   it("allows full editing when contact was created manually", () => {

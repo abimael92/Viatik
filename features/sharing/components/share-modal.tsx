@@ -43,10 +43,7 @@ export function ShareModal({
 
   useEffect(() => shareLinkRepository.watchByTrip(tripId, setLinks), [tripId]);
 
-  const shareUrl = useCallback(
-    (slug: string) => `${origin}/share/${slug}`,
-    [origin],
-  );
+  const shareUrl = useCallback((slug: string) => `${origin}/share/${slug}`, [origin]);
 
   const handleCreate = useCallback(async () => {
     setCreating(true);
@@ -61,7 +58,10 @@ export function ShareModal({
   }, [tripId, userId]);
 
   const handleToggle = useCallback(
-    async (link: TripShareLink, patch: Partial<Omit<TripShareLink, "id" | "tripId" | "slug" | "createdBy">>) => {
+    async (
+      link: TripShareLink,
+      patch: Partial<Omit<TripShareLink, "id" | "tripId" | "slug" | "createdBy">>
+    ) => {
       setError(null);
       try {
         await shareLinkRepository.update(link.id, patch);
@@ -69,7 +69,7 @@ export function ShareModal({
         setError(cause instanceof Error ? cause.message : "Unable to update the share link.");
       }
     },
-    [],
+    []
   );
 
   const handleDelete = useCallback(async (id: string) => {
@@ -81,18 +81,21 @@ export function ShareModal({
     }
   }, []);
 
-  const handleCopy = useCallback(async (slug: string) => {
-    const url = shareUrl(slug);
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopiedId(slug);
-      setTimeout(() => setCopiedId((current) => (current === slug ? null : current)), 2000);
-    } catch {
-      // Clipboard may be unavailable; surface the URL as fallback text.
-      setCopiedId(null);
-      setError(`Copy this link manually: ${url}`);
-    }
-  }, [shareUrl]);
+  const handleCopy = useCallback(
+    async (slug: string) => {
+      const url = shareUrl(slug);
+      try {
+        await navigator.clipboard.writeText(url);
+        setCopiedId(slug);
+        setTimeout(() => setCopiedId((current) => (current === slug ? null : current)), 2000);
+      } catch {
+        // Clipboard may be unavailable; surface the URL as fallback text.
+        setCopiedId(null);
+        setError(`Copy this link manually: ${url}`);
+      }
+    },
+    [shareUrl]
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -100,7 +103,8 @@ export function ShareModal({
         <DialogHeader>
           <DialogTitle>Share trip</DialogTitle>
           <DialogDescription>
-            Generate a read-only link so family and friends can follow along without a Viatik account.
+            Generate a read-only link so family and friends can follow along without a Viatik
+            account.
           </DialogDescription>
         </DialogHeader>
 
@@ -110,13 +114,19 @@ export function ShareModal({
               <Share2 className="size-5" aria-hidden />
             </span>
             <div>
-              <Heading level={3} className="text-base font-semibold">Guest links</Heading>
-              <p className="text-sm text-muted-foreground">Each link is private and can be disabled anytime.</p>
+              <Heading level={3} className="text-base font-semibold">
+                Guest links
+              </Heading>
+              <p className="text-sm text-muted-foreground">
+                Each link is private and can be disabled anytime.
+              </p>
             </div>
           </div>
 
           {error && (
-            <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</p>
+            <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+              {error}
+            </p>
           )}
 
           {links.length === 0 && !creating && (
@@ -146,7 +156,11 @@ export function ShareModal({
                     onClick={() => void handleCopy(link.slug)}
                     aria-label={`Copy link ${link.slug}`}
                   >
-                    {copiedId === link.slug ? <Check className="size-4" /> : <Copy className="size-4" />}
+                    {copiedId === link.slug ? (
+                      <Check className="size-4" />
+                    ) : (
+                      <Copy className="size-4" />
+                    )}
                     {copiedId === link.slug ? "Copied" : "Copy"}
                   </Button>
                   <Button
@@ -170,7 +184,14 @@ export function ShareModal({
                 </div>
               </div>
 
-              <p className="mt-2 truncate text-xs text-muted-foreground">{shareUrl(link.slug)}</p>
+              <a
+                href={shareUrl(link.slug)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 block break-all text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {shareUrl(link.slug)}
+              </a>
 
               <div className="mt-3 flex flex-wrap gap-2 border-t pt-3">
                 <Toggle
@@ -197,7 +218,12 @@ export function ShareModal({
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Close
           </Button>
-          <Button type="button" variant="primary" onClick={() => void handleCreate()} disabled={creating}>
+          <Button
+            type="button"
+            variant="primary"
+            onClick={() => void handleCreate()}
+            disabled={creating}
+          >
             {creating ? <span className="size-4 animate-pulse" /> : <Plus className="size-4" />}
             New link
           </Button>
@@ -217,7 +243,7 @@ function Toggle({ label, on, onClick }: { label: string; on: boolean; onClick: (
         "rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         on
           ? "border-primary/40 bg-primary/10 text-primary"
-          : "border-border text-muted-foreground hover:border-primary/40",
+          : "border-border text-muted-foreground hover:border-primary/40"
       )}
     >
       {label} {on ? "on" : "off"}

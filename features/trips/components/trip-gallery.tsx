@@ -187,7 +187,7 @@ export function TripGallery({ tripId, userId, canEdit = true, activityId = null,
 
       {compressing && <div role="status" className="rounded-lg bg-muted p-3 text-sm">{t("common.compressing")} {progress}%</div>}
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-      {(media ?? []).some((item) => item.uploadStatus !== "uploaded") && <p className="text-xs text-muted-foreground">{sync.isOnline ? t("common.photosBackground") : t("common.photosOffline")}</p>}
+      {(media ?? []).some((item) => item.uploadStatus !== "uploaded") && <p role="status" aria-live="polite" className="text-xs text-muted-foreground">{sync.isOnline ? t("common.photosBackground") : t("common.photosOffline")}</p>}
 
       {media === null && <div role="status" className="h-32 animate-pulse rounded-xl bg-muted" aria-label={t("common.loadingGallery")} />}
 

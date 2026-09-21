@@ -84,6 +84,7 @@ export function ContactEditorDialog({
   onSaved,
   attachToTrip,
   ownProfile,
+  relationshipOnly = false,
 }: {
   open: boolean;
   userId: string;
@@ -92,6 +93,7 @@ export function ContactEditorDialog({
   onSaved?: (contact: Contact) => Promise<void> | void;
   attachToTrip?: boolean;
   ownProfile?: CurrentPublicProfile;
+  relationshipOnly?: boolean;
 }) {
   const [pending, setPending] = useState(false);
 
@@ -106,6 +108,7 @@ export function ContactEditorDialog({
           onOpenChange={onOpenChange}
           onSaved={onSaved}
           ownProfile={ownProfile}
+          relationshipOnly={relationshipOnly}
           pending={pending}
           setPending={setPending}
         />
@@ -121,6 +124,7 @@ function ContactForm({
   onOpenChange,
   onSaved,
   ownProfile,
+  relationshipOnly,
   pending,
   setPending,
 }: {
@@ -130,6 +134,7 @@ function ContactForm({
   onOpenChange: (open: boolean) => void;
   onSaved?: (contact: Contact) => Promise<void> | void;
   ownProfile?: CurrentPublicProfile;
+  relationshipOnly?: boolean;
   pending: boolean;
   setPending: (pending: boolean) => void;
 }) {
@@ -137,6 +142,7 @@ function ContactForm({
   const operation = contact ? "edit" : "create";
   const unified = !contact && !attachToTrip && Boolean(ownProfile);
   const isLinkedToViatik = Boolean(contact?.linkedProfileId);
+  const isRelationshipOnly = Boolean(relationshipOnly && isLinkedToViatik);
   const [activeMethod, setActiveMethod] = useState("manual");
   const [step, setStep] = useState(1);
   const [error, setError] = useState<string | null>(null);
@@ -658,6 +664,32 @@ function ContactForm({
     </form>
   );
 
+  const relationshipForm = (
+    <form onSubmit={submit} className="space-y-6 px-4 pb-6 pt-5 sm:px-6 sm:pb-6 sm:pt-6">
+      <div className="space-y-2">
+        <Label htmlFor="contact-relationship-only">Relationship</Label>
+        <select
+          id="contact-relationship-only"
+          aria-label="Relationship"
+          value={values.relationship}
+          onChange={(event) => setField("relationship", event.target.value as Contact["relationship"])}
+          className="h-10 w-full rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        >
+          <option value="family">Family</option>
+          <option value="friend">Friend</option>
+          <option value="coworker">Coworker</option>
+          <option value="roommate">Roommate</option>
+          <option value="other">Other</option>
+        </select>
+        <p className="text-xs text-muted-foreground">The linked Viatik profile name and avatar cannot be changed here.</p>
+      </div>
+      {error && <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
+      <DialogFooter>
+        <Button type="submit" variant="primary" disabled={pending}>{pending ? "Saving…" : "Save relationship"}</Button>
+      </DialogFooter>
+    </form>
+  );
+
   const header = (
     <DialogHeader className="border-b bg-muted/30 px-4 pb-4 pt-5 sm:px-6 sm:pb-5 sm:pt-6 text-left">
       <div className="flex items-start gap-3">
@@ -689,7 +721,12 @@ function ContactForm({
 
   return (
     <DialogContent className="max-h-[90dvh] max-w-2xl overflow-y-auto p-0">
-      {unified && ownProfile ? (
+      {isRelationshipOnly ? (
+        <>
+          {header}
+          {relationshipForm}
+        </>
+      ) : unified && ownProfile ? (
         <Tabs value={activeMethod} onValueChange={setActiveMethod} className="w-full">
           {header}
           <TabsContent

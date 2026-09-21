@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Trash2, UserPlus, Users } from "lucide-react";
+import { Pencil, Trash2, UserPlus, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ export function TravelerPanel({
   const [travelers, setTravelers] = useState<TripTraveler[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<Contact | null>(null);
   useEffect(() => contactRepository.watch(userId, setContacts), [userId]);
   useEffect(() => tripTravelerRepository.watch(tripId, setTravelers), [tripId]);
   const available = useMemo(
@@ -74,27 +75,41 @@ export function TravelerPanel({
         </p>
       )}
       <div className="divide-y rounded-2xl border bg-card">
-        {travelers.map((traveler) => (
-          <div key={traveler.id} className="flex items-center gap-3 p-4">
-            <div className="grid size-11 place-items-center rounded-full bg-primary/10 font-semibold text-primary">
-              {traveler.displayName.slice(0, 2).toUpperCase()}
+        {travelers.map((traveler) => {
+          const contact = contacts.find((item) => item.id === traveler.contactId);
+          const canEditContact = canEdit && Boolean(contact && !contact.linkedProfileId);
+          return (
+            <div key={traveler.id} className="flex items-center gap-3 p-4">
+              <div className="grid size-11 place-items-center rounded-full bg-primary/10 font-semibold text-primary">
+                {traveler.displayName.slice(0, 2).toUpperCase()}
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold">{traveler.displayName}</p>
+                <p className="text-xs capitalize text-muted-foreground">{traveler.travelerType}</p>
+              </div>
+              {canEditContact && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`Edit ${traveler.displayName}`}
+                  onClick={() => setEditing(contact ?? null)}
+                >
+                  <Pencil className="size-5" />
+                </Button>
+              )}
+              {canEdit && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`Remove ${traveler.displayName}`}
+                  onClick={() => void tripTravelerRepository.remove(traveler.id)}
+                >
+                  <Trash2 className="size-5 text-destructive" />
+                </Button>
+              )}
             </div>
-            <div className="flex-1">
-              <p className="font-semibold">{traveler.displayName}</p>
-              <p className="text-xs capitalize text-muted-foreground">{traveler.travelerType}</p>
-            </div>
-            {canEdit && (
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={`Remove ${traveler.displayName}`}
-                onClick={() => void tripTravelerRepository.remove(traveler.id)}
-              >
-                <Trash2 className="size-5 text-destructive" />
-              </Button>
-            )}
-          </div>
-        ))}
+          );
+        })}
         {!travelers.length && (
           <div className="p-8 text-center text-sm text-muted-foreground">
             <Users className="mx-auto mb-2 size-7" />
@@ -151,12 +166,19 @@ export function TravelerPanel({
         </div>
       )}
       <ContactEditorDialog
-        key={creating ? "new" : "closed"}
-        open={creating}
+        key={editing?.id ?? (creating ? "new" : "closed")}
+        open={creating || editing !== null}
         userId={userId}
-        attachToTrip
-        onOpenChange={setCreating}
+        contact={editing}
+        attachToTrip={creating}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCreating(false);
+            setEditing(null);
+          }
+        }}
         onSaved={async (contact) => {
+          if (!creating) return;
           await tripTravelerRepository.attach({
             id: crypto.randomUUID(),
             tripId,

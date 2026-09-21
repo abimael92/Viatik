@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import type { Expense, ExpenseSettlement, ExpenseShare } from "@/features/domain/entities";
-import { expenseShareToRow, expenseToRow, rowToExpense, rowToExpenseShare, rowToSettlement, settlementToRow } from "@/lib/supabase/mappers";
+import {
+  expenseShareToRow,
+  expenseToRow,
+  rowToExpense,
+  rowToExpenseShare,
+  rowToSettlement,
+  settlementToRow,
+} from "@/lib/supabase/mappers";
 
 const timestamps = {
   createdAt: "2026-01-01T00:00:00.000Z",
@@ -44,17 +51,80 @@ describe("money mappers", () => {
 
   it("rejects values outside the current remote column capacity", () => {
     const expense = {
-      id: "expense-1", tripId: "trip-1", activityId: null, description: "Too large", amountMinor: 10_000_000_000n, currency: "USD", exchangeRateToBase: null, paidBy: "user-1", splitType: "equal" as const, category: null, subcategory: null, date: "2026-01-01", createdBy: "user-1", ...timestamps, deletedAt: null,
+      id: "expense-1",
+      tripId: "trip-1",
+      activityId: null,
+      description: "Too large",
+      amountMinor: 10_000_000_000n,
+      currency: "USD",
+      exchangeRateToBase: null,
+      paidBy: "user-1",
+      splitType: "equal" as const,
+      category: null,
+      subcategory: null,
+      date: "2026-01-01",
+      createdBy: "user-1",
+      ...timestamps,
+      deletedAt: null,
     };
     expect(() => expenseToRow(expense)).toThrow("Invalid remote amount");
   });
 
   it("round-trips share and settlement minor units", () => {
-    const share: ExpenseShare = { id: "share-1", expenseId: "expense-1", paidBy: "", userId: "user-1", shareAmountMinor: 5001n, sharePercentage: 50, splitType: "equal", settlementStatus: "pending", settledAt: null, settledBy: null, statusChangedAt: null, statusChangedBy: null, updatedBy: null, deletedBy: null, restoredAt: null, restoredBy: null, version: 1, ...timestamps };
-    const settlement: ExpenseSettlement = { id: "settlement-1", tripId: "trip-1", fromUserId: "user-1", toUserId: "user-2", amountMinor: 5001n, currency: "USD", status: "pending", settledAt: null, settledBy: null, statusChangedAt: null, statusChangedBy: null, updatedBy: null, deletedBy: null, restoredAt: null, restoredBy: null, version: 1, createdBy: "user-1", ...timestamps, deletedAt: null };
+    const share: ExpenseShare = {
+      id: "share-1",
+      expenseId: "expense-1",
+      paidBy: "",
+      userId: "user-1",
+      shareAmountMinor: 5001n,
+      sharePercentage: 50,
+      splitType: "equal",
+      settlementStatus: "pending",
+      settledAt: null,
+      settledBy: null,
+      statusChangedAt: null,
+      statusChangedBy: null,
+      updatedBy: null,
+      deletedBy: null,
+      restoredAt: null,
+      restoredBy: null,
+      version: 1,
+      ...timestamps,
+    };
+    const settlement: ExpenseSettlement = {
+      id: "settlement-1",
+      tripId: "trip-1",
+      fromUserId: "user-1",
+      toUserId: "user-2",
+      amountMinor: 5001n,
+      currency: "USD",
+      status: "pending",
+      settledAt: null,
+      settledBy: null,
+      statusChangedAt: null,
+      statusChangedBy: null,
+      updatedBy: null,
+      deletedBy: null,
+      restoredAt: null,
+      restoredBy: null,
+      version: 1,
+      createdBy: "user-1",
+      ...timestamps,
+      deletedAt: null,
+    };
 
     expect(expenseShareToRow(share).share_amount).toBe("5001");
     expect(rowToExpenseShare(expenseShareToRow(share))).toEqual(share);
+
+    const travelerShare = {
+      ...share,
+      userId: "00000000-0000-4000-8000-000000000099",
+      travelerId: "00000000-0000-4000-8000-000000000099",
+    };
+    expect(expenseShareToRow(travelerShare)).toMatchObject({
+      user_id: null,
+      traveler_id: travelerShare.travelerId,
+    });
     expect(settlementToRow(settlement).amount).toBe("5001");
     expect(rowToSettlement(settlementToRow(settlement))).toEqual(settlement);
   });

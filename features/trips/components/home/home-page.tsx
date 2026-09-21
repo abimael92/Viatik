@@ -22,6 +22,7 @@ import { useHomeData } from "@/features/trips/components/home/use-home-data";
 import { HomeSkeleton } from "@/features/trips/components/home/home-skeleton";
 import { TripCountdownHero } from "@/features/trips/components/home/trip-countdown-hero";
 import { LiveTimelineHud } from "@/features/trips/components/home/live-timeline-hud";
+import { ActiveTripActions } from "@/features/trips/components/home/active-trip-actions";
 import { QuickActionHub } from "@/features/trips/components/home/quick-action-hub";
 import { SuggestionsDrawer } from "@/features/community/components/suggestions-drawer";
 import { MoneyToolsDialog } from "@/features/finance/components/money-dashboard";
@@ -36,7 +37,7 @@ import { useI18n } from "@/lib/i18n/i18n-provider";
  */
 export function HomePage({ userId }: { userId: string }) {
   const { t } = useI18n();
-  const { loading, primaryTrip, readiness, timeline } = useHomeData(userId);
+  const { loading, primaryTrip, activeTrip, readiness, timeline } = useHomeData(userId);
   const [pending, setPending] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -118,6 +119,8 @@ export function HomePage({ userId }: { userId: string }) {
                 <DocumentRiskBanner userId={userId} destination={primaryTrip.destination} travelDate={primaryTrip.startDate} />
 
                 <LiveTimelineHud trip={primaryTrip} items={timeline} active userId={userId} />
+
+                <ActiveTripActions activeTrip={activeTrip} />
 
                 <section className="rounded-2xl border bg-card p-5 sm:p-6">
                   <SharedTripFeed

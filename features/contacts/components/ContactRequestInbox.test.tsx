@@ -68,6 +68,8 @@ describe("ContactRequestInbox", () => {
     const contactsTab = screen.getByRole("tab", { name: "My Contacts" });
     const requestsTab = screen.getByRole("tab", { name: "Friend Requests, 1 pending" });
     expect(contactsTab.getAttribute("aria-selected")).toBe("true");
+    expect(contactsTab.className).toContain("bg-primary/10");
+    expect(requestsTab.className).toContain("hover:bg-primary/5");
     expect(within(requestsTab).getByText("1")).toBeTruthy();
     expect(screen.getByText("Manual Person")).toBeTruthy();
     expect(screen.getByText("Connected Person")).toBeTruthy();

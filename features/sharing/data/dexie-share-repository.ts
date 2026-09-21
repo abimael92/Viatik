@@ -37,7 +37,11 @@ export class DexieShareLinkRepository implements ShareLinkRepository {
   }
 
   async getBySlug(slug: string): Promise<TripShareLink | undefined> {
-    return getDb().shareLinks.where("slug").equals(slug).filter((link) => link.deletedAt === null).first();
+    return getDb()
+      .shareLinks.where("slug")
+      .equals(slug)
+      .filter((link) => link.deletedAt === null)
+      .first();
   }
 
   async create(input: NewTripShareLink): Promise<TripShareLink> {
@@ -67,7 +71,7 @@ export class DexieShareLinkRepository implements ShareLinkRepository {
 
   async update(
     id: string,
-    patch: Partial<Omit<TripShareLink, "id" | "tripId" | "slug" | "createdBy">>,
+    patch: Partial<Omit<TripShareLink, "id" | "tripId" | "slug" | "createdBy">>
   ): Promise<TripShareLink> {
     const db = getDb();
     return TransactionContext.runInTransaction([db.shareLinks], async (ctx) => {

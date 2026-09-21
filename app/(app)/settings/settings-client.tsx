@@ -2,10 +2,11 @@
 
 import { Check, Copy, KeyRound, Pencil, ScanLine, Smartphone, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import QRCode from "react-qr-code";
+import { getConnectionQrPayload } from "@/app/actions/connections";
 import { updateProfileDetails, type ProfileDetails } from "@/app/actions/auth";
-import { viatikQrPayload } from "@/features/contacts/lib/viatik-id";
+import { PROFILE_UPDATED_EVENT } from "@/features/profile/lib/use-local-profile";
 import { AvatarPicker, type AvatarChange } from "@/components/ui/avatar-picker";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { Button } from "@/components/ui/button";
@@ -33,7 +34,26 @@ export function SettingsClient({
   const [pending, startTransition] = useTransition();
   const [copied, setCopied] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [qrState, setQrState] = useState<{ id: string; value: string | null; error: string | null } | null>(null);
   const saved: ProfileDetails = profile ?? { fullName };
+  const qrValue = qrState && qrState.id === viatikId ? qrState.value : null;
+  const qrError = qrState && qrState.id === viatikId ? qrState.error : null;
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!viatikId) return () => { cancelled = true; };
+
+    void getConnectionQrPayload().then((payload) => {
+      if (cancelled) return;
+      setQrState(payload.success
+        ? { id: viatikId, value: payload.qrValue, error: null }
+        : { id: viatikId, value: null, error: payload.error });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [viatikId]);
 
   function addPasskey() {
     startTransition(async () => {
@@ -139,41 +159,47 @@ export function SettingsClient({
           </section>
         </TabsContent>
         <TabsContent value="directory">
-          <section className="rounded-2xl border bg-card p-5 sm:p-7" aria-labelledby="directory-heading">
-            <div className="flex gap-3">
-              <ScanLine className="size-5 text-primary" />
-              <div>
-                <h2 id="directory-heading" className="font-semibold">{t("common.profileDirectory")}</h2>
-                <p className="text-sm text-muted-foreground">
-                  {t("common.directoryDescription")}
-                </p>
+          <section className="overflow-hidden rounded-2xl border bg-card" aria-labelledby="directory-heading">
+            <div className="border-b bg-muted/20 px-5 py-5 sm:px-7">
+              <div className="flex items-start gap-3">
+                <ScanLine className="mt-0.5 size-5 shrink-0 text-primary" />
+                <div className="min-w-0">
+                  <h2 id="directory-heading" className="font-semibold">{t("common.profileDirectory")}</h2>
+                  <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
+                    {t("common.directoryDescription")}
+                  </p>
+                </div>
               </div>
             </div>
-            <div className="mt-5 space-y-4">
-              {viatikId && (
-                <div className="rounded-xl border p-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold">{t("common.yourViatikId")}</p>
-                      <p className="font-mono text-sm text-muted-foreground">{viatikId}</p>
+            {viatikId && (
+              <div className="mx-auto grid max-w-3xl items-center gap-8 px-5 py-8 sm:px-8 md:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)] md:gap-12">
+                <div className="flex justify-center">
+                  {qrValue ? (
+                    <div className="rounded-3xl border bg-white p-5 shadow-sm" aria-hidden>
+                      <QRCode value={qrValue} size={200} />
                     </div>
-                    <Button type="button" variant="outline" size="sm" onClick={() => void copyViatikId()} disabled={copied}>
-                      {copied ? <Check className="size-5 text-success" /> : <Copy className="size-5" />}
-                      {copied ? t("common.copied") : t("common.copy")}
-                    </Button>
-                  </div>
-                  <div className="mt-5 flex flex-col items-start gap-3">
-                    <div className="rounded-xl border bg-white p-3 shadow-sm" aria-hidden>
-                      <QRCode value={viatikQrPayload(viatikId)} size={180} />
+                  ) : qrError ? (
+                    <p role="alert" className="max-w-xs rounded-lg bg-destructive/10 p-3 text-center text-sm text-destructive">{qrError}</p>
+                  ) : (
+                    <div className="grid size-60 place-items-center rounded-3xl border bg-muted/40 text-sm text-muted-foreground" role="status">
+                      Preparing secure QR code…
                     </div>
-                    <p className="max-w-sm text-xs leading-5 text-muted-foreground">
-                      <span className="block">{t("common.scanToLink")}</span>
-                      <span className="block">{t("common.publicProfileShared")}</span>
-                    </p>
+                  )}
+                </div>
+                <div className="flex flex-col items-center text-center md:items-start md:text-left">
+                  <p className="text-sm font-semibold">{t("common.yourViatikId")}</p>
+                  <p className="mt-1 break-all font-mono text-sm text-muted-foreground">{viatikId}</p>
+                  <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => void copyViatikId()} disabled={copied}>
+                    {copied ? <Check className="size-5 text-success" /> : <Copy className="size-5" />}
+                    {copied ? t("common.copied") : t("common.copy")}
+                  </Button>
+                  <div className="mt-6 border-t pt-5 text-sm leading-6 text-muted-foreground md:w-full">
+                    <p>{t("common.scanToLink")}</p>
+                    <p>{t("common.publicProfileShared")}</p>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </section>
         </TabsContent>
         <TabsContent value="security">
@@ -296,6 +322,7 @@ function ProfileEditForm({
         avatarFile
       );
       if (!result.success) return setMessage(result.error);
+      window.dispatchEvent(new Event(PROFILE_UPDATED_EVENT));
       onSaved(result.success ? "Profile saved." : "");
     });
   }

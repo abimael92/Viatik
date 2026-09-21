@@ -5,7 +5,15 @@ import type { Expense, TripMember } from "@/features/domain/entities";
 import { ExpensePanel } from "@/features/expenses/components/expense-panel";
 
 if (typeof window !== "undefined") {
-  window.matchMedia ??= () => ({ matches: false, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false }) as unknown as MediaQueryList;
+  window.matchMedia ??= () =>
+    ({
+      matches: false,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }) as unknown as MediaQueryList;
 }
 
 vi.mock("@/features/expenses/data/dexie-expense-repository", () => ({
@@ -35,6 +43,28 @@ vi.mock("@/features/collaboration/data/dexie-collaboration-repository", () => ({
 
 vi.mock("@/features/profile/lib/use-local-profile", () => ({
   useLocalProfile: vi.fn(() => null),
+}));
+vi.mock("@/features/contacts/data/dexie-contact-repository", () => ({
+  contactRepository: {
+    create: vi.fn().mockResolvedValue({ id: "contact-1", fullName: "Mom", travelerType: "adult" }),
+  },
+  tripTravelerRepository: {
+    watch: vi.fn((_tripId: string, cb: (travelers: unknown[]) => void) => {
+      cb([]);
+      return () => {};
+    }),
+    attach: vi.fn().mockResolvedValue({
+      id: "00000000-0000-4000-8000-000000000099",
+      tripId: "trip-1",
+      contactId: "contact-1",
+      displayName: "Mom",
+      travelerType: "adult",
+      createdBy: "user-1",
+      createdAt: "2026-01-01T00:00:00Z",
+      updatedAt: "2026-01-01T00:00:00Z",
+      deletedAt: null,
+    }),
+  },
 }));
 
 let expensesCallback: ((expenses: Expense[]) => void) | null = null;
@@ -110,10 +140,13 @@ describe("ExpenseDialog", () => {
 
     const quickAdd = screen.getByPlaceholderText(/Add a person, e.g\. Mom/);
     fireEvent.change(quickAdd, { target: { value: "Mom" } });
-    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Add" }));
+      await Promise.resolve();
+    });
 
-    // "Mom" appears both in the paid-by selector and as a participant chip.
-    expect(screen.getAllByText("Mom").length).toBeGreaterThanOrEqual(1);
+    // The manual traveler is saved to the trip before appearing in the split.
+    expect((await screen.findAllByText("Mom")).length).toBeGreaterThan(0);
     // With only the current user, the "no other travelers" hint appears.
     expect(screen.getByText(/No other travelers yet/)).toBeTruthy();
   });
@@ -137,7 +170,9 @@ describe("ExpenseDialog", () => {
   });
 
   it("defaults the currency to the event location's currency", async () => {
-    render(<ExpensePanel tripId="trip-1" userId="user-1" currency="USD" locationCurrency="MXN" canEdit />);
+    render(
+      <ExpensePanel tripId="trip-1" userId="user-1" currency="USD" locationCurrency="MXN" canEdit />
+    );
 
     await screen.findByRole("button", { name: /Add expense/ });
     fireEvent.click(screen.getByRole("button", { name: /Add expense/ }));

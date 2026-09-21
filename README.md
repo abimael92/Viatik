@@ -546,6 +546,17 @@ Viatik follows a specification-first, test-driven workflow:
 | `supabase db reset` | Recreate local DB and apply migrations |
 | `supabase db push` | Push reviewed migrations to a linked project |
 
+### Local secret scanning
+
+This repo uses ggshield via pre-commit to catch secrets before they leave your machine.
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+Known false positives are allowlisted in `.gitguardian.yaml`.
+
 ## License
 
 Viatik is released under the **MIT License**.

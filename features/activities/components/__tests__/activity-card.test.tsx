@@ -53,7 +53,7 @@ vi.mock("@/features/collaboration/data/dexie-collaboration-repository", () => ({
 describe("ActivityCard", () => {
   afterEach(() => cleanup());
 
-  it("renders as a listitem with distinct move and open-details buttons", () => {
+  it("renders as a listitem with distinct move and view buttons", () => {
     render(<ActivityCard activity={mockActivity} onSelect={() => {}} />);
 
     expect(screen.getByRole("listitem")).toBeTruthy();
@@ -70,6 +70,21 @@ describe("ActivityCard", () => {
 
     fireEvent.click(container.firstChild as Element);
     expect(onSelect).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the edit icon state for the active activity", () => {
+    render(<ActivityCard activity={mockActivity} onSelect={() => {}} active />);
+
+    const editButton = screen.getByRole("button", { name: `Edit ${mockActivity.title}` });
+    expect(editButton).toBeTruthy();
+    expect(editButton.className).toContain("bg-primary/15");
+  });
+
+  it("styles the default view icon button", () => {
+    render(<ActivityCard activity={mockActivity} onSelect={() => {}} />);
+
+    const viewButton = screen.getByRole("button", { name: `View ${mockActivity.title}` });
+    expect(viewButton.className).toContain("bg-primary/10");
   });
 
   it("hides the move handle when not draggable", () => {

@@ -5,6 +5,7 @@ import type { Expense, Trip, TripBudget } from "@/features/domain/entities";
 import { currencyRateRepository } from "@/features/finance/data/dexie-currency-rate-repository";
 import { tripBudgetRepository } from "@/features/finance/data/dexie-finance-repository";
 import { CategoryEnvelopes, MoneyDashboard } from "@/features/finance/components/money-dashboard";
+import { useSettlement } from "@/features/expenses/lib/use-settlement";
 
 if (typeof window !== "undefined") {
   window.matchMedia ??= () => ({ matches: false, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false }) as unknown as MediaQueryList;
@@ -24,6 +25,9 @@ vi.mock("@/features/expenses/components/expense-panel", () => ({
 }));
 vi.mock("@/features/expenses/components/settlement-view", () => ({
   SettlementView: () => <div data-testid="settlement-view" />,
+}));
+vi.mock("@/features/expenses/lib/use-settlement", () => ({
+  useSettlement: vi.fn(() => ({ loading: false, balances: {}, transfers: [], members: [] })),
 }));
 
 let expensesCallback: ((expenses: Expense[]) => void) | null = null;
@@ -129,6 +133,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockPreferredCurrency = null;
   expensesCallback = null;
+  vi.mocked(useSettlement).mockReturnValue({ loading: false, balances: {}, transfers: [], members: [] });
   budgetCallback = null;
   vi.mocked(currencyRateRepository.getRate).mockResolvedValue(undefined);
   vi.mocked(tripBudgetRepository.upsert).mockResolvedValue(budget);

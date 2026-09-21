@@ -27,6 +27,7 @@ export interface NewExpense {
   currency: CurrencyCode;
   exchangeRateToBase?: number | null;
   paidBy: string;
+  paidByTravelerId?: string | null;
   splitType: Expense["splitType"];
   category?: SpendingCategory | null;
   subcategory?: SpendingSubcategory | null;
@@ -34,6 +35,7 @@ export interface NewExpense {
   createdBy: string;
   shares: Array<{
     userId: string;
+    travelerId?: string | null;
     shareAmountMinor: MinorUnits;
     sharePercentage: number | null;
     splitType?: Expense["splitType"];

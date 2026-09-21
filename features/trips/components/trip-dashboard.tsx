@@ -67,7 +67,6 @@ import { tripRepository } from "@/features/trips/data/dexie-trip-repository";
 import { getTripCoverGradient, isTripCoverImage } from "@/features/trips/lib/trip-cover";
 import { getMaxEndDate, getTripDurationError } from "@/features/trips/lib/trip-duration";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
-import { useSyncStatus } from "@/lib/sync/use-sync-status";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 import type { PlaceDetails } from "@/app/actions/places";
@@ -81,7 +80,6 @@ export function TripDashboard({ userId }: { userId: string }) {
   const [invitations, setInvitations] = useState<TripInvitation[]>([]);
   const { toast } = useToast();
   const [error, setError] = useState<string | null>(null);
-  const sync = useSyncStatus();
 
   useEffect(
     () =>
@@ -115,9 +113,9 @@ export function TripDashboard({ userId }: { userId: string }) {
 
   function startTrip(id: string) {
     setError(null);
-    void tripRepository.startTrip(id).catch((cause) =>
-      setError(cause instanceof Error ? cause.message : "Unable to start trip")
-    );
+    void tripRepository
+      .startTrip(id)
+      .catch((cause) => setError(cause instanceof Error ? cause.message : "Unable to start trip"));
   }
 
   function endTrip(id: string) {
@@ -128,9 +126,22 @@ export function TripDashboard({ userId }: { userId: string }) {
     if (!endTripId) return;
     const id = endTripId;
     setEndTripId(null);
-    void tripRepository.endTrip(id)
-      .then(() => toast({ title: "Trip ended", description: "It has been moved to Past Trips.", variant: "success" }))
-      .catch((cause) => toast({ title: "Unable to end trip", description: cause instanceof Error ? cause.message : "Please try again.", variant: "error" }));
+    void tripRepository
+      .endTrip(id)
+      .then(() =>
+        toast({
+          title: "Trip ended",
+          description: "It has been moved to Past Trips.",
+          variant: "success",
+        })
+      )
+      .catch((cause) =>
+        toast({
+          title: "Unable to end trip",
+          description: cause instanceof Error ? cause.message : "Please try again.",
+          variant: "error",
+        })
+      );
   }
 
   return (
@@ -146,9 +157,7 @@ export function TripDashboard({ userId }: { userId: string }) {
           <Heading level={1} className="mt-1 text-3xl font-bold sm:text-4xl">
             {t("common.nextTripQuestion")}
           </Heading>
-          <p className="mt-2 text-muted-foreground">
-            {t("common.tripsDescription")}
-          </p>
+          <p className="mt-2 text-muted-foreground">{t("common.tripsDescription")}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="primary" onClick={() => setCreating(true)}>
@@ -159,7 +168,6 @@ export function TripDashboard({ userId }: { userId: string }) {
       </header>
 
       <MetricsRow
-        sync={sync}
         nextTrip={upcoming[0] ?? null}
         hasActiveTrip={active.length > 0}
         upcomingCount={upcoming.length}
@@ -168,7 +176,9 @@ export function TripDashboard({ userId }: { userId: string }) {
 
       {invitations.some((invitation) => invitation.status === "pending") && (
         <section className="rounded-2xl border border-viatik-magenta/30 bg-viatik-magenta/5 p-5">
-          <Heading level={2} className="text-base font-semibold">{t("common.invitations")}</Heading>
+          <Heading level={2} className="text-base font-semibold">
+            {t("common.invitations")}
+          </Heading>
           <div className="mt-3 space-y-3">
             {invitations
               .filter((invitation) => invitation.status === "pending")
@@ -180,7 +190,7 @@ export function TripDashboard({ userId }: { userId: string }) {
                   <div className="flex-1">
                     <p className="font-semibold">{t("common.invitedSharedTrip")}</p>
                     <p className="text-sm text-muted-foreground">
-                      {t("common.role")}: {invitation.role} · {t("common.expires")} {" "}
+                      {t("common.role")}: {invitation.role} · {t("common.expires")}{" "}
                       {new Date(invitation.expiresAt).toLocaleDateString()}
                     </p>
                   </div>
@@ -244,7 +254,9 @@ export function TripDashboard({ userId }: { userId: string }) {
         <EmptyTrips onCreate={() => setCreating(true)} userId={userId} />
       ) : filtered.length === 0 ? (
         <div className="rounded-2xl border border-dashed p-10 text-center">
-          <Heading level={2} className="text-base font-semibold">{t("common.noTripMatches", { query })}</Heading>
+          <Heading level={2} className="text-base font-semibold">
+            {t("common.noTripMatches", { query })}
+          </Heading>
           <Button variant="link" onClick={() => setQuery("")}>
             {t("common.clearSearch")}
           </Button>
@@ -288,7 +300,9 @@ export function TripDashboard({ userId }: { userId: string }) {
         open={creating}
         onOpenChange={setCreating}
         userId={userId}
-        onError={(message) => toast({ title: "Unable to save trip", description: message, variant: "error" })}
+        onError={(message) =>
+          toast({ title: "Unable to save trip", description: message, variant: "error" })
+        }
       />
       <ConfirmDialog
         open={endTripId !== null}
@@ -325,16 +339,33 @@ function TripSection({
         {title}
       </Heading>
       {/* Asymmetrical bento grid: the first card is featured and spans two columns. */}
-      <div className={cn("grid gap-4", trips.length === 1 ? "grid-cols-1" : trips.length === 2 ? "sm:grid-cols-2" : "sm:grid-cols-2 xl:grid-cols-3")}>
+      <div
+        className={cn(
+          "grid gap-4",
+          trips.length === 1
+            ? "grid-cols-1"
+            : trips.length === 2
+              ? "sm:grid-cols-2"
+              : "sm:grid-cols-2 xl:grid-cols-3"
+        )}
+      >
         {trips.map((trip, index) => (
           <motion.div
             key={trip.id}
-            className={cn(bento && trips.length === 1 && index === 0 && "sm:col-span-2 xl:col-span-2")}
+            className={cn(
+              bento && trips.length === 1 && index === 0 && "sm:col-span-2 xl:col-span-2"
+            )}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25, delay: Math.min(index * 0.05, 0.25) }}
           >
-            <TripCard trip={trip} featured={bento && trips.length === 1 && index === 0} ended={ended} onStart={onStart} onEnd={onEnd} />
+            <TripCard
+              trip={trip}
+              featured={bento && trips.length === 1 && index === 0}
+              ended={ended}
+              onStart={onStart}
+              onEnd={onEnd}
+            />
           </motion.div>
         ))}
       </div>
@@ -383,7 +414,9 @@ function TripCard({
           <div
             className={cn(
               "absolute inset-0",
-              !hasCoverImage && (coverGradient?.className ?? "bg-linear-to-br from-sky-500 via-blue-500 to-violet-600")
+              !hasCoverImage &&
+                (coverGradient?.className ??
+                  "bg-linear-to-br from-sky-500 via-blue-500 to-violet-600")
             )}
             style={
               hasCoverImage
@@ -395,7 +428,10 @@ function TripCard({
                 : undefined
             }
           />
-          <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/30 to-black/10" aria-hidden />
+          <div
+            className="absolute inset-0 bg-linear-to-t from-black/70 via-black/30 to-black/10"
+            aria-hidden
+          />
           <div className="absolute inset-0 grid place-items-center p-4">
             <p
               className={cn(
@@ -409,7 +445,13 @@ function TripCard({
         </div>
         <div className="flex flex-1 flex-col gap-3 p-4">
           <div className="flex items-start justify-between gap-3">
-            <Heading level={3} className={cn("font-semibold group-hover:text-viatik-magenta", featured ? "text-xl" : "text-lg")}>
+            <Heading
+              level={3}
+              className={cn(
+                "font-semibold group-hover:text-viatik-magenta",
+                featured ? "text-xl" : "text-lg"
+              )}
+            >
               {trip.name}
             </Heading>
             <TripCountdown trip={trip} />
@@ -426,7 +468,10 @@ function TripCard({
               {formatDateRange(trip)}
             </p>
             {!ended && (
-              <p className="flex items-center gap-1.5 text-xs text-muted-foreground" title={readiness.label}>
+              <p
+                className="flex items-center gap-1.5 text-xs text-muted-foreground"
+                title={readiness.label}
+              >
                 <span className={cn("size-2 rounded-full", readinessDot)} aria-hidden />
                 {readiness.score}% ready
               </p>
@@ -478,7 +523,8 @@ function TripCountdown({ trip }: { trip: Trip }) {
   const status = resolveTripStatus(trip);
   if (status === "completed") return <TripCountdownPill>{t("common.ended")}</TripCountdownPill>;
   if (status === "cancelled") return <TripCountdownPill>{t("common.cancelled")}</TripCountdownPill>;
-  if (status === "active") return <TripCountdownPill accent>{activeDayLabel(trip, t)}</TripCountdownPill>;
+  if (status === "active")
+    return <TripCountdownPill accent>{activeDayLabel(trip, t)}</TripCountdownPill>;
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -493,7 +539,13 @@ function TripCountdown({ trip }: { trip: Trip }) {
   return <TripCountdownPill accent>{t("common.daysToGo", { count: diffDays })}</TripCountdownPill>;
 }
 
-function TripCountdownPill({ children, accent = false }: { children: React.ReactNode; accent?: boolean }) {
+function TripCountdownPill({
+  children,
+  accent = false,
+}: {
+  children: React.ReactNode;
+  accent?: boolean;
+}) {
   return (
     <span
       className={cn(
@@ -507,13 +559,11 @@ function TripCountdownPill({ children, accent = false }: { children: React.React
 }
 
 function MetricsRow({
-  sync,
   nextTrip,
   hasActiveTrip,
   upcomingCount,
   pastCount,
 }: {
-  sync: ReturnType<typeof useSyncStatus>;
   nextTrip: Trip | null;
   hasActiveTrip: boolean;
   upcomingCount: number;
@@ -529,7 +579,7 @@ function MetricsRow({
       : "No upcoming trips";
 
   return (
-    <section aria-label={t("common.tripOverview")} className="grid gap-4 sm:grid-cols-2">
+    <section aria-label={t("common.tripOverview")} className="grid gap-4">
       <Card glass className="p-5">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
@@ -540,23 +590,6 @@ function MetricsRow({
             </p>
           </div>
           <CalendarClock className="size-6 shrink-0 text-viatik-blue" aria-hidden />
-        </div>
-      </Card>
-
-      <Card glass className="p-5">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-sm text-muted-foreground">Pending changes</p>
-            <p className="mt-1 text-3xl font-bold tracking-tight">{sync.pending}</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {sync.pending > 0 ? t("common.waitingCloud") : t("common.everythingUpToDate")}
-            </p>
-          </div>
-          {sync.pending > 0 && (
-            <span className="grid size-8 shrink-0 animate-pulse place-items-center rounded-full bg-viatik-magenta/15 text-viatik-magenta">
-              <span className="size-2.5 rounded-full bg-viatik-magenta" aria-hidden />
-            </span>
-          )}
         </div>
       </Card>
     </section>
@@ -1031,7 +1064,13 @@ export function TripFormDialog({
   );
 }
 
-function StepHeader({ step, onStepClick }: { step: number; onStepClick: (target: number) => void }) {
+function StepHeader({
+  step,
+  onStepClick,
+}: {
+  step: number;
+  onStepClick: (target: number) => void;
+}) {
   const steps = ["The Basics", "The Itinerary", "Group & Media"];
   return (
     <nav aria-label="Trip setup progress" className="mb-6">
@@ -1052,13 +1091,21 @@ function StepHeader({ step, onStepClick }: { step: number; onStepClick: (target:
                 <span
                   className={cn(
                     "h-1.5 rounded-full transition-colors",
-                    active ? "bg-primary" : completed ? "bg-primary/40" : "bg-muted group-hover:bg-primary/20"
+                    active
+                      ? "bg-primary"
+                      : completed
+                        ? "bg-primary/40"
+                        : "bg-muted group-hover:bg-primary/20"
                   )}
                 />
                 <span
                   className={cn(
                     "text-xs sm:text-sm font-semibold",
-                    active ? "text-primary" : completed ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
+                    active
+                      ? "text-primary"
+                      : completed
+                        ? "text-foreground"
+                        : "text-muted-foreground group-hover:text-foreground"
                   )}
                 >
                   {title}
@@ -1577,7 +1624,9 @@ function EmptyTrips({ onCreate, userId }: { onCreate: () => void; userId: string
         <div className="mx-auto grid size-14 place-items-center rounded-full bg-viatik-magenta/10 text-viatik-magenta">
           <Map className="size-7" />
         </div>
-        <Heading level={2} className="mt-5 text-xl font-semibold">Your next trip starts here</Heading>
+        <Heading level={2} className="mt-5 text-xl font-semibold">
+          Your next trip starts here
+        </Heading>
         <p className="mx-auto mt-2 max-w-md text-muted-foreground">
           Create a shared space for your itinerary, expenses, and favorite moments — or pull
           inspiration from the community below.
@@ -1611,7 +1660,11 @@ function SegmentedTabs({
   const idle = "text-muted-foreground hover:text-foreground";
 
   return (
-    <div role="tablist" aria-label={t("common.yourTrips")} className="inline-flex gap-1 rounded-xl border bg-muted/40 p-1">
+    <div
+      role="tablist"
+      aria-label={t("common.yourTrips")}
+      className="inline-flex gap-1 rounded-xl border bg-muted/40 p-1"
+    >
       <button
         role="tab"
         aria-selected={tab === "upcoming"}
@@ -1641,7 +1694,9 @@ function EmptyPastTrips({ onViewUpcoming }: { onViewUpcoming: () => void }) {
       <div className="mx-auto grid size-14 place-items-center rounded-full bg-muted text-muted-foreground">
         <CalendarDays className="size-7" />
       </div>
-      <Heading level={2} className="mt-5 text-xl font-semibold">{t("common.noPastTrips")}</Heading>
+      <Heading level={2} className="mt-5 text-xl font-semibold">
+        {t("common.noPastTrips")}
+      </Heading>
       <p className="mx-auto mt-2 max-w-md text-muted-foreground">
         {t("common.pastTripsDescription")}
       </p>

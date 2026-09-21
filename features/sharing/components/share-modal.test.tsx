@@ -6,7 +6,15 @@ import { shareLinkRepository } from "@/features/sharing/data/dexie-share-reposit
 import { ShareModal } from "@/features/sharing/components/share-modal";
 
 if (typeof window !== "undefined") {
-  window.matchMedia ??= () => ({ matches: false, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false }) as unknown as MediaQueryList;
+  window.matchMedia ??= () =>
+    ({
+      matches: false,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }) as unknown as MediaQueryList;
 }
 
 vi.mock("@/features/sharing/data/dexie-share-repository", () => ({
@@ -54,6 +62,9 @@ describe("ShareModal", () => {
 
     expect(screen.getByText("Abc123Def456")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Copy link/ })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /\/share\/Abc123Def456/ }).getAttribute("href")).toBe(
+      "http://localhost/share/Abc123Def456"
+    );
   });
 
   it("creates a new link when New link is tapped", async () => {
@@ -62,7 +73,10 @@ describe("ShareModal", () => {
     fireEvent.click(screen.getByRole("button", { name: /New link/ }));
 
     await waitFor(() => {
-      expect(shareLinkRepository.create).toHaveBeenCalledWith({ tripId: "trip-1", createdBy: "owner-1" });
+      expect(shareLinkRepository.create).toHaveBeenCalledWith({
+        tripId: "trip-1",
+        createdBy: "owner-1",
+      });
     });
   });
 
@@ -74,7 +88,7 @@ describe("ShareModal", () => {
 
     await waitFor(() => {
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-        expect.stringContaining(`/share/${link.slug}`),
+        expect.stringContaining(`/share/${link.slug}`)
       );
     });
   });
