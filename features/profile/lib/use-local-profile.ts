@@ -14,7 +14,10 @@ import { profileRepository } from "@/features/profile/data/dexie-profile-reposit
 export function useLocalProfile(ownerId: string): LocalProfile | null {
   const [profile, setProfile] = useState<LocalProfile | null>(null);
 
-  useEffect(() => profileRepository.watch(ownerId, setProfile), [ownerId]);
+  useEffect(() => {
+    if (!ownerId) return;
+    return profileRepository.watch(ownerId, setProfile);
+  }, [ownerId]);
 
   useEffect(() => {
     if (!ownerId) return;

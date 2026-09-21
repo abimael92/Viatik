@@ -41,7 +41,7 @@ export function useSharedTripFeed(tripId: string, userId: string): SharedTripFee
       id: userId,
       name: profile.fullName,
       avatarUrl: profile.avatarUrl,
-      avatarSeed: profile.avatarSeed,
+      avatarSeed: profile.avatarSeed ?? null,
     }));
   }), [userId]);
 
@@ -54,7 +54,7 @@ export function useSharedTripFeed(tripId: string, userId: string): SharedTripFee
       setProfiles((current) => {
         const next = new Map(current);
         for (const profile of remoteProfiles) {
-          next.set(profile.id, { id: profile.id, name: profile.fullName, avatarUrl: profile.avatarUrl, avatarSeed: null });
+          next.set(profile.id, { id: profile.id, name: profile.fullName, avatarUrl: profile.avatarUrl, avatarSeed: profile.avatarSeed ?? null });
         }
         return next;
       });

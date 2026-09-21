@@ -38,6 +38,7 @@ import { daysUntil, isTripActive, isTripEnded, todayKey } from "@/features/trips
 import { resolveTripStatus } from "@/features/trips/lib/trip-status";
 import { tripReadinessSummary } from "@/features/trips/lib/readiness";
 import { SuggestionsDrawer } from "@/features/community/components/suggestions-drawer";
+import { RecentActivityFeed } from "@/features/feed/components/recent-activity-feed";
 import {
   Dialog,
   DialogContent,
@@ -207,6 +208,14 @@ export function TripDashboard({ userId }: { userId: string }) {
               ))}
           </div>
         </section>
+      )}
+
+      {trips && trips.length > 0 && (
+        <RecentActivityFeed
+          userId={userId}
+          limit={10}
+          emptyMessage="No traveler activity yet. Changes across all your trips will appear here."
+        />
       )}
 
       <div className="relative max-w-xl">

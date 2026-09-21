@@ -147,6 +147,15 @@ describe("MoneyDashboard (Budget tab)", () => {
     expect(screen.getByText(/No budget set — add a total trip budget/)).toBeTruthy();
   });
 
+  it("shows view-only guidance and hides financial mutation actions", () => {
+    render(<MoneyDashboard tripId={trip.id} userId="user-1" trip={trip} days={["2026-06-01"]} canEdit={false} />);
+
+    expect(screen.getByText("You have view-only access. You can review expenses and balances, but only owners and editors can change financial data.")).toBeTruthy();
+    expect(screen.getByText("Track group spending, manage your trip budget, record expenses, and see how much each traveler owes or is owed.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Edit budget" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add Expense" })).toBeNull();
+  });
+
   it("shows spent vs. budget reactively", async () => {
     render(<MoneyDashboard tripId={trip.id} userId="user-1" trip={trip} days={["2026-06-01", "2026-06-02"]} canEdit />);
 
@@ -156,7 +165,7 @@ describe("MoneyDashboard (Budget tab)", () => {
     });
 
     // 30000 USD minor spent of 100000 USD minor budget.
-    expect(await screen.findByText(/of \$1,000\.00/)).toBeTruthy();
+    expect(await screen.findByText(/of \$1,000\.00 USD/)).toBeTruthy();
   });
 
   it("edits the total budget and persists via the repository", async () => {
@@ -186,9 +195,9 @@ describe("MoneyDashboard (Budget tab)", () => {
     const swap = screen.getByRole("button", { name: /Swap currency/ });
 
     // Amount starts in the base currency (USD), then swaps to the settings currency (MXN).
-    expect(screen.getByText("USD")).toBeTruthy();
+    expect(screen.getAllByText(/\$0\.00 USD/).length).toBeGreaterThan(0);
     fireEvent.click(swap);
-    expect(screen.getByText("MXN")).toBeTruthy();
+    expect(screen.getAllByText(/\$0\.00 MXN/).length).toBeGreaterThan(0);
   });
 
   it("opens the money tools modal from a deep-link intent", () => {
@@ -197,10 +206,11 @@ describe("MoneyDashboard (Budget tab)", () => {
     expect(screen.getByLabelText("Amount")).toBeTruthy();
   });
 
-  it("opens the money tools modal and switches between converter and tip tabs", () => {
+  it("opens the money tools modal and switches between converter and tip tabs", async () => {
     render(<MoneyDashboard tripId={trip.id} userId="user-1" trip={trip} days={["2026-06-01"]} canEdit />);
 
-    fireEvent.click(screen.getByRole("button", { name: /Money tools/ }));
+    fireEvent.pointerDown(screen.getByRole("button", { name: "More money actions" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /Money tools/ }));
 
     // Currency converter tab is shown by default.
     expect(screen.getByLabelText("Amount")).toBeTruthy();
