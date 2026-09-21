@@ -22,6 +22,7 @@ interface DayColumnProps {
   activities: Activity[];
   category?: string;
   onSelect?: (activity: Activity) => void;
+  onEdit?: (activity: Activity) => void;
   draggable?: boolean;
   forecast?: DailyForecast;
   warnings?: WeatherWarning[];
@@ -33,6 +34,7 @@ interface DayColumnProps {
   currentUserId?: string;
   eligibleViaticUsers?: number;
   tripOwnerId?: string;
+  activeActivityId?: string;
 }
 
 export function DayColumn({
@@ -41,6 +43,7 @@ export function DayColumn({
   activities,
   category = "all",
   onSelect,
+  onEdit,
   draggable = true,
   forecast,
   warnings,
@@ -50,6 +53,7 @@ export function DayColumn({
   currentUserId,
   eligibleViaticUsers,
   tripOwnerId,
+  activeActivityId,
 }: DayColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: dayDate, data: { dayDate } });
   const setDragOverDay = useUiStore((s) => s.setDragOverDay);
@@ -135,11 +139,13 @@ export function DayColumn({
               key={activity.id}
               activity={activity}
               onSelect={onSelect}
+              onEdit={onEdit}
               draggable={draggable}
               conflict={conflicts?.[activity.id]}
               currentUserId={currentUserId}
               eligibleViaticUsers={eligibleViaticUsers}
               tripOwnerId={tripOwnerId}
+              active={activeActivityId === activity.id}
             />
           ))}
           {emptyText && (

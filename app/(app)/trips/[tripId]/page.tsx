@@ -36,6 +36,7 @@ export default async function TripPage({
       tripId={tripId}
       userId={data.user.id}
       initialTab={initialTab}
+      initialAction={action}
       initialMoneyToolsOpen={action === "money-tools"}
     />
   );

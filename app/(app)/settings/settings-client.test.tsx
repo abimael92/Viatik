@@ -5,10 +5,12 @@ const mocks = vi.hoisted(() => ({
   registerPasskey: vi.fn(),
   updateProfile: vi.fn(),
   updateProfileDetails: vi.fn(),
+  getConnectionQrPayload: vi.fn(),
   refresh: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
+vi.mock("@/app/actions/connections", () => ({ getConnectionQrPayload: mocks.getConnectionQrPayload }));
 vi.mock("@/app/actions/auth", () => ({ updateProfile: mocks.updateProfile, updateProfileDetails: mocks.updateProfileDetails }));
 vi.mock("@/lib/supabase/browser-client", () => ({
   getSupabaseBrowserClient: () => ({ auth: { registerPasskey: mocks.registerPasskey } }),
@@ -32,12 +34,20 @@ describe("native passkey registration", () => {
     expect((await screen.findByRole("status")).textContent).toBe("Passkey added to your account.");
   });
 
-  it("shows the user's Viatik ID and QR code when present", () => {
+  it("shows the user's Viatik ID and signed QR code when present", async () => {
+    mocks.getConnectionQrPayload.mockResolvedValue({
+      success: true,
+      qrValue: "viatik-scan:signed-token",
+      token: "signed-token",
+      viatikId: "VTK-1234ABCD5678EF90",
+      expiresAt: "2026-09-21T21:00:00.000Z",
+    });
     const { container } = render(<SettingsClient phone={null} fullName="Alice" viatikId="VTK-1234ABCD5678EF90" />);
 
     fireEvent.mouseDown(screen.getByRole("tab", { name: "Directory" }));
     expect(screen.getByText("VTK-1234ABCD5678EF90")).toBeTruthy();
-    expect(container.querySelector("svg")).toBeTruthy();
+    await waitFor(() => expect(container.querySelector("svg")).toBeTruthy());
+    expect(mocks.getConnectionQrPayload).toHaveBeenCalledOnce();
   });
 
   it("displays saved profile details read-only until edit is pressed", () => {

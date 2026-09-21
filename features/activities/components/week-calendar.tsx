@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, CloudRain, Pencil, Plane, TrainFront, Trash2, Vote } from "lucide-react";
+import { ChevronLeft, ChevronRight, CloudRain, Eye, Pencil, Plane, TrainFront, Trash2, Vote } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ export function WeekCalendar({
   days,
   activities,
   onSelect,
+  onEdit,
   forecast,
   warnings,
   weatherLoading,
@@ -37,11 +38,13 @@ export function WeekCalendar({
   onCreateActivity,
   onEditTransit,
   currentUserId,
+  activeActivityId,
 }: {
   tripId: string;
   days: string[];
   activities: Activity[];
   onSelect?: (activity: Activity) => void;
+  onEdit?: (activity: Activity) => void;
   forecast?: DailyForecast;
   warnings?: WeatherWarning[];
   weatherLoading?: boolean;
@@ -51,6 +54,7 @@ export function WeekCalendar({
   onCreateActivity?: (dayDate: string, time: string) => void;
   onEditTransit?: (segment: TransitSegment) => void;
   currentUserId?: string;
+  activeActivityId?: string;
 }) {
   const { t } = useI18n();
   const [view, setView] = useState<"today" | "range" | "all">("all");
@@ -129,7 +133,7 @@ export function WeekCalendar({
             ))}
           </div>
           <div ref={timelineScrollRef} className="grid max-h-[65vh] overflow-y-auto" style={{ gridTemplateColumns: `5rem repeat(${visibleDays.length}, minmax(7rem, 1fr))` }}>
-            <div className="sticky left-0 z-20 relative border-r bg-card shadow-[2px_0_4px_-2px_var(--color-border)]" style={{ height: (END_HOUR - START_HOUR) * HOUR_HEIGHT }}>{Array.from({ length: END_HOUR - START_HOUR }, (_, index) => <div key={index} className="absolute w-full border-t pr-2 pt-1 text-right text-xs text-muted-foreground" style={{ top: index * HOUR_HEIGHT }}>{formatHour(START_HOUR + index)}</div>)}</div>
+            <div className="sticky left-0 z-20 border-r bg-card shadow-[2px_0_4px_-2px_var(--color-border)]" style={{ height: (END_HOUR - START_HOUR) * HOUR_HEIGHT }}>{Array.from({ length: END_HOUR - START_HOUR }, (_, index) => <div key={index} className="absolute w-full border-t pr-2 pt-1 text-right text-xs text-muted-foreground" style={{ top: index * HOUR_HEIGHT }}>{formatHour(START_HOUR + index)}</div>)}</div>
             {visibleDays.map((day) => {
               const daySegments = transitByDay.get(day) ?? [];
               const dayActivities = byDay.get(day) ?? [];
@@ -189,9 +193,11 @@ export function WeekCalendar({
                       <button
                         key={activity.id}
                         type="button"
-                        onClick={() => onSelect?.(activity)}
+                        onClick={() => (activeActivityId === activity.id ? onEdit?.(activity) : onSelect?.(activity))}
                         className={cn(
                           "absolute right-1 z-10 overflow-hidden rounded-md border-l-4 px-2 py-1 text-left text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                          activeActivityId === activity.id && "ring-2 ring-ring",
+
                           overlaps ? "left-[51%]" : "left-1",
                           colors.border,
                           colors.background,
@@ -200,10 +206,13 @@ export function WeekCalendar({
                           muted && "opacity-50 [&>*]:grayscale"
                         )}
                         style={{ top, height }}
-                        aria-label={`Open details for ${activity.title}${conflict ? ` (weather warning)` : ""}`}
+                        aria-label={`${activeActivityId === activity.id ? "Edit" : "View"} ${activity.title}${conflict ? ` (weather warning)` : ""}`}
                         data-activity-id={activity.id}
                       >
-                        <strong className="block truncate">{activity.title}</strong>
+                        <strong className="flex items-center justify-between gap-1 truncate">
+                          <span className="truncate">{activity.title}</span>
+                          {activeActivityId === activity.id ? <Pencil className="size-3 shrink-0 text-current opacity-90" strokeWidth={2.5} aria-hidden /> : <Eye className="size-3 shrink-0 text-current opacity-90" strokeWidth={2.5} aria-hidden />}
+                        </strong>
                         <span className="text-muted-foreground capitalize">
                           {activity.timingSpecificity === "flexible"
                             ? (activity.flexiblePeriod ?? "Anytime")
