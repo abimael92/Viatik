@@ -713,6 +713,10 @@ export function TripFormDialog({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (step < 3) {
+      handleNext();
+      return;
+    }
     setFormError(null);
     const errors = validateAll();
     if (Object.keys(errors).length > 0) {
@@ -1230,9 +1234,9 @@ function CoverImageField({
 
   return (
     <FormField
-      label="Cover image"
+      label="Trip banner"
       name="coverImage"
-      helper="JPG, PNG, or WebP up to 5 MB. The image uploads when you save the trip."
+      helper="Choose a JPG, PNG, or WebP up to 5 MB. It will appear as the trip banner after you save."
       error={error}
     >
       <div
