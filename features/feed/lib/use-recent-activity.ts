@@ -30,6 +30,16 @@ export function useRecentActivity(userId: string): RecentActivityData {
     setLoading(false);
   }), []);
 
+  useEffect(() => profileRepository.watch(userId, (profile) => {
+    if (!profile) return;
+    setProfiles((current) => new Map(current).set(userId, {
+      id: userId,
+      name: profile.fullName,
+      avatarUrl: profile.avatarUrl,
+      avatarSeed: profile.avatarSeed ?? null,
+    }));
+  }), [userId]);
+
   useEffect(() => {
     const actorIds = Array.from(new Set(items.map((item) => item.actorId))).filter((id) => id && id !== userId);
     if (!actorIds.length) return;

@@ -159,21 +159,6 @@ describe("MoneyDashboard (Budget tab)", () => {
     expect(screen.getByText("Track group spending, manage your trip budget, record expenses, and see how much each traveler owes or is owed.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Edit budget" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Add Expense" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "View Settlement" })).toBeNull();
-  });
-
-  it("opens settlement from the primary action when transfers are needed", () => {
-    vi.mocked(useSettlement).mockReturnValue({
-      loading: false,
-      balances: { "user-1": -4250n, "user-2": 4250n },
-      transfers: [{ fromUserId: "user-1", toUserId: "user-2", amountMinor: 4250n, currency: "USD" }],
-      members: [],
-    });
-    render(<MoneyDashboard tripId={trip.id} userId="user-1" trip={trip} days={["2026-06-01"]} canEdit />);
-
-    fireEvent.click(screen.getByRole("button", { name: "View Settlement" }));
-
-    expect(screen.getByRole("dialog", { name: "Settlement" })).toBeTruthy();
   });
 
   it("shows spent vs. budget reactively", async () => {
@@ -184,11 +169,8 @@ describe("MoneyDashboard (Budget tab)", () => {
       budgetCallback?.(budget);
     });
 
-    // The budget is shown as the prominent remaining amount when no expenses are recorded.
-    expect(screen.getAllByText(/\$1,000\.00 USD/).length).toBeGreaterThan(0);
-    expect(screen.getByText("Spent")).toBeTruthy();
-    expect(screen.getByText("Budget set")).toBeTruthy();
-    expect(screen.getAllByText(/\$1,000\.00 USD/).length).toBeGreaterThan(0);
+    // 30000 USD minor spent of 100000 USD minor budget.
+    expect(await screen.findByText(/of \$1,000\.00 USD/)).toBeTruthy();
   });
 
   it("edits the total budget and persists via the repository", async () => {

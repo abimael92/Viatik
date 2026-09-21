@@ -351,6 +351,37 @@ describe("CAS mutation replay", () => {
     expect(mocks.mutationDelete).toHaveBeenCalledWith(mutation, "2026-01-03T00:00:00.000Z");
   });
 
+  it("falls back to generic CAS for activity updates when the specialized RPC is stale", async () => {
+    mocks.isTransientSchemaCacheError.mockReturnValue(true);
+    mocks.rpc
+      .mockResolvedValueOnce({ data: null, error: { message: "Could not find the function public.sync_activity_cas_upsert(...) in the schema cache" } })
+      .mockResolvedValueOnce({ data: { status: "applied", server_updated_at: "2026-01-03T00:00:00.000Z" }, error: null });
+    const mutation = tripMutation({
+      entityType: "activity",
+      operation: "update",
+      baseUpdatedAt: "2026-01-02T00:00:00.000Z",
+      payload: {
+        id: "00000000-0000-4000-8000-000000000003",
+        tripId: "00000000-0000-4000-8000-000000000001",
+        dayDate: "2026-01-03",
+        title: "Museum",
+        description: null,
+        category: "sightseeing",
+        startTime: null,
+        endTime: null,
+        position: 1,
+        estimatedCostMinor: null,
+        createdBy: "00000000-0000-4000-8000-000000000002",
+        createdAt: "2026-01-02T00:00:00.000Z",
+        updatedAt: "2026-01-03T00:00:00.000Z",
+        deletedAt: null,
+      },
+    });
+
+    await expect(__syncEngineInternals.replayCasMutation(mutation)).resolves.toBe(true);
+    expect(mocks.rpc).toHaveBeenNthCalledWith(2, "sync_cas_upsert", expect.objectContaining({ p_entity: "activity" }));
+  });
+
   it("resets attempts for mutations stuck on a transient schema-cache error", async () => {
     mocks.rpc.mockResolvedValue({
       data: { status: "applied", server_updated_at: "2026-01-03T00:00:00.000Z" },

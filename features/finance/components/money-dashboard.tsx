@@ -19,7 +19,7 @@ import {
   Wrench,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -171,7 +171,7 @@ export function MoneyDashboard({
   const [expenses, setExpenses] = useState<Expense[] | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(autoOpenTools);
-  const [settlementOpen, setSettlementOpen] = useState(false);
+  const settlementRef = useRef<HTMLElement>(null);
 
   // Watch expenses for CSV export
   useEffect(() => expenseRepository.watchByTrip(tripId, setExpenses), [tripId]);
@@ -238,11 +238,13 @@ export function MoneyDashboard({
               Add Expense
             </Button>
           )}
-          {settlementNeeded && (
-            <Button size="lg" variant="outline" onClick={() => setSettlementOpen(true)}>
-              View Settlement
-            </Button>
-          )}
+          <Button
+            size="lg"
+            variant="outline"
+            onClick={() => settlementRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          >
+            View Settlement
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="icon" aria-label="More money actions">
@@ -281,7 +283,7 @@ export function MoneyDashboard({
         />
       </section>
 
-      <section aria-labelledby="settlement-section-heading" className="space-y-3">
+      <section ref={settlementRef} aria-labelledby="settlement-section-heading" className="scroll-mt-6 space-y-3">
         <SectionHeading id="settlement-section-heading" title="Settlement" description="See who owes or is owed and the fewest transfers needed to settle the trip." />
         <SettlementView tripId={tripId} userId={userId} currency={baseCurrency} />
       </section>
@@ -381,8 +383,6 @@ function FinancialHero({
   const showConvertButton = settingsCurrency != null && settingsCurrency !== locationCurrency;
   // Currency the "Trip spending" amount is currently shown in (swappable).
   const displayCurrency = swapped && settingsCurrency ? settingsCurrency : baseCurrency;
-  const displayRemaining = remaining === null ? null : convertBudget(remaining >= 0n ? remaining : -remaining, baseCurrency, displayCurrency);
-  const displayTotalBudget = totalBudget === null ? null : convertBudget(totalBudget, baseCurrency, displayCurrency);
   const budgetStatus = totalBudget === null ? "No budget set" : tone === "danger" ? "Over budget" : tone === "warn" ? "Near budget limit" : "Under budget";
 
   function beginEdit() {
@@ -457,15 +457,13 @@ function FinancialHero({
               </button>
             )}
           </div>
-          <p className="mt-1 font-mono text-4xl font-bold tracking-tight tabular-nums sm:text-5xl">
-            {remaining !== null && displayRemaining !== null
-              ? formatMoney(displayRemaining, displayCurrency)
-              : formatMoney(convertBudget(totalSpent, baseCurrency, displayCurrency), displayCurrency)}
+          <p className="mt-1 font-mono text-3xl font-bold tracking-tight tabular-nums sm:text-4xl">
+            {formatAmount(convertBudget(totalSpent, baseCurrency, displayCurrency), displayCurrency)} {displayCurrency}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            {displayTotalBudget !== null
-              ? `of ${formatMoney(displayTotalBudget, displayCurrency)} total budget`
-              : "Set a budget to track how much remains."}
+            {totalBudget !== null
+              ? `of ${formatMoney(convertBudget(totalBudget, baseCurrency, displayCurrency), displayCurrency)} budget`
+              : "(no budget set)"}
           </p>
         </div>
         {canEdit && !editing && (
@@ -491,19 +489,7 @@ function FinancialHero({
         )}
       </div>
 
-      <div className="relative mt-5 flex flex-col gap-3 sm:grid sm:grid-cols-4">
-        <HeroStat
-          label="Spent"
-          value={formatMoney(totalSpent, baseCurrency)}
-          detail="Recorded expenses"
-          className="border-sky-200 bg-sky-50/70 dark:border-sky-900/50 dark:bg-sky-950/20 [html[data-theme=light]_&]:!border-sky-300 [html[data-theme=light]_&]:!bg-sky-100/90"
-        />
-        <HeroStat
-          label="Budget set"
-          value={totalBudget !== null ? formatMoney(totalBudget, baseCurrency) : "—"}
-          detail={totalBudget !== null ? "Total trip budget" : "Not set"}
-          className="border-violet-200 bg-violet-50/70 dark:border-violet-900/50 dark:bg-violet-950/20 [html[data-theme=light]_&]:!border-violet-300 [html[data-theme=light]_&]:!bg-violet-100/90"
-        />
+      <div className="relative mt-5 flex flex-col gap-3 sm:grid sm:grid-cols-3">
         <HeroStat
           label="Your standing"
           value={formatMoney(personalStanding < 0n ? -personalStanding : personalStanding, baseCurrency)}
@@ -514,7 +500,6 @@ function FinancialHero({
         <HeroStat
           label={dailyTarget !== null ? "Daily target" : "Trip days"}
           value={dailyTarget !== null ? `${formatMoney(dailyTarget, baseCurrency)}/day` : String(dayCount)}
-          className="border-amber-200 bg-amber-50/70 dark:border-amber-900/50 dark:bg-amber-950/20 [html[data-theme=light]_&]:!border-amber-300 [html[data-theme=light]_&]:!bg-amber-100/90"
         />
       </div>
 

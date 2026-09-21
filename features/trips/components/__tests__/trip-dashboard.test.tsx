@@ -8,6 +8,9 @@ import { tripRepository } from "@/features/trips/data/dexie-trip-repository";
 vi.mock("@/features/trips/data/dexie-trip-repository", () => ({
   tripRepository: { watchAll: vi.fn(), create: vi.fn(), update: vi.fn() },
 }));
+vi.mock("@/features/feed/components/recent-activity-feed", () => ({
+  RecentActivityFeed: ({ userId }: { userId: string }) => <div data-testid="recent-activity-feed">All traveler activity for {userId}</div>,
+}));
 vi.mock("@/features/collaboration/data/dexie-collaboration-repository", () => ({
   collaborationRepository: {
     watchInvitations: vi.fn((_tripId, callback) => {
@@ -95,8 +98,7 @@ describe("TripDashboard", () => {
     const title = (await screen.findAllByText("Lisbon with friends"))[0];
     expect(title.className).toContain("bg-black/60");
     expect(title.className).toContain("text-white");
-    expect(screen.queryByTestId("recent-activity-feed")).toBeNull();
-    expect(screen.queryByText("Pending changes")).toBeNull();
+    expect(screen.getByTestId("recent-activity-feed").textContent).toContain("All traveler activity for user-1");
   });
 
   it("creates trips through the repository", async () => {

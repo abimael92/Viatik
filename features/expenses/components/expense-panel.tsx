@@ -1,18 +1,6 @@
 "use client";
 
-import {
-  BedDouble,
-  Car,
-  Pencil,
-  Plus,
-  ReceiptText,
-  ShoppingBag,
-  Ticket,
-  Trash2,
-  UtensilsCrossed,
-  UserRound,
-  X,
-} from "lucide-react";
+import { BedDouble, Car, Pencil, Plus, ReceiptText, ShoppingBag, Ticket, Trash2, UtensilsCrossed, UserRound, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -62,7 +50,6 @@ import { lookupRate } from "@/features/finance/lib/currency-converter";
 import { expenseRepository } from "@/features/expenses/data/dexie-expense-repository";
 import { calculateBalances, calculateSplit } from "@/features/expenses/lib/expense-calculator";
 import { useLocalProfile } from "@/features/profile/lib/use-local-profile";
-import { cn } from "@/lib/utils";
 
 const CURRENCIES = ["USD", "EUR", "GBP", "JPY", "CAD", "MXN"] as const;
 
@@ -75,54 +62,19 @@ const CATEGORY_ICONS: Record<SpendingCategory, typeof ReceiptText> = {
   personal: UserRound,
 };
 
-const CATEGORY_STYLES: Record<SpendingCategory, string> = {
-  transport:
-    "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300 [html[data-theme=light]_&]:!bg-sky-200 [html[data-theme=light]_&]:!text-sky-800",
-  stay: "bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 [html[data-theme=light]_&]:!bg-indigo-200 [html[data-theme=light]_&]:!text-indigo-800",
-  food: "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300 [html[data-theme=light]_&]:!bg-orange-200 [html[data-theme=light]_&]:!text-orange-800",
-  activities:
-    "bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300 [html[data-theme=light]_&]:!bg-violet-200 [html[data-theme=light]_&]:!text-violet-800",
-  shopping:
-    "bg-pink-100 text-pink-700 dark:bg-pink-950/40 dark:text-pink-300 [html[data-theme=light]_&]:!bg-pink-200 [html[data-theme=light]_&]:!text-pink-800",
-  personal:
-    "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 [html[data-theme=light]_&]:!bg-emerald-200 [html[data-theme=light]_&]:!text-emerald-800",
-};
-
-const CATEGORY_TAG_STYLES: Record<SpendingCategory, string> = {
-  transport:
-    "bg-muted text-muted-foreground [html[data-theme=light]_&]:!bg-sky-100 [html[data-theme=light]_&]:!text-sky-700",
-  stay: "bg-muted text-muted-foreground [html[data-theme=light]_&]:!bg-indigo-100 [html[data-theme=light]_&]:!text-indigo-700",
-  food: "bg-muted text-muted-foreground [html[data-theme=light]_&]:!bg-orange-100 [html[data-theme=light]_&]:!text-orange-700",
-  activities:
-    "bg-muted text-muted-foreground [html[data-theme=light]_&]:!bg-violet-100 [html[data-theme=light]_&]:!text-violet-700",
-  shopping:
-    "bg-muted text-muted-foreground [html[data-theme=light]_&]:!bg-pink-100 [html[data-theme=light]_&]:!text-pink-700",
-  personal:
-    "bg-muted text-muted-foreground [html[data-theme=light]_&]:!bg-emerald-100 [html[data-theme=light]_&]:!text-emerald-700",
-};
-
 function formatMoney(amount: bigint, currency: string): string {
   return `${formatMinorUnits(amount, currency)} ${currency.toUpperCase()}`;
 }
 
 function splitLabel(splitType: ExpenseSplitType): string {
-  return splitType === "equal"
-    ? "Equal split"
-    : splitType === "exact"
-      ? "Custom split"
-      : `${splitType[0].toUpperCase()}${splitType.slice(1)} split`;
+  return splitType === "equal" ? "Equal split" : splitType === "exact" ? "Custom split" : `${splitType[0].toUpperCase()}${splitType.slice(1)} split`;
 }
 
 function getConvertedExpenseAmount(expense: Expense, baseCurrency: string): bigint | null {
   if (expense.currency === baseCurrency) return expense.amountMinor;
   if (expense.exchangeRateToBase == null) return null;
   try {
-    return toBaseMinorUnits(
-      expense.amountMinor,
-      expense.currency,
-      expense.exchangeRateToBase,
-      baseCurrency
-    );
+    return toBaseMinorUnits(expense.amountMinor, expense.currency, expense.exchangeRateToBase, baseCurrency);
   } catch {
     return null;
   }
@@ -164,7 +116,6 @@ export function ExpensePanel({
 }) {
   const [expenses, setExpenses] = useState<Expense[] | null>(null);
   const [members, setMembers] = useState<TripMember[]>([]);
-  const [travelers, setTravelers] = useState<TripTraveler[]>([]);
   const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
   const localProfile = useLocalProfile(userId);
   const [dialog, setDialog] = useState<Expense | "new" | null>(null);
@@ -211,15 +162,24 @@ export function ExpensePanel({
     };
   }, [members]);
   useEffect(() => {
+    const memberIds = [...new Set(members.map((member) => member.userId).filter((id): id is string => Boolean(id)))];
+    if (memberIds.length === 0) return;
+    let cancelled = false;
+    void collaborationRepository.listProfiles(memberIds).then((nextProfiles) => {
+      if (!cancelled) setProfiles(nextProfiles);
+    }).catch(() => {
+      if (!cancelled) setProfiles([]);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [members]);
+  useEffect(() => {
     let cancelled = false;
     Promise.all(
       (expenses ?? []).map(async (expense) => {
         const shares = await expenseRepository.listSharesByExpense(expense.id);
-        return [
-          expense.id,
-          shares,
-          { amountMinor: expense.amountMinor, paidBy: expense.paidBy, shares },
-        ] as const;
+        return [expense.id, shares, { amountMinor: expense.amountMinor, paidBy: expense.paidBy, shares }] as const;
       })
     ).then((items) => {
       if (cancelled) return;
@@ -235,37 +195,18 @@ export function ExpensePanel({
     () => (expenses ?? []).reduce((sum, expense) => sum + expense.amountMinor, 0n),
     [expenses]
   );
-  const profileById = useMemo(
-    () => new Map(profiles.map((profile) => [profile.id, profile])),
-    [profiles]
-  );
-  const travelerByKey = useMemo(
-    () => new Map(travelers.map((traveler) => [`traveler:${traveler.id}`, traveler])),
-    [travelers]
-  );
+  const profileById = useMemo(() => new Map(profiles.map((profile) => [profile.id, profile])), [profiles]);
   const names = useMemo(() => {
-    const next = new Map(
-      profiles.map((profile) => [profile.id, profile.fullName?.trim() || "Traveler"])
-    );
+    const next = new Map(profiles.map((profile) => [profile.id, profile.fullName?.trim() || "Traveler"]));
     if (localProfile) next.set(userId, localProfile.fullName?.trim() || "Traveler");
     return next;
   }, [localProfile, profiles, userId]);
   const identityFor = (id: string) => {
-    const traveler = travelerByKey.get(id);
-    if (traveler) return { name: traveler.displayName, avatarUrl: null, avatarSeed: traveler.id };
     if (id === userId && localProfile) {
-      return {
-        name: localProfile.fullName?.trim() || "Traveler",
-        avatarUrl: localProfile.avatarUrl,
-        avatarSeed: localProfile.avatarSeed,
-      };
+      return { name: localProfile.fullName?.trim() || "Traveler", avatarUrl: localProfile.avatarUrl, avatarSeed: localProfile.avatarSeed };
     }
     const profile = profileById.get(id);
-    return {
-      name: profile?.fullName?.trim() || "Traveler",
-      avatarUrl: profile?.avatarUrl ?? null,
-      avatarSeed: profile?.avatarSeed ?? null,
-    };
+    return { name: profile?.fullName?.trim() || "Traveler", avatarUrl: profile?.avatarUrl ?? null, avatarSeed: profile?.avatarSeed ?? null };
   };
 
   const visibleExpenses = useMemo(
@@ -336,9 +277,7 @@ export function ExpensePanel({
             <ReceiptText className="size-8" aria-hidden />
           </span>
           <Heading level={3} className="text-lg font-semibold">
-            {hasFilter && (expenses ?? []).length > 0
-              ? "Nothing in this category yet"
-              : "No shared expenses yet"}
+            {hasFilter && (expenses ?? []).length > 0 ? "Nothing in this category yet" : "No shared expenses yet"}
           </Heading>
           <p className="max-w-xs text-sm text-muted-foreground">
             {hasFilter && (expenses ?? []).length > 0
@@ -371,61 +310,31 @@ export function ExpensePanel({
                     aria-expanded={expanded}
                     onClick={() => setExpandedExpenseId(expanded ? null : expense.id)}
                   >
-                    <span
-                      className={cn(
-                        "grid size-10 shrink-0 place-items-center rounded-full",
-                        expense.category
-                          ? CATEGORY_STYLES[expense.category]
-                          : "bg-primary/10 text-primary"
-                      )}
-                    >
+                    <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
                       <CategoryIcon className="size-5" aria-hidden />
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-semibold">{expense.description}</p>
                       <p className="truncate text-xs text-muted-foreground">
                         {expense.category ? (
-                          <span
-                            className={cn(
-                              "mr-1.5 inline-flex items-center rounded-full border border-current/15 px-2 py-0.5 text-[11px] font-semibold",
-                              CATEGORY_TAG_STYLES[expense.category]
-                            )}
-                          >
+                          <span className="mr-1.5 inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
                             {SPENDING_CATEGORY_LABELS[expense.category]}
                           </span>
                         ) : null}
                         <span className="inline-flex items-center gap-1.5 align-middle">
-                          <UserAvatar
-                            seed={payer.avatarSeed}
-                            src={payer.avatarUrl}
-                            name={payer.name}
-                            size="sm"
-                            className="size-8"
-                          />
+                          <UserAvatar seed={payer.avatarSeed} src={payer.avatarUrl} name={payer.name} size="sm" className="size-8" />
                           Paid by {payer.name} · {splitLabel(expense.splitType)}
                         </span>
                       </p>
                     </div>
-                    <strong className="shrink-0 font-mono tracking-tight tabular-nums">
-                      {formatExpenseSummary(expense, currency)}
-                    </strong>
+                    <strong className="shrink-0 font-mono tracking-tight tabular-nums">{formatExpenseSummary(expense, currency)}</strong>
                   </button>
                   {canEdit && (
                     <div className="flex shrink-0 items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={`Edit ${expense.description}`}
-                        onClick={() => setDialog(expense)}
-                      >
+                      <Button variant="ghost" size="icon" aria-label={`Edit ${expense.description}`} onClick={() => setDialog(expense)}>
                         <Pencil className="size-5" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={`Delete ${expense.description}`}
-                        onClick={() => setDeleteExpense(expense)}
-                      >
+                      <Button variant="ghost" size="icon" aria-label={`Delete ${expense.description}`} onClick={() => setDeleteExpense(expense)}>
                         <Trash2 className="size-5 text-destructive" />
                       </Button>
                     </div>
@@ -436,30 +345,19 @@ export function ExpensePanel({
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div>
                         <p className="text-xs text-muted-foreground">Split details</p>
-                        <p className="font-medium">
-                          {splitLabel(expense.splitType)} · {shares.length || 1} traveler
-                          {shares.length === 1 ? "" : "s"}
-                        </p>
+                        <p className="font-medium">{splitLabel(expense.splitType)} · {shares.length || 1} traveler{shares.length === 1 ? "" : "s"}</p>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Sync status</p>
-                        <span className="mt-1 inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                          Saved locally
-                        </span>
+                        <span className="mt-1 inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">Saved locally</span>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Original amount</p>
-                        <p className="font-mono font-semibold tabular-nums">
-                          {formatMoney(expense.amountMinor, expense.currency)}
-                        </p>
+                        <p className="font-mono font-semibold tabular-nums">{formatMoney(expense.amountMinor, expense.currency)}</p>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Trip currency</p>
-                        <p className="font-mono font-semibold tabular-nums">
-                          {convertedAmount !== null
-                            ? formatMoney(convertedAmount, currency)
-                            : "Conversion unavailable"}
-                        </p>
+                        <p className="font-mono font-semibold tabular-nums">{convertedAmount !== null ? formatMoney(convertedAmount, currency) : "Conversion unavailable"}</p>
                       </div>
                     </div>
                     {shares.length > 0 && (
@@ -469,19 +367,8 @@ export function ExpensePanel({
                           const person = identityFor(share.userId);
                           return (
                             <div key={share.id} className="flex items-center justify-between gap-3">
-                              <span className="flex min-w-0 items-center gap-2">
-                                <UserAvatar
-                                  seed={person.avatarSeed}
-                                  src={person.avatarUrl}
-                                  name={person.name}
-                                  size="sm"
-                                  className="size-8"
-                                />
-                                {person.name}
-                              </span>
-                              <span className="font-mono tabular-nums">
-                                {formatMoney(share.shareAmountMinor, expense.currency)}
-                              </span>
+                              <span className="flex min-w-0 items-center gap-2"><UserAvatar seed={person.avatarSeed} src={person.avatarUrl} name={person.name} size="sm" className="size-8" />{person.name}</span>
+                              <span className="font-mono tabular-nums">{formatMoney(share.shareAmountMinor, expense.currency)}</span>
                             </div>
                           );
                         })}

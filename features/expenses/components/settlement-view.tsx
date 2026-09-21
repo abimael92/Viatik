@@ -6,8 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { Heading } from "@/components/ui/heading";
 import { collaborationRepository } from "@/features/collaboration/data/dexie-collaboration-repository";
-import { tripTravelerRepository } from "@/features/contacts/data/dexie-contact-repository";
-import type { ProfileSummary, TripTraveler } from "@/features/domain/entities";
+import type { ProfileSummary } from "@/features/domain/entities";
 import { formatMinorUnits, type CurrencyCode, type MinorUnits } from "@/features/domain/money";
 import { useSettlement } from "@/features/expenses/lib/use-settlement";
 import type { SettlementTransfer } from "@/features/expenses/lib/settlement";
@@ -31,13 +30,10 @@ export function SettlementView({
   const { loading, balances, transfers, members } = useSettlement(tripId, currency);
   const localProfile = useLocalProfile(userId);
   const [authorizedProfiles, setAuthorizedProfiles] = useState<ProfileSummary[]>([]);
-  const [travelers, setTravelers] = useState<TripTraveler[]>([]);
   const memberIds = useMemo(
     () => [...new Set(members.map((member) => member.userId).filter((id): id is string => Boolean(id)))],
     [members]
   );
-
-  useEffect(() => tripTravelerRepository.watch(tripId, setTravelers), [tripId]);
 
   useEffect(() => {
     if (memberIds.length === 0) return;
@@ -55,10 +51,7 @@ export function SettlementView({
   const identity = useMemo(() => {
     const memberIdSet = new Set(memberIds);
     const profileById = new Map(authorizedProfiles.filter((profile) => memberIdSet.has(profile.id)).map((profile) => [profile.id, profile]));
-    const travelerByKey = new Map(travelers.map((traveler) => [`traveler:${traveler.id}`, traveler]));
     return (memberId: string): SettlementIdentity => {
-      const traveler = travelerByKey.get(memberId);
-      if (traveler) return { name: traveler.displayName, avatarUrl: null, avatarSeed: traveler.id };
       const authorizedProfile = profileById.get(memberId);
       if (memberId === userId && localProfile) {
         return {
@@ -73,7 +66,7 @@ export function SettlementView({
         avatarSeed: authorizedProfile?.avatarSeed ?? null,
       };
     };
-  }, [authorizedProfiles, localProfile, memberIds, travelers, userId]);
+  }, [authorizedProfiles, localProfile, memberIds, userId]);
 
   return (
     <section aria-labelledby="settlement-heading" className="space-y-4">

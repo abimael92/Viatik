@@ -28,9 +28,7 @@ import { contactRepository, tripTravelerRepository } from "@/features/contacts/d
 import type { Activity, ActivityPersonalBudget, ProfileSummary, Trip, TripMember, TripTraveler } from "@/features/domain/entities";
 import type { TripMedia } from "@/features/domain/entities-media";
 import { TravelJournalView } from "@/features/journal/components/travel-journal-view";
-// import { FinanceSummaryStrip } from "@/features/finance/components/finance-dashboard";
 import { MoneyDashboard } from "@/features/finance/components/money-dashboard";
-// import { FinanceView } from "@/features/finance/components/finance-view";
 import { BudgetSettings } from "@/features/finance/components/budget-settings";
 import { PackingListView } from "@/features/packing/components/packing-list-view";
 import { PollsView } from "@/features/polls/components/polls-view";
@@ -141,7 +139,7 @@ export function TripWorkspace({ tripId, userId, initialTab = "overview", initial
     overview: t("common.overview"),
     itinerary: t("common.itinerary"),
     map: t("common.map"),
-    money: t("common.money"),
+    money: "Money & spending",
     photos: t("common.photos"),
     people: t("common.people"),
     journal: t("common.journal"),
@@ -710,8 +708,7 @@ function Overview({ trip, userId, activities, mediaCount, setTab, setJournalView
           <ToolCard icon={Lock} title={t("common.secureVault")} description={t("common.secureDocuments")} onClick={() => onOpenTool("vault")} />
         </div>
       </section>
-      {/* FinanceSummaryStrip temporarily hidden (Group spent / True leftover / Planned). */}
-      {/* <FinanceSummaryStrip tripId={trip.id} userId={userId} baseCurrency={trip.baseCurrency} /> */}
+
       {transit.length > 0 && (
         <section className="rounded-2xl border bg-card p-5 sm:p-6" aria-labelledby="overview-transit-heading">
           <div className="flex items-center justify-between gap-3">
