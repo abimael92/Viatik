@@ -184,7 +184,6 @@ async function replayCasMutation(mutation: OutboxMutation, signal?: AbortSignal)
   let response = signal ? await request.abortSignal(signal) : await request;
   if (
     mutation.entityType === "activity" &&
-    mutation.operation === "insert" &&
     response.error &&
     isTransientSchemaCacheError(response.error.message)
   ) {
