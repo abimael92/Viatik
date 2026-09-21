@@ -4,12 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { liveQuery } from "dexie";
 
 import { useDatabase } from "@/lib/db/database-provider";
-import { getSyncState, subscribeToSync, syncNow, type SyncStatus } from "@/lib/sync/sync-engine";
+import { getSyncState, retryFailedMutations, subscribeToSync, syncNow, type SyncStatus } from "@/lib/sync/sync-engine";
 
 export interface SyncStatusState {
   status: SyncStatus;
   pending: number;
+  retryablePending: number;
   lastSyncAt: string | null;
+  lastError: string | null;
   isOnline: boolean;
   conflicts: number;
 }
@@ -23,8 +25,8 @@ export function useSyncStatus(): SyncStatusState {
   }));
 
   useEffect(() => {
-    const unsubscribe = subscribeToSync((status, pending, lastSyncAt) => {
-      setState((previous) => ({ ...previous, status, pending, lastSyncAt, isOnline: navigator.onLine }));
+    const unsubscribe = subscribeToSync((status, pending, retryablePending, lastSyncAt, lastError) => {
+      setState((previous) => ({ ...previous, status, pending, retryablePending, lastSyncAt, lastError, isOnline: navigator.onLine }));
     });
     // Only surface conflicts that are still unresolved (resolvedAt is null).
     // Sync conflicts auto-resolve during sync (remote wins), so counting every
@@ -67,7 +69,7 @@ export function useSyncRetryCountdown(sync: SyncStatusState): {
   const scheduledRef = useRef(false);
 
   useEffect(() => {
-    const shouldRetry = sync.isOnline && (sync.status === "error" || sync.pending > 0);
+    const shouldRetry = sync.isOnline && (sync.retryablePending > 0 || (sync.status === "error" && sync.pending === 0));
     if (!shouldRetry) {
       scheduledRef.current = false;
       if (timerRef.current !== null) window.clearInterval(timerRef.current);
@@ -97,14 +99,14 @@ export function useSyncRetryCountdown(sync: SyncStatusState): {
       timerRef.current = null;
       scheduledRef.current = false;
     };
-  }, [sync.isOnline, sync.pending, sync.status, scheduledRef, timerRef]);
+  }, [sync.isOnline, sync.pending, sync.retryablePending, sync.status, scheduledRef, timerRef]);
 
   function retryNow() {
     if (timerRef.current !== null) window.clearInterval(timerRef.current);
     timerRef.current = null;
     scheduledRef.current = false;
     setCountdown(null);
-    void syncNow().catch(() => undefined);
+    void retryFailedMutations().catch(() => undefined);
   }
 
   const shouldRetry = sync.isOnline && (sync.status === "error" || sync.pending > 0);

@@ -2,11 +2,13 @@ import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const syncNow = vi.hoisted(() => vi.fn(() => Promise.resolve()));
+const retryFailedMutations = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 
 vi.mock("@/lib/sync/sync-engine", () => ({
-  getSyncState: vi.fn(() => ({ status: "idle", pending: 0, lastSyncAt: null })),
+  getSyncState: vi.fn(() => ({ status: "idle", pending: 0, retryablePending: 0, lastSyncAt: null, lastError: null })),
   subscribeToSync: vi.fn(() => vi.fn()),
   syncNow,
+  retryFailedMutations,
 }));
 
 vi.mock("@/lib/db/database-provider", () => ({
@@ -18,7 +20,9 @@ import { useSyncRetryCountdown, type SyncStatusState } from "@/lib/sync/use-sync
 const baseState: SyncStatusState = {
   status: "error",
   pending: 1,
+  retryablePending: 1,
   lastSyncAt: null,
+  lastError: null,
   isOnline: true,
   conflicts: 0,
 };
@@ -27,6 +31,7 @@ describe("useSyncRetryCountdown", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     syncNow.mockClear();
+    retryFailedMutations.mockClear();
   });
 
   afterEach(() => {
@@ -52,7 +57,7 @@ describe("useSyncRetryCountdown", () => {
     act(() => result.current.retryNow());
     act(() => vi.advanceTimersByTime(5000));
 
-    expect(syncNow).toHaveBeenCalledTimes(1);
+    expect(retryFailedMutations).toHaveBeenCalledTimes(1);
     expect(result.current.countdown).toBeNull();
   });
 });

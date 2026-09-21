@@ -10,12 +10,16 @@ const mocks = vi.hoisted(() => ({
   pullRemoteChanges: vi.fn(),
   listPendingMutations: vi.fn(),
   countPendingMutations: vi.fn(),
+  countRetryableMutations: vi.fn(),
   markMutationFailed: vi.fn(),
   shouldRetryMutation: vi.fn(),
   isTransientSchemaCacheError: vi.fn(),
   resetMutationAttempts: vi.fn(),
   coordinatorRunExclusive: vi.fn(),
   coordinatorRequestSync: vi.fn(),
+  tripTravelersWhere: vi.fn(),
+  expenseUpdate: vi.fn(),
+  expenseGet: vi.fn(),
   CoordinationInterruptedError: class extends Error {},
 }));
 
@@ -25,6 +29,9 @@ vi.mock("@/lib/db/dexie", () => ({
     name: "viatik_user-1",
     syncConflicts: { add: mocks.conflictAdd, clear: vi.fn().mockResolvedValue(undefined) },
     outboxMutations: { delete: mocks.mutationDelete },
+    expenses: { get: mocks.expenseGet, update: mocks.expenseUpdate },
+    expenseShares: { update: mocks.expenseUpdate },
+    tripTravelers: { where: mocks.tripTravelersWhere },
     tripMedia: { where: () => ({ anyOf: () => ({ filter: () => ({ count: vi.fn().mockResolvedValue(0) }) }) }) },
   }),
   ViatikDatabase: class {},
@@ -38,6 +45,7 @@ vi.mock("@/lib/sync/cloud-sync", () => ({
 vi.mock("@/lib/sync/outbox", () => ({
   acknowledgeMutation: mocks.mutationDelete,
   countPendingMutations: mocks.countPendingMutations,
+  countRetryableMutations: mocks.countRetryableMutations,
   listPendingMutations: mocks.listPendingMutations,
   markMutationFailed: mocks.markMutationFailed,
   removeMutation: mocks.mutationDelete,
@@ -100,8 +108,67 @@ describe("CAS mutation replay", () => {
     mocks.pullRemoteChanges.mockResolvedValue(undefined);
     mocks.listPendingMutations.mockResolvedValue([]);
     mocks.countPendingMutations.mockResolvedValue(0);
+    mocks.countRetryableMutations.mockResolvedValue(0);
+    mocks.tripTravelersWhere.mockReturnValue({ equals: vi.fn().mockReturnValue({ toArray: vi.fn().mockResolvedValue([]) }) });
+    mocks.expenseUpdate.mockResolvedValue(1);
+    mocks.expenseGet.mockResolvedValue(undefined);
     mocks.shouldRetryMutation.mockReturnValue(true);
     configureSyncUser("user-1");
+  });
+
+  it("replays expense parents before their shares", () => {
+    const share = tripMutation({ entityType: "expenseShare", entityId: "share-1" });
+    const expense = tripMutation({ entityType: "expense", entityId: "expense-1" });
+
+    expect(__syncEngineInternals.sortPendingMutations([share, expense]).map((mutation) => mutation.entityType)).toEqual(["expense", "expenseShare"]);
+  });
+
+  it("rejects legacy expense payers that are not UUIDs before the RPC boundary", async () => {
+    const mutation = tripMutation({
+      entityType: "expense",
+      payload: { paidBy: "dude", tripId: "trip-1" },
+    });
+
+    await expect(__syncEngineInternals.normalizeLegacyTravelerMutation(mutation)).rejects.toThrow(
+      "payer is not a UUID or a saved traveler",
+    );
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it("normalizes a legacy traveler name and persists the repaired identity locally", async () => {
+    mocks.tripTravelersWhere.mockReturnValue({
+      equals: vi.fn().mockReturnValue({
+        toArray: vi.fn().mockResolvedValue([{ id: "00000000-0000-4000-8000-000000000099", displayName: "Dude" }]),
+      }),
+    });
+    const mutation = tripMutation({
+      entityType: "expense",
+      entityId: "expense-1",
+      payload: { paidBy: "dude", tripId: "trip-1" },
+    });
+
+    const normalized = await __syncEngineInternals.normalizeLegacyTravelerMutation(mutation);
+
+    expect(normalized.payload).toEqual(expect.objectContaining({
+      paidBy: "traveler:00000000-0000-4000-8000-000000000099",
+      paidByTravelerId: "00000000-0000-4000-8000-000000000099",
+    }));
+    expect(mocks.expenseUpdate).toHaveBeenCalledWith("expense-1", {
+      paidBy: "traveler:00000000-0000-4000-8000-000000000099",
+      paidByTravelerId: "00000000-0000-4000-8000-000000000099",
+    });
+  });
+
+  it("does not requeue a share when its local expense has an invalid legacy payer", async () => {
+    mocks.expenseGet.mockResolvedValue({ id: "expense-1", tripId: "trip-1", paidBy: "dude" });
+    const share = tripMutation({
+      entityType: "expenseShare",
+      entityId: "share-1",
+      payload: { expenseId: "expense-1", tripId: "trip-1", userId: "00000000-0000-4000-8000-000000000002" },
+    });
+
+    await expect(__syncEngineInternals.requeueMissingExpenseParent(share)).resolves.toBe(false);
+    expect(mocks.expenseUpdate).not.toHaveBeenCalled();
   });
 
   it("reads pending mutations only after coordination ownership is granted", async () => {
@@ -219,7 +286,7 @@ describe("CAS mutation replay", () => {
 
   it("resets attempts for mutations stuck on a transient schema-cache error", async () => {
     mocks.rpc.mockResolvedValue({ data: { status: "applied", server_updated_at: "2026-01-03T00:00:00.000Z" }, error: null });
-    const mutation = tripMutation({ attempts: 5, lastError: "Could not find the function public.sync_cas_upsert(...) in the schema cache" });
+    const mutation = tripMutation({ attempts: 5, lastError: "record \"new\" has no field \"updated_by\"" });
     mocks.listPendingMutations.mockResolvedValue([mutation]);
     mocks.shouldRetryMutation.mockReturnValue(false);
     mocks.isTransientSchemaCacheError.mockReturnValue(true);
@@ -229,6 +296,25 @@ describe("CAS mutation replay", () => {
 
     expect(mocks.resetMutationAttempts).toHaveBeenCalledWith("mutation-1");
     expect(mocks.rpc).toHaveBeenCalled();
+  });
+
+  it("recovers and drops an exhausted invalid legacy expense mutation", async () => {
+    const mutation = tripMutation({
+      entityType: "expense",
+      attempts: 5,
+      lastError: 'invalid input syntax for type uuid: "dude"',
+      payload: { paidBy: "dude", tripId: "trip-1" },
+    });
+    mocks.listPendingMutations.mockResolvedValue([mutation]);
+    mocks.shouldRetryMutation.mockReturnValue(false);
+    mocks.isTransientSchemaCacheError.mockReturnValue(false);
+    mocks.coordinatorRunExclusive.mockImplementation(async (_scope, operation) => ({ acquired: true, value: await operation() }));
+
+    await expect(__syncEngineInternals.runCoordinatedSync()).resolves.toBeUndefined();
+
+    expect(mocks.resetMutationAttempts).toHaveBeenCalledWith(mutation.id);
+    expect(mocks.mutationDelete).toHaveBeenCalledWith(mutation.id);
+    expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
   it("skips (does not reset) mutations that exceeded retries for non-transient errors", async () => {

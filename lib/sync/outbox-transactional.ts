@@ -38,7 +38,11 @@ export async function append(
     new Date().toISOString();
   const outbox = tx.table<OutboxMutation>("outboxMutations");
   const entityId = String(data.id);
-  const existing = await outbox.where("entityType").equals(table).and((mutation) => mutation.entityId === entityId).first();
+  const existing = await outbox
+    .where("entityType")
+    .equals(table)
+    .and((mutation) => mutation.entityId === entityId)
+    .first();
 
   if (existing && existing.operation === "insert" && op === "delete") {
     await outbox.delete(existing.id);
@@ -62,5 +66,6 @@ export async function append(
   };
 
   await outbox.put(mutation);
+  if (typeof window !== "undefined") window.dispatchEvent(new Event("viatik:sync-request"));
   return mutation.id;
 }

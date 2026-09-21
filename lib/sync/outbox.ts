@@ -37,6 +37,12 @@ export function countPendingMutations(userId?: string | null): Promise<number> {
   return userId ? db.outboxMutations.where("userId").equals(userId).count() : db.outboxMutations.count();
 }
 
+export function countRetryableMutations(userId?: string | null): Promise<number> {
+  const db = getDb();
+  const collection = db.outboxMutations.filter((mutation) => mutation.attempts < MAX_RETRY_ATTEMPTS);
+  return userId ? collection.and((mutation) => mutation.userId === userId).count() : collection.count();
+}
+
 export function removeMutation(id: string): Promise<void> {
   return getDb().outboxMutations.delete(id);
 }
@@ -83,7 +89,9 @@ export function isTransientSchemaCacheError(message: string | null | undefined):
     message.includes("in the schema cache") ||
     message.includes("Could not find the function") ||
     message.includes("Could not find the table") ||
-    message.includes("Could not find the relation")
+    message.includes("Could not find the relation") ||
+    message.includes("has no field") ||
+    message.includes("null value in column")
   );
 }
 
@@ -97,6 +105,14 @@ export function resetMutationAttempts(id: string): Promise<void> {
       mutation.lastError = null;
     })
     .then(() => undefined);
+}
+
+/** Reset failed pending mutations for an explicit user-triggered retry. */
+export async function resetPendingMutationAttempts(userId?: string | null): Promise<number> {
+  const pending = await listPendingMutations(userId);
+  const failed = pending.filter((mutation) => mutation.attempts > 0);
+  await Promise.all(failed.map((mutation) => resetMutationAttempts(mutation.id)));
+  return failed.length;
 }
 
 export function shouldRetryMutation(mutation: OutboxMutation): boolean {
