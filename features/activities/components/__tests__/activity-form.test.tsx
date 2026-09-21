@@ -63,13 +63,23 @@ describe("ActivityForm", () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     const timestamp = "2026-01-01T00:00:00Z";
     const members = ["user-1", "user-2"].map((userId, index) => ({ id: `member-${index}`, tripId: "trip-1", userId, role: index === 0 ? "owner" as const : "editor" as const, invitedBy: null, joinedAt: timestamp, roleChangedAt: null, roleChangedBy: null, removedAt: null, removedBy: null, version: 1, createdAt: timestamp, updatedAt: timestamp }));
-    const { container } = render(<ActivityForm days={["2026-09-16"]} members={members} currentUserId="user-1" saving={false} onSubmit={onSubmit} onCancel={vi.fn()} />);
+    const { container } = render(<ActivityForm days={["2026-09-16"]} members={members} profiles={[{ id: "user-2", fullName: "Mika Sato", avatarUrl: "https://example.com/mika.png", avatarSeed: "adventurer|mika", email: null }]} currentUserId="user-1" saving={false} onSubmit={onSubmit} onCancel={vi.fn()} />);
 
     expect(screen.getByRole("button", { name: /you: going/i }).getAttribute("aria-pressed")).toBe("true");
-    expect(screen.getByRole("button", { name: /user-2: going/i }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: /mika sato: going/i }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.queryByText("user-2")).toBeNull();
+    expect(screen.getByLabelText("Mika Sato")).toBeTruthy();
     fireEvent.submit(container.querySelector("form")!);
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ participants: [{ userId: "user-1", travelerId: null, status: "attending" }, { userId: "user-2", travelerId: null, status: "attending" }] })));
+  });
+
+  it("deduplicates a linked traveler when the member profile is already listed", () => {
+    const members = [{ id: "member-1", tripId: "trip-1", userId: "user-1", role: "owner" as const, invitedBy: null, joinedAt: "2026-01-01T00:00:00Z", roleChangedAt: null, roleChangedBy: null, removedAt: null, removedBy: null, version: 1, createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }];
+    const travelers = [{ id: "traveler-1", tripId: "trip-1", contactId: "contact-1", displayName: "Alex Chen", travelerType: "adult" as const, createdBy: "user-1", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", deletedAt: null }];
+    render(<ActivityForm days={["2026-09-16"]} members={members} profiles={[{ id: "user-1", fullName: "Alex Chen", avatarUrl: null, avatarSeed: "adventurer|alex", email: null }]} travelers={travelers} saving={false} onSubmit={vi.fn()} onCancel={vi.fn()} />);
+
+    expect(screen.getAllByText("Alex Chen")).toHaveLength(1);
   });
 
   it("shows trip travelers and immediately selects a manually added traveler", async () => {
