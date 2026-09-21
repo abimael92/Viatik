@@ -249,6 +249,18 @@ describe("transactional writes", () => {
     expect(mutation).toEqual(expect.objectContaining({ operation: "update", baseUpdatedAt, payload: expect.objectContaining({ fullName: "After", travelerType: "child" }) }));
   });
 
+  it("persists contact relationship changes in the local row and outbox", async () => {
+    const contact = await contactRepository.create({ id: "contact-relationship", ownerId: TEST_USER, fullName: "Before", relationship: "friend" });
+    await db.outboxMutations.clear();
+
+    await contactRepository.update(contact.id, TEST_USER, { fullName: contact.fullName, relationship: "family" });
+
+    expect(await db.contacts.get(contact.id)).toEqual(expect.objectContaining({ relationship: "family" }));
+    expect(await db.outboxMutations.where("entityType").equals("contact").first()).toEqual(
+      expect.objectContaining({ payload: expect.objectContaining({ relationship: "family" }) })
+    );
+  });
+
   it("atomically propagates contact snapshots only to selected upcoming trips", async () => {
     const upcoming = await tripRepository.create({ id: "upcoming", ownerId: TEST_USER, name: "Upcoming", endDate: "2099-01-02" });
     const other = await tripRepository.create({ id: "other", ownerId: TEST_USER, name: "Other", endDate: "2099-02-02" });

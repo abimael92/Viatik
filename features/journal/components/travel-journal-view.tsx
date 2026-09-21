@@ -180,7 +180,13 @@ function JournalDayCard({ day, tripId, userId, canEdit, baseCurrency, experience
             </span>
           )}
           {canEdit && (
-            <Button type="button" variant={editing ? "default" : "outline"} size="sm" onClick={() => setEditing((value) => !value)}>
+            <Button
+              type="button"
+              variant={editing ? "default" : "outline"}
+              size="sm"
+              className={!editing ? "border-yellow-300 bg-yellow-50 text-yellow-700 hover:bg-yellow-100" : undefined}
+              onClick={() => setEditing((value) => !value)}
+            >
               <Pencil className="size-4" /> {editing ? "Done" : "Edit"}
             </Button>
           )}

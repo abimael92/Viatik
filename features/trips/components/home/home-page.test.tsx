@@ -147,7 +147,7 @@ describe("HomePage", () => {
 
     // Hero destination + active mode (active trip, today) with an End-trip action
     expect(screen.getByRole("heading", { name: "Lisbon, Portugal" })).toBeTruthy();
-    expect(screen.getByText(/Active/)).toBeTruthy();
+    expect(screen.getByText("Active · Day 1 of 1")).toBeTruthy();
     expect(screen.getByRole("button", { name: /End trip/ })).toBeTruthy();
 
     // Readiness: dates + itinerary + crew + passport complete, budget + docs missing => 4/6
@@ -157,6 +157,12 @@ describe("HomePage", () => {
     // Active trip => today at a glance
     expect(screen.getByRole("heading", { name: "Today at a glance" })).toBeTruthy();
     expect(screen.getByText("Lunch at Prado")).toBeTruthy();
+
+    const activeActions = screen.getByRole("heading", { name: "Active Trip Actions" }).parentElement?.parentElement;
+    expect(activeActions).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Add Expense/ }).getAttribute("href")).toBe("/trips/trip-1?tab=finance&action=add-expense");
+    expect(screen.getByRole("link", { name: /Add Activity/ }).getAttribute("href")).toBe("/trips/trip-1?tab=itinerary&action=add-activity");
+    expect(screen.getByRole("link", { name: /Add Photo/ }).getAttribute("href")).toBe("/trips/trip-1?tab=gallery&action=add-photo");
 
     // Quick actions
     const moneyTools = screen.getByRole("button", { name: /Money tools/ });
@@ -168,6 +174,16 @@ describe("HomePage", () => {
     // Emergency Center quick action is prominent and present.
     expect(screen.getByText("Emergency")).toBeTruthy();
     expect(screen.getByText("Safety info & contacts")).toBeTruthy();
+  });
+
+  it("renders active trip action links between the timeline and feed", () => {
+    render(<HomePage userId="owner-1" />);
+    act(() => state.trips?.([makeTrip({ status: "active" })]));
+
+    expect(screen.getByRole("heading", { name: "Active Trip Actions" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Add Expense/ }).getAttribute("href")).toBe("/trips/trip-1?tab=finance&action=add-expense");
+    expect(screen.getByRole("link", { name: /Add Activity/ }).getAttribute("href")).toBe("/trips/trip-1?tab=itinerary&action=add-activity");
+    expect(screen.getByRole("link", { name: /Add Photo/ }).getAttribute("href")).toBe("/trips/trip-1?tab=gallery&action=add-photo");
   });
 
   it("shows a deterministic countdown for a future trip", () => {
@@ -201,6 +217,7 @@ describe("HomePage", () => {
     // Itinerary and recent activity are hidden until the trip is started.
     expect(screen.queryByRole("heading", { name: "Up next in Lisbon, Portugal" })).toBeNull();
     expect(screen.queryByText("Recent activity")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Active Trip Actions" })).toBeNull();
 
     // Quick actions stay visible.
     expect(screen.getByText("Money tools")).toBeTruthy();
