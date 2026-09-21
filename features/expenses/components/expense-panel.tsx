@@ -633,10 +633,15 @@ function ExpenseDialog({
     [allTravelers]
   );
   const savedTravelerKeys = allTravelers.map((traveler) => `traveler:${traveler.id}`);
-  const participants = [
-    ...(participantSelection ?? [...members.map((member) => member.userId), ...savedTravelerKeys]),
-    ...extraPeople,
-  ];
+  const participants = Array.from(
+    new Set([
+      ...(participantSelection ?? [
+        ...members.map((member) => member.userId),
+        ...savedTravelerKeys,
+      ]),
+      ...extraPeople,
+    ])
+  );
   const step =
     getCurrencyExponent(expenseCurrency) === 0
       ? "1"

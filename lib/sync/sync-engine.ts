@@ -1,6 +1,19 @@
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import { getCurrentDatabase, type ViatikDatabase } from "@/lib/db/dexie";
-import type { Activity, ActivityPersonalBudget, Connection, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler, UserWallet } from "@/features/domain/entities";
+import type {
+  Activity,
+  ActivityPersonalBudget,
+  Connection,
+  Contact,
+  Expense,
+  ExpenseSettlement,
+  ExpenseShare,
+  Trip,
+  TripInvitation,
+  TripMember,
+  TripTraveler,
+  UserWallet,
+} from "@/features/domain/entities";
 import type { TripMedia } from "@/features/domain/entities-media";
 import type { VaultEntry, VaultKeyset } from "@/features/vault/domain/vault-types";
 import type { TripWeatherForecast } from "@/features/weather/domain/weather-types";
@@ -43,9 +56,20 @@ import {
   notificationToRow,
 } from "@/lib/supabase/mappers";
 import { logger } from "@/lib/observability/logger";
-import { deleteRemoteMedia, processPendingMedia, pullRemoteChanges, startRealtimeSync } from "@/lib/sync/cloud-sync";
+import {
+  deleteRemoteMedia,
+  processPendingMedia,
+  pullRemoteChanges,
+  startRealtimeSync,
+} from "@/lib/sync/cloud-sync";
 import { getSyncUser } from "@/lib/sync/sync-context";
-import { createBrowserSyncCoordinator, SyncCoordinationInterruptedError, type BrowserSyncCoordinator, type SyncExecutionContext, type SyncScope } from "@/lib/sync/sync-coordinator";
+import {
+  createBrowserSyncCoordinator,
+  SyncCoordinationInterruptedError,
+  type BrowserSyncCoordinator,
+  type SyncExecutionContext,
+  type SyncScope,
+} from "@/lib/sync/sync-coordinator";
 
 function getDb(): ViatikDatabase {
   const db = getCurrentDatabase();
@@ -55,8 +79,15 @@ function getDb(): ViatikDatabase {
 
 export type SyncStatus = "idle" | "syncing" | "offline" | "error";
 
-const listeners: Array<(status: SyncStatus, pending: number, retryablePending: number, lastSyncAt: string | null, lastError: string | null) => void> =
-  [];
+const listeners: Array<
+  (
+    status: SyncStatus,
+    pending: number,
+    retryablePending: number,
+    lastSyncAt: string | null,
+    lastError: string | null
+  ) => void
+> = [];
 
 let status: SyncStatus = "idle";
 let lastSyncAt: string | null = null;
@@ -83,7 +114,8 @@ const syncDiagnostics: SyncDiagnostics = {
 const syncDurations: number[] = [];
 
 function notify() {
-  for (const cb of listeners) cb(status, countPending, retryablePending, lastSyncAt, syncDiagnostics.lastSyncError);
+  for (const cb of listeners)
+    cb(status, countPending, retryablePending, lastSyncAt, syncDiagnostics.lastSyncError);
 }
 
 let countPending = 0;
@@ -93,8 +125,16 @@ async function refreshPending() {
   const [mutations, retryableMutations, mediaUploads, retryableMediaUploads] = await Promise.all([
     countPendingMutations(userId),
     countRetryableMutations(userId),
-    getDb().tripMedia.where("uploadStatus").anyOf("pending", "failed", "uploading").filter((media) => media.createdBy === userId).count(),
-    getDb().tripMedia.where("uploadStatus").anyOf("pending", "failed", "uploading").filter((media) => media.createdBy === userId && media.uploadAttempts < 5).count(),
+    getDb()
+      .tripMedia.where("uploadStatus")
+      .anyOf("pending", "failed", "uploading")
+      .filter((media) => media.createdBy === userId)
+      .count(),
+    getDb()
+      .tripMedia.where("uploadStatus")
+      .anyOf("pending", "failed", "uploading")
+      .filter((media) => media.createdBy === userId && media.uploadAttempts < 5)
+      .count(),
   ]);
   countPending = mutations + mediaUploads;
   retryablePending = retryableMutations + retryableMediaUploads;
@@ -108,8 +148,21 @@ function setStatus(newStatus: SyncStatus) {
   notify();
 }
 
-async function recordConflict(mutation: OutboxMutation, remoteUpdatedAt: string, resolution: "local" | "remote" | "merged"): Promise<void> {
-  await getDb().syncConflicts.add({ id: crypto.randomUUID(), entityType: mutation.entityType, entityId: mutation.entityId, tripId: mutation.tripId, localUpdatedAt: mutation.mutatedAt, remoteUpdatedAt, resolvedAt: new Date().toISOString(), resolution });
+async function recordConflict(
+  mutation: OutboxMutation,
+  remoteUpdatedAt: string,
+  resolution: "local" | "remote" | "merged"
+): Promise<void> {
+  await getDb().syncConflicts.add({
+    id: crypto.randomUUID(),
+    entityType: mutation.entityType,
+    entityId: mutation.entityId,
+    tripId: mutation.tripId,
+    localUpdatedAt: mutation.mutatedAt,
+    remoteUpdatedAt,
+    resolvedAt: new Date().toISOString(),
+    resolution,
+  });
 }
 
 type CasResult = {
@@ -119,27 +172,46 @@ type CasResult = {
 };
 
 function mutationPayloadToRow(mutation: OutboxMutation): Record<string, unknown> {
-  if (!mutation.payload) throw new Error(`Missing payload for ${mutation.entityType} ${mutation.operation}`);
+  if (!mutation.payload)
+    throw new Error(`Missing payload for ${mutation.entityType} ${mutation.operation}`);
   switch (mutation.entityType) {
-    case "trip": return tripToRow(mutation.payload as unknown as Trip);
-    case "tripMember": return tripMemberToRow(mutation.payload as unknown as TripMember);
-    case "invitation": return invitationToRow(mutation.payload as unknown as TripInvitation);
-    case "activity": return activityToRow(mutation.payload as unknown as Activity);
-    case "activityPersonalBudget": return activityPersonalBudgetToRow(mutation.payload as unknown as ActivityPersonalBudget);
-    case "expense": return expenseToRow(mutation.payload as unknown as Expense);
-    case "expenseShare": return expenseShareToRow(mutation.payload as unknown as ExpenseShare);
-    case "settlement": return settlementToRow(mutation.payload as unknown as ExpenseSettlement);
-    case "media": return mediaToRow(mutation.payload as unknown as TripMedia);
-    case "contact": return contactToRow(mutation.payload as unknown as Contact);
+    case "trip":
+      return tripToRow(mutation.payload as unknown as Trip);
+    case "tripMember":
+      return tripMemberToRow(mutation.payload as unknown as TripMember);
+    case "invitation":
+      return invitationToRow(mutation.payload as unknown as TripInvitation);
+    case "activity":
+      return activityToRow(mutation.payload as unknown as Activity);
+    case "activityPersonalBudget":
+      return activityPersonalBudgetToRow(mutation.payload as unknown as ActivityPersonalBudget);
+    case "expense":
+      return expenseToRow(mutation.payload as unknown as Expense);
+    case "expenseShare":
+      return expenseShareToRow(mutation.payload as unknown as ExpenseShare);
+    case "settlement":
+      return settlementToRow(mutation.payload as unknown as ExpenseSettlement);
+    case "media":
+      return mediaToRow(mutation.payload as unknown as TripMedia);
+    case "contact":
+      return contactToRow(mutation.payload as unknown as Contact);
     case "connectionRequest":
-    case "connectionResponse": return connectionToRow(mutation.payload as unknown as Connection);
-    case "tripTraveler": return tripTravelerToRow(mutation.payload as unknown as TripTraveler);
-    case "vaultKeyset": return vaultKeysetToRow(mutation.payload as unknown as VaultKeyset);
-    case "vaultEntry": return vaultEntryToRow(mutation.payload as unknown as VaultEntry);
-    case "tripWeatherForecast": return tripWeatherForecastToRow(mutation.payload as unknown as TripWeatherForecast);
-    case "userWallet": return userWalletToRow(mutation.payload as unknown as UserWallet);
-    case "tripShareLink": return shareLinkToRow(mutation.payload as unknown as TripShareLink);
-    case "notification": return notificationToRow(mutation.payload as unknown as Notification);
+    case "connectionResponse":
+      return connectionToRow(mutation.payload as unknown as Connection);
+    case "tripTraveler":
+      return tripTravelerToRow(mutation.payload as unknown as TripTraveler);
+    case "vaultKeyset":
+      return vaultKeysetToRow(mutation.payload as unknown as VaultKeyset);
+    case "vaultEntry":
+      return vaultEntryToRow(mutation.payload as unknown as VaultEntry);
+    case "tripWeatherForecast":
+      return tripWeatherForecastToRow(mutation.payload as unknown as TripWeatherForecast);
+    case "userWallet":
+      return userWalletToRow(mutation.payload as unknown as UserWallet);
+    case "tripShareLink":
+      return shareLinkToRow(mutation.payload as unknown as TripShareLink);
+    case "notification":
+      return notificationToRow(mutation.payload as unknown as Notification);
   }
 }
 
@@ -150,13 +222,17 @@ function mutationDependencyRank(mutation: OutboxMutation): number {
 function sortPendingMutations(mutations: OutboxMutation[]): OutboxMutation[] {
   return mutations
     .map((mutation, index) => ({ mutation, index }))
-    .sort((a, b) => mutationDependencyRank(a.mutation) - mutationDependencyRank(b.mutation) || a.index - b.index)
+    .sort(
+      (a, b) =>
+        mutationDependencyRank(a.mutation) - mutationDependencyRank(b.mutation) || a.index - b.index
+    )
     .map(({ mutation }) => mutation);
 }
 
 async function requeueMissingExpenseParent(mutation: OutboxMutation): Promise<boolean> {
   if (mutation.entityType !== "expenseShare" || !mutation.payload) return false;
-  const expenseId = typeof mutation.payload.expenseId === "string" ? mutation.payload.expenseId : null;
+  const expenseId =
+    typeof mutation.payload.expenseId === "string" ? mutation.payload.expenseId : null;
   if (!expenseId) return false;
   const db = getDb();
   const expense = await db.expenses.get(expenseId);
@@ -176,13 +252,19 @@ async function requeueMissingExpenseParent(mutation: OutboxMutation): Promise<bo
     throw error;
   }
   await TransactionContext.runInTransaction([db.expenses], async (tx) => {
-    await append("expense", "insert", parentMutation.payload as unknown as Expense, { tx, baseUpdatedAt: null });
+    await append("expense", "insert", parentMutation.payload as unknown as Expense, {
+      tx,
+      baseUpdatedAt: null,
+    });
   });
   return true;
 }
 
 function isUuid(value: unknown): value is string {
-  return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+  return (
+    typeof value === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+  );
 }
 
 function travelerIdentity(value: unknown): string | null {
@@ -194,7 +276,9 @@ function travelerIdentity(value: unknown): string | null {
 function isRecoverableLegacyMutation(mutation: OutboxMutation): boolean {
   return (
     (mutation.entityType === "expense" || mutation.entityType === "expenseShare") &&
-    /invalid input syntax for type uuid|Expense does not exist|Cannot sync expense/.test(mutation.lastError ?? "")
+    /invalid input syntax for type uuid|Expense does not exist|Cannot sync expense|active trip member/.test(
+      mutation.lastError ?? ""
+    )
   );
 }
 
@@ -205,13 +289,21 @@ async function normalizeLegacyTravelerMutation(mutation: OutboxMutation): Promis
   const tripId = typeof payload.tripId === "string" ? payload.tripId : mutation.tripId;
   const travelers = await getDb().tripTravelers.where("tripId").equals(tripId).toArray();
   const findTraveler = (value: unknown) => {
-    if (typeof value !== "string" || travelerIdentity(value)) return undefined;
-    return travelers.find((traveler) => traveler.displayName.trim().toLowerCase() === value.trim().toLowerCase());
+    if (typeof value !== "string") return undefined;
+    const identity = value.startsWith("traveler:") ? value.slice("traveler:".length) : value;
+    const byId = travelers.find((traveler) => traveler.id === identity);
+    if (byId) return byId;
+    if (travelerIdentity(value)) return undefined;
+    return travelers.find(
+      (traveler) => traveler.displayName.trim().toLowerCase() === value.trim().toLowerCase()
+    );
   };
   let changed = false;
   if (mutation.entityType === "expense") {
     const payerTraveler = findTraveler(payload.paidBy);
-    const knownPayerIdentity = travelerIdentity(payload.paidBy) ?? (isUuid(payload.paidByTravelerId) ? `traveler:${payload.paidByTravelerId}` : null);
+    const knownPayerIdentity =
+      travelerIdentity(payload.paidBy) ??
+      (isUuid(payload.paidByTravelerId) ? `traveler:${payload.paidByTravelerId}` : null);
     if (payerTraveler) {
       payload.paidBy = `traveler:${payerTraveler.id}`;
       payload.paidByTravelerId = payerTraveler.id;
@@ -226,7 +318,9 @@ async function normalizeLegacyTravelerMutation(mutation: OutboxMutation): Promis
   }
   if (mutation.entityType === "expenseShare") {
     const shareTraveler = findTraveler(payload.userId);
-    const knownShareIdentity = travelerIdentity(payload.userId) ?? (isUuid(payload.travelerId) ? `traveler:${payload.travelerId}` : null);
+    const knownShareIdentity =
+      travelerIdentity(payload.userId) ??
+      (isUuid(payload.travelerId) ? `traveler:${payload.travelerId}` : null);
     if (shareTraveler) {
       payload.userId = `traveler:${shareTraveler.id}`;
       payload.travelerId = shareTraveler.id;
@@ -241,14 +335,24 @@ async function normalizeLegacyTravelerMutation(mutation: OutboxMutation): Promis
   }
   if (!changed) return mutation;
   if (mutation.entityType === "expense") {
-    await getDb().expenses.update(mutation.entityId, { paidBy: String(payload.paidBy), paidByTravelerId: payload.paidByTravelerId == null ? null : String(payload.paidByTravelerId) });
+    await getDb().expenses.update(mutation.entityId, {
+      paidBy: String(payload.paidBy),
+      paidByTravelerId: payload.paidByTravelerId == null ? null : String(payload.paidByTravelerId),
+    });
   } else {
-    await getDb().expenseShares.update(mutation.entityId, { userId: String(payload.userId), travelerId: payload.travelerId == null ? null : String(payload.travelerId) });
+    await getDb().expenseShares.update(mutation.entityId, {
+      userId: String(payload.userId),
+      travelerId: payload.travelerId == null ? null : String(payload.travelerId),
+    });
   }
   return { ...mutation, payload };
 }
 
-async function resolveCasConflict(mutation: OutboxMutation, result: CasResult, signal?: AbortSignal): Promise<void> {
+async function resolveCasConflict(
+  mutation: OutboxMutation,
+  result: CasResult,
+  signal?: AbortSignal
+): Promise<void> {
   syncDiagnostics.conflictEvents++;
   const remoteUpdatedAt = result.server_updated_at ?? "unknown";
   await recordConflict(mutation, remoteUpdatedAt, "remote");
@@ -256,48 +360,100 @@ async function resolveCasConflict(mutation: OutboxMutation, result: CasResult, s
   await pullRemoteChanges(true, signal);
 }
 
-function resolveDeleteRequest(client: ReturnType<typeof getSupabaseBrowserClient>, mutation: OutboxMutation) {
+function resolveDeleteRequest(
+  client: ReturnType<typeof getSupabaseBrowserClient>,
+  mutation: OutboxMutation
+) {
   if (mutation.entityType === "vaultKeyset") {
-    return client.rpc("sync_vault_keyset_cas_delete", { p_id: mutation.entityId, p_base_updated_at: mutation.baseUpdatedAt });
+    return client.rpc("sync_vault_keyset_cas_delete", {
+      p_id: mutation.entityId,
+      p_base_updated_at: mutation.baseUpdatedAt,
+    });
   }
   if (mutation.entityType === "vaultEntry") {
-    return client.rpc("sync_vault_entry_cas_delete", { p_id: mutation.entityId, p_base_updated_at: mutation.baseUpdatedAt });
+    return client.rpc("sync_vault_entry_cas_delete", {
+      p_id: mutation.entityId,
+      p_base_updated_at: mutation.baseUpdatedAt,
+    });
   }
   if (mutation.entityType === "tripShareLink") {
-    return client.rpc("sync_trip_share_link_cas_delete", { p_id: mutation.entityId, p_base_updated_at: mutation.baseUpdatedAt });
+    return client.rpc("sync_trip_share_link_cas_delete", {
+      p_id: mutation.entityId,
+      p_base_updated_at: mutation.baseUpdatedAt,
+    });
   }
   if (mutation.entityType === "activityPersonalBudget") {
-    return client.rpc("sync_activity_personal_budget_cas_delete", { p_id: mutation.entityId, p_base_updated_at: mutation.baseUpdatedAt });
+    return client.rpc("sync_activity_personal_budget_cas_delete", {
+      p_id: mutation.entityId,
+      p_base_updated_at: mutation.baseUpdatedAt,
+    });
   }
-  return client.rpc("sync_cas_delete", { p_entity: mutation.entityType, p_id: mutation.entityId, p_base_updated_at: mutation.baseUpdatedAt });
+  return client.rpc("sync_cas_delete", {
+    p_entity: mutation.entityType,
+    p_id: mutation.entityId,
+    p_base_updated_at: mutation.baseUpdatedAt,
+  });
 }
 
 async function replayCasMutation(mutation: OutboxMutation, signal?: AbortSignal): Promise<boolean> {
-  if (mutation.baseUpdatedAt === undefined || (mutation.operation !== "insert" && mutation.baseUpdatedAt === null)) {
+  if (
+    mutation.baseUpdatedAt === undefined ||
+    (mutation.operation !== "insert" && mutation.baseUpdatedAt === null)
+  ) {
     await resolveCasConflict(mutation, { status: "conflict" }, signal);
     return false;
   }
 
   const client = getSupabaseBrowserClient();
-  const request = mutation.operation === "delete"
-    ? resolveDeleteRequest(client, mutation)
-    : mutation.entityType === "activity"
-      ? client.rpc("sync_activity_cas_upsert", { p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt })
-    : mutation.entityType === "activityPersonalBudget"
-      ? client.rpc("sync_activity_personal_budget_cas_upsert", { p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt })
-    : mutation.entityType === "contact"
-      ? client.rpc("sync_contact_cas_upsert", { p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt })
-      : mutation.entityType === "vaultKeyset"
-        ? client.rpc("sync_vault_keyset_cas_upsert", { p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt })
-        : mutation.entityType === "vaultEntry"
-          ? client.rpc("sync_vault_entry_cas_upsert", { p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt })
-          : mutation.entityType === "connectionRequest" || mutation.entityType === "connectionResponse"
-            ? client.rpc("sync_connection_cas_upsert", { p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt })
-            : mutation.entityType === "tripWeatherForecast"
-              ? client.rpc("sync_trip_weather_forecast_cas_upsert", { p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt })
-              : mutation.entityType === "tripShareLink"
-                ? client.rpc("sync_trip_share_link_cas_upsert", { p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt })
-                : client.rpc("sync_cas_upsert", { p_entity: mutation.entityType, p_payload: mutationPayloadToRow(mutation), p_base_updated_at: mutation.baseUpdatedAt });
+  const request =
+    mutation.operation === "delete"
+      ? resolveDeleteRequest(client, mutation)
+      : mutation.entityType === "activity"
+        ? client.rpc("sync_activity_cas_upsert", {
+            p_payload: mutationPayloadToRow(mutation),
+            p_base_updated_at: mutation.baseUpdatedAt,
+          })
+        : mutation.entityType === "activityPersonalBudget"
+          ? client.rpc("sync_activity_personal_budget_cas_upsert", {
+              p_payload: mutationPayloadToRow(mutation),
+              p_base_updated_at: mutation.baseUpdatedAt,
+            })
+          : mutation.entityType === "contact"
+            ? client.rpc("sync_contact_cas_upsert", {
+                p_payload: mutationPayloadToRow(mutation),
+                p_base_updated_at: mutation.baseUpdatedAt,
+              })
+            : mutation.entityType === "vaultKeyset"
+              ? client.rpc("sync_vault_keyset_cas_upsert", {
+                  p_payload: mutationPayloadToRow(mutation),
+                  p_base_updated_at: mutation.baseUpdatedAt,
+                })
+              : mutation.entityType === "vaultEntry"
+                ? client.rpc("sync_vault_entry_cas_upsert", {
+                    p_payload: mutationPayloadToRow(mutation),
+                    p_base_updated_at: mutation.baseUpdatedAt,
+                  })
+                : mutation.entityType === "connectionRequest" ||
+                    mutation.entityType === "connectionResponse"
+                  ? client.rpc("sync_connection_cas_upsert", {
+                      p_payload: mutationPayloadToRow(mutation),
+                      p_base_updated_at: mutation.baseUpdatedAt,
+                    })
+                  : mutation.entityType === "tripWeatherForecast"
+                    ? client.rpc("sync_trip_weather_forecast_cas_upsert", {
+                        p_payload: mutationPayloadToRow(mutation),
+                        p_base_updated_at: mutation.baseUpdatedAt,
+                      })
+                    : mutation.entityType === "tripShareLink"
+                      ? client.rpc("sync_trip_share_link_cas_upsert", {
+                          p_payload: mutationPayloadToRow(mutation),
+                          p_base_updated_at: mutation.baseUpdatedAt,
+                        })
+                      : client.rpc("sync_cas_upsert", {
+                          p_entity: mutation.entityType,
+                          p_payload: mutationPayloadToRow(mutation),
+                          p_base_updated_at: mutation.baseUpdatedAt,
+                        });
   let response = signal ? await request.abortSignal(signal) : await request;
   if (
     mutation.entityType === "activity" &&
@@ -314,11 +470,15 @@ async function replayCasMutation(mutation: OutboxMutation, signal?: AbortSignal)
   }
   if (response.error) throw new Error(response.error.message);
   const result = response.data as CasResult;
-  if (result.status === "conflict" || (result.status === "not_found" && mutation.operation !== "delete")) {
+  if (
+    result.status === "conflict" ||
+    (result.status === "not_found" && mutation.operation !== "delete")
+  ) {
     await resolveCasConflict(mutation, result, signal);
     return false;
   }
-  if (mutation.operation !== "delete" && !result.server_updated_at) throw new Error("CAS upsert did not return server_updated_at");
+  if (mutation.operation !== "delete" && !result.server_updated_at)
+    throw new Error("CAS upsert did not return server_updated_at");
   signal?.throwIfAborted();
   await acknowledgeMutation(mutation, result.server_updated_at ?? "");
   signal?.throwIfAborted();
@@ -338,7 +498,12 @@ async function replayOne(mutation: OutboxMutation, signal?: AbortSignal) {
     const normalizedMutation = await normalizeLegacyTravelerMutation(mutation);
     const applied = await replayCasMutation(normalizedMutation, signal);
     if (!applied) return;
-    if (mutation.entityType === "media" && mutation.payload?.deletedAt && mutation.payload.storagePath) await deleteRemoteMedia(String(mutation.payload.storagePath), signal);
+    if (
+      mutation.entityType === "media" &&
+      mutation.payload?.deletedAt &&
+      mutation.payload.storagePath
+    )
+      await deleteRemoteMedia(String(mutation.payload.storagePath), signal);
 
     logger.debug("Mutation replayed successfully", {
       id: mutation.id,
@@ -349,25 +514,38 @@ async function replayOne(mutation: OutboxMutation, signal?: AbortSignal) {
     if (error instanceof Error && error.message === "Expense does not exist") {
       if (await requeueMissingExpenseParent(mutation)) {
         await resetMutationAttempts(mutation.id);
-        logger.warn("Requeued missing expense parent before retrying expense share", { expenseId: mutation.payload?.expenseId, mutationId: mutation.id });
+        logger.warn("Requeued missing expense parent before retrying expense share", {
+          expenseId: mutation.payload?.expenseId,
+          mutationId: mutation.id,
+        });
       } else {
         await removeMutation(mutation.id);
-        logger.warn("Dropped orphaned expense share mutation", { expenseId: mutation.payload?.expenseId, mutationId: mutation.id });
+        logger.warn("Dropped orphaned expense share mutation", {
+          expenseId: mutation.payload?.expenseId,
+          mutationId: mutation.id,
+        });
       }
       return;
     }
     if (error instanceof Error && error.message.startsWith("Cannot sync expense")) {
       await removeMutation(mutation.id);
-      logger.warn("Dropped invalid legacy expense mutation", { mutationId: mutation.id, entityType: mutation.entityType });
+      logger.warn("Dropped invalid legacy expense mutation", {
+        mutationId: mutation.id,
+        entityType: mutation.entityType,
+      });
       return;
     }
-    logger.error("Failed to replay mutation", error instanceof Error ? error : new Error(String(error)), {
-      mutationId: mutation.id,
-      entityType: mutation.entityType,
-      operation: mutation.operation,
-      entityId: mutation.entityId,
-      attempt: mutation.attempts,
-    });
+    logger.error(
+      "Failed to replay mutation",
+      error instanceof Error ? error : new Error(String(error)),
+      {
+        mutationId: mutation.id,
+        entityType: mutation.entityType,
+        operation: mutation.operation,
+        entityId: mutation.entityId,
+        attempt: mutation.attempts,
+      }
+    );
     throw error;
   }
 }
@@ -501,11 +679,15 @@ async function syncOnce(context?: SyncExecutionContext): Promise<void> {
     } catch (error) {
       context?.signal.throwIfAborted();
       const message = error instanceof Error ? error.message : String(error);
-      logger.error("Mutation failed, marking as failed", error instanceof Error ? error : new Error(String(error)), {
-        mutationId: mutation.id,
-        entityType: mutation.entityType,
-        attempts: mutation.attempts + 1,
-      });
+      logger.error(
+        "Mutation failed, marking as failed",
+        error instanceof Error ? error : new Error(String(error)),
+        {
+          mutationId: mutation.id,
+          entityType: mutation.entityType,
+          attempts: mutation.attempts + 1,
+        }
+      );
       await markMutationFailed(mutation.id, message);
       failureCount++;
       syncDiagnostics.lastSyncError = message;
@@ -540,7 +722,12 @@ async function syncOnce(context?: SyncExecutionContext): Promise<void> {
 
   await refreshPending();
 
-  const newStatus = typeof navigator === "undefined" || navigator.onLine ? (countPending > 0 ? "error" : "idle") : "offline";
+  const newStatus =
+    typeof navigator === "undefined" || navigator.onLine
+      ? countPending > 0
+        ? "error"
+        : "idle"
+      : "offline";
   setStatus(newStatus);
   lastSyncAt = new Date().toISOString();
 
@@ -667,7 +854,13 @@ export function getSyncState(): {
   lastSyncAt: string | null;
   lastError: string | null;
 } {
-  return { status, pending: countPending, retryablePending, lastSyncAt, lastError: syncDiagnostics.lastSyncError };
+  return {
+    status,
+    pending: countPending,
+    retryablePending,
+    lastSyncAt,
+    lastError: syncDiagnostics.lastSyncError,
+  };
 }
 
 export function getSyncDiagnostics(): SyncDiagnostics {
@@ -675,7 +868,13 @@ export function getSyncDiagnostics(): SyncDiagnostics {
 }
 
 export function subscribeToSync(
-  cb: (status: SyncStatus, pending: number, retryablePending: number, lastSyncAt: string | null, lastError: string | null) => void
+  cb: (
+    status: SyncStatus,
+    pending: number,
+    retryablePending: number,
+    lastSyncAt: string | null,
+    lastError: string | null
+  ) => void
 ): () => void {
   listeners.push(cb);
   cb(status, countPending, retryablePending, lastSyncAt, syncDiagnostics.lastSyncError);
