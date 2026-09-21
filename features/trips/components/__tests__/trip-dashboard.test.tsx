@@ -82,8 +82,24 @@ describe("TripDashboard", () => {
     fireEvent.change(screen.getByLabelText("Starts"), { target: { value: "2026-09-15" } });
     fireEvent.change(screen.getByLabelText("Ends"), { target: { value: "2026-09-22" } });
     fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Next" }));
+    expect(tripRepository.create).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Trip banner")).toBeTruthy();
     fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Create trip" }));
     await waitFor(() => expect(tripRepository.create).toHaveBeenCalledWith(expect.objectContaining({ ownerId: "user-1", name: "Lisbon", baseCurrency: "USD" })));
+  });
+
+  it("does not create a trip if the step-two form is submitted", async () => {
+    vi.mocked(tripRepository.watchAll).mockImplementation((callback) => { callback([]); return () => undefined; });
+    render(<TripDashboard userId="user-1" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Create trip" }));
+    fireEvent.change(screen.getByLabelText("Trip name"), { target: { value: "Lisbon" } });
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Next" }));
+    fireEvent.change(screen.getByLabelText("Starts"), { target: { value: "2026-09-15" } });
+    fireEvent.change(screen.getByLabelText("Ends"), { target: { value: "2026-09-22" } });
+    fireEvent.submit(screen.getByRole("dialog").querySelector("form")!);
+
+    expect(tripRepository.create).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Trip banner")).toBeTruthy();
   });
 
   it("keeps the selected cover image in the file input", async () => {

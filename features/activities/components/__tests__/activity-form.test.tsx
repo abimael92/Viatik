@@ -63,13 +63,23 @@ describe("ActivityForm", () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     const timestamp = "2026-01-01T00:00:00Z";
     const members = ["user-1", "user-2"].map((userId, index) => ({ id: `member-${index}`, tripId: "trip-1", userId, role: index === 0 ? "owner" as const : "editor" as const, invitedBy: null, joinedAt: timestamp, roleChangedAt: null, roleChangedBy: null, removedAt: null, removedBy: null, version: 1, createdAt: timestamp, updatedAt: timestamp }));
-    const { container } = render(<ActivityForm days={["2026-09-16"]} members={members} currentUserId="user-1" saving={false} onSubmit={onSubmit} onCancel={vi.fn()} />);
+    const { container } = render(<ActivityForm days={["2026-09-16"]} members={members} profiles={[{ id: "user-2", fullName: "Mika Sato", avatarUrl: "https://example.com/mika.png", avatarSeed: "adventurer|mika", email: null }]} currentUserId="user-1" saving={false} onSubmit={onSubmit} onCancel={vi.fn()} />);
 
     expect(screen.getByRole("button", { name: /you: going/i }).getAttribute("aria-pressed")).toBe("true");
-    expect(screen.getByRole("button", { name: /user-2: going/i }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: /mika sato: going/i }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.queryByText("user-2")).toBeNull();
+    expect(screen.getByLabelText("Mika Sato")).toBeTruthy();
     fireEvent.submit(container.querySelector("form")!);
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ participants: [{ userId: "user-1", travelerId: null, status: "attending" }, { userId: "user-2", travelerId: null, status: "attending" }] })));
+  });
+
+  it("deduplicates a linked traveler when the member profile is already listed", () => {
+    const members = [{ id: "member-1", tripId: "trip-1", userId: "user-1", role: "owner" as const, invitedBy: null, joinedAt: "2026-01-01T00:00:00Z", roleChangedAt: null, roleChangedBy: null, removedAt: null, removedBy: null, version: 1, createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }];
+    const travelers = [{ id: "traveler-1", tripId: "trip-1", contactId: "contact-1", displayName: "Alex Chen", travelerType: "adult" as const, createdBy: "user-1", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", deletedAt: null }];
+    render(<ActivityForm days={["2026-09-16"]} members={members} profiles={[{ id: "user-1", fullName: "Alex Chen", avatarUrl: null, avatarSeed: "adventurer|alex", email: null }]} travelers={travelers} saving={false} onSubmit={vi.fn()} onCancel={vi.fn()} />);
+
+    expect(screen.getAllByText("Alex Chen")).toHaveLength(1);
   });
 
   it("shows trip travelers and immediately selects a manually added traveler", async () => {
@@ -114,9 +124,10 @@ describe("ActivityForm", () => {
     const description = screen.getByLabelText("Description");
     expect(description.tagName).toBe("TEXTAREA");
     expect(title.compareDocumentPosition(description) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.queryByLabelText("Booking Reference / Confirmation Code")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /booking/i }));
-    expect(screen.getByLabelText("Booking Reference / Confirmation Code")).toBeTruthy();
+    expect(screen.queryByLabelText("Lodging reservation reference")).toBeNull();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Lodging" }));
+    fireEvent.click(screen.getByRole("button", { name: /lodging reservation/i }));
+    expect(screen.getByLabelText("Lodging reservation reference")).toBeTruthy();
   });
 
   it("submits the signed-in user's optional budget in minor units", async () => {
@@ -135,7 +146,7 @@ describe("ActivityForm", () => {
   });
 
   it("shows transit fields when Transit is selected", async () => {
-    render(
+    const { container } = render(
       <ActivityForm
         days={["2026-09-16"]}
         saving={false}
@@ -150,10 +161,16 @@ describe("ActivityForm", () => {
     fireEvent.click(await screen.findByRole("menuitem", { name: /transit/i }));
 
     expect(screen.queryByLabelText("Title")).toBeNull();
-    expect(screen.getByLabelText("Carrier")).toBeTruthy();
-    expect(screen.getByLabelText("Flight no.")).toBeTruthy();
+    expect(screen.getByLabelText("Carrier / provider")).toBeTruthy();
+    expect(screen.getByLabelText("Trip number")).toBeTruthy();
+    expect(screen.getByLabelText("Travel mode")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Departure time"), { target: { value: "08:30" } });
     expect((screen.getByLabelText("Arrival time (optional)") as HTMLInputElement).value).toBe("11:30");
+    expect(container.querySelector("form")?.textContent).toContain("Estimated travel time:");
+    expect(container.querySelector("form")?.textContent).toContain("3h");
+    fireEvent.change(screen.getByLabelText("Travel mode"), { target: { value: "rideshare" } });
+    expect(screen.getByLabelText("Provider (optional)")).toBeTruthy();
+    expect(screen.queryByLabelText("Upload image")).toBeNull();
     expect(screen.getByRole("button", { name: "Add transit" })).toBeTruthy();
   });
 });

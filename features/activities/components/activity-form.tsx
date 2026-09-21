@@ -42,7 +42,7 @@ import {
   normalizeActivityCategory,
   type ActivityCategory,
 } from "@/features/activities/domain/activity-category";
-import type { Activity, ActivityParticipant, ActivityPollOption, ActivityPollStatus, ActivityPollVote, TripMember, TripTraveler } from "@/features/domain/entities";
+import type { Activity, ActivityParticipant, ActivityPollOption, ActivityPollStatus, ActivityPollVote, ProfileSummary, TripMember, TripTraveler } from "@/features/domain/entities";
 import { decimalFromMinorUnits, parseMinorUnits, type MinorUnits } from "@/features/domain/money";
 import type { TransitSegment } from "@/features/transit/domain/transit-types";
 import { useLocalProfile } from "@/features/profile/lib/use-local-profile";
@@ -112,6 +112,7 @@ export function ActivityForm({
   transitSegment,
   members = [],
   travelers = [],
+  profiles = [],
   currentUserId,
   currency = "USD",
   personalBudgetMinor,
@@ -129,6 +130,7 @@ export function ActivityForm({
   transitSegment?: TransitSegment;
   members?: TripMember[];
   travelers?: TripTraveler[];
+  profiles?: ProfileSummary[];
   currentUserId?: string;
   currency?: string;
   personalBudgetMinor?: MinorUnits | null;
@@ -188,7 +190,11 @@ export function ActivityForm({
   );
   const selectedCategory =
     CATEGORY_OPTIONS.find((option) => option.value === category) ?? CATEGORY_OPTIONS.at(-1)!;
+  const uniqueMembers = [...new Map(members.map((member) => [member.userId, member])).values()];
   const allTravelers = [...new Map([...travelers, ...addedTravelers].map((traveler) => [traveler.id, traveler])).values()];
+  const profileById = new Map(profiles.map((profile) => [profile.id, profile]));
+  const memberNames = new Set(uniqueMembers.map((member) => profileById.get(member.userId)?.fullName?.trim().toLocaleLowerCase()).filter(Boolean));
+  const visibleTravelers = allTravelers.filter((traveler) => !memberNames.has(traveler.displayName.trim().toLocaleLowerCase()));
 
   function selectCategory(nextCategory: ActivityCategory) {
     setCategory(nextCategory);
@@ -244,7 +250,7 @@ export function ActivityForm({
           travelerId: null,
           status: attendingParticipantKeys.has(memberKey(member.userId)) ? "attending" as const : "declined" as const,
         })),
-        ...allTravelers.map((traveler) => ({
+        ...visibleTravelers.map((traveler) => ({
           userId: null,
           travelerId: traveler.id,
           displayName: traveler.displayName,
@@ -341,13 +347,13 @@ export function ActivityForm({
             </div>
             <div className="space-y-4">
               <ActivityPlaceField defaultValue={activity?.formattedAddress ?? activity?.placeName ?? ""} onPlaceSelect={(details) => setPlace(details)} onClear={() => setPlace(null)} />
-              <div className="space-y-2">
-            <button type="button" aria-pressed={bookingEnabled} className="flex w-full items-center justify-between rounded-xl border p-3 text-left" onClick={() => setBookingEnabled((enabled) => !enabled)}>
-              <span><span className="block text-sm font-semibold">Booking</span><span className="block text-xs text-muted-foreground">Add a confirmation code</span></span>
-              <span className={`relative h-6 w-11 rounded-full transition-colors ${bookingEnabled ? "bg-primary" : "bg-muted"}`}><span className={`absolute top-1 size-4 rounded-full bg-background shadow-sm transition-transform ${bookingEnabled ? "translate-x-6" : "translate-x-1"}`} /></span>
-            </button>
-            {bookingEnabled && <div className="relative"><TicketCheck className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" aria-hidden /><Input aria-label="Booking Reference / Confirmation Code" name="bookingReference" defaultValue={activity?.bookingReference ?? ""} autoCapitalize="characters" autoComplete="off" className="pl-9 font-mono uppercase" /></div>}
-          </div>
+              {category === "lodging" && <div className="space-y-2">
+                <button type="button" aria-pressed={bookingEnabled} className="flex w-full items-center justify-between rounded-xl border p-3 text-left" onClick={() => setBookingEnabled((enabled) => !enabled)}>
+                  <span><span className="block text-sm font-semibold">Lodging reservation</span><span className="block text-xs text-muted-foreground">For a house, hotel, motel, Airbnb, or other stay.</span></span>
+                  <span className={`relative h-6 w-11 rounded-full transition-colors ${bookingEnabled ? "bg-primary" : "bg-muted"}`}><span className={`absolute top-1 size-4 rounded-full bg-background shadow-sm transition-transform ${bookingEnabled ? "translate-x-6" : "translate-x-1"}`} /></span>
+                </button>
+                {bookingEnabled && <div className="relative"><TicketCheck className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" aria-hidden /><Input aria-label="Lodging reservation reference" name="bookingReference" defaultValue={activity?.bookingReference ?? ""} autoCapitalize="characters" autoComplete="off" className="pl-9 font-mono uppercase" /></div>}
+              </div>}
           {currentUserId && <div className="space-y-2">
             <Label htmlFor="activity-personalBudget">My budget (optional)</Label>
             <p className="text-xs text-muted-foreground">Private to you. Other travelers cannot see or edit this amount.</p>
@@ -366,19 +372,21 @@ export function ActivityForm({
           <fieldset className="space-y-2">
             <legend className="text-sm font-semibold">Who&apos;s going?</legend>
             <div className="grid gap-2 sm:grid-cols-2">
-              {members.map((member) => {
+              {uniqueMembers.map((member) => {
                 const key = memberKey(member.userId);
                 const attending = attendingParticipantKeys.has(key);
-                const label = member.userId === currentUserId ? "You" : member.userId;
+                const profile = profileById.get(member.userId);
+                const isCurrentUser = member.userId === currentUserId;
+                const label = isCurrentUser ? "You" : profile?.fullName?.trim() || "Trip member";
                 return (
-                  <button key={member.id} type="button" aria-label={`${label}: ${attending ? t("common.going") : t("common.notGoing")}`} aria-pressed={attending} className="flex min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition-colors aria-pressed:border-primary aria-pressed:bg-primary/10" onClick={() => toggleParticipant(key, setAttendingParticipantKeys)}>
-                    <UserAvatar seed={member.userId === currentUserId ? localProfile?.avatarSeed : undefined} src={member.userId === currentUserId ? localProfile?.avatarUrl : undefined} name={member.userId === currentUserId ? localProfile?.fullName ?? label : label} size="sm" />
+                  <button key={member.userId} type="button" aria-label={`${label}: ${attending ? t("common.going") : t("common.notGoing")}`} aria-pressed={attending} className="flex min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition-colors aria-pressed:border-primary aria-pressed:bg-primary/10" onClick={() => toggleParticipant(key, setAttendingParticipantKeys)}>
+                    <UserAvatar seed={isCurrentUser ? localProfile?.avatarSeed : profile?.avatarSeed} src={isCurrentUser ? localProfile?.avatarUrl : profile?.avatarUrl} name={isCurrentUser ? localProfile?.fullName ?? label : label} size="sm" />
                     <span className="min-w-0 flex-1 truncate text-sm font-medium">{label}</span>
                     <span className="text-xs text-muted-foreground">{attending ? "Going" : "Not going"}</span>
                   </button>
                 );
               })}
-              {allTravelers.map((traveler) => {
+              {visibleTravelers.map((traveler) => {
                 const key = travelerKey(traveler.id);
                 const attending = attendingParticipantKeys.has(key);
                 return (

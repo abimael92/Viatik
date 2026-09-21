@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast";
 import { AiScoutSidebar } from "@/features/ai/components/ai-scout-sidebar";
 import type { ScoutDndPayload } from "@/features/ai/lib/ai-scout-dnd";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -23,7 +25,7 @@ import { formatActivityTime } from "@/features/activities/lib/activity-time";
 import { PeoplePanel } from "@/features/collaboration/components/people-panel";
 import { collaborationRepository } from "@/features/collaboration/data/dexie-collaboration-repository";
 import { contactRepository, tripTravelerRepository } from "@/features/contacts/data/dexie-contact-repository";
-import type { Activity, ActivityPersonalBudget, Trip, TripMember, TripTraveler } from "@/features/domain/entities";
+import type { Activity, ActivityPersonalBudget, ProfileSummary, Trip, TripMember, TripTraveler } from "@/features/domain/entities";
 import type { TripMedia } from "@/features/domain/entities-media";
 import { TravelJournalView } from "@/features/journal/components/travel-journal-view";
 // import { FinanceSummaryStrip } from "@/features/finance/components/finance-dashboard";
@@ -107,13 +109,16 @@ export function TripWorkspace({ tripId, userId, initialTab = "overview", initial
   const [trip, setTrip] = useState<Trip | null | undefined>(undefined);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [members, setMembers] = useState<TripMember[]>([]);
+  const [memberProfiles, setMemberProfiles] = useState<ProfileSummary[]>([]);
   const eligibleViaticUsers = members.filter((member) => member.viatikId != null).length;
   const [travelers, setTravelers] = useState<TripTraveler[]>([]);
   const [tab, setTab] = useState<Tab>(init.tab);
   const [overviewTool, setOverviewTool] = useState<SecondaryTool | null>(init.tool);
   const [journalView, setJournalView] = useState<"journal" | "feed">(init.journalView);
   const [activityDialog, setActivityDialog] = useState<ActivityDialogState>(null);
+  const [deleteTripOpen, setDeleteTripOpen] = useState(false);
   const [scoutOpen, setScoutOpen] = useState(false);
+  const { toast: notify } = useToast();
   const [shareOpen, setShareOpen] = useState(false);
   const [conflictModalOpen, setConflictModalOpen] = useState(false);
   const [editIntent, setEditIntent] = useState(0);
@@ -143,6 +148,19 @@ export function TripWorkspace({ tripId, userId, initialTab = "overview", initial
   useEffect(() => tripRepository.watchById(tripId, (value) => setTrip(value ?? null)), [tripId]);
   useEffect(() => activityRepository.watchByTrip(tripId, setActivities), [tripId]);
   useEffect(() => collaborationRepository.watchMembers(tripId, setMembers), [tripId]);
+  useEffect(() => {
+    const userIds = [...new Set(members.map((member) => member.userId))];
+    if (userIds.length === 0) return;
+    let cancelled = false;
+    void collaborationRepository.listProfiles(userIds).then((profiles) => {
+      if (!cancelled) setMemberProfiles(profiles);
+    }).catch(() => {
+      if (!cancelled) setMemberProfiles([]);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [members]);
   useEffect(() => tripTravelerRepository.watch(tripId, setTravelers), [tripId]);
   useEffect(() => mediaRepository.watchByTrip(tripId, null, setMedia), [tripId]);
   useEffect(() => weatherRepository.watchForecast(tripId, setForecast), [tripId]);
@@ -593,12 +611,7 @@ export function TripWorkspace({ tripId, userId, initialTab = "overview", initial
               <Button
                 className="mt-4"
                 variant="destructive"
-                onClick={async () => {
-                  if (window.confirm(`Delete ${trip.name}? This can’t be undone from the app.`)) {
-                    await tripRepository.remove(trip.id);
-                    router.replace("/trips");
-                  }
-                }}
+                onClick={() => setDeleteTripOpen(true)}
               >
                 <Trash2 className="size-5" />
                 Delete trip
@@ -607,7 +620,20 @@ export function TripWorkspace({ tripId, userId, initialTab = "overview", initial
           )}
         </section>
       )}
-      <ActivityDialog open={activityDialog !== null} state={activityDialog} trip={trip} userId={userId} members={members} travelers={travelers} activities={activities} onClose={() => setActivityDialog(null)} onError={setError} onDelete={handleDeleteActivity} />
+      <ActivityDialog open={activityDialog !== null} state={activityDialog} trip={trip} userId={userId} members={members} memberProfiles={memberProfiles} travelers={travelers} activities={activities} onClose={() => setActivityDialog(null)} onError={setError} onDelete={handleDeleteActivity} />
+      <ConfirmDialog
+        open={deleteTripOpen}
+        onOpenChange={setDeleteTripOpen}
+        title="Delete this trip?"
+        description={`Delete ${trip.name}? This cannot be undone from the app.`}
+        confirmLabel="Delete trip"
+        onConfirm={() => {
+          setDeleteTripOpen(false);
+          void tripRepository.remove(trip.id)
+            .then(() => router.replace("/trips"))
+            .catch((cause) => notify({ title: "Unable to delete trip", description: cause instanceof Error ? cause.message : "Please try again.", variant: "error" }));
+        }}
+      />
 
       <WeatherConflictModal open={conflictModalOpen} onOpenChange={setConflictModalOpen} conflicts={weatherConflicts} activities={activities} tripDays={days} forecast={forecast?.forecast} />
 
@@ -778,7 +804,7 @@ function ToolCard({ icon: Icon, title, description, onClick }: { icon: typeof Ba
   );
 }
 
-function ActivityDialog({ open, state, trip, userId, members, travelers, activities, onClose, onError, onDelete }: { open: boolean; state: ActivityDialogState; trip: Trip; userId: string; members: TripMember[]; travelers: TripTraveler[]; activities: Activity[]; onClose: () => void; onError: (message: string) => void; onDelete: (activity: Activity) => void }) {
+function ActivityDialog({ open, state, trip, userId, members, memberProfiles, travelers, activities, onClose, onError, onDelete }: { open: boolean; state: ActivityDialogState; trip: Trip; userId: string; members: TripMember[]; memberProfiles: ProfileSummary[]; travelers: TripTraveler[]; activities: Activity[]; onClose: () => void; onError: (message: string) => void; onDelete: (activity: Activity) => void }) {
   const activity = state && state !== "new" && "activity" in state ? state.activity : undefined;
   const draft = state && state !== "new" && "draft" in state ? state.draft : undefined;
   const transitSegment = state && state !== "new" && "transitSegment" in state ? state.transitSegment : undefined;
@@ -933,6 +959,7 @@ function ActivityDialog({ open, state, trip, userId, members, travelers, activit
           activity={activity}
           transitSegment={transitSegment}
           members={members}
+          profiles={memberProfiles}
           travelers={travelers}
           currentUserId={userId}
           currency={trip.baseCurrency}

@@ -4,7 +4,9 @@ import { Pencil, Plus, ReceiptText, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Heading } from "@/components/ui/heading";
+import { useToast } from "@/components/ui/toast";
 import {
   Dialog,
   DialogContent,
@@ -58,7 +60,8 @@ export function ExpensePanel({
   const [members, setMembers] = useState<TripMember[]>([]);
   const [profiles] = useState<ProfileSummary[]>([]);
   const [dialog, setDialog] = useState<Expense | "new" | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [deleteExpense, setDeleteExpense] = useState<Expense | null>(null);
+  const { toast } = useToast();
   const [balances, setBalances] = useState<Record<string, bigint>>({});
   const autoOpenConsumed = useRef(false);
 
@@ -156,12 +159,6 @@ export function ExpensePanel({
         </div>
       )}
 
-      {error && (
-        <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-          {error}
-        </p>
-      )}
-
       {expenses === null ? (
         <div className="h-32 animate-pulse rounded-xl bg-muted" />
       ) : visibleExpenses.length === 0 ? (
@@ -220,12 +217,7 @@ export function ExpensePanel({
                     variant="ghost"
                     size="icon"
                     aria-label={`Delete ${expense.description}`}
-                    onClick={() => {
-                      if (window.confirm(`Delete ${expense.description}?`))
-                        void expenseRepository
-                          .remove(expense.id)
-                          .catch(() => setError("Unable to delete expense."));
-                    }}
+                    onClick={() => setDeleteExpense(expense)}
                   >
                     <Trash2 className="size-5 text-destructive" />
                   </Button>
@@ -247,7 +239,22 @@ export function ExpensePanel({
         members={members}
         names={names}
         onClose={() => setDialog(null)}
-        onError={setError}
+        onError={(message) => toast({ title: "Unable to save expense", description: message, variant: "error" })}
+      />
+      <ConfirmDialog
+        open={deleteExpense !== null}
+        onOpenChange={(open) => !open && setDeleteExpense(null)}
+        title="Delete expense?"
+        description={deleteExpense ? `Delete ${deleteExpense.description}? This cannot be undone.` : ""}
+        confirmLabel="Delete"
+        onConfirm={() => {
+          if (!deleteExpense) return;
+          const expense = deleteExpense;
+          setDeleteExpense(null);
+          void expenseRepository.remove(expense.id)
+            .then(() => toast({ title: "Expense deleted", variant: "success" }))
+            .catch(() => toast({ title: "Unable to delete expense", variant: "error" }));
+        }}
       />
     </section>
   );

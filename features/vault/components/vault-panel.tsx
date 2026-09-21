@@ -4,7 +4,9 @@ import { Lock, Plus, Shield, Unlock } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Heading } from "@/components/ui/heading";
+import { useToast } from "@/components/ui/toast";
 import type { VaultEntry, VaultEntryValues, VaultKeyset } from "@/features/vault/domain/vault-types";
 import { vaultRepository } from "@/features/vault/data/dexie-vault-repository";
 import { webCryptoVault, type VaultSession } from "@/lib/security/web-crypto-vault";
@@ -19,7 +21,9 @@ export function VaultPanel({ tripId, userId }: { tripId: string; userId: string 
   const [decrypted, setDecrypted] = useState<Map<string, VaultEntryValues>>(new Map());
   const [dialog, setDialog] = useState<"unlock" | "entry" | null>(null);
   const [editing, setEditing] = useState<VaultEntry | null>(null);
+  const [deleteEntry, setDeleteEntry] = useState<VaultEntry | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
   const [pending, setPending] = useState(false);
   const [copyToast, setCopyToast] = useState<string | null>(null);
 
@@ -121,17 +125,21 @@ export function VaultPanel({ tripId, userId }: { tripId: string; userId: string 
     [editing, session, tripId, userId]
   );
 
-  const handleDelete = useCallback(
-    async (entry: VaultEntry) => {
-      if (!window.confirm(`Delete “${decrypted.get(entry.id)?.title ?? entry.id}” from your vault?`)) return;
-      try {
-        await vaultRepository.removeEntry(entry.id, userId);
-      } catch (cause) {
-        setError(cause instanceof Error ? cause.message : "Unable to delete entry.");
-      }
-    },
-    [decrypted, userId]
-  );
+  const handleDelete = useCallback((entry: VaultEntry) => {
+    setDeleteEntry(entry);
+  }, []);
+
+  const confirmDelete = useCallback(async () => {
+    if (!deleteEntry) return;
+    const entry = deleteEntry;
+    setDeleteEntry(null);
+    try {
+      await vaultRepository.removeEntry(entry.id, userId);
+      toast({ title: "Vault entry deleted", variant: "success" });
+    } catch (cause) {
+      toast({ title: "Unable to delete entry", description: cause instanceof Error ? cause.message : "Please try again.", variant: "error" });
+    }
+  }, [deleteEntry, toast, userId]);
 
   const handleCopy = useCallback(
     async (text: string, label: string) => {
@@ -258,6 +266,15 @@ export function VaultPanel({ tripId, userId }: { tripId: string; userId: string 
         onSave={handleSave}
         pending={pending}
         error={error}
+      />
+
+      <ConfirmDialog
+        open={deleteEntry !== null}
+        onOpenChange={(open) => !open && setDeleteEntry(null)}
+        title="Delete vault entry?"
+        description={deleteEntry ? `Delete “${decrypted.get(deleteEntry.id)?.title ?? "this entry"}” from your vault?` : ""}
+        confirmLabel="Delete"
+        onConfirm={() => void confirmDelete()}
       />
     </section>
   );
