@@ -2,7 +2,7 @@ import { liveQuery } from "dexie";
 
 import { getCurrentDatabase, type ViatikDatabase } from "@/lib/db/dexie";
 import { TransactionContext } from "@/lib/db/transaction-context";
-import type { Trip, TripMember } from "@/features/domain/entities";
+import type { Contact, Trip, TripMember, TripTraveler } from "@/features/domain/entities";
 import type { NewTrip, TripRepository } from "@/features/domain/repositories/trip-repository";
 import { assertValidTripDates } from "@/features/trips/lib/trip-duration";
 import { append } from "@/lib/sync/outbox-transactional";
@@ -23,7 +23,11 @@ export class DexieTripRepository implements TripRepository {
     if (!userId) return db.trips.filter((trip) => trip.deletedAt === null).toArray();
     const memberships = await db.tripMembers.where("userId").equals(userId).toArray();
     const accessible = new Set(memberships.map((member) => member.tripId));
-    return db.trips.filter((trip) => trip.deletedAt === null && (trip.ownerId === userId || accessible.has(trip.id))).toArray();
+    return db.trips
+      .filter(
+        (trip) => trip.deletedAt === null && (trip.ownerId === userId || accessible.has(trip.id))
+      )
+      .toArray();
   }
 
   async getById(id: string): Promise<Trip | undefined> {
@@ -32,7 +36,9 @@ export class DexieTripRepository implements TripRepository {
     if (!trip || trip.deletedAt !== null) return undefined;
     const userId = getSyncUser();
     if (!userId || trip.ownerId === userId) return trip;
-    return await db.tripMembers.where("[tripId+userId]").equals([id, userId]).first() ? trip : undefined;
+    return (await db.tripMembers.where("[tripId+userId]").equals([id, userId]).first())
+      ? trip
+      : undefined;
   }
 
   watchAll(onChange: (trips: Trip[]) => void): () => void {
@@ -119,7 +125,8 @@ export class DexieTripRepository implements TripRepository {
       const previous = await ctx.table<Trip>("trips").get(id);
       if (!previous) throw new Error(`Trip ${id} not found before update`);
       if ("startDate" in patch || "endDate" in patch) {
-        const effectiveStartDate = patch.startDate !== undefined ? patch.startDate : previous.startDate;
+        const effectiveStartDate =
+          patch.startDate !== undefined ? patch.startDate : previous.startDate;
         const effectiveEndDate = patch.endDate !== undefined ? patch.endDate : previous.endDate;
         assertValidTripDates(effectiveStartDate, effectiveEndDate);
       }
@@ -135,15 +142,51 @@ export class DexieTripRepository implements TripRepository {
 
   async remove(id: string): Promise<void> {
     const db = getDb();
-    return TransactionContext.runInTransaction([db.trips], async (ctx) => {
-      const trip = await ctx.table<Trip>("trips").get(id);
-      if (!trip) return;
-      const deletedAt = new Date().toISOString();
-      const updated = { ...trip, deletedAt, updatedAt: deletedAt };
-      await ctx.table<Trip>("trips").put(updated);
-      await append("trip", "update", updated, { tx: ctx, baseUpdatedAt: trip.updatedAt });
-      logger.debug("Trip deleted locally", { tripId: id });
-    });
+    return TransactionContext.runInTransaction(
+      [db.trips, db.tripTravelers, db.contacts],
+      async (ctx) => {
+        const trip = await ctx.table<Trip>("trips").get(id);
+        if (!trip) return;
+        const deletedAt = new Date().toISOString();
+        const updated = { ...trip, deletedAt, updatedAt: deletedAt };
+        await ctx.table<Trip>("trips").put(updated);
+
+        const travelers = await ctx
+          .table<TripTraveler>("tripTravelers")
+          .where("tripId")
+          .equals(id)
+          .filter((traveler) => traveler.deletedAt === null)
+          .toArray();
+        for (const traveler of travelers) {
+          const deletedTraveler = { ...traveler, deletedAt, updatedAt: deletedAt };
+          await ctx.table<TripTraveler>("tripTravelers").put(deletedTraveler);
+          await append("tripTraveler", "update", deletedTraveler, {
+            tx: ctx,
+            baseUpdatedAt: traveler.updatedAt,
+          });
+
+          const contact = await ctx.table<Contact>("contacts").get(traveler.contactId);
+          if (!contact || contact.linkedProfileId) continue;
+          const stillUsed = await ctx
+            .table<TripTraveler>("tripTravelers")
+            .where("contactId")
+            .equals(contact.id)
+            .filter((candidate) => candidate.deletedAt === null && candidate.tripId !== id)
+            .count();
+          if (stillUsed === 0 && contact.deletedAt === null) {
+            const deletedContact = { ...contact, deletedAt, updatedAt: deletedAt };
+            await ctx.table<Contact>("contacts").put(deletedContact);
+            await append("contact", "update", deletedContact, {
+              tx: ctx,
+              baseUpdatedAt: contact.updatedAt,
+            });
+          }
+        }
+
+        await append("trip", "update", updated, { tx: ctx, baseUpdatedAt: trip.updatedAt });
+        logger.debug("Trip deleted locally", { tripId: id });
+      }
+    );
   }
 
   startTrip(id: string): Promise<Trip> {
