@@ -5,6 +5,7 @@ import { useState } from "react";
 import { ArrowRight, Luggage, Plane, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Dialog,
   DialogContent,
@@ -37,6 +38,7 @@ export function HomePage({ userId }: { userId: string }) {
   const { t } = useI18n();
   const { loading, primaryTrip, readiness, timeline } = useHomeData(userId);
   const [pending, setPending] = useState(false);
+  const [confirmEnd, setConfirmEnd] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [moneyToolsOpen, setMoneyToolsOpen] = useState(false);
@@ -61,9 +63,17 @@ export function HomePage({ userId }: { userId: string }) {
 
   function handleEnd() {
     if (!primaryTrip || pending) return;
-    if (!window.confirm("End this trip? It will move to Past Trips.")) return;
+    setConfirmEnd(true);
+  }
+
+  function confirmEndTrip() {
+    if (!primaryTrip || pending) return;
+    setConfirmEnd(false);
     setPending(true);
-    void tripRepository.endTrip(primaryTrip.id).finally(() => setPending(false));
+    void tripRepository.endTrip(primaryTrip.id)
+      .then(() => toast({ title: "Trip ended", description: "It has been moved to Past Trips.", variant: "success" }))
+      .catch((cause) => toast({ title: "Unable to end trip", description: cause instanceof Error ? cause.message : "Please try again.", variant: "error" }))
+      .finally(() => setPending(false));
   }
 
   function handleCancel() {
@@ -164,6 +174,15 @@ export function HomePage({ userId }: { userId: string }) {
             inline
           />
         )}
+
+        <ConfirmDialog
+          open={confirmEnd}
+          onOpenChange={setConfirmEnd}
+          title="End this trip?"
+          description="It will be moved to Past Trips."
+          confirmLabel="End trip"
+          onConfirm={confirmEndTrip}
+        />
 
         <Dialog open={confirmCancel} onOpenChange={setConfirmCancel}>
           <DialogContent>

@@ -31,6 +31,8 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast";
 import { Heading } from "@/components/ui/heading";
 import { daysUntil, isTripActive, isTripEnded, todayKey } from "@/features/trips/lib/home-trips";
 import { resolveTripStatus } from "@/features/trips/lib/trip-status";
@@ -74,7 +76,9 @@ export function TripDashboard({ userId }: { userId: string }) {
   const [trips, setTrips] = useState<Trip[] | null>(null);
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
+  const [endTripId, setEndTripId] = useState<string | null>(null);
   const [invitations, setInvitations] = useState<TripInvitation[]>([]);
+  const { toast } = useToast();
   const [error, setError] = useState<string | null>(null);
   const sync = useSyncStatus();
 
@@ -116,11 +120,16 @@ export function TripDashboard({ userId }: { userId: string }) {
   }
 
   function endTrip(id: string) {
-    setError(null);
-    if (!window.confirm("End this trip? It will move to Past Trips.")) return;
-    void tripRepository.endTrip(id).catch((cause) =>
-      setError(cause instanceof Error ? cause.message : "Unable to end trip")
-    );
+    setEndTripId(id);
+  }
+
+  function confirmEndTrip() {
+    if (!endTripId) return;
+    const id = endTripId;
+    setEndTripId(null);
+    void tripRepository.endTrip(id)
+      .then(() => toast({ title: "Trip ended", description: "It has been moved to Past Trips.", variant: "success" }))
+      .catch((cause) => toast({ title: "Unable to end trip", description: cause instanceof Error ? cause.message : "Please try again.", variant: "error" }));
   }
 
   return (
@@ -270,7 +279,15 @@ export function TripDashboard({ userId }: { userId: string }) {
         open={creating}
         onOpenChange={setCreating}
         userId={userId}
-        onError={setError}
+        onError={(message) => toast({ title: "Unable to save trip", description: message, variant: "error" })}
+      />
+      <ConfirmDialog
+        open={endTripId !== null}
+        onOpenChange={(open) => !open && setEndTripId(null)}
+        title="End this trip?"
+        description="It will be moved to Past Trips."
+        confirmLabel="End trip"
+        onConfirm={confirmEndTrip}
       />
     </div>
   );

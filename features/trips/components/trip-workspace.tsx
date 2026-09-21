@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast";
 import { AiScoutSidebar } from "@/features/ai/components/ai-scout-sidebar";
 import type { ScoutDndPayload } from "@/features/ai/lib/ai-scout-dnd";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -114,7 +116,9 @@ export function TripWorkspace({ tripId, userId, initialTab = "overview", initial
   const [overviewTool, setOverviewTool] = useState<SecondaryTool | null>(init.tool);
   const [journalView, setJournalView] = useState<"journal" | "feed">(init.journalView);
   const [activityDialog, setActivityDialog] = useState<ActivityDialogState>(null);
+  const [deleteTripOpen, setDeleteTripOpen] = useState(false);
   const [scoutOpen, setScoutOpen] = useState(false);
+  const { toast: notify } = useToast();
   const [shareOpen, setShareOpen] = useState(false);
   const [conflictModalOpen, setConflictModalOpen] = useState(false);
   const [editIntent, setEditIntent] = useState(0);
@@ -607,12 +611,7 @@ export function TripWorkspace({ tripId, userId, initialTab = "overview", initial
               <Button
                 className="mt-4"
                 variant="destructive"
-                onClick={async () => {
-                  if (window.confirm(`Delete ${trip.name}? This can’t be undone from the app.`)) {
-                    await tripRepository.remove(trip.id);
-                    router.replace("/trips");
-                  }
-                }}
+                onClick={() => setDeleteTripOpen(true)}
               >
                 <Trash2 className="size-5" />
                 Delete trip
@@ -622,6 +621,19 @@ export function TripWorkspace({ tripId, userId, initialTab = "overview", initial
         </section>
       )}
       <ActivityDialog open={activityDialog !== null} state={activityDialog} trip={trip} userId={userId} members={members} memberProfiles={memberProfiles} travelers={travelers} activities={activities} onClose={() => setActivityDialog(null)} onError={setError} onDelete={handleDeleteActivity} />
+      <ConfirmDialog
+        open={deleteTripOpen}
+        onOpenChange={setDeleteTripOpen}
+        title="Delete this trip?"
+        description={`Delete ${trip.name}? This cannot be undone from the app.`}
+        confirmLabel="Delete trip"
+        onConfirm={() => {
+          setDeleteTripOpen(false);
+          void tripRepository.remove(trip.id)
+            .then(() => router.replace("/trips"))
+            .catch((cause) => notify({ title: "Unable to delete trip", description: cause instanceof Error ? cause.message : "Please try again.", variant: "error" }));
+        }}
+      />
 
       <WeatherConflictModal open={conflictModalOpen} onOpenChange={setConflictModalOpen} conflicts={weatherConflicts} activities={activities} tripDays={days} forecast={forecast?.forecast} />
 
