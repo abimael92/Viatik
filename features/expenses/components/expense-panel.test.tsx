@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Expense, TripMember } from "@/features/domain/entities";
@@ -11,6 +11,7 @@ if (typeof window !== "undefined") {
 vi.mock("@/features/expenses/data/dexie-expense-repository", () => ({
   expenseRepository: {
     watchByTrip: vi.fn((_tripId: string, cb: (expenses: Expense[]) => void) => {
+      expensesCallback = cb;
       cb([]);
       return () => {};
     }),
@@ -28,17 +29,57 @@ vi.mock("@/features/collaboration/data/dexie-collaboration-repository", () => ({
       cb([]);
       return () => {};
     }),
+    listProfiles: vi.fn().mockResolvedValue([]),
   },
 }));
 
+vi.mock("@/features/profile/lib/use-local-profile", () => ({
+  useLocalProfile: vi.fn(() => null),
+}));
+
+let expensesCallback: ((expenses: Expense[]) => void) | null = null;
+
 beforeEach(() => {
   vi.clearAllMocks();
+  expensesCallback = null;
   if (typeof crypto !== "undefined" && !crypto.randomUUID) {
     (crypto as { randomUUID?: () => string }).randomUUID = () => "test-uuid";
   }
 });
 
 afterEach(() => cleanup());
+
+describe("ExpensePanel", () => {
+  it("expands an expense to show split, currency, and local save details", async () => {
+    const expense: Expense = {
+      id: "expense-1",
+      tripId: "trip-1",
+      activityId: null,
+      description: "Dinner",
+      amountMinor: 4250n,
+      currency: "USD",
+      exchangeRateToBase: null,
+      paidBy: "user-1",
+      splitType: "equal",
+      category: "food",
+      subcategory: "restaurants",
+      date: "2026-06-02",
+      createdBy: "user-1",
+      createdAt: "2026-06-02T12:00:00.000Z",
+      updatedAt: "2026-06-02T12:00:00.000Z",
+      deletedAt: null,
+    };
+    render(<ExpensePanel tripId="trip-1" userId="user-1" currency="USD" canEdit />);
+    act(() => expensesCallback?.([expense]));
+
+    fireEvent.click((await screen.findAllByRole("button", { name: /Dinner/ }))[0]);
+
+    expect(screen.getByText("Equal split")).toBeTruthy();
+    expect(screen.getByText("Original amount")).toBeTruthy();
+    expect(screen.getByText("Saved locally")).toBeTruthy();
+    expect(screen.getByText("$42.50 USD")).toBeTruthy();
+  });
+});
 
 describe("ExpenseDialog", () => {
   it("defaults splitting to off and can be turned on", async () => {
