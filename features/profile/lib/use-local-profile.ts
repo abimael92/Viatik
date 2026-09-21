@@ -11,6 +11,8 @@ import { profileRepository } from "@/features/profile/data/dexie-profile-reposit
  * on mount. Reads always come from Dexie (offline-first); the refresh is a
  * best-effort upsert that silently keeps the cached copy when offline.
  */
+export const PROFILE_UPDATED_EVENT = "viatik-profile-updated";
+
 export function useLocalProfile(ownerId: string): LocalProfile | null {
   const [profile, setProfile] = useState<LocalProfile | null>(null);
 
@@ -19,17 +21,22 @@ export function useLocalProfile(ownerId: string): LocalProfile | null {
   useEffect(() => {
     if (!ownerId) return;
     let cancelled = false;
-    void (async () => {
-      try {
-        const remote = await getMyProfile();
-        if (cancelled || !remote) return;
-        await profileRepository.upsert(remote);
-      } catch {
-        // Offline or transient error: keep whatever is already cached locally.
-      }
-    })();
+    const refresh = () => {
+      void (async () => {
+        try {
+          const remote = await getMyProfile();
+          if (cancelled || !remote) return;
+          await profileRepository.upsert(remote);
+        } catch {
+          // Offline or transient error: keep whatever is already cached locally.
+        }
+      })();
+    };
+    refresh();
+    window.addEventListener(PROFILE_UPDATED_EVENT, refresh);
     return () => {
       cancelled = true;
+      window.removeEventListener(PROFILE_UPDATED_EVENT, refresh);
     };
   }, [ownerId]);
 

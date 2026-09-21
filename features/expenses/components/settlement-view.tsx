@@ -1,12 +1,17 @@
 "use client";
 
 import { ArrowDown, ArrowUp, HandCoins, ReceiptText, Scale } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { Heading } from "@/components/ui/heading";
-import type { TripMember } from "@/features/domain/entities";
+import { collaborationRepository } from "@/features/collaboration/data/dexie-collaboration-repository";
+import { tripTravelerRepository } from "@/features/contacts/data/dexie-contact-repository";
+import type { ProfileSummary, TripTraveler } from "@/features/domain/entities";
 import { formatMinorUnits, type CurrencyCode, type MinorUnits } from "@/features/domain/money";
 import { useSettlement } from "@/features/expenses/lib/use-settlement";
 import type { SettlementTransfer } from "@/features/expenses/lib/settlement";
+import { useLocalProfile } from "@/features/profile/lib/use-local-profile";
 
 /**
  * Splitwise-style settlement for a trip. Shows each traveler's net standing
@@ -24,8 +29,51 @@ export function SettlementView({
   currency: CurrencyCode;
 }) {
   const { loading, balances, transfers, members } = useSettlement(tripId, currency);
+  const localProfile = useLocalProfile(userId);
+  const [authorizedProfiles, setAuthorizedProfiles] = useState<ProfileSummary[]>([]);
+  const [travelers, setTravelers] = useState<TripTraveler[]>([]);
+  const memberIds = useMemo(
+    () => [...new Set(members.map((member) => member.userId).filter((id): id is string => Boolean(id)))],
+    [members]
+  );
 
-  const names = createNameLookup(members, userId);
+  useEffect(() => tripTravelerRepository.watch(tripId, setTravelers), [tripId]);
+
+  useEffect(() => {
+    if (memberIds.length === 0) return;
+    let cancelled = false;
+    void collaborationRepository.listProfiles(memberIds).then((profiles) => {
+      if (!cancelled) setAuthorizedProfiles(profiles);
+    }).catch(() => {
+      if (!cancelled) setAuthorizedProfiles([]);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [memberIds]);
+
+  const identity = useMemo(() => {
+    const memberIdSet = new Set(memberIds);
+    const profileById = new Map(authorizedProfiles.filter((profile) => memberIdSet.has(profile.id)).map((profile) => [profile.id, profile]));
+    const travelerByKey = new Map(travelers.map((traveler) => [`traveler:${traveler.id}`, traveler]));
+    return (memberId: string): SettlementIdentity => {
+      const traveler = travelerByKey.get(memberId);
+      if (traveler) return { name: traveler.displayName, avatarUrl: null, avatarSeed: traveler.id };
+      const authorizedProfile = profileById.get(memberId);
+      if (memberId === userId && localProfile) {
+        return {
+          name: localProfile.fullName?.trim() || authorizedProfile?.fullName?.trim() || "Traveler",
+          avatarUrl: localProfile.avatarUrl,
+          avatarSeed: localProfile.avatarSeed,
+        };
+      }
+      return {
+        name: authorizedProfile?.fullName?.trim() || "Traveler",
+        avatarUrl: authorizedProfile?.avatarUrl ?? null,
+        avatarSeed: authorizedProfile?.avatarSeed ?? null,
+      };
+    };
+  }, [authorizedProfiles, localProfile, memberIds, travelers, userId]);
 
   return (
     <section aria-labelledby="settlement-heading" className="space-y-4">
@@ -50,30 +98,29 @@ export function SettlementView({
         </div>
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
-          <StandingCard balances={balances} names={names} userId={userId} currency={currency} />
-          <TransfersCard transfers={transfers} names={names} currency={currency} />
+          <StandingCard balances={balances} identity={identity} currency={currency} />
+          <TransfersCard transfers={transfers} identity={identity} currency={currency} />
         </div>
       )}
     </section>
   );
 }
 
-function createNameLookup(members: TripMember[], userId: string): (memberId: string) => string {
-  return (memberId: string) => {
-    if (memberId === userId) return "You";
-    return members.find((member) => member.userId === memberId)?.userId ?? memberId;
-  };
-}
+type SettlementIdentity = {
+  name: string;
+  avatarUrl: string | null;
+  avatarSeed: string | null;
+};
+
+type IdentityLookup = (memberId: string) => SettlementIdentity;
 
 function StandingCard({
   balances,
-  names,
-  userId,
+  identity,
   currency,
 }: {
   balances: Record<string, MinorUnits>;
-  names: (memberId: string) => string;
-  userId: string;
+  identity: IdentityLookup;
   currency: CurrencyCode;
 }) {
   const standing = Object.entries(balances)
@@ -95,6 +142,7 @@ function StandingCard({
         <ul className="mt-3 divide-y">
           {standing.map(([memberId, balance]) => {
             const owed = balance > 0n;
+            const person = identity(memberId);
             return (
               <li key={memberId} className="flex items-center justify-between gap-3 py-2.5">
                 <span className="flex min-w-0 items-center gap-2">
@@ -103,15 +151,13 @@ function StandingCard({
                   ) : (
                     <ArrowUp className="size-4 shrink-0 text-destructive" aria-hidden />
                   )}
-                  <span className="truncate text-sm font-medium">
-                    {memberId === userId ? "You" : names(memberId)}
-                  </span>
+                  <IdentityLabel identity={person} />
                 </span>
                 <span
                   className={`shrink-0 font-mono text-sm font-semibold tabular-nums ${owed ? "text-success" : "text-destructive"}`}
                 >
                   {owed ? "+" : "−"}
-                  {formatMinorUnits(balance < 0n ? -balance : balance, currency)}
+                  {formatMinorUnits(balance < 0n ? -balance : balance, currency)} {currency}
                 </span>
               </li>
             );
@@ -122,13 +168,29 @@ function StandingCard({
   );
 }
 
+function IdentityLabel({ identity }: { identity: SettlementIdentity }) {
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1.5 align-middle">
+      <UserAvatar
+        seed={identity.avatarSeed}
+        src={identity.avatarUrl}
+        name={identity.name}
+        size="sm"
+        className="size-6"
+        aria-label={identity.name}
+      />
+      <span className="truncate font-semibold">{identity.name}</span>
+    </span>
+  );
+}
+
 function TransfersCard({
   transfers,
-  names,
+  identity,
   currency,
 }: {
   transfers: SettlementTransfer[];
-  names: (memberId: string) => string;
+  identity: IdentityLookup;
   currency: CurrencyCode;
 }) {
   return (
@@ -144,24 +206,28 @@ function TransfersCard({
         </p>
       ) : (
         <ol className="mt-3 space-y-2">
-          {transfers.map((transfer, index) => (
-            <li
-              key={`${transfer.fromUserId}-${transfer.toUserId}-${index}`}
-              className="flex items-center gap-3 rounded-lg border bg-background px-3 py-2.5"
-            >
-              <span className="grid size-6 shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
-                {index + 1}
-              </span>
-              <p className="min-w-0 flex-1 text-sm">
-                <span className="font-semibold">{names(transfer.fromUserId)}</span>{" "}
-                <span className="text-muted-foreground">pays</span>{" "}
-                <span className="font-semibold">{names(transfer.toUserId)}</span>
-              </p>
-              <span className="shrink-0 font-mono text-sm font-semibold tabular-nums">
-                {formatMinorUnits(transfer.amountMinor, currency)}
-              </span>
-            </li>
-          ))}
+          {transfers.map((transfer, index) => {
+            const from = identity(transfer.fromUserId);
+            const to = identity(transfer.toUserId);
+            return (
+              <li
+                key={`${transfer.fromUserId}-${transfer.toUserId}-${index}`}
+                className="flex items-center gap-3 rounded-lg border bg-background px-3 py-2.5"
+              >
+                <span className="grid size-6 shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
+                  {index + 1}
+                </span>
+                <p className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 text-sm">
+                  <IdentityLabel identity={from} />
+                  <span className="text-muted-foreground">owes</span>
+                  <IdentityLabel identity={to} />
+                </p>
+                <span className="shrink-0 font-mono text-sm font-semibold tabular-nums">
+                  {formatMinorUnits(transfer.amountMinor, currency)} {currency}
+                </span>
+              </li>
+            );
+          })}
         </ol>
       )}
     </section>

@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { collaborationRepository } from "@/features/collaboration/data/dexie-collaboration-repository";
 import { feedRepository } from "@/features/feed/data/dexie-feed-repository";
 import type { TripFeedItem } from "@/features/feed/domain/feed-types";
-import { profileRepository } from "@/features/profile/data/dexie-profile-repository";
+import { useLocalProfile } from "@/features/profile/lib/use-local-profile";
 
 export interface FeedActorProfile {
   id: string;
@@ -29,21 +29,12 @@ export function useSharedTripFeed(tripId: string, userId: string): SharedTripFee
   const [items, setItems] = useState<TripFeedItem[]>([]);
   const [profiles, setProfiles] = useState<Map<string, FeedActorProfile>>(new Map());
   const [loading, setLoading] = useState(true);
+  const localProfile = useLocalProfile(userId);
 
   useEffect(() => feedRepository.watchByTrip(tripId, (next) => {
     setItems(next);
     setLoading(false);
   }), [tripId]);
-
-  useEffect(() => profileRepository.watch(userId, (profile) => {
-    if (!profile) return;
-    setProfiles((current) => new Map(current).set(userId, {
-      id: userId,
-      name: profile.fullName,
-      avatarUrl: profile.avatarUrl,
-      avatarSeed: profile.avatarSeed,
-    }));
-  }), [userId]);
 
   useEffect(() => {
     const actorIds = Array.from(new Set(items.map((item) => item.actorId))).filter((id) => id && id !== userId);
@@ -54,7 +45,7 @@ export function useSharedTripFeed(tripId: string, userId: string): SharedTripFee
       setProfiles((current) => {
         const next = new Map(current);
         for (const profile of remoteProfiles) {
-          next.set(profile.id, { id: profile.id, name: profile.fullName, avatarUrl: profile.avatarUrl, avatarSeed: null });
+          next.set(profile.id, { id: profile.id, name: profile.fullName, avatarUrl: profile.avatarUrl, avatarSeed: profile.avatarSeed ?? null });
         }
         return next;
       });
@@ -62,5 +53,15 @@ export function useSharedTripFeed(tripId: string, userId: string): SharedTripFee
     return () => { cancelled = true; };
   }, [items, userId]);
 
-  return { loading, items, profiles };
+  const profilesWithLocalUser = new Map(profiles);
+  if (localProfile) {
+    profilesWithLocalUser.set(userId, {
+      id: userId,
+      name: localProfile.fullName,
+      avatarUrl: localProfile.avatarUrl,
+      avatarSeed: localProfile.avatarSeed ?? null,
+    });
+  }
+
+  return { loading, items, profiles: profilesWithLocalUser };
 }

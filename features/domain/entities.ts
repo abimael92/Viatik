@@ -256,7 +256,9 @@ export interface Expense {
   currency: CurrencyCode;
   /** Multiplier converting 1 unit of this expense's currency to the trip's base currency. */
   exchangeRateToBase: number | null;
+  /** Either a Viatik profile id or a `traveler:<uuid>` trip-traveler key. */
   paidBy: string;
+  paidByTravelerId?: string | null;
   splitType: ExpenseSplitType;
   /** Top-level spending category (one of the predefined set in `features/domain/categories`). */
   category: SpendingCategory | null;
@@ -280,8 +282,9 @@ export interface ExpenseShare {
   expenseId: string;
   /** Who fronted the full cost (mirrors the parent expense, stored explicitly on each split). */
   paidBy: string;
-  /** Who owes this share for the expense. */
+  /** Who owes this share: a profile id or a `traveler:<uuid>` trip-traveler key. */
   userId: string;
+  travelerId?: string | null;
   /** The amount this user owes for the expense (in the expense's currency), in minor units. */
   shareAmountMinor: MinorUnits;
   sharePercentage: number | null;

@@ -19,6 +19,19 @@ function getDb(): ViatikDatabase {
   return db;
 }
 
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function isSyncIdentity(value: string): boolean {
+  return isUuid(value) || (value.startsWith("traveler:") && isUuid(value.slice("traveler:".length)));
+}
+
+function assertSyncableExpenseParticipants(input: { paidBy: string; createdBy: string; shares: Array<{ userId: string }> }): void {
+  const invalid = [input.createdBy, input.paidBy, ...input.shares.map((share) => share.userId)].find((id) => !isSyncIdentity(id));
+  if (invalid) throw new Error("Save the traveler to this trip before adding them to an expense.");
+}
+
 export class DexieExpenseRepository implements ExpenseRepository {
   async listByTrip(tripId: string): Promise<Expense[]> {
     const db = getDb();
@@ -40,6 +53,7 @@ export class DexieExpenseRepository implements ExpenseRepository {
   }
 
   async create(input: NewExpense): Promise<Expense> {
+    assertSyncableExpenseParticipants(input);
     const db = getDb();
     return TransactionContext.runInTransaction([db.expenses, db.expenseShares, db.feedItems], async (ctx) => {
       const now = new Date().toISOString();
@@ -52,6 +66,7 @@ export class DexieExpenseRepository implements ExpenseRepository {
         currency: input.currency,
         exchangeRateToBase: input.exchangeRateToBase ?? null,
         paidBy: input.paidBy,
+        paidByTravelerId: input.paidByTravelerId ?? (input.paidBy.startsWith("traveler:") ? input.paidBy.slice("traveler:".length) : null),
         splitType: input.splitType,
         category: input.category ?? null,
         subcategory: input.subcategory ?? null,
@@ -70,6 +85,7 @@ export class DexieExpenseRepository implements ExpenseRepository {
         expenseId: expense.id,
         paidBy: expense.paidBy,
         userId: share.userId,
+        travelerId: share.travelerId ?? (share.userId.startsWith("traveler:") ? share.userId.slice("traveler:".length) : null),
         shareAmountMinor: share.shareAmountMinor,
         sharePercentage: share.sharePercentage,
         splitType: share.splitType ?? expense.splitType,
@@ -114,6 +130,7 @@ export class DexieExpenseRepository implements ExpenseRepository {
     return TransactionContext.runInTransaction([db.expenses, db.expenseShares], async (ctx) => {
       const expense = await ctx.table<Expense>("expenses").get(expenseId);
       if (!expense) throw new Error("Expense not found");
+      assertSyncableExpenseParticipants({ paidBy: expense.paidBy, createdBy: expense.createdBy, shares });
       const existing = await ctx.table<ExpenseShare>("expenseShares").where("expenseId").equals(expenseId).toArray();
       const now = new Date().toISOString();
       const nextUsers = new Set(shares.map((share) => share.userId));
@@ -132,6 +149,7 @@ export class DexieExpenseRepository implements ExpenseRepository {
           expenseId,
           paidBy: expense.paidBy,
           userId: share.userId,
+          travelerId: share.travelerId ?? (share.userId.startsWith("traveler:") ? share.userId.slice("traveler:".length) : null),
           shareAmountMinor: share.shareAmountMinor,
           sharePercentage: share.sharePercentage,
           splitType: share.splitType ?? expense.splitType,
