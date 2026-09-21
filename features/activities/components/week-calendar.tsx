@@ -103,12 +103,13 @@ export function WeekCalendar({
     <>
     <section className="overflow-hidden rounded-2xl border bg-card">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b p-3 sm:p-4"><div><h3 className="font-semibold">{title}</h3><p className="text-xs text-muted-foreground">{t("common.clickOpenTime")}</p></div><div className="flex flex-wrap items-center gap-2"><div className="flex rounded-md border p-0.5"><Button type="button" size="sm" variant={view === "today" ? "default" : "ghost"} onClick={() => setView("today")}>Today</Button><Button type="button" size="sm" variant={view === "range" ? "default" : "ghost"} onClick={() => setView("range")}>{t("common.range")}</Button><Button type="button" size="sm" variant={view === "all" ? "default" : "ghost"} onClick={() => setView("all")}>All</Button></div>{view === "range" && (<div className="flex flex-wrap items-center gap-1"><div className="flex items-center gap-1"><Button type="button" size="icon" variant="ghost" aria-label={t("common.shiftEarlier")} disabled={!rangeStart || rangeStart === days[0]} onClick={() => shiftRange(-1)}><ChevronLeft /></Button><input type="date" value={rangeStart} min={days[0]} max={rangeEnd} onChange={(event) => setRangeStart(event.target.value)} className="h-8 rounded-md border bg-background px-2 text-sm" aria-label={t("common.rangeStart")} /><span className="text-xs text-muted-foreground">to</span><input type="date" value={rangeEnd} min={rangeStart} max={days.at(-1)} onChange={(event) => setRangeEnd(event.target.value)} className="h-8 rounded-md border bg-background px-2 text-sm" aria-label={t("common.rangeEnd")} /><Button type="button" size="icon" variant="ghost" aria-label={t("common.shiftLater")} disabled={!rangeEnd || rangeEnd === days.at(-1)} onClick={() => shiftRange(1)}><ChevronRight /></Button></div></div>)}</div></header>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto overscroll-x-contain">
         <div className="min-w-215">
-          <div className="grid" style={{ gridTemplateColumns: `5rem repeat(${visibleDays.length}, minmax(7rem, 1fr))` }}>
-            <div className="sticky top-0 z-30 border-b border-r bg-card p-3 text-xs text-muted-foreground">{t("common.localTime")}</div>
-            {visibleDays.map((day) => (
-              <div key={day} className="sticky top-0 z-30 border-b border-r bg-card p-3 text-center last:border-r-0">
+          <div className="isolate grid" style={{ gridTemplateColumns: `5rem repeat(${visibleDays.length}, minmax(7rem, 1fr))` }}>
+            <div className="sticky left-0 top-0 z-40 border-b border-r bg-card p-3 text-xs text-muted-foreground shadow-[2px_0_4px_-2px_var(--color-border)]">{t("common.localTime")}</div>
+            {visibleDays.map((day, index) => (
+              <div key={day} aria-label={`Day ${index + 1}, ${formatHeader(day)}`} className="sticky top-0 z-30 border-b border-r bg-card p-3 text-center last:border-r-0">
+                <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground sm:hidden">Day {index + 1}</p>
                 <p className="text-xs uppercase text-muted-foreground">
                   {new Date(`${day}T12:00:00`).toLocaleDateString(undefined, { weekday: "short" })}
                 </p>
@@ -127,7 +128,7 @@ export function WeekCalendar({
             ))}
           </div>
           <div ref={timelineScrollRef} className="grid max-h-[65vh] overflow-y-auto" style={{ gridTemplateColumns: `5rem repeat(${visibleDays.length}, minmax(7rem, 1fr))` }}>
-            <div className="relative border-r" style={{ height: (END_HOUR - START_HOUR) * HOUR_HEIGHT }}>{Array.from({ length: END_HOUR - START_HOUR }, (_, index) => <div key={index} className="absolute w-full border-t pr-2 pt-1 text-right text-xs text-muted-foreground" style={{ top: index * HOUR_HEIGHT }}>{formatHour(START_HOUR + index)}</div>)}</div>
+            <div className="sticky left-0 z-20 relative border-r bg-card shadow-[2px_0_4px_-2px_var(--color-border)]" style={{ height: (END_HOUR - START_HOUR) * HOUR_HEIGHT }}>{Array.from({ length: END_HOUR - START_HOUR }, (_, index) => <div key={index} className="absolute w-full border-t pr-2 pt-1 text-right text-xs text-muted-foreground" style={{ top: index * HOUR_HEIGHT }}>{formatHour(START_HOUR + index)}</div>)}</div>
             {visibleDays.map((day) => {
               const daySegments = transitByDay.get(day) ?? [];
               const dayActivities = byDay.get(day) ?? [];
