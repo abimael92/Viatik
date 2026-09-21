@@ -35,7 +35,7 @@ export function useRecentActivity(userId: string): RecentActivityData {
       id: userId,
       name: profile.fullName,
       avatarUrl: profile.avatarUrl,
-      avatarSeed: profile.avatarSeed,
+      avatarSeed: profile.avatarSeed ?? null,
     }));
   }), [userId]);
 
@@ -48,7 +48,7 @@ export function useRecentActivity(userId: string): RecentActivityData {
       setProfiles((current) => {
         const next = new Map(current);
         for (const profile of remoteProfiles) {
-          next.set(profile.id, { id: profile.id, name: profile.fullName, avatarUrl: profile.avatarUrl, avatarSeed: null });
+          next.set(profile.id, { id: profile.id, name: profile.fullName, avatarUrl: profile.avatarUrl, avatarSeed: profile.avatarSeed ?? null });
         }
         return next;
       });
