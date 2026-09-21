@@ -347,13 +347,13 @@ export function ActivityForm({
             </div>
             <div className="space-y-4">
               <ActivityPlaceField defaultValue={activity?.formattedAddress ?? activity?.placeName ?? ""} onPlaceSelect={(details) => setPlace(details)} onClear={() => setPlace(null)} />
-              <div className="space-y-2">
-            <button type="button" aria-pressed={bookingEnabled} className="flex w-full items-center justify-between rounded-xl border p-3 text-left" onClick={() => setBookingEnabled((enabled) => !enabled)}>
-              <span><span className="block text-sm font-semibold">Booking</span><span className="block text-xs text-muted-foreground">Add a confirmation code</span></span>
-              <span className={`relative h-6 w-11 rounded-full transition-colors ${bookingEnabled ? "bg-primary" : "bg-muted"}`}><span className={`absolute top-1 size-4 rounded-full bg-background shadow-sm transition-transform ${bookingEnabled ? "translate-x-6" : "translate-x-1"}`} /></span>
-            </button>
-            {bookingEnabled && <div className="relative"><TicketCheck className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" aria-hidden /><Input aria-label="Booking Reference / Confirmation Code" name="bookingReference" defaultValue={activity?.bookingReference ?? ""} autoCapitalize="characters" autoComplete="off" className="pl-9 font-mono uppercase" /></div>}
-          </div>
+              {category === "lodging" && <div className="space-y-2">
+                <button type="button" aria-pressed={bookingEnabled} className="flex w-full items-center justify-between rounded-xl border p-3 text-left" onClick={() => setBookingEnabled((enabled) => !enabled)}>
+                  <span><span className="block text-sm font-semibold">Lodging reservation</span><span className="block text-xs text-muted-foreground">For a house, hotel, motel, Airbnb, or other stay.</span></span>
+                  <span className={`relative h-6 w-11 rounded-full transition-colors ${bookingEnabled ? "bg-primary" : "bg-muted"}`}><span className={`absolute top-1 size-4 rounded-full bg-background shadow-sm transition-transform ${bookingEnabled ? "translate-x-6" : "translate-x-1"}`} /></span>
+                </button>
+                {bookingEnabled && <div className="relative"><TicketCheck className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" aria-hidden /><Input aria-label="Lodging reservation reference" name="bookingReference" defaultValue={activity?.bookingReference ?? ""} autoCapitalize="characters" autoComplete="off" className="pl-9 font-mono uppercase" /></div>}
+              </div>}
           {currentUserId && <div className="space-y-2">
             <Label htmlFor="activity-personalBudget">My budget (optional)</Label>
             <p className="text-xs text-muted-foreground">Private to you. Other travelers cannot see or edit this amount.</p>

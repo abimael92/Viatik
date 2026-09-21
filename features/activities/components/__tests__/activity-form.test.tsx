@@ -124,9 +124,10 @@ describe("ActivityForm", () => {
     const description = screen.getByLabelText("Description");
     expect(description.tagName).toBe("TEXTAREA");
     expect(title.compareDocumentPosition(description) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.queryByLabelText("Booking Reference / Confirmation Code")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /booking/i }));
-    expect(screen.getByLabelText("Booking Reference / Confirmation Code")).toBeTruthy();
+    expect(screen.queryByLabelText("Lodging reservation reference")).toBeNull();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Lodging" }));
+    fireEvent.click(screen.getByRole("button", { name: /lodging reservation/i }));
+    expect(screen.getByLabelText("Lodging reservation reference")).toBeTruthy();
   });
 
   it("submits the signed-in user's optional budget in minor units", async () => {
@@ -145,7 +146,7 @@ describe("ActivityForm", () => {
   });
 
   it("shows transit fields when Transit is selected", async () => {
-    render(
+    const { container } = render(
       <ActivityForm
         days={["2026-09-16"]}
         saving={false}
@@ -160,10 +161,16 @@ describe("ActivityForm", () => {
     fireEvent.click(await screen.findByRole("menuitem", { name: /transit/i }));
 
     expect(screen.queryByLabelText("Title")).toBeNull();
-    expect(screen.getByLabelText("Carrier")).toBeTruthy();
-    expect(screen.getByLabelText("Flight no.")).toBeTruthy();
+    expect(screen.getByLabelText("Carrier / provider")).toBeTruthy();
+    expect(screen.getByLabelText("Trip number")).toBeTruthy();
+    expect(screen.getByLabelText("Travel mode")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Departure time"), { target: { value: "08:30" } });
     expect((screen.getByLabelText("Arrival time (optional)") as HTMLInputElement).value).toBe("11:30");
+    expect(container.querySelector("form")?.textContent).toContain("Estimated travel time:");
+    expect(container.querySelector("form")?.textContent).toContain("3h");
+    fireEvent.change(screen.getByLabelText("Travel mode"), { target: { value: "rideshare" } });
+    expect(screen.getByLabelText("Provider (optional)")).toBeTruthy();
+    expect(screen.queryByLabelText("Upload image")).toBeNull();
     expect(screen.getByRole("button", { name: "Add transit" })).toBeTruthy();
   });
 });

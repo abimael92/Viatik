@@ -9,7 +9,18 @@
  * data.
  */
 
-export type TransitMode = "flight" | "train";
+export type TransitMode =
+  | "flight"
+  | "train"
+  | "car"
+  | "carpool"
+  | "taxi"
+  | "rideshare"
+  | "bus"
+  | "ship"
+  | "ferry"
+  | "bike"
+  | "walk";
 
 export type TransitStatusState =
   | "scheduled"

@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, ImageUp, Loader2, Plane, ScanText, TicketCheck, TrainFront } from "lucide-react";
+import { Camera, ImageUp, Loader2, ScanText } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -9,7 +9,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { TransitMode, TransitSegment } from "@/features/transit/domain/transit-types";
 import { parseTicketText } from "@/features/transit/lib/ticket-parser";
-import { cn } from "@/lib/utils";
+
+const TRANSIT_MODE_OPTIONS: Array<{ value: TransitMode; label: string }> = [
+  { value: "flight", label: "Plane" },
+  { value: "train", label: "Train" },
+  { value: "car", label: "Car" },
+  { value: "carpool", label: "Carpool" },
+  { value: "taxi", label: "Taxi" },
+  { value: "rideshare", label: "Uber / rideshare" },
+  { value: "bus", label: "Bus" },
+  { value: "ship", label: "Ship" },
+  { value: "ferry", label: "Ferry" },
+  { value: "bike", label: "Bike" },
+  { value: "walk", label: "Walk" },
+];
 
 export interface TransitFormValues {
   mode: TransitMode;
@@ -50,7 +63,6 @@ export function TransitFields({
   const [station, setStation] = useState(segment ? (segment.mode === "flight" ? segment.gate ?? segment.terminal ?? "" : segment.platform ?? "") : "");
   const [ticketImage, setTicketImage] = useState<Blob | null>(segment?.ticketImage ?? null);
   const [ticketImageName, setTicketImageName] = useState<string | null>(segment?.ticketImageName ?? null);
-  const [bookingEnabled, setBookingEnabled] = useState(Boolean(segment?.bookingReference));
   const [scanning, setScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
   const [scanError, setScanError] = useState<string | null>(null);
@@ -113,11 +125,16 @@ export function TransitFields({
     }
   }
 
+  const selectedMode = TRANSIT_MODE_OPTIONS.find((option) => option.value === mode)?.label ?? mode;
+  const ticketMode = mode === "flight" || mode === "train" || mode === "ship" || mode === "ferry";
+  const arrivalDuration = durationBetween(departureTime, arrivalTime);
+
   return (
     <div className="space-y-4">
       <input type="hidden" name="transitMode" value={mode} />
       <input type="hidden" name="ticketImageName" value={ticketImageName ?? ""} />
       {ticketImage && <input type="hidden" name="hasTicketImage" value="true" />}
+      {ticketMode && (
       <div className="rounded-xl border bg-muted/30 p-3">
         <Label>Scan your ticket</Label>
         <p className="mt-1 text-xs text-muted-foreground">
@@ -137,20 +154,21 @@ export function TransitFields({
         {scanError && <p className="mt-2 text-xs text-destructive">{scanError}</p>}
         {ticketPreview && <div className="mt-3 flex items-center gap-3 rounded-lg border bg-background p-2"><Image src={ticketPreview} alt={ticketImageName ?? "Ticket preview"} width={64} height={64} unoptimized className="h-16 w-16 rounded object-cover" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{ticketImageName ?? "Ticket"}</p><p className="flex items-center gap-1 text-xs text-muted-foreground"><ScanText className="size-3.5" aria-hidden />Saved with this leg, offline</p></div><Button type="button" variant="ghost" size="sm" disabled={scanning} onClick={() => { setTicketImage(null); setTicketImageName(null); onTicketChange(null); }}>Remove</Button></div>}
       </div>
+      )}
 
-      <div>
-        <Label>Type</Label>
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          <ModeButton active={mode === "flight"} onClick={() => setMode("flight")} icon={Plane} label="Flight" />
-          <ModeButton active={mode === "train"} onClick={() => setMode("train")} icon={TrainFront} label="Train" />
-        </div>
+      <div className="space-y-2">
+        <Label htmlFor="transit-mode">Travel mode</Label>
+        <select id="transit-mode" value={mode} onChange={(event) => setMode(event.target.value as TransitMode)} className="flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+          {TRANSIT_MODE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+        </select>
+        <p className="text-xs text-muted-foreground">Schedule the journey from one place to another.</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <TransitField name="carrier" label="Carrier" value={carrier} onChange={setCarrier} placeholder={mode === "flight" ? "e.g. Delta" : "e.g. Amtrak"} required />
-        <TransitField name="transitNumber" label={mode === "flight" ? "Flight no." : "Train no."} value={number} onChange={setNumber} placeholder="e.g. 1284" required />
+        <TransitField name="carrier" label={ticketMode ? "Carrier / provider" : "Provider (optional)"} value={carrier} onChange={setCarrier} placeholder={selectedMode} required={ticketMode} />
+        <TransitField name="transitNumber" label={ticketMode ? "Trip number" : "Vehicle / trip no. (optional)"} value={number} onChange={setNumber} placeholder={ticketMode ? "e.g. 1284" : "Optional"} required={ticketMode} />
       </div>
-      <TransitField name="carrierCode" label="Carrier code (optional)" value={carrierCode} onChange={setCarrierCode} placeholder={mode === "flight" ? "e.g. DL" : "e.g. AM"} />
+      {ticketMode && <TransitField name="carrierCode" label="Carrier code (optional)" value={carrierCode} onChange={setCarrierCode} placeholder={mode === "flight" ? "e.g. DL" : "e.g. AM"} />}
       <div className="grid grid-cols-2 gap-3">
         <TransitField name="origin" label="From" value={origin} onChange={setOrigin} placeholder="e.g. JFK" />
         <TransitField name="destination" label="To" value={destination} onChange={setDestination} placeholder="e.g. CDG" />
@@ -161,15 +179,9 @@ export function TransitFields({
       </div>
       <div className="grid grid-cols-2 gap-3">
         <TransitField name="arrivalTime" label="Arrival time (optional)" type="time" value={arrivalTime} onChange={(value) => { setArrivalTime(value); setArrivalTimeEdited(Boolean(value)); }} />
-        <TransitField name="station" label={mode === "flight" ? "Gate / terminal (optional)" : "Platform (optional)"} value={station} onChange={setStation} placeholder={mode === "flight" ? "e.g. B12" : "e.g. 9"} />
+        {(ticketMode || mode === "bus") && <TransitField name="station" label={mode === "flight" ? "Gate / terminal (optional)" : mode === "train" ? "Platform (optional)" : "Terminal / dock (optional)"} value={station} onChange={setStation} placeholder={mode === "flight" ? "e.g. B12" : mode === "train" ? "e.g. 9" : "Optional"} />}
       </div>
-      <div className="space-y-2">
-        <button type="button" aria-pressed={bookingEnabled} className="flex w-full items-center justify-between rounded-xl border p-3 text-left" onClick={() => setBookingEnabled((enabled) => !enabled)}>
-          <span><span className="block text-sm font-semibold">Booking</span><span className="block text-xs text-muted-foreground">Add a confirmation code</span></span>
-          <span className={`relative h-6 w-11 rounded-full transition-colors ${bookingEnabled ? "bg-primary" : "bg-muted"}`}><span className={`absolute top-1 size-4 rounded-full bg-background shadow-sm transition-transform ${bookingEnabled ? "translate-x-6" : "translate-x-1"}`} /></span>
-        </button>
-        {bookingEnabled && <div className="relative"><TicketCheck className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" aria-hidden /><Input aria-label="Booking Reference / Confirmation Code" name="bookingReference" defaultValue={segment?.bookingReference ?? ""} autoCapitalize="characters" autoComplete="off" className="pl-9 font-mono uppercase" /></div>}
-      </div>
+      {arrivalDuration !== null && <p className="rounded-lg bg-primary/5 px-3 py-2 text-sm text-muted-foreground"><span className="font-semibold text-foreground">Estimated travel time:</span> {formatDuration(arrivalDuration)}</p>}
     </div>
   );
 }
@@ -199,10 +211,6 @@ export function getTransitFormValues(form: HTMLFormElement, ticketImage: Blob | 
   };
 }
 
-function ModeButton({ active, onClick, icon: Icon, label }: { active: boolean; onClick: () => void; icon: typeof Plane; label: string }) {
-  return <button type="button" onClick={onClick} aria-pressed={active} className={cn("flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", active ? "border-primary bg-primary/10 text-primary" : "hover:border-primary/40 hover:bg-primary/5")}><Icon className="size-4" aria-hidden />{label}</button>;
-}
-
 function TransitField({ name, label, value, onChange, ...props }: Omit<React.ComponentProps<typeof Input>, "name" | "onChange" | "value" | "id"> & { name: string; label: string; value: string; onChange: (value: string) => void }) {
   const id = `transit-${name}`;
   return <div className="space-y-2"><Label htmlFor={id}>{label}</Label><Input id={id} name={name} value={value} onChange={(event) => onChange(event.target.value)} {...props} /></div>;
@@ -212,4 +220,19 @@ function addMinutes(time: string, minutesToAdd: number): string {
   const [hours, minutes] = time.split(":").map(Number);
   const total = (hours * 60 + minutes + minutesToAdd) % 1440;
   return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+}
+
+function durationBetween(departure: string, arrival: string): number | null {
+  if (!departure || !arrival) return null;
+  const [departureHours, departureMinutes] = departure.split(":").map(Number);
+  const [arrivalHours, arrivalMinutes] = arrival.split(":").map(Number);
+  let duration = arrivalHours * 60 + arrivalMinutes - (departureHours * 60 + departureMinutes);
+  if (duration <= 0) duration += 24 * 60;
+  return duration;
+}
+
+function formatDuration(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  return [hours ? `${hours}h` : "", remainder ? `${remainder}m` : ""].filter(Boolean).join(" ");
 }
