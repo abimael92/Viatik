@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Backpack, CalendarDays, CalendarPlus, Camera, CircleDollarSign, Eye, HeartPulse, Lock, MapPin, Plus, Share2, Trash2, Undo2, Users, Vote } from "lucide-react";
+import { ArrowLeft, Backpack, CalendarDays, CalendarPlus, Camera, CircleDollarSign, Eye, HeartPulse, Lock, MapPin, Pencil, Plus, Share2, Trash2, Undo2, Users, Vote } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -102,7 +102,7 @@ function initWorkspace(initialTab?: string): { tab: Tab; tool: SecondaryTool | n
 
 type ActivityDialogState = null | "new" | { draft: { dayDate: string; startTime: string } } | { activity: Activity; readOnly: boolean } | { transitSegment: TransitSegment } | { newProposal: true };
 
-export function TripWorkspace({ tripId, userId, initialTab = "overview", initialMoneyToolsOpen = false }: { tripId: string; userId: string; initialTab?: string; initialMoneyToolsOpen?: boolean }) {
+export function TripWorkspace({ tripId, userId, initialTab = "overview", initialAction, initialMoneyToolsOpen = false }: { tripId: string; userId: string; initialTab?: string; initialAction?: string; initialMoneyToolsOpen?: boolean }) {
   const router = useRouter();
   const { t } = useI18n();
   const init = initWorkspace(initialTab);
@@ -115,7 +115,9 @@ export function TripWorkspace({ tripId, userId, initialTab = "overview", initial
   const [tab, setTab] = useState<Tab>(init.tab);
   const [overviewTool, setOverviewTool] = useState<SecondaryTool | null>(init.tool);
   const [journalView, setJournalView] = useState<"journal" | "feed">(init.journalView);
-  const [activityDialog, setActivityDialog] = useState<ActivityDialogState>(null);
+  const [activityDialog, setActivityDialog] = useState<ActivityDialogState>(() => initialAction === "add-activity"
+    ? { draft: { dayDate: todayKey(), startTime: currentHourStart() } }
+    : null);
   const [deleteTripOpen, setDeleteTripOpen] = useState(false);
   const [scoutOpen, setScoutOpen] = useState(false);
   const { toast: notify } = useToast();
@@ -124,13 +126,14 @@ export function TripWorkspace({ tripId, userId, initialTab = "overview", initial
   const [editIntent, setEditIntent] = useState(0);
   const [category, setCategory] = useState("all");
   const [itineraryView, setItineraryView] = useState<"calendar" | "board">("calendar");
+  const [itineraryEditMode, setItineraryEditMode] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ id: string; message: string; activityId: string } | null>(null);
   const toastRef = useRef<HTMLButtonElement>(null);
   const [restoringActivityId, setRestoringActivityId] = useState<string | null>(null);
   const [media, setMedia] = useState<TripMedia[]>([]);
-  const [pendingExpense, setPendingExpense] = useState(false);
-  const [pendingPhotos, setPendingPhotos] = useState(false);
+  const [pendingExpense, setPendingExpense] = useState(initialAction === "add-expense");
+  const [pendingPhotos, setPendingPhotos] = useState(initialAction === "add-photo");
   const [forecast, setForecast] = useState<TripWeatherForecast | undefined>(undefined);
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [weatherError, setWeatherError] = useState<string | null>(null);
@@ -188,6 +191,10 @@ export function TripWorkspace({ tripId, userId, initialTab = "overview", initial
   const scoutVisible = scoutOpen && tab === "itinerary";
 
   const canEdit = members.some((member) => member.userId === userId && (member.role === "owner" || member.role === "editor"));
+  const activeActivityId = activityDialog && typeof activityDialog === "object" && "activity" in activityDialog
+    ? activityDialog.activity.id
+    : undefined;
+  const itineraryCanEdit = canEdit && itineraryEditMode;
   const isOwner = members.some((member) => member.userId === userId && member.role === "owner");
   const days = useMemo(() => dateRange(trip?.startDate, trip?.endDate), [trip?.startDate, trip?.endDate]);
 
@@ -255,8 +262,12 @@ export function TripWorkspace({ tripId, userId, initialTab = "overview", initial
   }, []);
   const handleSetDates = handleOpenDetails;
 
-  function openActivity(activity: Activity) {
-    setActivityDialog(canEdit ? { activity, readOnly: false } : { activity, readOnly: true });
+  function viewActivity(activity: Activity) {
+    setActivityDialog({ activity, readOnly: true });
+  }
+
+  function editActivity(activity: Activity) {
+    if (itineraryCanEdit) setActivityDialog({ activity, readOnly: false });
   }
 
   async function handleDeleteActivity(activity: Activity) {
@@ -488,11 +499,11 @@ export function TripWorkspace({ tripId, userId, initialTab = "overview", initial
               <div className="flex flex-wrap items-center gap-2">
                 <div className="flex shrink-0 rounded-xl border border-border/70 bg-background p-1 shadow-xs">
                 <Button size="sm" className="h-10 min-w-28 rounded-lg" variant={itineraryView === "calendar" ? "default" : "ghost"} onClick={() => setItineraryView("calendar")}>
-                  <CalendarDays className="size-4" aria-hidden />
+                  <CalendarDays className="size-4 text-current opacity-90" strokeWidth={2.5} aria-hidden />
                   {t("common.calendar")}
                 </Button>
                 <Button size="sm" className="h-10 min-w-28 rounded-lg" variant={itineraryView === "board" ? "default" : "ghost"} onClick={() => setItineraryView("board")}>
-                  <Backpack className="size-4" aria-hidden />
+                  <Backpack className="size-4 text-current opacity-90" strokeWidth={2.5} aria-hidden />
                   {t("common.board")}
                 </Button>
               </div>
@@ -515,15 +526,15 @@ export function TripWorkspace({ tripId, userId, initialTab = "overview", initial
                     )
                   }
                 >
-                  <CalendarPlus className="size-4" />
+                  <CalendarPlus className="size-4 text-current opacity-90" strokeWidth={2.5} />
                   {t("common.export")}
                 </Button>
               )}
               </div>
               {canEdit && (
-                <div className="mt-2 flex justify-start gap-2">
+                <div className="mt-2 flex flex-wrap justify-start gap-2">
                   <Button variant="primary" className="h-11 rounded-xl px-4" onClick={() => setActivityDialog("new")}>
-                    <Plus className="size-5" />
+                    <Plus className="size-5 text-current" strokeWidth={2.5} />
                     {t("common.activity")}
                   </Button>
                   <Button variant="ai" onClick={() => setScoutOpen((open) => !open)} aria-expanded={scoutVisible} className="h-11 min-w-44 items-center justify-center gap-1 overflow-visible rounded-xl border-2 border-sky-300 bg-sky-50 px-4 text-sky-950 shadow-sm hover:bg-sky-100">
@@ -532,6 +543,17 @@ export function TripWorkspace({ tripId, userId, initialTab = "overview", initial
                       <span>{scoutVisible ? t("common.byeScout") : t("common.scout")}</span>
                     </span>
                   </Button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant={itineraryEditMode ? "default" : "outline"}
+                    className="size-11 rounded-xl"
+                    aria-label={itineraryEditMode ? "Editing itinerary" : "View itinerary only"}
+                    title={itineraryEditMode ? "Editing itinerary" : "View itinerary only"}
+                    onClick={() => setItineraryEditMode((editing) => !editing)}
+                  >
+                  {itineraryEditMode ? <Pencil className="text-current" strokeWidth={2.5} aria-hidden /> : <Eye className="text-current" strokeWidth={2.5} aria-hidden />}
+                </Button>
                 </div>
               )}
             </div>
@@ -541,9 +563,9 @@ export function TripWorkspace({ tripId, userId, initialTab = "overview", initial
             <div className={cn("min-w-0", scoutVisible ? "flex-1" : "w-full")}>
               {days.length ? (
                 itineraryView === "calendar" ? (
-                  <WeekCalendar tripId={tripId} days={days} activities={activities} currentUserId={userId} onSelect={openActivity} onCreateActivity={(dayDate, startTime) => setActivityDialog({ draft: { dayDate, startTime } })} onEditTransit={(transitSegment) => setActivityDialog({ transitSegment })} forecast={forecast?.forecast} warnings={weatherWarnings} weatherLoading={weatherLoading} conflicts={conflictsByActivity} canEdit={canEdit} />
+                  <WeekCalendar tripId={tripId} days={days} activities={activities} currentUserId={userId} activeActivityId={activeActivityId} onSelect={viewActivity} onEdit={editActivity} onCreateActivity={(dayDate, startTime) => setActivityDialog({ draft: { dayDate, startTime } })} onEditTransit={(transitSegment) => setActivityDialog({ transitSegment })} forecast={forecast?.forecast} warnings={weatherWarnings} weatherLoading={weatherLoading} conflicts={conflictsByActivity} canEdit={itineraryCanEdit} />
                 ) : (
-                  <ItineraryBoard tripId={tripId} dayDates={days} category={category} currentUserId={userId} eligibleViaticUsers={eligibleViaticUsers} tripOwnerId={trip.ownerId} onSelect={openActivity} readOnly={!canEdit} forecast={forecast?.forecast} warnings={weatherWarnings} weatherLoading={weatherLoading} conflicts={conflictsByActivity} onDropScout={handleDropScout} />
+                  <ItineraryBoard tripId={tripId} dayDates={days} category={category} currentUserId={userId} activeActivityId={activeActivityId} eligibleViaticUsers={eligibleViaticUsers} tripOwnerId={trip.ownerId} onSelect={viewActivity} onEdit={editActivity} readOnly={!itineraryCanEdit} forecast={forecast?.forecast} warnings={weatherWarnings} weatherLoading={weatherLoading} conflicts={conflictsByActivity} onDropScout={handleDropScout} />
                 )
               ) : (
                 <div className="rounded-2xl border border-dashed bg-linear-to-b from-card to-muted/30 p-10 text-center">
@@ -564,7 +586,7 @@ export function TripWorkspace({ tripId, userId, initialTab = "overview", initial
             activities={activities}
             currentUserId={userId}
             canEdit={canEdit}
-            onSelect={openActivity}
+            onSelect={viewActivity}
             onAddProposal={() => setActivityDialog({ newProposal: true })}
             eligibleViaticUsers={eligibleViaticUsers}
             tripOwnerId={trip.ownerId}
@@ -572,7 +594,7 @@ export function TripWorkspace({ tripId, userId, initialTab = "overview", initial
         </section>
       )}
       {tab === "map" && <TripMapView tripId={tripId} userId={userId} trip={trip} canEdit={canEdit} />}
-      {tab === "money" && <MoneyDashboard tripId={tripId} userId={userId} trip={trip} days={days} canEdit={canEdit} autoOpenExpense={pendingExpense} autoOpenTools={initialMoneyToolsOpen} onConsumeAutoOpenExpense={() => setPendingExpense(false)} />}
+      {tab === "money" && <MoneyDashboard tripId={tripId} userId={userId} trip={trip} days={days} canEdit={canEdit} autoOpenExpense={pendingExpense} defaultExpenseCurrency={initialAction === "add-expense" ? trip.baseCurrency : undefined} autoOpenTools={initialMoneyToolsOpen} onConsumeAutoOpenExpense={() => setPendingExpense(false)} />}
       {tab === "photos" && (
         <section className="rounded-2xl border bg-card p-5 sm:p-7">
           <TripGallery tripId={tripId} userId={userId} canEdit={canEdit} autoOpen={pendingPhotos} onAutoOpened={() => setPendingPhotos(false)} />
@@ -815,7 +837,7 @@ function ActivityDialog({ open, state, trip, userId, members, memberProfiles, tr
   const [cloning, setCloning] = useState(false);
   const [personalBudget, setPersonalBudget] = useState<ActivityPersonalBudget | null>(null);
   const [loadedBudgetForActivityId, setLoadedBudgetForActivityId] = useState<string | null>(null);
-  const days = dateRange(trip.startDate, trip.endDate);
+  const days = Array.from(new Set([...dateRange(trip.startDate, trip.endDate), ...(draft?.dayDate ? [draft.dayDate] : [])])).sort();
   const currentPersonalBudget = activity && personalBudget?.activityId === activity.id ? personalBudget : null;
   useEffect(() => {
     let cancelled = false;
@@ -1003,3 +1025,5 @@ function dateRange(start?: string | null, end?: string | null) {
   return dates;
 }
 function formatDate(date: string) { return new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }); }
+function todayKey() { const date = new Date(); const offset = date.getTimezoneOffset() * 60_000; return new Date(date.getTime() - offset).toISOString().slice(0, 10); }
+function currentHourStart() { return `${String(new Date().getHours()).padStart(2, "0")}:00`; }

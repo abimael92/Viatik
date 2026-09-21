@@ -113,7 +113,7 @@ export function FeedRow({ item, currentUserId, profile }: { item: TripFeedItem; 
 
   return (
     <div className="flex items-start gap-3">
-      <UserAvatar seed={profile?.avatarSeed ?? item.actorId} src={profile?.avatarUrl} name={actorLabel} size="sm" />
+      <UserAvatar seed={profile?.avatarSeed ?? (item.actorId === currentUserId ? undefined : item.actorId)} src={profile?.avatarUrl} name={actorLabel} size="sm" />
       <div className="min-w-0 flex-1">
         <p className="text-sm leading-snug text-foreground">
           <span className="font-semibold">

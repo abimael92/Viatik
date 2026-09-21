@@ -9,14 +9,33 @@ vi.mock("@/features/trips/data/dexie-trip-repository", () => ({
   tripRepository: { watchAll: vi.fn(), create: vi.fn(), update: vi.fn() },
 }));
 vi.mock("@/features/collaboration/data/dexie-collaboration-repository", () => ({
-  collaborationRepository: { watchInvitations: vi.fn((_tripId, callback) => { callback([]); return () => undefined; }) },
+  collaborationRepository: {
+    watchInvitations: vi.fn((_tripId, callback) => {
+      callback([]);
+      return () => undefined;
+    }),
+  },
 }));
 
-vi.mock("next/link", () => ({ default: ({ children, href, ...props }: React.ComponentProps<"a">) => <a href={href} {...props}>{children}</a> }));
+vi.mock("next/link", () => ({
+  default: ({ children, href, ...props }: React.ComponentProps<"a">) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
+}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() }) }));
 
 vi.mock("@/lib/sync/use-sync-status", () => ({
-  useSyncStatus: () => ({ status: "idle", pending: 0, lastSyncAt: null, isOnline: true, conflicts: 0 }),
+  useSyncStatus: () => ({
+    status: "idle",
+    pending: 0,
+    retryablePending: 0,
+    lastSyncAt: null,
+    lastError: null,
+    isOnline: true,
+    conflicts: 0,
+  }),
 }));
 
 describe("TripDashboard", () => {
@@ -24,7 +43,10 @@ describe("TripDashboard", () => {
   afterEach(() => cleanup());
 
   it("renders the new traveler empty state", async () => {
-    vi.mocked(tripRepository.watchAll).mockImplementation((callback) => { callback([]); return () => undefined; });
+    vi.mocked(tripRepository.watchAll).mockImplementation((callback) => {
+      callback([]);
+      return () => undefined;
+    });
     render(<TripDashboard userId="user-1" />);
     expect(await screen.findByText("Your next trip starts here")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Create your first trip" })).toBeTruthy();
@@ -63,17 +85,25 @@ describe("TripDashboard", () => {
       updatedAt: "2026-01-01T00:00:00Z",
       deletedAt: null,
     } satisfies Trip;
-    vi.mocked(tripRepository.watchAll).mockImplementation((callback) => { callback([trip]); return () => undefined; });
+    vi.mocked(tripRepository.watchAll).mockImplementation((callback) => {
+      callback([trip]);
+      return () => undefined;
+    });
 
     render(<TripDashboard userId="user-1" />);
 
     const title = (await screen.findAllByText("Lisbon with friends"))[0];
     expect(title.className).toContain("bg-black/60");
     expect(title.className).toContain("text-white");
+    expect(screen.queryByTestId("recent-activity-feed")).toBeNull();
+    expect(screen.queryByText("Pending changes")).toBeNull();
   });
 
   it("creates trips through the repository", async () => {
-    vi.mocked(tripRepository.watchAll).mockImplementation((callback) => { callback([]); return () => undefined; });
+    vi.mocked(tripRepository.watchAll).mockImplementation((callback) => {
+      callback([]);
+      return () => undefined;
+    });
     vi.mocked(tripRepository.create).mockResolvedValue({ id: "trip-1" } as never);
     render(<TripDashboard userId="user-1" />);
     fireEvent.click(await screen.findByRole("button", { name: "Create trip" }));
@@ -84,12 +114,21 @@ describe("TripDashboard", () => {
     fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Next" }));
     expect(tripRepository.create).not.toHaveBeenCalled();
     expect(screen.getByLabelText("Trip banner")).toBeTruthy();
-    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Create trip" }));
-    await waitFor(() => expect(tripRepository.create).toHaveBeenCalledWith(expect.objectContaining({ ownerId: "user-1", name: "Lisbon", baseCurrency: "USD" })));
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Create trip" })
+    );
+    await waitFor(() =>
+      expect(tripRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ ownerId: "user-1", name: "Lisbon", baseCurrency: "USD" })
+      )
+    );
   });
 
   it("does not create a trip if the step-two form is submitted", async () => {
-    vi.mocked(tripRepository.watchAll).mockImplementation((callback) => { callback([]); return () => undefined; });
+    vi.mocked(tripRepository.watchAll).mockImplementation((callback) => {
+      callback([]);
+      return () => undefined;
+    });
     render(<TripDashboard userId="user-1" />);
     fireEvent.click(await screen.findByRole("button", { name: "Create trip" }));
     fireEvent.change(screen.getByLabelText("Trip name"), { target: { value: "Lisbon" } });
@@ -103,7 +142,10 @@ describe("TripDashboard", () => {
   });
 
   it("keeps the selected cover image in the file input", async () => {
-    vi.mocked(tripRepository.watchAll).mockImplementation((callback) => { callback([]); return () => undefined; });
+    vi.mocked(tripRepository.watchAll).mockImplementation((callback) => {
+      callback([]);
+      return () => undefined;
+    });
     render(<TripDashboard userId="user-1" />);
     fireEvent.click(await screen.findByRole("button", { name: "Create trip" }));
     fireEvent.change(screen.getByLabelText("Trip name"), { target: { value: "Lisbon" } });
@@ -121,7 +163,10 @@ describe("TripDashboard", () => {
   });
 
   it("keeps the modal open and explains invalid date ranges", async () => {
-    vi.mocked(tripRepository.watchAll).mockImplementation((callback) => { callback([]); return () => undefined; });
+    vi.mocked(tripRepository.watchAll).mockImplementation((callback) => {
+      callback([]);
+      return () => undefined;
+    });
     render(<TripDashboard userId="user-1" />);
     fireEvent.click(await screen.findByRole("button", { name: "Create trip" }));
     fireEvent.change(screen.getByLabelText("Trip name"), { target: { value: "Las Vegas" } });
@@ -129,12 +174,17 @@ describe("TripDashboard", () => {
     fireEvent.change(screen.getByLabelText("Starts"), { target: { value: "2026-09-25" } });
     fireEvent.change(screen.getByLabelText("Ends"), { target: { value: "2026-09-22" } });
     fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Next" }));
-    expect((await screen.findByRole("alert")).textContent).toContain("End date must be on or after the start date.");
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      "End date must be on or after the start date."
+    );
     expect(tripRepository.create).not.toHaveBeenCalled();
   });
 
   it("rejects trips longer than 60 days", async () => {
-    vi.mocked(tripRepository.watchAll).mockImplementation((callback) => { callback([]); return () => undefined; });
+    vi.mocked(tripRepository.watchAll).mockImplementation((callback) => {
+      callback([]);
+      return () => undefined;
+    });
     render(<TripDashboard userId="user-1" />);
     fireEvent.click(await screen.findByRole("button", { name: "Create trip" }));
     fireEvent.change(screen.getByLabelText("Trip name"), { target: { value: "Long Trip" } });
@@ -142,7 +192,9 @@ describe("TripDashboard", () => {
     fireEvent.change(screen.getByLabelText("Starts"), { target: { value: "2026-09-01" } });
     fireEvent.change(screen.getByLabelText("Ends"), { target: { value: "2026-10-31" } });
     fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Next" }));
-    expect((await screen.findByRole("alert")).textContent).toContain("Trips can be up to 60 days long.");
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      "Trips can be up to 60 days long."
+    );
     expect(tripRepository.create).not.toHaveBeenCalled();
   });
 });
