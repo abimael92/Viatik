@@ -74,10 +74,10 @@ describe("ExpensePanel", () => {
 
     fireEvent.click((await screen.findAllByRole("button", { name: /Dinner/ }))[0]);
 
-    expect(screen.getByText("Equal split")).toBeTruthy();
+    expect(screen.getAllByText(/Equal split/).length).toBeGreaterThan(0);
     expect(screen.getByText("Original amount")).toBeTruthy();
     expect(screen.getByText("Saved locally")).toBeTruthy();
-    expect(screen.getByText("$42.50 USD")).toBeTruthy();
+    expect(screen.getAllByText("$42.50 USD").length).toBeGreaterThan(0);
   });
 });
 

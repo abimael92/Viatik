@@ -206,11 +206,11 @@ describe("MoneyDashboard (Budget tab)", () => {
     expect(screen.getByLabelText("Amount")).toBeTruthy();
   });
 
-  it("opens the money tools modal and switches between converter and tip tabs", () => {
+  it("opens the money tools modal and switches between converter and tip tabs", async () => {
     render(<MoneyDashboard tripId={trip.id} userId="user-1" trip={trip} days={["2026-06-01"]} canEdit />);
 
-    fireEvent.click(screen.getByRole("button", { name: "More money actions" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: /Money tools/ }));
+    fireEvent.pointerDown(screen.getByRole("button", { name: "More money actions" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /Money tools/ }));
 
     // Currency converter tab is shown by default.
     expect(screen.getByLabelText("Amount")).toBeTruthy();
