@@ -1,7 +1,7 @@
 "use client";
 
 import { formatDistanceToNow } from "date-fns";
-import { Inbox, Mail, Pencil, Phone, Sparkles, Trash2, Users } from "lucide-react";
+import { Inbox, Mail, Pencil, Phone, Trash2, Users } from "lucide-react";
 import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,14 @@ type Tab = "contacts" | "requests";
 function relativeTime(isoDate: string) {
   return formatDistanceToNow(new Date(isoDate), { addSuffix: true });
 }
+
+const RELATIONSHIP_STYLES: Record<Contact["relationship"], string> = {
+  family: "border-pink-200 bg-pink-100 text-pink-700 dark:border-pink-900/50 dark:bg-pink-950/40 dark:text-pink-300 [html[data-theme=light]_&]:!border-pink-300 [html[data-theme=light]_&]:!bg-pink-200 [html[data-theme=light]_&]:!text-pink-800",
+  friend: "border-sky-200 bg-sky-100 text-sky-700 dark:border-sky-900/50 dark:bg-sky-950/40 dark:text-sky-300 [html[data-theme=light]_&]:!border-sky-300 [html[data-theme=light]_&]:!bg-sky-200 [html[data-theme=light]_&]:!text-sky-800",
+  coworker: "border-amber-200 bg-amber-100 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300 [html[data-theme=light]_&]:!border-amber-300 [html[data-theme=light]_&]:!bg-amber-200 [html[data-theme=light]_&]:!text-amber-800",
+  roommate: "border-violet-200 bg-violet-100 text-violet-700 dark:border-violet-900/50 dark:bg-violet-950/40 dark:text-violet-300 [html[data-theme=light]_&]:!border-violet-300 [html[data-theme=light]_&]:!bg-violet-200 [html[data-theme=light]_&]:!text-violet-800",
+  other: "border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-300 [html[data-theme=light]_&]:!border-slate-300 [html[data-theme=light]_&]:!bg-slate-200 [html[data-theme=light]_&]:!text-slate-800",
+};
 
 export function ContactRequestInbox({
   ownerId,
@@ -68,7 +76,9 @@ export function ContactRequestInbox({
             onClick={() => setTab(key)}
             className={cn(
               "flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] sm:flex-none",
-              tab === key ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              tab === key
+                ? "bg-primary/10 text-primary shadow-sm ring-1 ring-primary/20 hover:bg-primary/15"
+                : "text-muted-foreground hover:bg-primary/5 hover:text-primary"
             )}
           >
             {label}
@@ -100,29 +110,21 @@ export function ContactRequestInbox({
                 className="group flex items-center justify-between gap-3 sm:gap-4 rounded-xl border border-border/80 bg-background p-3 sm:p-4 shadow-xs transition-all duration-200 hover:border-primary/40 hover:bg-muted/30 hover:shadow-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <div className="flex items-center gap-3 sm:gap-3.5 min-w-0 flex-1">
-                  <UserAvatar
-                    seed={contact.avatarSeed}
-                    src={contact.linkedAvatarUrl ?? contact.avatarUrl}
-                    name={contact.fullName}
-                    size="md"
-                    className="size-10 sm:size-12 shrink-0 ring-1 ring-border shadow-xs group-hover:ring-primary/40 transition-all"
-                  />
+                  <div className="relative shrink-0">
+                    <UserAvatar
+                      seed={contact.avatarSeed}
+                      src={contact.linkedAvatarUrl ?? contact.avatarUrl}
+                      name={contact.fullName}
+                      size="md"
+                      className="size-10 sm:size-12 shadow-xs transition-all"
+                    />
+                  </div>
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                       <p className="truncate text-sm sm:text-base font-semibold text-foreground group-hover:text-primary transition-colors">
                         {contact.fullName}
                       </p>
-                      {contact.linkedProfileId ? (
-                        <Badge variant="default" className="gap-1 border-primary/30 bg-primary/10 text-primary text-[10px] font-semibold py-0.5 px-2">
-                          <Sparkles className="size-3" />
-                          {contact.linkedHandle ? `@${contact.linkedHandle}` : "Viatik"}
-                        </Badge>
-                      ) : (
-                        <Badge variant="muted" className="text-[10px] font-normal text-muted-foreground py-0.5 px-2">
-                          Manual
-                        </Badge>
-                      )}
-                      <Badge variant="outline" className="text-[10px] capitalize font-medium py-0.5 px-2">
+                      <Badge className={cn("text-[10px] capitalize font-semibold py-0.5 px-2", RELATIONSHIP_STYLES[contact.relationship])}>
                         {contact.relationship}
                       </Badge>
                       <Badge variant="muted" className="text-[10px] capitalize font-medium py-0.5 px-2">
@@ -199,10 +201,6 @@ export function ContactRequestInbox({
                       <div className="min-w-0 flex-1 space-y-1">
                         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                           <p className="truncate text-sm sm:text-base font-semibold text-foreground">{contact.fullName}</p>
-                          <Badge variant="default" className="gap-1 border-primary/30 bg-primary/10 text-primary text-[10px] font-semibold py-0.5 px-2">
-                            <Sparkles className="size-3" />
-                            {contact.linkedHandle ? `@${contact.linkedHandle}` : "Viatik"}
-                          </Badge>
                         </div>
                         <p className="text-xs text-muted-foreground">
                           {t("common.requested", { time: relativeTime(contact.createdAt) })}
@@ -247,10 +245,6 @@ export function ContactRequestInbox({
                       <div className="min-w-0 flex-1 space-y-1">
                         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                           <p className="truncate text-sm sm:text-base font-semibold text-foreground">{contact.fullName}</p>
-                          <Badge variant="default" className="gap-1 border-primary/30 bg-primary/10 text-primary text-[10px] font-semibold py-0.5 px-2">
-                            <Sparkles className="size-3" />
-                            {contact.linkedHandle ? `@${contact.linkedHandle}` : "Viatik"}
-                          </Badge>
                         </div>
                         <p className="text-xs text-muted-foreground">
                           {t("common.requestSentAt", { time: relativeTime(contact.createdAt) })}

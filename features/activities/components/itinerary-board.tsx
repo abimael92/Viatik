@@ -33,6 +33,7 @@ interface ItineraryBoardProps {
   dayDates: string[];
   category?: string;
   onSelect?: (activity: Activity) => void;
+  onEdit?: (activity: Activity) => void;
   readOnly?: boolean;
   forecast?: DailyForecast;
   warnings?: WeatherWarning[];
@@ -44,6 +45,7 @@ interface ItineraryBoardProps {
   currentUserId?: string;
   eligibleViaticUsers?: number;
   tripOwnerId?: string;
+  activeActivityId?: string;
 }
 
 export function ItineraryBoard({
@@ -51,6 +53,7 @@ export function ItineraryBoard({
   dayDates,
   category = "all",
   onSelect,
+  onEdit,
   readOnly = false,
   forecast,
   warnings,
@@ -60,6 +63,7 @@ export function ItineraryBoard({
   currentUserId,
   eligibleViaticUsers,
   tripOwnerId,
+  activeActivityId,
 }: ItineraryBoardProps) {
   const db = useDatabase();
   const activities = useLiveQuery(
@@ -207,6 +211,7 @@ export function ItineraryBoard({
             activities={byDay.get(day) ?? []}
             category={category}
             onSelect={onSelect}
+            onEdit={onEdit}
             draggable={!readOnly}
             forecast={forecast}
             warnings={warnings}
@@ -216,12 +221,12 @@ export function ItineraryBoard({
             currentUserId={currentUserId}
             eligibleViaticUsers={eligibleViaticUsers}
             tripOwnerId={tripOwnerId}
+            activeActivityId={activeActivityId}
           />
         ))}
       </div>
       <DragOverlay dropAnimation={{ duration: 150, easing: "cubic-bezier(0.18, 0.8, 0.25, 1)" }}>
         {activeActivity ? <ActivityCard activity={activeActivity} currentUserId={currentUserId} eligibleViaticUsers={eligibleViaticUsers} tripOwnerId={tripOwnerId} /> : null}
-        {activeActivity ? <ActivityCard activity={activeActivity} currentUserId={currentUserId} /> : null}
       </DragOverlay>
     </DndContext>
   );
