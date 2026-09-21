@@ -27,7 +27,7 @@ describe("WeekCalendar mobile day context", () => {
     const localTime = screen.getByText("Local time");
     expect(localTime.className).toContain("sticky");
     expect(localTime.className).toContain("left-0");
-    expect(screen.getByLabelText(/Day 1/)).toHaveTextContent("Day 1");
-    expect(screen.getByLabelText(/Day 2/)).toHaveTextContent("Day 2");
+    expect(screen.getByLabelText(/Day 1/).textContent).toContain("Day 1");
+    expect(screen.getByLabelText(/Day 2/).textContent).toContain("Day 2");
   });
 });

@@ -2,7 +2,7 @@
 
 **Project:** Viatik  
 **Reporter:** User report  
-**Status:** Fix In Progress  
+**Status:** Resolved
 **Date reported:** 2026-09-20  
 **Priority:** P2  
 **Related feature/spec:** Calendar-style itinerary view
@@ -41,14 +41,14 @@ Not applicable; this is a presentation-only change.
 
 ## Acceptance Criteria for Resolution
 
-- [ ] The local-time rail remains anchored while mobile day columns scroll horizontally.
-- [ ] Each day header exposes an explicit day/date label on mobile.
-- [ ] A regression test covers the mobile header structure.
-- [ ] Existing tests, lint, typecheck, and build pass.
+- [x] The local-time rail remains anchored while mobile day columns scroll horizontally.
+- [x] Each day header exposes an explicit day/date label on mobile.
+- [x] A regression test covers the mobile header structure.
+- [x] Existing tests, lint, typecheck, and build pass.
 
 ## Resolution
 
-- **Resolved behavior:** Pending verification.
+- **Resolved behavior:** The local-time rail remains visible during horizontal scrolling, and compact mobile day markers plus accessible full date labels keep the visible day understandable.
 - **Fix commit/PR:** Pending
-- **Verification evidence:** Pending
-- **Bug ledger entry:** Pending
+- **Verification evidence:** `pnpm exec vitest run features/activities/components/__tests__/week-calendar.test.tsx`; `pnpm lint`; `pnpm typecheck`; `pnpm build` — all passed.
+- **Bug ledger entry:** Added to `.ai/specs/bug-ledger.md`.
