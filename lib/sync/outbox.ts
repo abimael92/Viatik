@@ -21,33 +21,53 @@ function getDb(): ViatikDatabase {
 
 export function listPendingMutations(userId?: string | null): Promise<OutboxMutation[]> {
   const db = getDb();
-  const collection = db.outboxMutations.orderBy("createdAt");
-  return userId ? collection.filter((mutation) => mutation.userId === userId).toArray() : collection.toArray();
+  const collection = db.outboxMutations
+    .orderBy("createdAt")
+    .filter((mutation) => (mutation.status ?? "pending") !== "blocked");
+  return userId
+    ? collection.filter((mutation) => mutation.userId === userId).toArray()
+    : collection.toArray();
 }
 
 export function listRetryableMutations(): Promise<OutboxMutation[]> {
   const db = getDb();
   return db.outboxMutations
-    .filter((mutation) => mutation.attempts < MAX_RETRY_ATTEMPTS)
+    .filter(
+      (mutation) =>
+        (mutation.status ?? "pending") !== "blocked" && mutation.attempts < MAX_RETRY_ATTEMPTS
+    )
     .toArray();
 }
 
 export function countPendingMutations(userId?: string | null): Promise<number> {
   const db = getDb();
-  return userId ? db.outboxMutations.where("userId").equals(userId).count() : db.outboxMutations.count();
+  const collection = db.outboxMutations.filter(
+    (mutation) => (mutation.status ?? "pending") !== "blocked"
+  );
+  return userId
+    ? collection.and((mutation) => mutation.userId === userId).count()
+    : collection.count();
 }
 
 export function countRetryableMutations(userId?: string | null): Promise<number> {
   const db = getDb();
-  const collection = db.outboxMutations.filter((mutation) => mutation.attempts < MAX_RETRY_ATTEMPTS);
-  return userId ? collection.and((mutation) => mutation.userId === userId).count() : collection.count();
+  const collection = db.outboxMutations.filter(
+    (mutation) =>
+      (mutation.status ?? "pending") !== "blocked" && mutation.attempts < MAX_RETRY_ATTEMPTS
+  );
+  return userId
+    ? collection.and((mutation) => mutation.userId === userId).count()
+    : collection.count();
 }
 
 export function removeMutation(id: string): Promise<void> {
   return getDb().outboxMutations.delete(id);
 }
 
-export async function acknowledgeMutation(mutation: OutboxMutation, serverUpdatedAt: string): Promise<void> {
+export async function acknowledgeMutation(
+  mutation: OutboxMutation,
+  serverUpdatedAt: string
+): Promise<void> {
   const db = getDb();
   await db.transaction("rw", db.outboxMutations, async () => {
     const current = await db.outboxMutations.get(mutation.id);
@@ -62,17 +82,19 @@ export async function acknowledgeMutation(mutation: OutboxMutation, serverUpdate
       baseUpdatedAt: mutation.operation === "delete" ? null : serverUpdatedAt,
       attempts: 0,
       lastError: null,
+      status: "pending",
     });
   });
 }
 
 export function markMutationFailed(id: string, error: string): Promise<void> {
-  return getDb().outboxMutations
-    .where("id")
+  return getDb()
+    .outboxMutations.where("id")
     .equals(id)
     .modify((mutation) => {
       mutation.attempts += 1;
       mutation.lastError = error;
+      mutation.status = "pending";
     })
     .then(() => undefined);
 }
@@ -103,6 +125,7 @@ export function resetMutationAttempts(id: string): Promise<void> {
     .modify((mutation) => {
       mutation.attempts = 0;
       mutation.lastError = null;
+      mutation.status = "pending";
     })
     .then(() => undefined);
 }
@@ -115,7 +138,19 @@ export async function resetPendingMutationAttempts(userId?: string | null): Prom
   return failed.length;
 }
 
+export function blockMutation(id: string, error: string): Promise<void> {
+  return getDb()
+    .outboxMutations.where("id")
+    .equals(id)
+    .modify((mutation) => {
+      mutation.status = "blocked";
+      mutation.lastError = error;
+    })
+    .then(() => undefined);
+}
+
 export function shouldRetryMutation(mutation: OutboxMutation): boolean {
+  if ((mutation.status ?? "pending") === "blocked") return false;
   if (mutation.attempts >= MAX_RETRY_ATTEMPTS) {
     logger.warn("Mutation exceeded max retry attempts", {
       id: mutation.id,
@@ -138,8 +173,8 @@ export async function cleanupOldMutations(olderThanDays: number = 7): Promise<nu
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - olderThanDays);
 
-  const count = await getDb().outboxMutations
-    .where("createdAt")
+  const count = await getDb()
+    .outboxMutations.where("createdAt")
     .below(cutoff.toISOString())
     .delete();
 

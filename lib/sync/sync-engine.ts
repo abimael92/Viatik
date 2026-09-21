@@ -23,6 +23,7 @@ import { TransactionContext } from "@/lib/db/transaction-context";
 import { append } from "@/lib/sync/outbox-transactional";
 import {
   acknowledgeMutation,
+  blockMutation,
   countPendingMutations,
   countRetryableMutations,
   listPendingMutations,
@@ -276,7 +277,7 @@ function travelerIdentity(value: unknown): string | null {
 function isRecoverableLegacyMutation(mutation: OutboxMutation): boolean {
   return (
     (mutation.entityType === "expense" || mutation.entityType === "expenseShare") &&
-    /invalid input syntax for type uuid|Expense does not exist|Cannot sync expense|active trip member/.test(
+    /invalid input syntax for type uuid|Expense does not exist|Cannot sync expense/.test(
       mutation.lastError ?? ""
     )
   );
@@ -288,11 +289,15 @@ async function normalizeLegacyTravelerMutation(mutation: OutboxMutation): Promis
   if (!payload) return mutation;
   const tripId = typeof payload.tripId === "string" ? payload.tripId : mutation.tripId;
   const travelers = await getDb().tripTravelers.where("tripId").equals(tripId).toArray();
-  const findTraveler = (value: unknown) => {
+  const findTraveler = async (value: unknown) => {
     if (typeof value !== "string") return undefined;
     const identity = value.startsWith("traveler:") ? value.slice("traveler:".length) : value;
     const byId = travelers.find((traveler) => traveler.id === identity);
     if (byId) return byId;
+    if (isUuid(identity)) {
+      const directMatches = await getDb().tripTravelers.where("id").equals(identity).toArray();
+      if (directMatches[0]) return directMatches[0];
+    }
     if (travelerIdentity(value)) return undefined;
     return travelers.find(
       (traveler) => traveler.displayName.trim().toLowerCase() === value.trim().toLowerCase()
@@ -300,7 +305,7 @@ async function normalizeLegacyTravelerMutation(mutation: OutboxMutation): Promis
   };
   let changed = false;
   if (mutation.entityType === "expense") {
-    const payerTraveler = findTraveler(payload.paidBy);
+    const payerTraveler = await findTraveler(payload.paidBy);
     const knownPayerIdentity =
       travelerIdentity(payload.paidBy) ??
       (isUuid(payload.paidByTravelerId) ? `traveler:${payload.paidByTravelerId}` : null);
@@ -317,7 +322,7 @@ async function normalizeLegacyTravelerMutation(mutation: OutboxMutation): Promis
     }
   }
   if (mutation.entityType === "expenseShare") {
-    const shareTraveler = findTraveler(payload.userId);
+    const shareTraveler = await findTraveler(payload.userId);
     const knownShareIdentity =
       travelerIdentity(payload.userId) ??
       (isUuid(payload.travelerId) ? `traveler:${payload.travelerId}` : null);
@@ -485,6 +490,12 @@ async function replayCasMutation(mutation: OutboxMutation, signal?: AbortSignal)
   return true;
 }
 
+const EXPENSE_SHARE_MEMBERSHIP_ERROR = "Expense share user must be an active trip member";
+
+function isExpenseShareMembershipError(error: unknown): error is Error {
+  return error instanceof Error && error.message.includes(EXPENSE_SHARE_MEMBERSHIP_ERROR);
+}
+
 async function replayOne(mutation: OutboxMutation, signal?: AbortSignal) {
   logger.debug("Replaying mutation", {
     id: mutation.id,
@@ -511,6 +522,7 @@ async function replayOne(mutation: OutboxMutation, signal?: AbortSignal) {
     });
   } catch (error) {
     signal?.throwIfAborted();
+    if (isExpenseShareMembershipError(error)) throw error;
     if (error instanceof Error && error.message === "Expense does not exist") {
       if (await requeueMissingExpenseParent(mutation)) {
         await resetMutationAttempts(mutation.id);
@@ -679,6 +691,18 @@ async function syncOnce(context?: SyncExecutionContext): Promise<void> {
     } catch (error) {
       context?.signal.throwIfAborted();
       const message = error instanceof Error ? error.message : String(error);
+      if (isExpenseShareMembershipError(error)) {
+        await blockMutation(mutation.id, message);
+        logger.warn("Blocked expense share mutation for manual review", {
+          mutationId: mutation.id,
+          tripId: mutation.tripId,
+          entityId: mutation.entityId,
+          shareUserId: mutation.payload?.userId ?? null,
+          attempts: mutation.attempts,
+        });
+        skippedCount++;
+        continue;
+      }
       logger.error(
         "Mutation failed, marking as failed",
         error instanceof Error ? error : new Error(String(error)),

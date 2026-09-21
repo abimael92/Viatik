@@ -63,6 +63,7 @@ export async function append(
     createdAt: existing?.createdAt ?? new Date().toISOString(),
     attempts: 0,
     lastError: null,
+    status: existing?.status === "blocked" ? "pending" : (existing?.status ?? "pending"),
   };
 
   await outbox.put(mutation);

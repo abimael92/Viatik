@@ -1,5 +1,25 @@
-export type OutboxEntityType = "trip" | "tripMember" | "invitation" | "activity" | "activityPersonalBudget" | "expense" | "expenseShare" | "settlement" | "media" | "contact" | "tripTraveler" | "vaultKeyset" | "vaultEntry" | "tripWeatherForecast" | "connectionRequest" | "connectionResponse" | "userWallet" | "tripShareLink" | "notification";
+export type OutboxEntityType =
+  | "trip"
+  | "tripMember"
+  | "invitation"
+  | "activity"
+  | "activityPersonalBudget"
+  | "expense"
+  | "expenseShare"
+  | "settlement"
+  | "media"
+  | "contact"
+  | "tripTraveler"
+  | "vaultKeyset"
+  | "vaultEntry"
+  | "tripWeatherForecast"
+  | "connectionRequest"
+  | "connectionResponse"
+  | "userWallet"
+  | "tripShareLink"
+  | "notification";
 export type OutboxOperation = "insert" | "update" | "delete";
+export type OutboxMutationStatus = "pending" | "processing" | "blocked";
 
 /**
  * A single queued mutation waiting to be replayed against Supabase. `payload`
@@ -45,4 +65,5 @@ export interface OutboxMutation {
   createdAt: string;
   attempts: number;
   lastError: string | null;
+  status: OutboxMutationStatus;
 }
