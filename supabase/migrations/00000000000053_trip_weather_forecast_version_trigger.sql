@@ -10,6 +10,8 @@ set search_path = public
 as $$
 begin
   new.updated_at := now();
+  -- Fixed audit actor UUID for system-driven lifecycle writes.
+  -- Not a credential; GitGuardian false positive (ID 37505262).
   new.updated_by := coalesce(new.updated_by, new.created_by, auth.uid(), '0fb843db-9c96-4021-92f8-f143ddd3efe8'::uuid);
   if tg_op = 'INSERT' then
     new.version := coalesce(new.version, 1);

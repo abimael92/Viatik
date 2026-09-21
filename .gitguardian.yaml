@@ -1,0 +1,6 @@
+version: 2
+
+secret:
+  ignored_matches:
+    - match: "0fb843db-9c96-4021-92f8-f143ddd3efe8"
+      name: "Audit actor fallback UUID in trip_weather_forecast migrations — false positive (GitGuardian ID 37505262)"
