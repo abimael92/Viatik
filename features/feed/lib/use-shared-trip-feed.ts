@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { collaborationRepository } from "@/features/collaboration/data/dexie-collaboration-repository";
+import { profileRepository } from "@/features/profile/data/dexie-profile-repository";
 import { feedRepository } from "@/features/feed/data/dexie-feed-repository";
 import type { TripFeedItem } from "@/features/feed/domain/feed-types";
 import { useLocalProfile } from "@/features/profile/lib/use-local-profile";
@@ -31,36 +32,58 @@ export function useSharedTripFeed(tripId: string, userId: string): SharedTripFee
   const [loading, setLoading] = useState(true);
   const localProfile = useLocalProfile(userId);
 
-  useEffect(() => feedRepository.watchByTrip(tripId, (next) => {
-    setItems(next);
-    setLoading(false);
-  }), [tripId]);
+  useEffect(
+    () =>
+      feedRepository.watchByTrip(tripId, (next) => {
+        setItems(next);
+        setLoading(false);
+      }),
+    [tripId]
+  );
 
-  useEffect(() => profileRepository.watch(userId, (profile) => {
-    if (!profile) return;
-    setProfiles((current) => new Map(current).set(userId, {
-      id: userId,
-      name: profile.fullName,
-      avatarUrl: profile.avatarUrl,
-      avatarSeed: profile.avatarSeed ?? null,
-    }));
-  }), [userId]);
+  useEffect(
+    () =>
+      profileRepository.watch(userId, (profile) => {
+        if (!profile) return;
+        setProfiles((current) =>
+          new Map(current).set(userId, {
+            id: userId,
+            name: profile.fullName,
+            avatarUrl: profile.avatarUrl,
+            avatarSeed: profile.avatarSeed ?? null,
+          })
+        );
+      }),
+    [userId]
+  );
 
   useEffect(() => {
-    const actorIds = Array.from(new Set(items.map((item) => item.actorId))).filter((id) => id && id !== userId);
+    const actorIds = Array.from(new Set(items.map((item) => item.actorId))).filter(
+      (id) => id && id !== userId
+    );
     if (!actorIds.length) return;
     let cancelled = false;
-    void collaborationRepository.listProfiles(actorIds).then((remoteProfiles) => {
-      if (cancelled) return;
-      setProfiles((current) => {
-        const next = new Map(current);
-        for (const profile of remoteProfiles) {
-          next.set(profile.id, { id: profile.id, name: profile.fullName, avatarUrl: profile.avatarUrl, avatarSeed: profile.avatarSeed ?? null });
-        }
-        return next;
-      });
-    }).catch(() => undefined);
-    return () => { cancelled = true; };
+    void collaborationRepository
+      .listProfiles(actorIds)
+      .then((remoteProfiles) => {
+        if (cancelled) return;
+        setProfiles((current) => {
+          const next = new Map(current);
+          for (const profile of remoteProfiles) {
+            next.set(profile.id, {
+              id: profile.id,
+              name: profile.fullName,
+              avatarUrl: profile.avatarUrl,
+              avatarSeed: profile.avatarSeed ?? null,
+            });
+          }
+          return next;
+        });
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
   }, [items, userId]);
 
   const profilesWithLocalUser = new Map(profiles);

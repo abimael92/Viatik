@@ -1,6 +1,18 @@
 "use client";
 
-import { BedDouble, Car, Pencil, Plus, ReceiptText, ShoppingBag, Ticket, Trash2, UtensilsCrossed, UserRound, X } from "lucide-react";
+import {
+  BedDouble,
+  Car,
+  Pencil,
+  Plus,
+  ReceiptText,
+  ShoppingBag,
+  Ticket,
+  Trash2,
+  UtensilsCrossed,
+  UserRound,
+  X,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -67,14 +79,23 @@ function formatMoney(amount: bigint, currency: string): string {
 }
 
 function splitLabel(splitType: ExpenseSplitType): string {
-  return splitType === "equal" ? "Equal split" : splitType === "exact" ? "Custom split" : `${splitType[0].toUpperCase()}${splitType.slice(1)} split`;
+  return splitType === "equal"
+    ? "Equal split"
+    : splitType === "exact"
+      ? "Custom split"
+      : `${splitType[0].toUpperCase()}${splitType.slice(1)} split`;
 }
 
 function getConvertedExpenseAmount(expense: Expense, baseCurrency: string): bigint | null {
   if (expense.currency === baseCurrency) return expense.amountMinor;
   if (expense.exchangeRateToBase == null) return null;
   try {
-    return toBaseMinorUnits(expense.amountMinor, expense.currency, expense.exchangeRateToBase, baseCurrency);
+    return toBaseMinorUnits(
+      expense.amountMinor,
+      expense.currency,
+      expense.exchangeRateToBase,
+      baseCurrency
+    );
   } catch {
     return null;
   }
@@ -116,6 +137,7 @@ export function ExpensePanel({
 }) {
   const [expenses, setExpenses] = useState<Expense[] | null>(null);
   const [members, setMembers] = useState<TripMember[]>([]);
+  const [travelers, setTravelers] = useState<TripTraveler[]>([]);
   const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
   const localProfile = useLocalProfile(userId);
   const [dialog, setDialog] = useState<Expense | "new" | null>(null);
@@ -162,24 +184,15 @@ export function ExpensePanel({
     };
   }, [members]);
   useEffect(() => {
-    const memberIds = [...new Set(members.map((member) => member.userId).filter((id): id is string => Boolean(id)))];
-    if (memberIds.length === 0) return;
-    let cancelled = false;
-    void collaborationRepository.listProfiles(memberIds).then((nextProfiles) => {
-      if (!cancelled) setProfiles(nextProfiles);
-    }).catch(() => {
-      if (!cancelled) setProfiles([]);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [members]);
-  useEffect(() => {
     let cancelled = false;
     Promise.all(
       (expenses ?? []).map(async (expense) => {
         const shares = await expenseRepository.listSharesByExpense(expense.id);
-        return [expense.id, shares, { amountMinor: expense.amountMinor, paidBy: expense.paidBy, shares }] as const;
+        return [
+          expense.id,
+          shares,
+          { amountMinor: expense.amountMinor, paidBy: expense.paidBy, shares },
+        ] as const;
       })
     ).then((items) => {
       if (cancelled) return;
@@ -195,18 +208,31 @@ export function ExpensePanel({
     () => (expenses ?? []).reduce((sum, expense) => sum + expense.amountMinor, 0n),
     [expenses]
   );
-  const profileById = useMemo(() => new Map(profiles.map((profile) => [profile.id, profile])), [profiles]);
+  const profileById = useMemo(
+    () => new Map(profiles.map((profile) => [profile.id, profile])),
+    [profiles]
+  );
   const names = useMemo(() => {
-    const next = new Map(profiles.map((profile) => [profile.id, profile.fullName?.trim() || "Traveler"]));
+    const next = new Map(
+      profiles.map((profile) => [profile.id, profile.fullName?.trim() || "Traveler"])
+    );
     if (localProfile) next.set(userId, localProfile.fullName?.trim() || "Traveler");
     return next;
   }, [localProfile, profiles, userId]);
   const identityFor = (id: string) => {
     if (id === userId && localProfile) {
-      return { name: localProfile.fullName?.trim() || "Traveler", avatarUrl: localProfile.avatarUrl, avatarSeed: localProfile.avatarSeed };
+      return {
+        name: localProfile.fullName?.trim() || "Traveler",
+        avatarUrl: localProfile.avatarUrl,
+        avatarSeed: localProfile.avatarSeed,
+      };
     }
     const profile = profileById.get(id);
-    return { name: profile?.fullName?.trim() || "Traveler", avatarUrl: profile?.avatarUrl ?? null, avatarSeed: profile?.avatarSeed ?? null };
+    return {
+      name: profile?.fullName?.trim() || "Traveler",
+      avatarUrl: profile?.avatarUrl ?? null,
+      avatarSeed: profile?.avatarSeed ?? null,
+    };
   };
 
   const visibleExpenses = useMemo(
@@ -277,7 +303,9 @@ export function ExpensePanel({
             <ReceiptText className="size-8" aria-hidden />
           </span>
           <Heading level={3} className="text-lg font-semibold">
-            {hasFilter && (expenses ?? []).length > 0 ? "Nothing in this category yet" : "No shared expenses yet"}
+            {hasFilter && (expenses ?? []).length > 0
+              ? "Nothing in this category yet"
+              : "No shared expenses yet"}
           </Heading>
           <p className="max-w-xs text-sm text-muted-foreground">
             {hasFilter && (expenses ?? []).length > 0
@@ -322,19 +350,37 @@ export function ExpensePanel({
                           </span>
                         ) : null}
                         <span className="inline-flex items-center gap-1.5 align-middle">
-                          <UserAvatar seed={payer.avatarSeed} src={payer.avatarUrl} name={payer.name} size="sm" className="size-8" />
+                          <UserAvatar
+                            seed={payer.avatarSeed}
+                            src={payer.avatarUrl}
+                            name={payer.name}
+                            size="sm"
+                            className="size-8"
+                          />
                           Paid by {payer.name} · {splitLabel(expense.splitType)}
                         </span>
                       </p>
                     </div>
-                    <strong className="shrink-0 font-mono tracking-tight tabular-nums">{formatExpenseSummary(expense, currency)}</strong>
+                    <strong className="shrink-0 font-mono tracking-tight tabular-nums">
+                      {formatExpenseSummary(expense, currency)}
+                    </strong>
                   </button>
                   {canEdit && (
                     <div className="flex shrink-0 items-center gap-1">
-                      <Button variant="ghost" size="icon" aria-label={`Edit ${expense.description}`} onClick={() => setDialog(expense)}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Edit ${expense.description}`}
+                        onClick={() => setDialog(expense)}
+                      >
                         <Pencil className="size-5" />
                       </Button>
-                      <Button variant="ghost" size="icon" aria-label={`Delete ${expense.description}`} onClick={() => setDeleteExpense(expense)}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Delete ${expense.description}`}
+                        onClick={() => setDeleteExpense(expense)}
+                      >
                         <Trash2 className="size-5 text-destructive" />
                       </Button>
                     </div>
@@ -345,19 +391,30 @@ export function ExpensePanel({
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div>
                         <p className="text-xs text-muted-foreground">Split details</p>
-                        <p className="font-medium">{splitLabel(expense.splitType)} · {shares.length || 1} traveler{shares.length === 1 ? "" : "s"}</p>
+                        <p className="font-medium">
+                          {splitLabel(expense.splitType)} · {shares.length || 1} traveler
+                          {shares.length === 1 ? "" : "s"}
+                        </p>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Sync status</p>
-                        <span className="mt-1 inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">Saved locally</span>
+                        <span className="mt-1 inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                          Saved locally
+                        </span>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Original amount</p>
-                        <p className="font-mono font-semibold tabular-nums">{formatMoney(expense.amountMinor, expense.currency)}</p>
+                        <p className="font-mono font-semibold tabular-nums">
+                          {formatMoney(expense.amountMinor, expense.currency)}
+                        </p>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Trip currency</p>
-                        <p className="font-mono font-semibold tabular-nums">{convertedAmount !== null ? formatMoney(convertedAmount, currency) : "Conversion unavailable"}</p>
+                        <p className="font-mono font-semibold tabular-nums">
+                          {convertedAmount !== null
+                            ? formatMoney(convertedAmount, currency)
+                            : "Conversion unavailable"}
+                        </p>
                       </div>
                     </div>
                     {shares.length > 0 && (
@@ -367,8 +424,19 @@ export function ExpensePanel({
                           const person = identityFor(share.userId);
                           return (
                             <div key={share.id} className="flex items-center justify-between gap-3">
-                              <span className="flex min-w-0 items-center gap-2"><UserAvatar seed={person.avatarSeed} src={person.avatarUrl} name={person.name} size="sm" className="size-8" />{person.name}</span>
-                              <span className="font-mono tabular-nums">{formatMoney(share.shareAmountMinor, expense.currency)}</span>
+                              <span className="flex min-w-0 items-center gap-2">
+                                <UserAvatar
+                                  seed={person.avatarSeed}
+                                  src={person.avatarUrl}
+                                  name={person.name}
+                                  size="sm"
+                                  className="size-8"
+                                />
+                                {person.name}
+                              </span>
+                              <span className="font-mono tabular-nums">
+                                {formatMoney(share.shareAmountMinor, expense.currency)}
+                              </span>
                             </div>
                           );
                         })}
