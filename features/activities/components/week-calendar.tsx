@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, CloudRain, Pencil, Plane, TrainFront, Trash2
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { transitRepository } from "@/features/transit/data/dexie-transit-repository";
 import type { Activity } from "@/features/domain/entities";
@@ -314,13 +315,15 @@ function CurrentTimeLine({ minute }: { minute: number }) {
 }
 
 function TransitDetailsDialog({ segment, canEdit, onClose, onEdit, onDelete }: { segment: TransitSegment | null; canEdit: boolean; onClose: () => void; onEdit: (segment: TransitSegment) => void; onDelete: (segment: TransitSegment) => Promise<void> }) {
+  const [deleteOpen, setDeleteOpen] = useState(false);
   if (!segment) return null;
   const Icon = segment.mode === "flight" ? Plane : TrainFront;
   const label = [segment.carrierCode, segment.number].filter(Boolean).join(" ") || segment.carrier;
   const departure = new Date(segment.scheduledDeparture);
   const arrival = segment.scheduledArrival ? new Date(segment.scheduledArrival) : null;
   return (
-    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+    <>
+      <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Icon className="size-5" />{label}</DialogTitle>
@@ -336,12 +339,21 @@ function TransitDetailsDialog({ segment, canEdit, onClose, onEdit, onDelete }: {
           {segment.statusMessage && <><dt className="text-muted-foreground">Status</dt><dd>{segment.statusMessage}</dd></>}
         </dl>
         <DialogFooter>
-          {canEdit && <Button type="button" variant="destructive" onClick={() => { if (window.confirm(`Delete ${label}?`)) void onDelete(segment); }}><Trash2 className="size-4" />Delete</Button>}
+          {canEdit && <Button type="button" variant="destructive" onClick={() => setDeleteOpen(true)}><Trash2 className="size-4" />Delete</Button>}
           {canEdit && <Button type="button" variant="outline" className="border-yellow-300 bg-yellow-50 text-yellow-700 hover:bg-yellow-100" onClick={() => onEdit(segment)}><Pencil className="size-4" />Edit</Button>}
           <Button type="button" onClick={onClose}>Close</Button>
         </DialogFooter>
       </DialogContent>
-    </Dialog>
+      </Dialog>
+      <ConfirmDialog
+      open={deleteOpen}
+      onOpenChange={setDeleteOpen}
+      title="Delete transit?"
+      description={`Delete ${label}? This cannot be undone.`}
+      confirmLabel="Delete"
+      onConfirm={() => { setDeleteOpen(false); void onDelete(segment); }}
+      />
+    </>
   );
 }
 
