@@ -11,6 +11,7 @@ import { ActivityVoteCard } from "@/features/activities/components/activity-vote
 import { collaborationRepository } from "@/features/collaboration/data/dexie-collaboration-repository";
 import { formatActivityTime } from "@/features/activities/lib/activity-time";
 import type { Activity, ProfileSummary } from "@/features/domain/entities";
+import { useLocalProfile } from "@/features/profile/lib/use-local-profile";
 import type { WeatherConflict } from "@/features/weather/domain/weather-conflict-types";
 import { getActivityCategoryColors, isUserAttending } from "@/features/trips/lib/activity-category-colors";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,7 @@ interface ActivityCardProps {
 
 export function ActivityCard({ activity, onSelect, draggable = true, conflict, currentUserId, eligibleViaticUsers, tripOwnerId }: ActivityCardProps) {
   const [creatorProfile, setCreatorProfile] = useState<ProfileSummary | null>(null);
+  const localProfile = useLocalProfile(currentUserId ?? "");
   useEffect(() => {
     let cancelled = false;
     void collaborationRepository.listProfiles([activity.createdBy]).then((profiles) => {
@@ -94,7 +96,12 @@ export function ActivityCard({ activity, onSelect, draggable = true, conflict, c
             {activity.description || activity.location || activity.category}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-            <UserAvatar seed={creatorProfile?.avatarSeed} src={creatorProfile?.avatarUrl} name={creatorProfile?.fullName ?? "Collaborator"} size="sm" />
+            <UserAvatar
+              seed={activity.createdBy === currentUserId ? localProfile?.avatarSeed : creatorProfile?.avatarSeed}
+              src={activity.createdBy === currentUserId ? localProfile?.avatarUrl : creatorProfile?.avatarUrl}
+              name={activity.createdBy === currentUserId ? localProfile?.fullName ?? creatorProfile?.fullName : creatorProfile?.fullName ?? "Collaborator"}
+              size="sm"
+            />
             {activity.startTime && (
               <span className="flex items-center gap-1">
                 <Clock className="size-3" />

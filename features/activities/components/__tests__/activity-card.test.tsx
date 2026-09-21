@@ -1,7 +1,8 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ActivityCard } from "@/features/activities/components/activity-card";
+import { useLocalProfile } from "@/features/profile/lib/use-local-profile";
 
 if (typeof window !== "undefined") {
   window.matchMedia ??= () => ({ matches: false, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false }) as unknown as MediaQueryList;
@@ -44,6 +45,11 @@ vi.mock("@dnd-kit/utilities", () => ({
   },
 }));
 
+vi.mock("@/features/profile/lib/use-local-profile", () => ({ useLocalProfile: vi.fn(() => null) }));
+vi.mock("@/features/collaboration/data/dexie-collaboration-repository", () => ({
+  collaborationRepository: { listProfiles: vi.fn().mockResolvedValue([]) },
+}));
+
 describe("ActivityCard", () => {
   afterEach(() => cleanup());
 
@@ -84,5 +90,25 @@ describe("ActivityCard", () => {
     expect(screen.getByRole("listitem").className).toContain("border-emerald-500");
     expect(container.querySelector("article")?.className).toContain("opacity-40");
     expect(screen.queryByRole("button", { name: /Move/ })).toBeNull();
+  });
+
+  it("uses the configured local avatar for activities created by the current user", async () => {
+    vi.mocked(useLocalProfile).mockReturnValue({
+      id: "user-1",
+      fullName: "Abimael Garcia",
+      avatarUrl: "https://example.com/configured.png",
+      avatarSeed: "adventurer|configured",
+      phone: null,
+      emergencyContactName: null,
+      emergencyContactRelationship: null,
+      emergencyContactPhone: null,
+      passportIssuingCountry: null,
+      passportExpiresOn: null,
+      updatedAt: "2026-01-01T00:00:00Z",
+    });
+
+    render(<ActivityCard activity={mockActivity} currentUserId="user-1" />);
+
+    await waitFor(() => expect(document.querySelector('img[src="https://example.com/configured.png"]')).toBeTruthy());
   });
 });

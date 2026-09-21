@@ -1,12 +1,19 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ActivityVoteCard } from "@/features/activities/components/activity-vote-card";
 import type { Activity } from "@/features/domain/entities";
 import { activityRepository } from "@/features/activities/data/dexie-activity-repository";
+import { useLocalProfile } from "@/features/profile/lib/use-local-profile";
+import { collaborationRepository } from "@/features/collaboration/data/dexie-collaboration-repository";
 
 vi.mock("@/features/activities/data/dexie-activity-repository", () => ({
   activityRepository: { update: vi.fn().mockResolvedValue(undefined), cancelProposal: vi.fn().mockResolvedValue(undefined) },
+}));
+
+vi.mock("@/features/profile/lib/use-local-profile", () => ({ useLocalProfile: vi.fn(() => null) }));
+vi.mock("@/features/collaboration/data/dexie-collaboration-repository", () => ({
+  collaborationRepository: { listProfiles: vi.fn().mockResolvedValue([]) },
 }));
 
 const timestamp = "2026-09-15T12:00:00.000Z";
@@ -33,6 +40,11 @@ const activity: Activity = {
 };
 
 describe("ActivityVoteCard", () => {
+  beforeEach(() => {
+    vi.mocked(useLocalProfile).mockReset().mockReturnValue(null);
+    vi.mocked(collaborationRepository.listProfiles).mockReset().mockResolvedValue([]);
+  });
+
   it("shows proposal status, voter avatars, and casts approval", async () => {
     const { container } = render(<ActivityVoteCard activity={activity} currentUserId="user-1" eligibleViaticUsers={2} profiles={[{ id: "user-2", fullName: "Mika Sato", avatarUrl: "https://example.com/mika.png", avatarSeed: "adventurer|mika", email: null }]} />);
     expect(screen.getByText("Pending group approval")).toBeTruthy();
@@ -43,6 +55,30 @@ describe("ActivityVoteCard", () => {
       pollStatus: "approved",
       pollVotes: expect.arrayContaining([expect.objectContaining({ userId: "user-1", choice: "approve", optionId: "option-1" })]),
     })));
+  });
+
+  it("uses the current user's configured avatar when remote voter data is stale", async () => {
+    vi.mocked(useLocalProfile).mockReturnValue({
+      id: "user-2",
+      fullName: "Abimael Garcia",
+      avatarUrl: "https://example.com/configured.png",
+      avatarSeed: "adventurer|configured",
+      phone: null,
+      emergencyContactName: null,
+      emergencyContactRelationship: null,
+      emergencyContactPhone: null,
+      passportIssuingCountry: null,
+      passportExpiresOn: null,
+      updatedAt: timestamp,
+    });
+    vi.mocked(collaborationRepository.listProfiles).mockResolvedValueOnce([
+      { id: "user-2", fullName: "Abimael Garcia", avatarUrl: "https://example.com/stale.png", avatarSeed: "adventurer|stale", email: null },
+    ]);
+
+    render(<ActivityVoteCard activity={activity} currentUserId="user-2" eligibleViaticUsers={2} />);
+
+    await waitFor(() => expect(document.querySelector('img[src="https://example.com/configured.png"]')).toBeTruthy());
+    expect(document.querySelector('img[src="https://example.com/stale.png"]')).toBeNull();
   });
 
   it("uses initials instead of a generated avatar when the account has no avatar set", () => {
