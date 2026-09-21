@@ -8,6 +8,7 @@ import {
   CircleDollarSign,
   Download,
   Landmark,
+  MoreHorizontal,
   Pencil,
   Plus,
   ShoppingBag,
@@ -22,6 +23,12 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Heading } from "@/components/ui/heading";
 import { Input } from "@/components/ui/input";
@@ -94,7 +101,18 @@ const TONE_TEXT: Record<BudgetTone, string> = {
   muted: "text-muted-foreground",
 };
 
+const TONE_PILL: Record<BudgetTone, string> = {
+  ok: "bg-emerald-100 text-emerald-700",
+  warn: "bg-amber-100 text-amber-700",
+  danger: "bg-destructive/10 text-destructive",
+  muted: "bg-muted text-muted-foreground",
+};
+
 const DAY_MS = 86_400_000;
+
+function formatMoney(amount: MinorUnits, currency: string): string {
+  return `${formatMinorUnits(amount, currency)} ${currency.toUpperCase()}`;
+}
 
 /** Whole trip-day index for `today` relative to `start` (1-based, clamped ≥ 0). */
 function dayNumber(start: string | null, today: string): number {
@@ -126,6 +144,7 @@ export function MoneyDashboard({
   days,
   canEdit,
   autoOpenExpense = false,
+  defaultExpenseCurrency,
   autoOpenTools = false,
   onConsumeAutoOpenExpense,
 }: {
@@ -135,6 +154,7 @@ export function MoneyDashboard({
   days: string[];
   canEdit: boolean;
   autoOpenExpense?: boolean;
+  defaultExpenseCurrency?: string;
   autoOpenTools?: boolean;
   onConsumeAutoOpenExpense?: () => void;
 }) {
@@ -146,11 +166,12 @@ export function MoneyDashboard({
   );
 
   const { budget, totalSpent } = useTripSpending(tripId, baseCurrency);
-  const { balances } = useSettlement(tripId, baseCurrency);
+  const { balances, transfers } = useSettlement(tripId, baseCurrency);
 
   const [expenses, setExpenses] = useState<Expense[] | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(autoOpenTools);
+  const [settlementOpen, setSettlementOpen] = useState(false);
 
   // Watch expenses for CSV export
   useEffect(() => expenseRepository.watchByTrip(tripId, setExpenses), [tripId]);
@@ -168,67 +189,88 @@ export function MoneyDashboard({
   );
 
   const budgetTone = usageTone(usage);
+  const settlementNeeded = transfers.length > 0;
   const personalStanding = balances[userId] ?? 0n;
 
   return (
-    <section className="space-y-6" aria-labelledby="budget-heading">
-      <FinancialHero
-        tripId={tripId}
-        userId={userId}
-        trip={trip}
-        budget={budget}
-        baseCurrency={baseCurrency}
-        totalSpent={totalSpent}
-        totalBudget={totalBudget}
-        dailyTarget={dailyTarget}
-        remaining={remaining}
-        usage={usage}
-        tone={budgetTone}
-        pacingAlerts={pacingAlerts}
-        days={days}
-        canEdit={canEdit}
-        personalStanding={personalStanding}
-      />
+    <section className="space-y-8" aria-labelledby="spending-overview-heading">
+      {!canEdit && (
+        <div role="status" className="rounded-2xl border bg-muted/50 p-4 text-sm text-muted-foreground">
+          You have view-only access. You can review expenses and balances, but only owners and editors can change financial data.
+        </div>
+      )}
+      <p className="text-muted-foreground">
+        Track group spending, manage your trip budget, record expenses, and see how much each traveler owes or is owed.
+      </p>
+      <section aria-labelledby="spending-overview-heading" className="space-y-4">
+        <SectionHeading id="spending-overview-heading" title="Spending overview" description="See your current trip total, budget usage, and group standing at a glance." />
+        <section aria-labelledby="budget-progress-heading" className="space-y-3">
+          <Heading level={3} id="budget-progress-heading" className="text-lg font-bold">Budget progress</Heading>
+          <FinancialHero
+            tripId={tripId}
+            userId={userId}
+            trip={trip}
+            budget={budget}
+            baseCurrency={baseCurrency}
+            totalSpent={totalSpent}
+            totalBudget={totalBudget}
+            dailyTarget={dailyTarget}
+            remaining={remaining}
+            usage={usage}
+            tone={budgetTone}
+            pacingAlerts={pacingAlerts}
+            days={days}
+            canEdit={canEdit}
+            personalStanding={personalStanding}
+          />
+        </section>
+      </section>
 
-      {/* Toolbar: money tools + primary action + export */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setToolsOpen(true)}>
-            <Wrench className="size-4" />
-            Money tools
-          </Button>
-          {expenses && expenses.length > 0 && (
-            <Button
-              variant="outline"
-              onClick={() => downloadExpensesCsv(expenses.filter((e) => e.deletedAt === null))}
-            >
-              <Download className="size-4" />
-              Export CSV
+      <div className="flex flex-col gap-3 rounded-2xl border bg-card p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div>
+          <p className="text-sm font-semibold">Trip actions</p>
+          <p className="text-xs text-muted-foreground">Record a cost or review how the group settles up.</p>
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          {canEdit && (
+            <Button size="lg" variant="primary" className="gap-2 shadow-lg shadow-primary/25" onClick={() => setAddOpen(true)}>
+              <Plus className="size-5" />
+              Add Expense
             </Button>
           )}
+          {settlementNeeded && (
+            <Button size="lg" variant="outline" onClick={() => setSettlementOpen(true)}>
+              View Settlement
+            </Button>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon" aria-label="More money actions">
+                <MoreHorizontal className="size-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => setToolsOpen(true)}>
+                <Wrench className="size-4" /> Money tools
+              </DropdownMenuItem>
+              {expenses && expenses.length > 0 && (
+                <DropdownMenuItem onSelect={() => downloadExpensesCsv(expenses.filter((e) => e.deletedAt === null))}>
+                  <Download className="size-4" /> Export CSV
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        {canEdit && (
-          <Button
-            size="lg"
-            variant="primary"
-            className="gap-2 shadow-lg shadow-primary/25"
-            onClick={() => setAddOpen(true)}
-          >
-            <Plus className="size-5" />
-            Add Expense
-          </Button>
-        )}
       </div>
 
-      <section aria-labelledby="spending-feed-heading" className="space-y-3">
-        <Heading level={3} id="spending-feed-heading" className="text-lg font-bold">
-          Recent spending
-        </Heading>
+      <section aria-labelledby="recent-expenses-heading" className="space-y-3">
+        <SectionHeading id="recent-expenses-heading" title="Recent expenses" description="Expand an expense to review its split, currency conversion, and local save status." />
         <ExpensePanel
           tripId={tripId}
           userId={userId}
           currency={baseCurrency}
           locationCurrency={locationCurrency}
+          defaultCurrency={defaultExpenseCurrency}
           canEdit={canEdit}
           embedded
           autoOpen={autoOpenExpense || addOpen}
@@ -239,8 +281,20 @@ export function MoneyDashboard({
         />
       </section>
 
-      <SettlementView tripId={tripId} userId={userId} currency={baseCurrency} />
+      <section aria-labelledby="settlement-section-heading" className="space-y-3">
+        <SectionHeading id="settlement-section-heading" title="Settlement" description="See who owes or is owed and the fewest transfers needed to settle the trip." />
+        <SettlementView tripId={tripId} userId={userId} currency={baseCurrency} />
+      </section>
 
+      <Dialog open={settlementOpen} onOpenChange={setSettlementOpen}>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Settlement</DialogTitle>
+            <DialogDescription>See who owes or is owed and the fewest transfers needed to settle the trip.</DialogDescription>
+          </DialogHeader>
+          <SettlementView tripId={tripId} userId={userId} currency={baseCurrency} />
+        </DialogContent>
+      </Dialog>
       <MoneyToolsDialog open={toolsOpen} onOpenChange={setToolsOpen} trip={trip} />
     </section>
   );
@@ -327,6 +381,9 @@ function FinancialHero({
   const showConvertButton = settingsCurrency != null && settingsCurrency !== locationCurrency;
   // Currency the "Trip spending" amount is currently shown in (swappable).
   const displayCurrency = swapped && settingsCurrency ? settingsCurrency : baseCurrency;
+  const displayRemaining = remaining === null ? null : convertBudget(remaining >= 0n ? remaining : -remaining, baseCurrency, displayCurrency);
+  const displayTotalBudget = totalBudget === null ? null : convertBudget(totalBudget, baseCurrency, displayCurrency);
+  const budgetStatus = totalBudget === null ? "No budget set" : tone === "danger" ? "Over budget" : tone === "warn" ? "Near budget limit" : "Under budget";
 
   function beginEdit() {
     setTotalInput(
@@ -385,7 +442,9 @@ function FinancialHero({
       <div className="relative flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
-            <p className="text-sm font-semibold text-muted-foreground">Trip spending</p>
+            <p className="text-sm font-semibold text-muted-foreground">
+              {remaining !== null ? (remaining >= 0n ? "Budget remaining" : "Over budget by") : "Trip spending"}
+            </p>
             {showConvertButton && (
               <button
                 type="button"
@@ -398,19 +457,20 @@ function FinancialHero({
               </button>
             )}
           </div>
-          <p className="mt-1 font-mono text-3xl font-bold tracking-tight tabular-nums sm:text-4xl">
-            {formatAmount(convertBudget(totalSpent, baseCurrency, displayCurrency), displayCurrency)}
-            <span className="ml-2 text-sm font-medium text-muted-foreground">{displayCurrency}</span>
+          <p className="mt-1 font-mono text-4xl font-bold tracking-tight tabular-nums sm:text-5xl">
+            {remaining !== null && displayRemaining !== null
+              ? formatMoney(displayRemaining, displayCurrency)
+              : formatMoney(convertBudget(totalSpent, baseCurrency, displayCurrency), displayCurrency)}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            {totalBudget !== null
-              ? `of ${formatAmount(convertBudget(totalBudget, baseCurrency, displayCurrency), displayCurrency)} budget`
-              : "(no budget set)"}
+            {displayTotalBudget !== null
+              ? `of ${formatMoney(displayTotalBudget, displayCurrency)} total budget`
+              : "Set a budget to track how much remains."}
           </p>
         </div>
         {canEdit && !editing && (
           <Button variant="outline" size="sm" className="border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100" onClick={beginEdit}>
-            <Pencil className="size-4" /> Edit budget
+            <Pencil className="size-4" /> {totalBudget !== null ? "Edit budget" : "Set budget"}
           </Button>
         )}
       </div>
@@ -418,26 +478,43 @@ function FinancialHero({
       <div className="relative mt-5 h-3 w-full overflow-hidden rounded-full bg-muted" aria-hidden>
         <div className={cn("h-full rounded-full transition-all", TONE_BAR[tone])} style={{ width: `${barWidth}%` }} />
       </div>
-      <div className="relative mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
-        <span>{pct !== null ? `${pct}% used` : "No budget set"}</span>
+      <div className="relative mt-1.5 flex flex-col gap-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+        <span className="flex items-center gap-2">
+          {pct !== null ? `${pct}% used` : "No budget set"}
+          <span className={cn("rounded-full px-2.5 py-1 font-semibold", TONE_PILL[tone])}>{budgetStatus}</span>
+        </span>
         {remaining !== null && (
           <span className={cn("font-semibold", TONE_TEXT[tone])}>
             {remaining >= 0n ? "Left: " : "Over: "}
-            {formatMinorUnits(remaining < 0n ? -remaining : remaining, baseCurrency)}
+            {formatMoney(remaining < 0n ? -remaining : remaining, baseCurrency)}
           </span>
         )}
       </div>
 
-      <div className="relative mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className="relative mt-5 flex flex-col gap-3 sm:grid sm:grid-cols-4">
+        <HeroStat
+          label="Spent"
+          value={formatMoney(totalSpent, baseCurrency)}
+          detail="Recorded expenses"
+          className="border-sky-200 bg-sky-50/70 dark:border-sky-900/50 dark:bg-sky-950/20 [html[data-theme=light]_&]:!border-sky-300 [html[data-theme=light]_&]:!bg-sky-100/90"
+        />
+        <HeroStat
+          label="Budget set"
+          value={totalBudget !== null ? formatMoney(totalBudget, baseCurrency) : "—"}
+          detail={totalBudget !== null ? "Total trip budget" : "Not set"}
+          className="border-violet-200 bg-violet-50/70 dark:border-violet-900/50 dark:bg-violet-950/20 [html[data-theme=light]_&]:!border-violet-300 [html[data-theme=light]_&]:!bg-violet-100/90"
+        />
         <HeroStat
           label="Your standing"
-          value={formatMinorUnits(personalStanding < 0n ? -personalStanding : personalStanding, baseCurrency)}
+          value={formatMoney(personalStanding < 0n ? -personalStanding : personalStanding, baseCurrency)}
           detail={standingDetail}
           tone={standingTone}
+          className={standingTone === "ok" ? "border-emerald-200 bg-emerald-50/70 dark:border-emerald-900/50 dark:bg-emerald-950/20 [html[data-theme=light]_&]:!border-emerald-300 [html[data-theme=light]_&]:!bg-emerald-100/90" : standingTone === "danger" ? "border-destructive/30 bg-destructive/5" : "border-border bg-card/60"}
         />
         <HeroStat
           label={dailyTarget !== null ? "Daily target" : "Trip days"}
-          value={dailyTarget !== null ? `${formatMinorUnits(dailyTarget, baseCurrency)}/day` : String(dayCount)}
+          value={dailyTarget !== null ? `${formatMoney(dailyTarget, baseCurrency)}/day` : String(dayCount)}
+          className="border-amber-200 bg-amber-50/70 dark:border-amber-900/50 dark:bg-amber-950/20 [html[data-theme=light]_&]:!border-amber-300 [html[data-theme=light]_&]:!bg-amber-100/90"
         />
       </div>
 
@@ -474,8 +551,8 @@ function FinancialHero({
             </p>
             {recommendedDaily !== null ? (
               <p className="text-xs text-primary">
-                Recommended: <span className="font-semibold">{formatMinorUnits(recommendedDaily, baseCurrency)}</span>/day
-                {" "}— keeps ~10% of your {formatMinorUnits(totalBudget!, baseCurrency)} budget as a buffer over {dayCount} day{dayCount === 1 ? "" : "s"}.
+                Recommended: <span className="font-semibold">{formatMoney(recommendedDaily, baseCurrency)}</span>/day
+                {" "}— keeps ~10% of your {formatMoney(totalBudget!, baseCurrency)} budget as a buffer over {dayCount} day{dayCount === 1 ? "" : "s"}.
               </p>
             ) : (
               <p className="text-xs text-muted-foreground">
@@ -528,7 +605,7 @@ function BudgetConversion({ input, from, to }: { input: string; from: string; to
   if (converted === null) return null;
   return (
     <p className="text-xs text-muted-foreground">
-      ≈ {formatAmount(converted, to)} in {to}
+      ≈ {formatAmount(converted, to)} {to.toUpperCase()}
     </p>
   );
 }
@@ -538,14 +615,16 @@ function HeroStat({
   value,
   detail,
   tone,
+  className,
 }: {
   label: string;
   value: string;
   detail?: string;
   tone?: "ok" | "danger" | "muted";
+  className?: string;
 }) {
   return (
-    <div className="rounded-2xl border bg-card/60 p-3">
+    <div className={cn("rounded-2xl border bg-card/60 p-3", className)}>
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-1 font-mono text-lg font-bold tabular-nums">{value}</p>
       {detail && (
@@ -558,6 +637,17 @@ function HeroStat({
           {detail}
         </p>
       )}
+    </div>
+  );
+}
+
+function SectionHeading({ id, title, description }: { id: string; title: string; description: string }) {
+  return (
+    <div>
+      <Heading level={2} id={id} className="text-xl font-bold">
+        {title}
+      </Heading>
+      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
     </div>
   );
 }
@@ -732,9 +822,9 @@ function CategoryEnvelope({
           <div>
             <p className="text-sm font-semibold">{SPENDING_CATEGORY_LABELS[category]}</p>
             <p className="font-mono text-sm font-bold tabular-nums">
-              {formatMinorUnits(spent, baseCurrency)}
+              {formatMoney(spent, baseCurrency)}
               <span className="font-normal text-muted-foreground">
-                {allocated !== null ? ` / ${formatMinorUnits(allocated, baseCurrency)}` : ""}
+                {allocated !== null ? ` / ${formatMoney(allocated, baseCurrency)}` : ""}
               </span>
             </p>
           </div>
@@ -804,9 +894,9 @@ function buildPacingAlerts(
   const usage = getBudgetUsage(totalSpent, totalBudget);
 
   if (remaining < 0n) {
-    alerts.push({ tone: "danger", message: `You're over budget by ${formatMinorUnits(-remaining, baseCurrency)}.` });
+    alerts.push({ tone: "danger", message: `You're over budget by ${formatMoney(-remaining, baseCurrency)}.` });
   } else if (usage !== null && usage >= 0.8) {
-    alerts.push({ tone: "warn", message: `Close to budget — ${formatMinorUnits(remaining, baseCurrency)} left.` });
+    alerts.push({ tone: "warn", message: `Close to budget — ${formatMoney(remaining, baseCurrency)} left.` });
   }
 
   if (dailyTarget !== null && startDate && endDate) {
@@ -819,7 +909,7 @@ function buildPacingAlerts(
       if (diff > 0n) {
         alerts.push({
           tone: "warn",
-          message: `Over daily pace by ${formatMinorUnits(diff, baseCurrency)} — expected ${formatMinorUnits(expected, baseCurrency)} by day ${elapsedDays}.`,
+          message: `Over daily pace by ${formatMoney(diff, baseCurrency)} — expected ${formatMoney(expected, baseCurrency)} by day ${elapsedDays}.`,
         });
       }
     }

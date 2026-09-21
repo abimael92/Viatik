@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Expense, TripMember } from "@/features/domain/entities";
@@ -11,6 +11,7 @@ if (typeof window !== "undefined") {
 vi.mock("@/features/expenses/data/dexie-expense-repository", () => ({
   expenseRepository: {
     watchByTrip: vi.fn((_tripId: string, cb: (expenses: Expense[]) => void) => {
+      expensesCallback = cb;
       cb([]);
       return () => {};
     }),
@@ -28,17 +29,64 @@ vi.mock("@/features/collaboration/data/dexie-collaboration-repository", () => ({
       cb([]);
       return () => {};
     }),
+    listProfiles: vi.fn().mockResolvedValue([]),
   },
 }));
 
+vi.mock("@/features/profile/lib/use-local-profile", () => ({
+  useLocalProfile: vi.fn(() => null),
+}));
+vi.mock("@/features/contacts/data/dexie-contact-repository", () => ({
+  contactRepository: { create: vi.fn().mockResolvedValue({ id: "contact-1", fullName: "Mom", travelerType: "adult" }) },
+  tripTravelerRepository: {
+    watch: vi.fn((_tripId: string, cb: (travelers: unknown[]) => void) => { cb([]); return () => {}; }),
+    attach: vi.fn().mockResolvedValue({ id: "00000000-0000-4000-8000-000000000099", tripId: "trip-1", contactId: "contact-1", displayName: "Mom", travelerType: "adult", createdBy: "user-1", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", deletedAt: null }),
+  },
+}));
+
+let expensesCallback: ((expenses: Expense[]) => void) | null = null;
+
 beforeEach(() => {
   vi.clearAllMocks();
+  expensesCallback = null;
   if (typeof crypto !== "undefined" && !crypto.randomUUID) {
     (crypto as { randomUUID?: () => string }).randomUUID = () => "test-uuid";
   }
 });
 
 afterEach(() => cleanup());
+
+describe("ExpensePanel", () => {
+  it("expands an expense to show split, currency, and local save details", async () => {
+    const expense: Expense = {
+      id: "expense-1",
+      tripId: "trip-1",
+      activityId: null,
+      description: "Dinner",
+      amountMinor: 4250n,
+      currency: "USD",
+      exchangeRateToBase: null,
+      paidBy: "user-1",
+      splitType: "equal",
+      category: "food",
+      subcategory: "restaurants",
+      date: "2026-06-02",
+      createdBy: "user-1",
+      createdAt: "2026-06-02T12:00:00.000Z",
+      updatedAt: "2026-06-02T12:00:00.000Z",
+      deletedAt: null,
+    };
+    render(<ExpensePanel tripId="trip-1" userId="user-1" currency="USD" canEdit />);
+    act(() => expensesCallback?.([expense]));
+
+    fireEvent.click((await screen.findAllByRole("button", { name: /Dinner/ }))[0]);
+
+    expect(screen.getAllByText(/Equal split/).length).toBeGreaterThan(0);
+    expect(screen.getByText("Original amount")).toBeTruthy();
+    expect(screen.getByText("Saved locally")).toBeTruthy();
+    expect(screen.getAllByText("$42.50 USD").length).toBeGreaterThan(0);
+  });
+});
 
 describe("ExpenseDialog", () => {
   it("defaults splitting to off and can be turned on", async () => {
@@ -69,10 +117,13 @@ describe("ExpenseDialog", () => {
 
     const quickAdd = screen.getByPlaceholderText(/Add a person, e.g\. Mom/);
     fireEvent.change(quickAdd, { target: { value: "Mom" } });
-    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Add" }));
+      await Promise.resolve();
+    });
 
-    // "Mom" appears both in the paid-by selector and as a participant chip.
-    expect(screen.getAllByText("Mom").length).toBeGreaterThanOrEqual(1);
+    // The manual traveler is saved to the trip before appearing in the split.
+    expect((await screen.findAllByText("Mom")).length).toBeGreaterThan(0);
     // With only the current user, the "no other travelers" hint appears.
     expect(screen.getByText(/No other travelers yet/)).toBeTruthy();
   });
