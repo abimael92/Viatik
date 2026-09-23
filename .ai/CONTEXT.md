@@ -43,7 +43,8 @@ repository/application boundaries and an optimistic outbox sync engine.
 activities, ai (Scout — itinerary ideas, works offline), collaboration, community/feed,
 contacts, emergency, expenses (multi-currency splits), finance (budgets), health
 (passport/visa tracking), journal, maps, media, packing, polls, profile, sharing,
-transit, trips, vault (offline documents), weather (per-day forecasts + conflict warnings).
+transit, trips (activity sub-task checklists on itinerary + home timeline toggles),
+vault (offline documents), weather (per-day forecasts + conflict warnings).
 
 ## Brand
 

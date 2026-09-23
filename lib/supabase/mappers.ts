@@ -33,6 +33,7 @@ import type { VaultEntry, VaultKeyset } from "@/features/vault/domain/vault-type
 import type { TripWeatherForecast } from "@/features/weather/domain/weather-types";
 import type { TripShareLink } from "@/features/sharing/domain/share-types";
 import { normalizeActivityCategory } from "@/features/activities/domain/activity-category";
+import { normalizeActivityChecklist } from "@/features/activities/domain/activity-checklist";
 
 function minorUnitsToRemote(value: MinorUnits, field: string): string {
   if (value < 0n || value > MAX_MINOR_UNITS) throw new Error(`Invalid remote ${field}`);
@@ -274,6 +275,7 @@ export function activityToRow(activity: Activity): Record<string, unknown> {
     voting_ends_at: activity.votingEndsAt ?? null,
     poll_options: activity.pollOptions ?? [],
     poll_votes: activity.pollVotes ?? [],
+    checklist: normalizeActivityChecklist(activity.checklist),
     position: activity.position,
     estimated_cost:
       activity.estimatedCostMinor == null
@@ -342,6 +344,7 @@ export function rowToActivity(row: Record<string, unknown>): Activity {
       ? (row.poll_options as Activity["pollOptions"])
       : [],
     pollVotes: Array.isArray(row.poll_votes) ? (row.poll_votes as Activity["pollVotes"]) : [],
+    checklist: normalizeActivityChecklist(row.checklist),
     position: typeof row.position === "number" ? row.position : Number(row.position),
     estimatedCostMinor:
       row.estimated_cost == null
