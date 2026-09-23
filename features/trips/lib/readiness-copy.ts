@@ -12,7 +12,7 @@ const READINESS_COPY: Record<string, ReadinessCopy> = {
   crew: { label: "common.crewConfirmed", action: "common.addTravelers", hint: "common.readinessCrewHint" },
   budget: { label: "common.budgetPlanned", action: "common.setBudget", hint: "common.readinessBudgetHint" },
   docs: { label: "common.docsInVault", action: "common.addDocuments", hint: "common.readinessDocsHint" },
-  passport: { label: "common.passport", action: "common.addPassport", hint: "common.readinessPassportHint" },
+  packing: { label: "common.packingList", action: "common.startPacking", hint: "common.readinessPackingHint" },
 };
 
 export function readinessCopy(key: string): ReadinessCopy | null {

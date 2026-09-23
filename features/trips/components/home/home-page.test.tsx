@@ -11,6 +11,7 @@ const state = vi.hoisted(() => ({
   members: null as ((members: TripMember[]) => void) | null,
   vault: null as ((entries: VaultEntry[]) => void) | null,
   contacts: null as ((contacts: Contact[]) => void) | null,
+  packing: null as ((items: unknown[]) => void) | null,
 }));
 
 vi.mock("next/link", () => ({
@@ -21,6 +22,12 @@ vi.mock("next/link", () => ({
 
 vi.mock("@/features/trips/data/dexie-trip-repository", () => ({
   tripRepository: { watchAll: vi.fn((cb) => { state.trips = cb; return () => {}; }) },
+}));
+vi.mock("@/features/steps/data/dexie-step-repository", () => ({
+  stepRepository: {
+    watchByTrip: vi.fn((_userId, _tripId, cb) => { cb([]); return () => {}; }),
+    increment: vi.fn(),
+  },
 }));
 vi.mock("@/features/activities/data/dexie-activity-repository", () => ({
   activityRepository: { watchByTrip: vi.fn((_tripId, cb) => { state.activities = cb; return () => {}; }) },
@@ -33,6 +40,9 @@ vi.mock("@/features/contacts/data/dexie-contact-repository", () => ({
 }));
 vi.mock("@/features/vault/data/dexie-vault-repository", () => ({
   vaultRepository: { watchEntries: vi.fn((_tripId, _ownerId, cb) => { state.vault = cb; return () => {}; }) },
+}));
+vi.mock("@/features/packing/data/dexie-packing-repository", () => ({
+  packingRepository: { watchByTrip: vi.fn((_tripId, cb) => { state.packing = cb; return () => {}; }) },
 }));
 vi.mock("@/features/profile/data/dexie-profile-repository", () => ({
   profileRepository: {
@@ -116,6 +126,7 @@ afterEach(() => {
   state.members = null;
   state.vault = null;
   state.contacts = null;
+  state.packing = null;
 });
 
 describe("HomePage", () => {
@@ -137,12 +148,12 @@ describe("HomePage", () => {
     const today = new Date().toISOString().slice(0, 10);
     render(<HomePage userId="owner-1" />);
     // Setting trips first registers the activities/members/vault subscriptions.
-    act(() => state.trips?.([makeTrip({ startDate: today, endDate: today, status: "active" })]));
+    act(() => state.trips?.([makeTrip({ startDate: today, endDate: today, startedAt: `${today}T10:00:00.000Z`, status: "active" })]));
     act(() => {
       state.activities?.([makeActivity({ dayDate: today })]);
       state.members?.([{ id: "m1", tripId: "trip-1", userId: "owner-1", role: "owner", invitedBy: null, joinedAt: "2026-01-01T00:00:00Z", roleChangedAt: null, roleChangedBy: null, removedAt: null, removedBy: null, version: 1, createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }]);
       state.vault?.([]);
-      state.contacts?.([{ id: "c1", ownerId: "owner-1", fullName: "Alice", passportExpiresOn: "2030-05-01" } as Contact]);
+      state.packing?.([]);
     });
 
     // Hero destination + active mode (active trip, today) with an End-trip action
@@ -150,9 +161,9 @@ describe("HomePage", () => {
     expect(screen.getByText("Active · Day 1 of 1")).toBeTruthy();
     expect(screen.getByRole("button", { name: /End trip/ })).toBeTruthy();
 
-    // Readiness: dates + itinerary + crew + passport complete, budget + docs missing => 4/6
-    expect(screen.getByText("4 of 6 essentials covered")).toBeTruthy();
-    expect(screen.getByText("67%")).toBeTruthy();
+    // Readiness: dates + itinerary + crew complete, budget + docs + packing missing => 3/6
+    expect(screen.getByText("3 of 6 essentials covered")).toBeTruthy();
+    expect(screen.getByText("50%")).toBeTruthy();
 
     // Active trip => today at a glance
     expect(screen.getByRole("heading", { name: "Today at a glance" })).toBeTruthy();
@@ -233,5 +244,7 @@ describe("HomePage", () => {
     fireEvent.click(screen.getByRole("button", { name: "View checklist" }));
     const budgetLink = screen.getByRole("link", { name: /Budget planned/ });
     expect(budgetLink.getAttribute("href")).toBe("/trips/trip-1?tab=finance");
+    const packingLink = screen.getByRole("link", { name: /Packing list/ });
+    expect(packingLink.getAttribute("href")).toBe("/trips/trip-1?tab=packing");
   });
 });

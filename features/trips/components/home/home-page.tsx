@@ -23,6 +23,7 @@ import { HomeSkeleton } from "@/features/trips/components/home/home-skeleton";
 import { TripCountdownHero } from "@/features/trips/components/home/trip-countdown-hero";
 import { LiveTimelineHud } from "@/features/trips/components/home/live-timeline-hud";
 import { ActiveTripActions } from "@/features/trips/components/home/active-trip-actions";
+import { TripStepsWidget } from "@/features/steps/components/trip-steps-widget";
 import { QuickActionHub } from "@/features/trips/components/home/quick-action-hub";
 import { SuggestionsDrawer } from "@/features/community/components/suggestions-drawer";
 import { MoneyToolsDialog } from "@/features/finance/components/money-dashboard";
@@ -121,6 +122,16 @@ export function HomePage({ userId }: { userId: string }) {
                 <LiveTimelineHud trip={primaryTrip} items={timeline} active userId={userId} />
 
                 <ActiveTripActions activeTrip={activeTrip} />
+
+                {primaryTrip.startedAt && primaryTrip.endDate && (
+                  <TripStepsWidget
+                    tripId={primaryTrip.id}
+                    userId={userId}
+                    startedAt={primaryTrip.startedAt}
+                    endDate={primaryTrip.endDate}
+                    compact
+                  />
+                )}
 
                 <section className="rounded-2xl border bg-card p-5 sm:p-6">
                   <SharedTripFeed

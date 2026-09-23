@@ -125,21 +125,21 @@ export function LiveTimelineHud({ trip, items, active, userId }: LiveTimelineHud
             <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent" />
             <div className="absolute bottom-0 left-0 right-0 p-3 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
               <p className="text-lg font-bold text-white drop-shadow">{label}</p>
-              <CurrentTimeWeather timeZone={timeZone} weather={weather} loading={weatherLoading} tone="dark" />
+              <CurrentWeather timeZone={timeZone} weather={weather} loading={weatherLoading} tone="dark" />
             </div>
           </div>
         ) : gradient ? (
           <div className={cn("-m-5 mb-4 flex h-24 items-end rounded-t-2xl px-4 pb-2", gradient.className)}>
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 w-full">
               <p className="text-lg font-bold text-white drop-shadow">{label}</p>
-              <CurrentTimeWeather timeZone={timeZone} weather={weather} loading={weatherLoading} tone="dark" />
+              <CurrentWeather timeZone={timeZone} weather={weather} loading={weatherLoading} tone="dark" />
             </div>
           </div>
         ) : (
           <div className="-m-5 mb-4 flex h-20 items-end rounded-t-2xl bg-muted px-4 pb-2">
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 w-full">
               <p className="text-lg font-bold text-foreground">{label}</p>
-              <CurrentTimeWeather timeZone={timeZone} weather={weather} loading={weatherLoading} tone="light" />
+              <CurrentWeather timeZone={timeZone} weather={weather} loading={weatherLoading} tone="light" />
             </div>
           </div>
         )}
@@ -252,17 +252,12 @@ function currentWeather(forecast: DailyForecast, timeZone: string | null, now: D
   };
 }
 
-function CurrentTimeWeather({ timeZone, weather, loading, tone = "light" }: { timeZone: string | null; weather: TripWeatherForecast | null; loading: boolean; tone?: "light" | "dark" }) {
-  const now = new Date();
-  const localTime = timeZone
-    ? now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false, timeZone })
-    : now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
-
+function CurrentWeather({ timeZone, weather, loading, tone = "light" }: { timeZone: string | null; weather: TripWeatherForecast | null; loading: boolean; tone?: "light" | "dark" }) {
   if (loading) {
     return <span className={cn("text-sm animate-pulse", tone === "dark" ? "text-white/80" : "text-foreground/70")}>Loading weather…</span>;
   }
 
-  const current = weather ? currentWeather(weather.forecast, timeZone, now) : null;
+  const current = weather ? currentWeather(weather.forecast, timeZone, new Date()) : null;
   const condition = weatherCodeSummary(current?.weatherCode ?? 0);
   const IconComponent = condition.icon === "rain" ? Droplets : condition.icon === "sun" ? Sun : Cloud;
   const iconColor = condition.icon === "rain"
@@ -270,24 +265,24 @@ function CurrentTimeWeather({ timeZone, weather, loading, tone = "light" }: { ti
     : condition.icon === "sun"
       ? tone === "dark" ? "text-yellow-300" : "text-amber-600"
       : tone === "dark" ? "text-slate-200" : "text-slate-600";
+  const temperature = current?.temperature != null ? `${Math.round(current.temperature)}°C` : "Weather unavailable";
 
   return (
-    <div className={cn("flex items-center gap-3 rounded-full border px-3 py-2 shadow-sm backdrop-blur-md", tone === "dark" ? "border-white/25 bg-black/35" : "border-border bg-background/95")}>
-      <span className={cn("font-mono text-lg font-bold tabular-nums", tone === "dark" ? "text-white" : "text-foreground")}>{localTime}</span>
-      <span className="flex items-center gap-2">
-        <IconComponent className={cn("size-7 stroke-[2.5]", iconColor)} aria-hidden />
-        <span className={cn("flex items-baseline gap-1 text-lg font-bold", tone === "dark" ? "text-white" : "text-foreground")}>
-          {current?.temperature != null ? (
-            <><span>{Math.round(current.temperature)}°C</span><span className={cn("text-xs font-semibold", tone === "dark" ? "text-white/70" : "text-muted-foreground")}>/ {Math.round((current.temperature * 9) / 5 + 32)}°F</span></>
-          ) : "—"}
-        </span>
-        {current && current.precipitation > 0 && (
-          <span className={cn("flex items-center gap-0.5 text-xs font-semibold", tone === "dark" ? "text-sky-200" : "text-sky-700")}>
-            <Droplets className="size-3" aria-hidden />
-            {Math.round(current.precipitation)}%
-          </span>
-        )}
+    <div
+      className={cn("flex items-center gap-2 rounded-full border px-3 py-2 shadow-sm backdrop-blur-md", tone === "dark" ? "border-white/25 bg-black/35" : "border-border bg-background/95")}
+      aria-label={`${condition.label}, ${temperature}`}
+    >
+      <IconComponent className={cn("size-7 shrink-0 stroke-[2.5]", iconColor)} aria-hidden />
+      <span className={cn("flex flex-col leading-tight", tone === "dark" ? "text-white" : "text-foreground")}>
+        <span className="text-lg font-bold tabular-nums">{temperature}</span>
+        <span className={cn("text-xs font-semibold", tone === "dark" ? "text-white/75" : "text-muted-foreground")}>{condition.label}</span>
       </span>
+      {current && current.precipitation > 0 && (
+        <span className={cn("flex items-center gap-0.5 text-xs font-semibold", tone === "dark" ? "text-sky-200" : "text-sky-700")}>
+          <Droplets className="size-3" aria-hidden />
+          {Math.round(current.precipitation)}%
+        </span>
+      )}
     </div>
   );
 }
@@ -487,7 +482,7 @@ function ActivityDetailModal({
             <p className="text-sm text-muted-foreground">{activity.dayDate}</p>
             <p className="font-mono text-lg font-semibold">{activity.formattedTime ?? "All day"}</p>
           </div>
-          <CurrentTimeWeather timeZone={timeZone} weather={weather} loading={false} />
+          <CurrentWeather timeZone={timeZone} weather={weather} loading={false} />
         </div>
 
         <div className="space-y-4">
