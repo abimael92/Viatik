@@ -1,14 +1,16 @@
 "use client";
 
-import { Check, Plus, RefreshCw, Trash2, Luggage } from "lucide-react";
+import { Check, ChevronDown, Luggage, Minus, Plus, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Heading } from "@/components/ui/heading";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Activity, Trip } from "@/features/domain/entities";
 import { packingRepository } from "@/features/packing/data/dexie-packing-repository";
+import { tripRepository } from "@/features/trips/data/dexie-trip-repository";
 import {
   PACKING_CATEGORIES,
   PACKING_CATEGORY_LABELS,
@@ -24,10 +26,14 @@ import { cn } from "@/lib/utils";
  * duration, climate, and scheduled activities, then lets each traveler tick
  * items off (offline) and add their own. Fully local-first via Dexie.
  */
-export function PackingListView({ tripId, trip, activities }: { tripId: string; trip: Trip; activities: Activity[] }) {
+export function PackingListView({ tripId, trip, activities, canEdit = true }: { tripId: string; trip: Trip; activities: Activity[]; canEdit?: boolean }) {
   const { t } = useI18n();
   const [items, setItems] = useState<PackingItem[]>([]);
   const [adding, setAdding] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<PackingCategory>>(new Set());
   const [newName, setNewName] = useState("");
   const [newCategory, setNewCategory] = useState<PackingCategory>("gear");
 
@@ -36,6 +42,7 @@ export function PackingListView({ tripId, trip, activities }: { tripId: string; 
 
   const packedCount = items.filter((item) => item.isPacked).length;
   const totalCount = items.length;
+  const packedPercent = totalCount ? Math.round((packedCount / totalCount) * 100) : 0;
 
   // Re-seed suggestions when the trip context changes, but never clobber the
   // user's custom items or their packed state (the repository reconciles that).
@@ -69,6 +76,33 @@ export function PackingListView({ tripId, trip, activities }: { tripId: string; 
     await packingRepository.remove(id);
   }, []);
 
+  const handleQuantity = useCallback(async (item: PackingItem, delta: number) => {
+    await packingRepository.updateQuantity(item.id, Math.min(99, Math.max(1, item.quantity + delta)));
+  }, []);
+
+  const handleCategoryPack = useCallback(async (category: PackingCategory, categoryItems: PackingItem[], isPacked: boolean) => {
+    await packingRepository.setPacked(categoryItems.map((item) => item.id), isPacked);
+    if (category === "toiletries") await tripRepository.update(tripId, { personalCareConfirmed: isPacked });
+  }, [tripId]);
+
+  const setPackingComplete = useCallback(async (complete: boolean) => {
+    setActionError(null);
+    try {
+      await tripRepository.update(tripId, { packingConfirmed: complete });
+    } catch (cause) {
+      setActionError(cause instanceof Error ? cause.message : "Unable to update packing status.");
+    }
+  }, [tripId]);
+
+  const toggleCategory = useCallback((category: PackingCategory) => {
+    setCollapsedCategories((current) => {
+      const next = new Set(current);
+      if (next.has(category)) next.delete(category);
+      else next.add(category);
+      return next;
+    });
+  }, []);
+
   const handleAdd = useCallback(async () => {
     const name = newName.trim();
     if (!name) return;
@@ -81,15 +115,42 @@ export function PackingListView({ tripId, trip, activities }: { tripId: string; 
     }
   }, [newName, newCategory, tripId]);
 
+  const buildDrafts = useCallback(
+    () =>
+      generatePackingDrafts({
+        durationDays: tripDurationDays(trip.startDate, trip.endDate),
+        startDate: trip.startDate,
+        latitude: trip.latitude,
+        activities,
+      }),
+    [activities, trip.endDate, trip.latitude, trip.startDate]
+  );
+
   const regenerate = useCallback(async () => {
-    const drafts = generatePackingDrafts({
-      durationDays: tripDurationDays(trip.startDate, trip.endDate),
-      startDate: trip.startDate,
-      latitude: trip.latitude,
-      activities,
-    });
-    await packingRepository.applySuggested(tripId, drafts);
-  }, [trip, activities, tripId]);
+    setRefreshing(true);
+    setActionError(null);
+    try {
+      await packingRepository.applySuggested(tripId, buildDrafts());
+    } catch (cause) {
+      setActionError(cause instanceof Error ? cause.message : "Unable to update the packing list.");
+    } finally {
+      setRefreshing(false);
+    }
+  }, [buildDrafts, tripId]);
+
+  const resetList = useCallback(async () => {
+    setRefreshing(true);
+    setActionError(null);
+    try {
+      await packingRepository.resetToSuggested(tripId, buildDrafts());
+      await tripRepository.update(tripId, { packingConfirmed: false, personalCareConfirmed: false });
+      setResetOpen(false);
+    } catch (cause) {
+      setActionError(cause instanceof Error ? cause.message : "Unable to reset the packing list.");
+    } finally {
+      setRefreshing(false);
+    }
+  }, [buildDrafts, tripId]);
 
   const grouped = useMemo(() => {
     const map = new Map<PackingCategory, PackingItem[]>();
@@ -114,10 +175,33 @@ export function PackingListView({ tripId, trip, activities }: { tripId: string; 
             </p>
           </div>
         </div>
-        <Button type="button" variant="outline" onClick={() => void regenerate()}>
-          <RefreshCw className="size-4" /> {t("common.regenerate")}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="primary"
+            className="bg-linear-to-r from-viatik-blue via-viatik-magenta to-viatik-red text-white shadow-sm hover:opacity-90"
+            onClick={() => void regenerate()}
+            disabled={refreshing}
+          >
+            <RefreshCw className={cn("size-4", refreshing && "animate-spin")} /> {t("common.refreshSuggestions")}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="border-destructive/30 text-destructive hover:bg-destructive/10"
+            onClick={() => setResetOpen(true)}
+            disabled={refreshing || totalCount === 0}
+          >
+            <RotateCcw className="size-4" /> {t("common.resetPackingList")}
+          </Button>
+        </div>
       </div>
+
+      {actionError && (
+        <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+          {actionError}
+        </p>
+      )}
 
       {totalCount > 0 && (
         <div
@@ -126,15 +210,15 @@ export function PackingListView({ tripId, trip, activities }: { tripId: string; 
           aria-label={t("common.packingProgress", { packed: packedCount, total: totalCount })}
         >
           <div className="flex items-center justify-between text-sm">
-            <span className="font-semibold">Progress</span>
+            <span className="font-semibold">{t("common.packingProgressLabel")}</span>
             <span className="text-muted-foreground tabular-nums">
-              {packedCount}/{totalCount} {t("common.packed")}
+              {packedCount}/{totalCount} {t("common.packed")} · {packedPercent}%
             </span>
           </div>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
             <div
               className="h-full rounded-full bg-primary transition-all"
-              style={{ width: `${totalCount ? Math.round((packedCount / totalCount) * 100) : 0}%` }}
+              style={{ width: `${packedPercent}%` }}
             />
           </div>
         </div>
@@ -156,17 +240,59 @@ export function PackingListView({ tripId, trip, activities }: { tripId: string; 
             const categoryItems = grouped.get(category) ?? [];
             if (categoryItems.length === 0) return null;
             const categoryPacked = categoryItems.filter((item) => item.isPacked).length;
+            const collapsed = collapsedCategories.has(category);
+            const categoryContentId = `packing-category-${category}`;
             return (
               <div key={category} className="rounded-2xl border bg-card p-4">
-                <div className="flex items-center justify-between gap-2">
-                  <Heading level={3} className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                    {PACKING_CATEGORY_LABELS[category]}
-                  </Heading>
-                  <span className="text-xs text-muted-foreground tabular-nums">
-                    {categoryPacked}/{categoryItems.length}
-                  </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="flex min-w-0 flex-1 items-center gap-3 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    aria-expanded={!collapsed}
+                    aria-controls={categoryContentId}
+                    onClick={() => toggleCategory(category)}
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                        {PACKING_CATEGORY_LABELS[category]}
+                      </span>
+                      <span className="mt-1 block h-1.5 w-28 overflow-hidden rounded-full bg-muted" aria-hidden>
+                        <span
+                          className="block h-full rounded-full bg-primary transition-[width]"
+                          style={{ width: `${Math.round((categoryPacked / categoryItems.length) * 100)}%` }}
+                        />
+                      </span>
+                    </span>
+                  </button>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {categoryPacked}/{categoryItems.length}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-2 text-xs"
+                      onClick={() => void handleCategoryPack(category, categoryItems, categoryPacked !== categoryItems.length)}
+                    >
+                      {categoryPacked === categoryItems.length ? t("common.unpackAll") : t("common.packAll")}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="size-8"
+                      aria-expanded={!collapsed}
+                      aria-controls={categoryContentId}
+                      aria-label={t(collapsed ? "common.expandCategory" : "common.collapseCategory", { name: PACKING_CATEGORY_LABELS[category] })}
+                      onClick={() => toggleCategory(category)}
+                    >
+                      <ChevronDown className={cn("size-4 transition-transform", !collapsed && "rotate-180")} aria-hidden />
+                    </Button>
+                  </div>
                 </div>
-                <ul className="mt-3 space-y-1">
+                {!collapsed && (
+                  <ul id={categoryContentId} className="mt-3 space-y-1">
                   {categoryItems.map((item) => (
                     <li key={item.id}>
                       <div className="group flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-muted/60">
@@ -192,11 +318,13 @@ export function PackingListView({ tripId, trip, activities }: { tripId: string; 
                               )}
                             >
                               {item.name}
-                              {item.quantity > 1 && (
-                                <span className="ml-1.5 text-xs text-muted-foreground">×{item.quantity}</span>
+                              {item.isSuggested && item.suggestedReason === "always" && (
+                                <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
+                                  {t("common.suggested")}
+                                </span>
                               )}
                             </span>
-                            {item.suggestedReason && (
+                            {item.suggestedReason && item.suggestedReason !== "recommended" && (
                               <span className="block text-[11px] text-muted-foreground/70">
                                 {item.suggestedReason === "always"
                                   ? t("common.essentials")
@@ -211,6 +339,27 @@ export function PackingListView({ tripId, trip, activities }: { tripId: string; 
                             )}
                           </span>
                         </label>
+                        <div className="flex shrink-0 items-center rounded-md border bg-background/60">
+                          <button
+                            type="button"
+                            className="grid size-8 place-items-center text-muted-foreground hover:text-foreground disabled:opacity-40"
+                            onClick={() => void handleQuantity(item, -1)}
+                            disabled={item.quantity <= 1}
+                            aria-label={t("common.decreaseQuantity", { name: item.name })}
+                          >
+                            <Minus className="size-3.5" aria-hidden />
+                          </button>
+                          <span className="min-w-6 text-center text-xs tabular-nums">{item.quantity}</span>
+                          <button
+                            type="button"
+                            className="grid size-8 place-items-center text-muted-foreground hover:text-foreground disabled:opacity-40"
+                            onClick={() => void handleQuantity(item, 1)}
+                            disabled={item.quantity >= 99}
+                            aria-label={t("common.increaseQuantity", { name: item.name })}
+                          >
+                            <Plus className="size-3.5" aria-hidden />
+                          </button>
+                        </div>
                         <button
                           type="button"
                           onClick={() => void handleRemove(item.id)}
@@ -222,7 +371,8 @@ export function PackingListView({ tripId, trip, activities }: { tripId: string; 
                       </div>
                     </li>
                   ))}
-                </ul>
+                  </ul>
+                )}
               </div>
             );
           })}
@@ -268,6 +418,28 @@ export function PackingListView({ tripId, trip, activities }: { tripId: string; 
           </Button>
         </div>
       </div>
+
+      {canEdit && (
+        <div className="flex justify-end border-t pt-5">
+          <Button
+            type="button"
+            variant={trip.packingConfirmed ? "outline" : "primary"}
+            onClick={() => void setPackingComplete(!trip.packingConfirmed)}
+            disabled={refreshing || (!trip.packingConfirmed && totalCount === 0)}
+          >
+            <Check className="size-4" /> {t(trip.packingConfirmed ? "common.reopenPacking" : "common.markPackingComplete")}
+          </Button>
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={resetOpen}
+        onOpenChange={setResetOpen}
+        title={t("common.resetPackingTitle")}
+        description={t("common.resetPackingDescription")}
+        confirmLabel={t("common.resetPackingList")}
+        onConfirm={() => void resetList()}
+      />
     </section>
   );
 }
