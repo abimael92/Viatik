@@ -12,7 +12,7 @@ export interface ReadinessItem {
   hint: string;
   status: ReadinessStatus;
   /** Trip workspace tab to deep-link to when the item is tapped. */
-  targetTab: "settings" | "itinerary" | "travelers" | "finance" | "vault";
+  targetTab: "settings" | "itinerary" | "travelers" | "finance" | "vault" | "packing";
 }
 
 export interface TripReadiness {
@@ -56,11 +56,16 @@ export interface ReadinessInput {
   activityCount: number;
   memberCount: number;
   travelerCount: number;
+  /** Explicit roster acknowledgement; omitted for legacy trips. */
+  crewConfirmed?: boolean;
+  /** Explicit packing acknowledgement; omitted for legacy trips. */
+  packingConfirmed?: boolean;
   vaultEntryCount: number;
-  passportOnFile: boolean;
+  packingItemCount: number;
 }
 
 const DOCS_TAB = "vault" as const;
+const PACKING_TAB = "packing" as const;
 const TRAVELERS_TAB = "travelers" as const;
 
 /**
@@ -70,10 +75,11 @@ const TRAVELERS_TAB = "travelers" as const;
  * about the trip.
  */
 export function computeReadiness(input: ReadinessInput): TripReadiness {
-  const { trip, totalBudgetMinor, activityCount, memberCount, travelerCount, vaultEntryCount, passportOnFile } = input;
+  const { trip, totalBudgetMinor, activityCount, memberCount, travelerCount, crewConfirmed: explicitCrewConfirmed, packingConfirmed: explicitPackingConfirmed, vaultEntryCount, packingItemCount } = input;
 
   const datesSet = Boolean(trip.startDate && trip.endDate);
-  const crewConfirmed = memberCount > 1 || travelerCount > 1;
+  const crewConfirmed = explicitCrewConfirmed ?? trip.crewConfirmed ?? (memberCount > 1 || travelerCount > 1);
+  const packingConfirmed = explicitPackingConfirmed ?? trip.packingConfirmed ?? packingItemCount > 0;
   const budgetSet = totalBudgetMinor !== null && totalBudgetMinor > 0;
 
   const items: ReadinessItem[] = [
@@ -118,12 +124,12 @@ export function computeReadiness(input: ReadinessInput): TripReadiness {
       targetTab: DOCS_TAB,
     },
     {
-      key: "passport",
-      label: "Passport",
-      action: "Add passport",
-      hint: "Add a passport expiry for your travelers.",
-      status: passportOnFile ? "complete" : "missing",
-      targetTab: TRAVELERS_TAB,
+      key: "packing",
+      label: "Packing list",
+      action: "Start packing",
+      hint: "Add items to your packing list before you travel.",
+      status: packingConfirmed ? "complete" : "missing",
+      targetTab: PACKING_TAB,
     },
   ];
 

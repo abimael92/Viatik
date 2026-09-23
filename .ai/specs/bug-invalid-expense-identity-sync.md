@@ -58,12 +58,12 @@ The fix validates data at the local sync boundary and does not broaden authoriza
 - [x] A matching saved traveler is converted to the canonical `traveler:<uuid>` identity and persisted locally.
 - [x] The focused sync test, lint, typecheck, and production build pass.
 - [x] Bug ledger and verification evidence are updated.
-- [ ] Full test suite passes; the current working tree has unrelated failures in existing expense mapper/repository tests.
+- [x] Full test suite passes after restoring UUID-shaped expense fixtures and preserving optional traveler identity fields during mapper round-trips.
 
 ## Resolution
 
 - **Resolved behavior:** Pending expense mutations cannot send unresolved non-UUID payer or share-owner values to Supabase.
 - **Fix commit/PR:** Pending
-- **Verification evidence:** `pnpm exec vitest run lib/sync/sync-engine.test.ts` passed (18 tests); `pnpm lint`, `pnpm typecheck`, `pnpm build`, and `git diff --check` passed. `pnpm test -- lib/sync/sync-engine.test.ts` also executed the repository-wide suite and reported 10 failures in existing working-tree changes outside this fix.
+- **Verification evidence:** Focused finance mapper, transactional-write, and feed tests passed (31 tests); `pnpm test` passed (769 tests across 121 files); `pnpm lint`, `pnpm typecheck`, `pnpm build`, and `git diff --check` passed. Browser/mobile QA remains outstanding.
 - **Bug ledger entry:** `.ai/specs/bug-ledger.md`
 - **Follow-up:** Existing failed outbox entries may need an explicit user retry after correcting the payer.

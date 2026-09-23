@@ -69,6 +69,12 @@ export interface Trip {
   adultCount: number;
   childCount: number;
   baseCurrency: string;
+  /** Device-local readiness acknowledgement for the current crew roster. */
+  crewConfirmed?: boolean;
+  /** Device-local readiness acknowledgement for the current packing list. */
+  packingConfirmed?: boolean;
+  /** Device-local acknowledgement for the personal-care category. */
+  personalCareConfirmed?: boolean;
   createdBy: string;
   updatedBy: string;
   deletedBy: string | null;
