@@ -14,7 +14,7 @@ import { contactRepository, tripTravelerRepository } from "@/features/contacts/d
 import { collaborationRepository } from "@/features/collaboration/data/dexie-collaboration-repository";
 import { mediaRepository } from "@/features/media/data/dexie-media-repository";
 
-const TEST_USER = "test-user";
+const TEST_USER = "00000000-0000-4000-8000-000000000001";
 
 const originalTable = TransactionContext.prototype.table;
 
@@ -83,11 +83,12 @@ describe("transactional writes", () => {
   it("creates a trip and its owner membership atomically", async () => {
     const trip = await tripRepository.create({
       id: "trip-1",
-      ownerId: "user-1",
+      ownerId: TEST_USER,
       name: "Paris",
     });
 
     expect(trip.id).toBe("trip-1");
+    expect(trip.crewConfirmed).toBe(false);
     expect(await db.trips.get("trip-1")).toEqual(trip);
     const members = await db.tripMembers.where("tripId").equals("trip-1").toArray();
     expect(members).toHaveLength(1);
@@ -100,7 +101,7 @@ describe("transactional writes", () => {
   });
 
   it("coalesces an insert followed by updates into one insert", async () => {
-    await tripRepository.create({ id: "trip-coalesced-insert", ownerId: "user-1", name: "Initial" });
+    await tripRepository.create({ id: "trip-coalesced-insert", ownerId: TEST_USER, name: "Initial" });
     await tripRepository.update("trip-coalesced-insert", { name: "Second" });
     await tripRepository.update("trip-coalesced-insert", { name: "Final" });
 
@@ -110,7 +111,7 @@ describe("transactional writes", () => {
   });
 
   it("preserves the original server version across repeated offline updates", async () => {
-    const trip = await tripRepository.create({ id: "trip-coalesced-update", ownerId: "user-1", name: "Initial" });
+    const trip = await tripRepository.create({ id: "trip-coalesced-update", ownerId: TEST_USER, name: "Initial" });
     await db.outboxMutations.clear();
     const serverUpdatedAt = "2026-01-01T00:00:00.000Z";
     await db.trips.put({ ...trip, updatedAt: serverUpdatedAt });
@@ -124,7 +125,7 @@ describe("transactional writes", () => {
   });
 
   it("rebases a concurrently coalesced edit instead of deleting it on acknowledgement", async () => {
-    const trip = await tripRepository.create({ id: "trip-concurrent-update", ownerId: "user-1", name: "Initial" });
+    const trip = await tripRepository.create({ id: "trip-concurrent-update", ownerId: TEST_USER, name: "Initial" });
     await db.outboxMutations.clear();
     await db.trips.put({ ...trip, updatedAt: "2026-01-01T00:00:00.000Z" });
     await tripRepository.update(trip.id, { name: "In flight" });
@@ -144,7 +145,7 @@ describe("transactional writes", () => {
     );
 
     await expect(
-      tripRepository.create({ id: "trip-fail", ownerId: "user-1", name: "Fail" })
+      tripRepository.create({ id: "trip-fail", ownerId: TEST_USER, name: "Fail" })
     ).rejects.toThrow("outbox down");
 
     restore();
@@ -161,12 +162,12 @@ describe("transactional writes", () => {
       description: "Dinner",
       amountMinor: 10000n,
       currency: "USD",
-      paidBy: "user-1",
+      paidBy: TEST_USER,
       splitType: "equal",
-      createdBy: "user-1",
+      createdBy: TEST_USER,
       shares: [
-        { userId: "user-1", shareAmountMinor: 5000n, sharePercentage: 50 },
-        { userId: "user-2", shareAmountMinor: 5000n, sharePercentage: 50 },
+        { userId: TEST_USER, shareAmountMinor: 5000n, sharePercentage: 50 },
+        { userId: "00000000-0000-4000-8000-000000000003", shareAmountMinor: 5000n, sharePercentage: 50 },
       ],
     });
 
@@ -192,10 +193,10 @@ describe("transactional writes", () => {
         description: "Lunch",
         amountMinor: 5000n,
         currency: "USD",
-        paidBy: "user-1",
+        paidBy: TEST_USER,
         splitType: "equal",
-        createdBy: "user-1",
-        shares: [{ userId: "user-1", shareAmountMinor: 5000n, sharePercentage: 100 }],
+        createdBy: TEST_USER,
+        shares: [{ userId: TEST_USER, shareAmountMinor: 5000n, sharePercentage: 100 }],
       })
     ).rejects.toThrow("share outbox failed");
 
@@ -213,24 +214,24 @@ describe("transactional writes", () => {
       description: "Taxi",
       amountMinor: 3000n,
       currency: "USD",
-      paidBy: "user-1",
+      paidBy: TEST_USER,
       splitType: "equal",
-      createdBy: "user-1",
+      createdBy: TEST_USER,
       shares: [
-        { userId: "user-1", shareAmountMinor: 1500n, sharePercentage: 50 },
-        { userId: "user-2", shareAmountMinor: 1500n, sharePercentage: 50 },
+        { userId: TEST_USER, shareAmountMinor: 1500n, sharePercentage: 50 },
+        { userId: "00000000-0000-4000-8000-000000000003", shareAmountMinor: 1500n, sharePercentage: 50 },
       ],
     });
 
     await db.outboxMutations.clear();
 
     await expenseRepository.replaceShares("expense-replace", [
-      { userId: "user-1", shareAmountMinor: 3000n, sharePercentage: 100 },
+      { userId: TEST_USER, shareAmountMinor: 3000n, sharePercentage: 100 },
     ]);
 
     const shares = await db.expenseShares.where("expenseId").equals("expense-replace").toArray();
     expect(shares).toHaveLength(1);
-    expect(shares[0].userId).toBe("user-1");
+    expect(shares[0].userId).toBe(TEST_USER);
 
     const mutations = await db.outboxMutations.toArray();
     expect(mutations.some((m) => m.entityType === "expenseShare" && m.operation === "delete")).toBe(true);
@@ -325,13 +326,13 @@ describe("transactional writes", () => {
       dayDate: "2026-06-01",
       title: "Museum",
       position: 1,
-      createdBy: "user-1",
+      createdBy: TEST_USER,
     });
     expect(await db.activities.get("activity-1")).toEqual(activity);
 
     const contact = await contactRepository.create({
       id: "contact-1",
-      ownerId: "user-1",
+      ownerId: TEST_USER,
       fullName: "Alice",
     });
     expect(await db.contacts.get("contact-1")).toEqual(contact);
@@ -340,7 +341,7 @@ describe("transactional writes", () => {
       id: "traveler-1",
       tripId: "trip-1",
       contact,
-      createdBy: "user-1",
+      createdBy: TEST_USER,
     });
     expect(await db.tripTravelers.get("traveler-1")).toEqual(traveler);
 
@@ -349,7 +350,7 @@ describe("transactional writes", () => {
       tripId: "trip-1",
       email: "bob@example.com",
       role: "viewer",
-      invitedBy: "user-1",
+      invitedBy: TEST_USER,
     });
     expect(await db.tripInvitations.get(invitation.id)).toEqual(invitation);
 
@@ -358,7 +359,7 @@ describe("transactional writes", () => {
       id: "media-1",
       tripId: "trip-1",
       blob,
-      createdBy: "user-1",
+      createdBy: TEST_USER,
     });
     const storedMedia = await db.tripMedia.get("media-1");
     expect(storedMedia).toEqual(expect.objectContaining({ id: media.id, tripId: "trip-1" }));

@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Expense, Trip, TripBudget } from "@/features/domain/entities";
@@ -87,9 +87,10 @@ beforeEach(() => {
 afterEach(() => cleanup());
 
 describe("FinanceView", () => {
-  it("shows the trip total, currency card, and finance dashboard", () => {
+  it("shows the trip total, currency card, and finance dashboard", async () => {
     render(<FinanceView tripId={trip.id} userId="user-1" trip={trip} days={["2026-06-01"]} canEdit />);
 
+    await waitFor(() => expect(screen.getByText(/Trip currency & rate/)).toBeTruthy());
     // Trip total (moved here from the Budget hero).
     expect(screen.getByText(/Trip total/)).toBeTruthy();
     // Currency card (tip tied to the trip location).

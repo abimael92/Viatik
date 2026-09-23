@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Trip, TripBudget } from "@/features/domain/entities";
@@ -101,7 +101,7 @@ describe("BudgetSettings", () => {
   it("shows the no-budget warning and a read-only local→base conversion", async () => {
     render(<BudgetSettings trip={trip} userId="user-1" canEdit />);
 
-    expect(screen.getByText(/Trip budget & spending/)).toBeTruthy();
+    await waitFor(() => expect(screen.getByText(/Trip budget & spending/)).toBeTruthy());
     // No budget set yet → amber warning mirrors trip readiness.
     expect(screen.getByText(/No budget set/)).toBeTruthy();
     // "Paris" → Europe → local EUR; read-only "1 EUR → … USD · local → your currency".
@@ -120,6 +120,7 @@ describe("BudgetSettings", () => {
 
   it("suggests a recommended daily amount from the total budget and trip days", async () => {
     render(<BudgetSettings trip={trip} userId="user-1" canEdit />);
+    await waitFor(() => expect(screen.getByText(/local → your currency/)).toBeTruthy());
     act(() => budgetCallback?.(budget));
 
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
@@ -134,6 +135,7 @@ describe("BudgetSettings", () => {
     mockPreferredCurrency = "USD";
     const mxnTrip = { ...trip, baseCurrency: "MXN" };
     render(<BudgetSettings trip={mxnTrip} userId="user-1" canEdit />);
+    await waitFor(() => expect(screen.getByText(/local → your currency/)).toBeTruthy());
     act(() => budgetCallback?.(budget));
 
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));

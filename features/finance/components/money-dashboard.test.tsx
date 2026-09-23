@@ -205,9 +205,9 @@ describe("MoneyDashboard (Budget tab)", () => {
     expect(screen.getAllByText(/\$0\.00 MXN/).length).toBeGreaterThan(0);
   });
 
-  it("opens the money tools modal from a deep-link intent", () => {
+  it("opens the money tools modal from a deep-link intent", async () => {
     render(<MoneyDashboard tripId={trip.id} userId="user-1" trip={trip} days={["2026-06-01"]} canEdit autoOpenTools />);
-    expect(screen.getByRole("dialog", { name: "Money tools" })).toBeTruthy();
+    await waitFor(() => expect(screen.getByRole("dialog", { name: "Money tools" })).toBeTruthy());
     expect(screen.getByLabelText("Amount")).toBeTruthy();
   });
 
