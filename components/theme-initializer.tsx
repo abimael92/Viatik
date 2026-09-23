@@ -1,0 +1,1 @@
+export const themeInitScript = `(function(){try{var s=localStorage.getItem("viatik-theme");var r=document.documentElement;if(s==="dark"||s==="light"){r.setAttribute("data-theme",s);}else{r.removeAttribute("data-theme");}var l=localStorage.getItem("viatik-language");if(l==="en"||l==="es"){r.lang=l;}}catch(e){}})();`;
