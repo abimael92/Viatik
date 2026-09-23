@@ -30,6 +30,7 @@ describe("activity mappers", () => {
       votingEndsAt: "2026-09-16T18:00:00.000Z",
       pollOptions: [{ id: "option-1", label: "Visit the Prado", proposedBy: "user-1", createdAt: timestamp }],
       pollVotes: [{ userId: "user-1", choice: "approve", optionId: "option-1", createdAt: timestamp, updatedAt: timestamp }],
+      checklist: [{ id: "check-1", title: "Buy tickets", completed: true, archived: false }],
       position: 1,
       estimatedCostMinor: null,
       createdBy: "user-1",
@@ -54,6 +55,7 @@ describe("activity mappers", () => {
       voting_ends_at: "2026-09-16T18:00:00.000Z",
       poll_options: [{ id: "option-1", label: "Visit the Prado", proposedBy: "user-1", createdAt: timestamp }],
       poll_votes: [{ userId: "user-1", choice: "approve", optionId: "option-1", createdAt: timestamp, updatedAt: timestamp }],
+      checklist: [{ id: "check-1", title: "Buy tickets", completed: true, archived: false }],
       updated_by: "user-1",
       version: 1,
     });
@@ -84,6 +86,7 @@ describe("activity mappers", () => {
       voting_ends_at: "2026-09-16T18:00:00.000Z",
       poll_options: [{ id: "option-1", label: "Dinner", proposedBy: "user-2", createdAt: timestamp }],
       poll_votes: [{ userId: "user-1", choice: "decline", optionId: null, createdAt: timestamp, updatedAt: timestamp }],
+      checklist: [{ id: "check-1", title: "Buy tickets", is_completed: true }],
       start_time: null,
       end_time: null,
       position: 1,
@@ -110,9 +113,31 @@ describe("activity mappers", () => {
       votingEndsAt: "2026-09-16T18:00:00.000Z",
       pollOptions: [{ id: "option-1", label: "Dinner", proposedBy: "user-2", createdAt: timestamp }],
       pollVotes: [{ userId: "user-1", choice: "decline", optionId: null, createdAt: timestamp, updatedAt: timestamp }],
+      checklist: [{ id: "check-1", title: "Buy tickets", completed: true, archived: false }],
     });
     expect(activity).not.toHaveProperty("location");
     expect(activity).not.toHaveProperty("latitude");
     expect(activity).not.toHaveProperty("longitude");
+  });
+
+  it("defaults missing checklist payloads to an empty array", () => {
+    const activity = rowToActivity({
+      id: "activity-2",
+      trip_id: "trip-1",
+      day_date: "2026-09-16",
+      title: "Walk",
+      description: null,
+      category: "active",
+      start_time: null,
+      end_time: null,
+      position: 1,
+      estimated_cost: null,
+      created_by: "user-1",
+      created_at: timestamp,
+      updated_at: timestamp,
+      deleted_at: null,
+    });
+
+    expect(activity.checklist).toEqual([]);
   });
 });

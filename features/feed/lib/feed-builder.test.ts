@@ -4,6 +4,7 @@ import type { Activity, Expense } from "@/features/domain/entities";
 import type { TripMedia } from "@/features/domain/entities-media";
 import {
   buildActivityFeed,
+  buildChecklistItemFeed,
   buildExpenseFeed,
   buildMediaFeed,
   isValidFeedDraft,
@@ -98,6 +99,33 @@ describe("buildActivityFeed", () => {
     expect(draft.actorId).toBe("user-a");
     expect(draft.metadata.title).toBe("Hiking");
     expect(draft.metadata.dayDate).toBe("2026-06-01");
+  });
+});
+
+describe("buildChecklistItemFeed", () => {
+  it("builds completed/skipped/restored summaries for Recent activity", () => {
+    expect(
+      buildChecklistItemFeed("completed_checklist_item", baseActivity, "user-a", "Sacar efectivo").summary,
+    ).toBe('completed “Sacar efectivo” on “Hiking”');
+    expect(
+      buildChecklistItemFeed("skipped_checklist_item", baseActivity, "user-a", "Sacar efectivo").summary,
+    ).toBe('skipped “Sacar efectivo” on “Hiking”');
+    expect(
+      buildChecklistItemFeed("restored_checklist_item", baseActivity, "user-a", "Sacar efectivo").summary,
+    ).toBe('restored “Sacar efectivo” on “Hiking”');
+  });
+
+  it("is a valid activity feed draft with checklist metadata", () => {
+    const draft = buildChecklistItemFeed(
+      "completed_checklist_item",
+      { ...baseActivity, title: "compras" },
+      "user-a",
+      "Sacar efectivo",
+    );
+    expect(isValidFeedDraft(draft)).toBe(true);
+    expect(draft.verb).toBe("completed_checklist_item");
+    expect(draft.metadata.checklistItemTitle).toBe("Sacar efectivo");
+    expect(draft.summary).toBe('completed “Sacar efectivo” on “compras”');
   });
 });
 

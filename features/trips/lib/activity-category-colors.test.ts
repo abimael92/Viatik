@@ -16,7 +16,7 @@ describe("activity category presentation", () => {
     expect(isUserAttending({ ...activity, participants: [{ userId: "user-1", status: "attending" }] }, "user-1")).toBe(true);
   });
 
-  it("keeps legacy group activities colored while Home remains strict", () => {
+  it("keeps legacy group activities colored while Home treats empty rosters as open", () => {
     const legacyActivity = { participants: [] } as unknown as Activity;
     expect(isUserAttending(legacyActivity, "user-1")).toBe(true);
     expect(isUserConfirmedAttending(legacyActivity, "user-1")).toBe(false);
