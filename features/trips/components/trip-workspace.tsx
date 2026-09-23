@@ -170,12 +170,15 @@ export function TripWorkspace({
   userId,
   initialTab = "overview",
   initialAction,
+  initialActivityId,
   initialMoneyToolsOpen = false,
 }: {
   tripId: string;
   userId: string;
   initialTab?: string;
   initialAction?: string;
+  /** When `initialAction` is `edit-activity`, open this activity's editor once loaded. */
+  initialActivityId?: string;
   initialMoneyToolsOpen?: boolean;
 }) {
   const router = useRouter();
@@ -194,6 +197,9 @@ export function TripWorkspace({
     initialAction === "add-activity"
       ? { draft: { dayDate: todayKey(), startTime: currentHourStart() } }
       : null
+  );
+  const pendingEditActivityId = useRef(
+    initialAction === "edit-activity" && initialActivityId ? initialActivityId : null,
   );
   const [deleteTripOpen, setDeleteTripOpen] = useState(false);
   const [scoutOpen, setScoutOpen] = useState(false);
@@ -277,6 +283,18 @@ export function TripWorkspace({
   const canEdit = members.some(
     (member) => member.userId === userId && (member.role === "owner" || member.role === "editor")
   );
+
+  // Home timeline "Add sub-tasks" deep-links here; open the editor once the activity is local.
+  useEffect(() => {
+    const activityId = pendingEditActivityId.current;
+    if (!activityId || members.length === 0) return;
+    const activity = activities.find((item) => item.id === activityId);
+    if (!activity) return;
+    pendingEditActivityId.current = null;
+    setItineraryEditMode(canEdit);
+    setActivityDialog({ activity, readOnly: !canEdit });
+  }, [activities, members.length, canEdit]);
+
   const activeActivityId =
     activityDialog && typeof activityDialog === "object" && "activity" in activityDialog
       ? activityDialog.activity.id
@@ -1448,6 +1466,7 @@ function ActivityDialog({
           votingEndsAt: values.votingEndsAt,
           pollOptions: values.pollOptions,
           pollVotes: values.pollVotes,
+          checklist: values.checklist,
         };
         const activityId = activity?.id ?? crypto.randomUUID();
         if (activity) {
@@ -1513,6 +1532,7 @@ function ActivityDialog({
         votingEndsAt: activity.votingEndsAt ?? null,
         pollOptions: activity.pollOptions ?? [],
         pollVotes: activity.pollVotes ?? [],
+        checklist: activity.checklist ?? [],
         position:
           Math.max(
             0,
