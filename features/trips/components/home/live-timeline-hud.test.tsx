@@ -124,9 +124,45 @@ describe("LiveTimelineHud execution UI", () => {
   it("shows weather on the timeline header and countdown/progress on cards", async () => {
     render(<LiveTimelineHud trip={trip} items={items} active userId="user-1" />);
 
-    expect(screen.getByText(/starts in/i)).toBeTruthy();
+    const countdown = screen.getByText(/starts in/i);
+    expect(countdown.className).toContain("border-viatik-magenta");
+    expect(countdown.className).toContain("text-viatik-magenta");
+    expect(countdown.querySelector("svg")).toBeTruthy();
     expect(screen.getByLabelText("1 of 2 tasks completed")).toBeTruthy();
     await waitFor(() => expect(screen.getByLabelText(/°C|Weather unavailable/i)).toBeTruthy());
+  });
+
+  it("gives past and current cards distinct theme-aware visual hierarchy", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 23, 12, 0, 0));
+
+    try {
+      const stateItems: TimelineItem[] = [
+        mixedItems[0],
+        {
+          ...items[0],
+          id: "activity-current",
+          dayDate: "2026-09-23",
+          title: "walking tour",
+          startTime: "2026-09-23T08:00:00",
+          endTime: "2026-09-23T18:00:00",
+        },
+      ];
+
+      render(<LiveTimelineHud trip={trip} items={stateItems} active userId="user-1" />);
+
+      const endedBadge = screen.getByText("Ended");
+      expect(endedBadge.className).toContain("bg-black/5");
+      expect(endedBadge.className).toContain("dark:bg-white/10");
+      expect(screen.getByText("brunch").closest("li")?.className).toContain("opacity-50");
+
+      const activeBadge = screen.getByText("Active");
+      expect(activeBadge.className).toContain("bg-viatik-magenta");
+      expect(activeBadge.className).toContain("text-white");
+      expect(screen.getByText("walking tour").className).toContain("font-bold");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("shows completed stops when the day has no live/upcoming activity", () => {
@@ -224,8 +260,13 @@ describe("LiveTimelineHud execution UI", () => {
     expect(screen.getByText("comida")).toBeTruthy();
     expect(screen.getByText("museo")).toBeTruthy();
     expect(screen.queryByText("bailar")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /show more/i }));
+    const toggle = screen.getByRole("button", { name: /show more/i });
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(toggle.className).toContain("w-fit");
+    expect(toggle.className).toContain("hover:bg-transparent");
+    fireEvent.click(toggle);
     expect(screen.getByText("bailar")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /show less/i }).getAttribute("aria-expanded")).toBe("true");
   });
 
   it("visibleTimelineWindow prefers live stops inside a three-item cap", () => {

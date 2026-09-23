@@ -72,6 +72,8 @@ Activities may contain an ordered checklist of concrete actions travelers need t
 - [x] Every checklist checkbox has an accessible label and keyboard/touch operation.
 - [x] Progress is communicated textually, not only by color.
 - [x] The editor has an accessible empty state and controls meeting existing touch/focus conventions.
+- [x] Timeline cards visually distinguish ended, upcoming, and active activities in light and dark themes without reducing upcoming text opacity.
+- [x] The Show more/less control is centered, unboxed, and exposes its expanded state and controlled timeline region.
 
 ### Verification
 
@@ -95,8 +97,8 @@ Activities may contain an ordered checklist of concrete actions travelers need t
 
 ## Completion Notes
 
-- **Verification commands:** `pnpm exec vitest run` (HUD/checklist/feed/repo), `pnpm typecheck`, `pnpm lint`
-- **Verification results:** Domain normalize/toggle/progress, Dexie `updateChecklist` + checklist feed verbs, feed-builder summaries, ActivityChecklistQuickActions (check/archive/silent uncheck), and LiveTimelineHud execution UI (no weather, Active/countdown, progress, modal checklist) tests pass. Typecheck and lint clean.
+- **Verification commands:** `pnpm exec vitest run` (HUD/checklist/feed/repo), `pnpm exec vitest run features/trips/components/home/live-timeline-hud.test.tsx`, `pnpm typecheck`, `pnpm lint`, `pnpm build`
+- **Verification results:** Domain normalize/toggle/progress, Dexie `updateChecklist` + checklist feed verbs, feed-builder summaries, ActivityChecklistQuickActions (check/archive/silent uncheck), and LiveTimelineHud execution UI (no weather on cards/details, state styling, countdown, progress, modal checklist, accessible disclosure) tests pass. Typecheck, lint, and the production build are clean.
 - **Bug-ledger updates:** Not applicable.
 - **Follow-up work:** Per-item assignees/reminders may require a separate specification.
 - **Schema note:** Domain field is `completed` (camelCase JSONB), accepting `is_completed` / `isCompleted` on ingest for compatibility.

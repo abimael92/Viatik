@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, ChevronDown, Clock3, Cloud, Droplets, ListChecks, MapPin, Plus, Sun } from "lucide-react";
 import { motion } from "framer-motion";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -85,6 +85,7 @@ export function LiveTimelineHud({ trip, items, active, userId }: LiveTimelineHud
   const [showAll, setShowAll] = useState(false);
   const [now, setNow] = useState(() => new Date());
   const timelineRef = useRef<HTMLDivElement>(null);
+  const timelineId = useId();
   const selectedActivity = selectedActivityId
     ? items.find((item) => item.id === selectedActivityId) ?? null
     : null;
@@ -204,14 +205,14 @@ export function LiveTimelineHud({ trip, items, active, userId }: LiveTimelineHud
           {active ? "Today at a glance" : `Up next in ${label}`}
         </h2>
         {timeUntilNext && (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-viatik-magenta/10 px-3 py-1 text-sm font-semibold text-viatik-magenta">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-viatik-magenta/60 bg-viatik-magenta/5 px-3 py-1 text-sm font-semibold text-viatik-magenta">
             <Clock3 className="size-3.5" aria-hidden />
             Next in {timeUntilNext}
           </span>
         )}
       </div>
 
-      <div ref={timelineRef} className="max-h-[28rem] overflow-y-auto pr-2">
+      <div id={timelineId} ref={timelineRef} className="max-h-[28rem] overflow-y-auto pr-2">
         <div className="relative space-y-2">
           <div className="absolute bottom-0 left-4.5 top-0 w-0.5 bg-border/40" aria-hidden />
           {displayItems.map((item, index) => (
@@ -243,8 +244,9 @@ export function LiveTimelineHud({ trip, items, active, userId }: LiveTimelineHud
       {hasMore && (
         <Button
           variant="ghost"
-          size="sm"
-          className="mt-2 w-full justify-center"
+          className="mx-auto mt-3 flex w-fit justify-center px-3 text-muted-foreground hover:bg-transparent hover:text-foreground hover:opacity-70"
+          aria-expanded={showAll}
+          aria-controls={timelineId}
           onClick={() => {
             setShowAll((value) => !value);
             if (!showAll) {
@@ -426,19 +428,17 @@ function TimelineCard({
   onClick: () => void;
 }) {
   const { formattedTime, state, title, location, checklist, startsIn } = item;
-  const pastStyle = { opacity: 0.5, filter: "grayscale(1)" };
-  const currentStyle = { opacity: 1, filter: "grayscale(0)", scale: 1.02 };
-  const futureStyle = { opacity: 1, filter: "grayscale(0)" };
-  const targetStyle = isCurrent ? currentStyle : state === "past" ? pastStyle : futureStyle;
 
   return (
     <motion.li
       layout
-      initial={targetStyle}
-      animate={targetStyle}
+      initial={false}
+      animate={{ scale: isCurrent ? 1.01 : 1 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
-      className="group relative"
-      style={targetStyle}
+      className={cn(
+        "group relative transition-opacity duration-300 ease-out",
+        state === "past" && "opacity-50 grayscale",
+      )}
     >
       <div className="absolute left-4.5 top-0 z-10 flex -translate-x-1/2 flex-col items-center">
         <motion.div
@@ -462,14 +462,13 @@ function TimelineCard({
 
       <motion.div
         className={cn(
-          "relative ml-8 cursor-pointer rounded-xl border border-border/60 bg-background/60 p-3",
-          state === "current" && "bg-viatik-magenta/5 ring-2 ring-viatik-magenta/30",
-          state === "past" && "opacity-50 grayscale hover:opacity-50",
-          state === "future" && "hover:border-border/40 hover:bg-background",
+          "relative ml-8 cursor-pointer rounded-xl border border-border/60 p-4 transition-all duration-200 ease-out",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+          state === "current" &&
+            "border-viatik-magenta/50 bg-viatik-magenta/10 ring-1 ring-viatik-magenta/30",
+          state === "past" && "bg-muted/30",
+          state === "future" && "bg-background/80 hover:border-viatik-magenta/30",
         )}
-        initial={targetStyle}
-        animate={targetStyle}
-        transition={{ duration: 0.3, ease: "easeOut" }}
         role="button"
         tabIndex={0}
         onClick={onClick}
@@ -496,15 +495,15 @@ function TimelineCard({
                 </span>
               )}
               {state === "past" && (
-                <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                <span className="inline-flex items-center rounded-full bg-black/5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground/70 dark:bg-white/10">
                   Ended
                 </span>
               )}
               {state === "current" && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-viatik-magenta/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-viatik-magenta">
+                <span className="inline-flex items-center gap-1 rounded-full bg-viatik-magenta px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm shadow-viatik-magenta/20">
                   {tripActive && (
                     <motion.span
-                      className="size-1.5 rounded-full bg-viatik-magenta"
+                      className="size-1.5 rounded-full bg-white"
                       animate={LIVE_DOT_ANIMATION.animate}
                       transition={LIVE_DOT_ANIMATION.transition}
                     />
@@ -513,7 +512,7 @@ function TimelineCard({
                 </span>
               )}
               {state === "future" && startsIn && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                <span className="inline-flex items-center gap-1 rounded-full border border-viatik-magenta/60 bg-viatik-magenta/5 px-2 py-0.5 text-[10px] font-semibold text-viatik-magenta">
                   <Clock3 className="size-3" aria-hidden />
                   Starts in {startsIn}
                 </span>
@@ -523,7 +522,7 @@ function TimelineCard({
             <p
               className={cn(
                 "truncate text-sm font-semibold",
-                state === "current" && "text-viatik-magenta",
+                state === "current" && "font-bold text-foreground",
                 state === "past" && "text-foreground/60",
                 state === "future" && "text-foreground",
               )}
