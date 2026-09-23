@@ -16,6 +16,7 @@ import type { CurrencyRate } from "@/features/finance/domain/currency-types";
 import type { TripShareLink } from "@/features/sharing/domain/share-types";
 import type { TransitSegment } from "@/features/transit/domain/transit-types";
 import type { JournalDayEntry } from "@/features/journal/domain/journal-types";
+import type { DailyStepCount } from "@/features/steps/domain/step-types";
 import type { OutboxMutation, SyncConflict, SyncLease, SyncMetadata } from "@/lib/sync/types";
 
 function migrateMinorUnits(record: Record<string, unknown>, legacyField: string, minorField: string): void {
@@ -83,6 +84,7 @@ export class ViatikDatabase extends Dexie {
   /** Local-only live transit segments (flights & trains). */
   transitSegments!: EntityTable<TransitSegment, "id">;
   journalDayEntries!: EntityTable<JournalDayEntry, "id">;
+  dailyStepCounts!: EntityTable<DailyStepCount, "id">;
   decisions!: EntityTable<Decision, "id">;
   decisionOptions!: EntityTable<DecisionOption, "id">;
   decisionVotes!: EntityTable<DecisionVote, "id">;
@@ -447,6 +449,11 @@ export class ViatikDatabase extends Dexie {
     // v35: synchronized, owner-scoped Notification Center records.
     this.version(35).stores({
       notifications: "id, userId, type, isRead, [userId+isRead], updatedAt",
+    });
+
+    // v36: local-only daily walking steps for the active trip overview.
+    this.version(36).stores({
+      dailyStepCounts: "id, tripId, userId, dayDate, [tripId+userId], [userId+dayDate], updatedAt",
     });
   }
 }
