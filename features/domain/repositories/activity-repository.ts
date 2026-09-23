@@ -1,5 +1,6 @@
-import type { Activity, ActivityParticipant, ActivityPollOption, ActivityPollStatus, ActivityPollVote } from "@/features/domain/entities";
+import type { Activity, ActivityChecklistItem, ActivityParticipant, ActivityPollOption, ActivityPollStatus, ActivityPollVote } from "@/features/domain/entities";
 import type { MinorUnits } from "@/features/domain/money";
+import type { ChecklistFeedAction } from "@/features/feed/lib/feed-builder";
 
 /** Storage-agnostic contract for reading/writing itinerary activities. */
 export interface ActivityRepository {
@@ -8,6 +9,15 @@ export interface ActivityRepository {
   watchByTrip(tripId: string, onChange: (activities: Activity[]) => void): () => void;
   create(input: NewActivity): Promise<Activity>;
   update(id: string, patch: Partial<Omit<Activity, "id" | "tripId">>): Promise<Activity>;
+  /**
+   * Persist checklist progress from Home and emit a specific shared-feed entry
+   * (completed / skipped / restored) instead of a generic activity update.
+   */
+  updateChecklist(
+    id: string,
+    checklist: ActivityChecklistItem[],
+    event: { action: ChecklistFeedAction; itemTitle: string },
+  ): Promise<Activity>;
   /** Cancel an activity proposal; only its creator may perform this transition. */
   cancelProposal(id: string): Promise<Activity>;
   /**
@@ -48,6 +58,7 @@ export interface NewActivity {
   votingEndsAt?: string | null;
   pollOptions?: ActivityPollOption[];
   pollVotes?: ActivityPollVote[];
+  checklist?: ActivityChecklistItem[];
   position: number;
   estimatedCostMinor?: MinorUnits | null;
   createdBy: string;

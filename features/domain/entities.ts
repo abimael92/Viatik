@@ -118,6 +118,14 @@ export interface TripMember {
   updatedAt: string;
 }
 
+export interface ActivityChecklistItem {
+  id: string;
+  title: string;
+  completed: boolean;
+  /** Soft-skipped when the traveler can't complete the task on the go. */
+  archived: boolean;
+}
+
 export interface Activity {
   id: string;
   tripId: string;
@@ -147,6 +155,8 @@ export interface Activity {
   pollOptions?: ActivityPollOption[];
   /** @deprecated Use the synchronized Decision model instead. */
   pollVotes?: ActivityPollVote[];
+  /** Ordered actions travelers can complete for this activity. */
+  checklist?: ActivityChecklistItem[];
   /** Fractional ordering key within (tripId, dayDate) for drag-and-drop reordering. */
   position: number;
   /** Planned/estimated cost in the trip's base currency (minor units), used for "planned" budget pacing. */
