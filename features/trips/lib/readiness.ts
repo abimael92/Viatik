@@ -60,6 +60,8 @@ export interface ReadinessInput {
   crewConfirmed?: boolean;
   /** Explicit packing acknowledgement; omitted for legacy trips. */
   packingConfirmed?: boolean;
+  /** Explicit acknowledgement that the trip does not need a vault. */
+  vaultNotNeeded?: boolean;
   vaultEntryCount: number;
   packingItemCount: number;
 }
@@ -75,7 +77,7 @@ const TRAVELERS_TAB = "travelers" as const;
  * about the trip.
  */
 export function computeReadiness(input: ReadinessInput): TripReadiness {
-  const { trip, totalBudgetMinor, activityCount, memberCount, travelerCount, crewConfirmed: explicitCrewConfirmed, packingConfirmed: explicitPackingConfirmed, vaultEntryCount, packingItemCount } = input;
+  const { trip, totalBudgetMinor, activityCount, memberCount, travelerCount, crewConfirmed: explicitCrewConfirmed, packingConfirmed: explicitPackingConfirmed, vaultNotNeeded, vaultEntryCount, packingItemCount } = input;
 
   const datesSet = Boolean(trip.startDate && trip.endDate);
   const crewConfirmed = explicitCrewConfirmed ?? trip.crewConfirmed ?? (memberCount > 1 || travelerCount > 1);
@@ -120,7 +122,7 @@ export function computeReadiness(input: ReadinessInput): TripReadiness {
       label: "Docs in vault",
       action: "Add documents",
       hint: "Store bookings, insurance, and confirmations in the vault.",
-      status: vaultEntryCount > 0 ? "complete" : "missing",
+      status: vaultEntryCount > 0 || vaultNotNeeded === true || trip.vaultNotNeeded === true ? "complete" : "missing",
       targetTab: DOCS_TAB,
     },
     {

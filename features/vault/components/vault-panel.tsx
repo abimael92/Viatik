@@ -9,6 +9,7 @@ import { Heading } from "@/components/ui/heading";
 import { useToast } from "@/components/ui/toast";
 import type { VaultEntry, VaultEntryValues, VaultKeyset } from "@/features/vault/domain/vault-types";
 import { vaultRepository } from "@/features/vault/data/dexie-vault-repository";
+import { tripRepository } from "@/features/trips/data/dexie-trip-repository";
 import { webCryptoVault, type VaultSession } from "@/lib/security/web-crypto-vault";
 import { VaultUnlockDialog } from "./vault-unlock-dialog";
 import { VaultEntryDialog } from "./vault-entry-dialog";
@@ -55,6 +56,18 @@ export function VaultPanel({ tripId, userId }: { tripId: string; userId: string 
     };
   }, [entries, session, userId]);
 
+  const handleVaultNotNeeded = useCallback(async () => {
+    setPending(true);
+    setError(null);
+    try {
+      await tripRepository.update(tripId, { vaultNotNeeded: true });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to update vault status.");
+    } finally {
+      setPending(false);
+    }
+  }, [tripId]);
+
   const handleUnlock = useCallback(
     async (passphrase: string) => {
       setPending(true);
@@ -87,6 +100,7 @@ export function VaultPanel({ tripId, userId }: { tripId: string; userId: string 
         const newSession = await webCryptoVault.unlock(passphrase, ks);
         setKeyset(ks);
         setSession(newSession);
+        await tripRepository.update(tripId, { vaultNotNeeded: false });
         setDialog(null);
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : "Unable to create vault.");
@@ -94,7 +108,7 @@ export function VaultPanel({ tripId, userId }: { tripId: string; userId: string 
         setPending(false);
       }
     },
-    [userId]
+    [tripId, userId]
   );
 
   const handleSave = useCallback(
@@ -199,15 +213,25 @@ export function VaultPanel({ tripId, userId }: { tripId: string; userId: string 
                 ? "Create a passphrase to start storing encrypted entries."
                 : "Unlock with your passphrase to view your private entries."}
           </p>
-          <Button
-            variant="primary"
-            className="mt-5"
-            onClick={() => setDialog("unlock")}
-            disabled={keyset === undefined}
-          >
-            <Unlock className="size-5" />
-            {keyset ? "Unlock vault" : "Create vault"}
-          </Button>
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
+            <Button
+              variant="primary"
+              onClick={() => setDialog("unlock")}
+              disabled={keyset === undefined}
+            >
+              <Unlock className="size-5" />
+              {keyset ? "Unlock vault" : "Create vault"}
+            </Button>
+            {!keyset && keyset !== undefined && (
+              <Button
+                variant="outline"
+                onClick={() => void handleVaultNotNeeded()}
+                disabled={pending}
+              >
+                Not needed
+              </Button>
+            )}
+          </div>
         </div>
       )}
 

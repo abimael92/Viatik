@@ -75,6 +75,8 @@ export interface Trip {
   packingConfirmed?: boolean;
   /** Device-local acknowledgement for the personal-care category. */
   personalCareConfirmed?: boolean;
+  /** Device-local acknowledgement that this trip does not need a vault. */
+  vaultNotNeeded?: boolean;
   createdBy: string;
   updatedBy: string;
   deletedBy: string | null;

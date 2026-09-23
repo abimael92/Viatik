@@ -95,6 +95,7 @@ async function applyRemote(entityType: OutboxEntityType, store: typeof tableDefi
     if ("crewConfirmed" in previous && !("crewConfirmed" in entity)) localTripFields.crewConfirmed = previous.crewConfirmed;
     if ("packingConfirmed" in previous && !("packingConfirmed" in entity)) localTripFields.packingConfirmed = previous.packingConfirmed;
     if ("personalCareConfirmed" in previous && !("personalCareConfirmed" in entity)) localTripFields.personalCareConfirmed = previous.personalCareConfirmed;
+    if ("vaultNotNeeded" in previous && !("vaultNotNeeded" in entity)) localTripFields.vaultNotNeeded = previous.vaultNotNeeded;
     if (Object.keys(localTripFields).length > 0) entity = { ...entity, ...localTripFields } as RemoteEntity;
   }
 
