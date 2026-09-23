@@ -5,22 +5,31 @@
  * checklist, so there is no shared remote table.
  */
 
-export type PackingCategory = "clothing" | "electronics" | "documents" | "gear";
+export type PackingCategory = "clothing" | "electronics" | "documents" | "toiletries" | "gear" | "activityGear";
 
 export const PACKING_CATEGORIES: PackingCategory[] = [
   "clothing",
   "electronics",
   "documents",
+  "toiletries",
   "gear",
+  "activityGear",
 ];
 
 /** Human labels used by the UI and the generator. */
 export const PACKING_CATEGORY_LABELS: Record<PackingCategory, string> = {
   clothing: "Clothing",
   electronics: "Electronics",
-  documents: "Documents",
-  gear: "Gear",
+  documents: "Documents & money",
+  toiletries: "Personal care",
+  gear: "Travel gear",
+  activityGear: "Activity gear",
 };
+
+/** Stable identity used to prevent duplicate custom and generated items. */
+export function normalizePackingName(name: string): string {
+  return name.trim().toLowerCase().replace(/\s+/g, " ");
+}
 
 /**
  * A single line item on a trip's packing list.
@@ -80,6 +89,8 @@ export interface PackingRepository {
   listByTrip(tripId: string): Promise<PackingItem[]>;
   watchByTrip(tripId: string, onChange: (items: PackingItem[]) => void): () => void;
   toggle(id: string, isPacked: boolean): Promise<void>;
+  setPacked(ids: string[], isPacked: boolean): Promise<void>;
+  updateQuantity(id: string, quantity: number): Promise<void>;
   addCustom(input: {
     tripId: string;
     category: PackingCategory;
@@ -90,4 +101,6 @@ export interface PackingRepository {
   /** Reconcile generated suggestions with existing items, preserving custom
    *  additions and packed state. Returns the resulting list. */
   applySuggested(tripId: string, drafts: PackingDraft[]): Promise<PackingItem[]>;
+  /** Replace the local list with a fresh generated checklist. */
+  resetToSuggested(tripId: string, drafts: PackingDraft[]): Promise<PackingItem[]>;
 }

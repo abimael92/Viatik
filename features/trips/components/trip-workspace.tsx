@@ -104,6 +104,7 @@ import { nextPosition } from "@/lib/ordering";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 import { downloadActivitiesIcs } from "@/features/itinerary/lib/export-ics";
+import { TripStepsWidget } from "@/features/steps/components/trip-steps-widget";
 
 const SECONDARY_TOOLS = ["packing", "health", "polls", "vault"] as const;
 type SecondaryTool = (typeof SECONDARY_TOOLS)[number];
@@ -613,7 +614,7 @@ export function TripWorkspace({
       )}
 
       {tab === "overview" && overviewTool === "packing" && (
-        <PackingListView tripId={tripId} trip={trip} activities={activities} />
+        <PackingListView tripId={tripId} trip={trip} activities={activities} canEdit={canEdit} />
       )}
       {tab === "overview" && overviewTool === "health" && (
         <DocumentTrackerView
@@ -1041,6 +1042,14 @@ function Overview({
   const days = dateRange(trip.startDate, trip.endDate);
   return (
     <div className="space-y-6">
+      {trip.description && (
+        <div className="rounded-2xl border bg-card p-6">
+          <Heading level={2} className="text-base font-semibold">
+            {t("common.aboutTrip")}
+          </Heading>
+          <p className="mt-2 text-muted-foreground">{trip.description}</p>
+        </div>
+      )}
       <DocumentRiskBanner
         userId={userId}
         destination={trip.destination}
@@ -1172,17 +1181,18 @@ function Overview({
             tripId={trip.id}
             userId={userId}
             limit={4}
+            collapsible
             emptyMessage={t("common.noActivityYet")}
           />
         </div>
       </div>
-      {trip.description && (
-        <div className="rounded-2xl border bg-card p-6">
-          <Heading level={2} className="text-base font-semibold">
-            {t("common.aboutTrip")}
-          </Heading>
-          <p className="mt-2 text-muted-foreground">{trip.description}</p>
-        </div>
+      {trip.status === "active" && trip.startedAt && trip.endDate && (
+        <TripStepsWidget
+          tripId={trip.id}
+          userId={userId}
+          startedAt={trip.startedAt}
+          endDate={trip.endDate}
+        />
       )}
       {canEdit && (
         <div className="rounded-2xl border bg-card p-6">

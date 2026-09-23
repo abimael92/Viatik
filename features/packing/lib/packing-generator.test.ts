@@ -59,25 +59,43 @@ describe("inferTemperatureProfile", () => {
 });
 
 describe("generatePackingDrafts", () => {
-  it("always includes documents and core electronics", () => {
+  it("displays the standard item catalog across the packing categories", () => {
     const result = generatePackingDrafts(baseInput);
     expect(names(result)).toEqual(
       expect.arrayContaining([
         "Passport / ID",
-        "Travel insurance",
-        "Booking confirmations",
+        "Visa / travel authorization",
+        "Credit / debit cards",
         "Phone charger",
-        "Portable battery",
+        "Headphones / earbuds",
+        "Toothbrush",
+        "Personal medications",
+        "Backpack / daypack",
+        "Packing cubes",
+        "Casual shoes",
+        "Sandals",
       ]),
     );
   });
 
-  it("scales clothing quantity with trip length", () => {
-    const short = generatePackingDrafts({ ...baseInput, durationDays: 2 });
-    const long = generatePackingDrafts({ ...baseInput, durationDays: 10 });
-    const underwearFor = (drafts: { name: string; quantity: number }[]) =>
-      drafts.find((d) => d.name === "Underwear")?.quantity ?? 0;
-    expect(underwearFor(long)).toBeGreaterThan(underwearFor(short));
+  it.each([
+    [3, { underwear: 5, socks: 5, tops: 3, bottoms: 2, sleepwear: 2 }],
+    [5, { underwear: 7, socks: 7, tops: 5, bottoms: 3, sleepwear: 2 }],
+    [7, { underwear: 9, socks: 9, tops: 7, bottoms: 4, sleepwear: 2 }],
+  ])("uses duration-based clothing quantities for a %d-day trip", (durationDays, expected) => {
+    const result = generatePackingDrafts({ ...baseInput, durationDays });
+    const quantityFor = (name: string) => result.find((draft) => draft.name === name)?.quantity;
+
+    expect(quantityFor("Underwear")).toBe(expected.underwear);
+    expect(quantityFor("Socks")).toBe(expected.socks);
+    expect(quantityFor("Shirts / tops")).toBe(expected.tops);
+    expect(quantityFor("Pants / bottoms")).toBe(expected.bottoms);
+    expect(quantityFor("Sleepwear")).toBe(expected.sleepwear);
+  });
+
+  it("defaults non-clothing essentials to one", () => {
+    const result = generatePackingDrafts(baseInput);
+    expect(result.filter((draft) => draft.reason === "always").every((draft) => draft.quantity === 1)).toBe(true);
   });
 
   it("adds cold-weather clothing for a cold climate", () => {
@@ -94,6 +112,16 @@ describe("generatePackingDrafts", () => {
     );
   });
 
+  it("uses one canonical walking-shoes suggestion", () => {
+    const result = generatePackingDrafts(baseInput);
+    const namesList = names(result);
+
+    expect(namesList).toContain("Walking shoes");
+    expect(namesList).not.toContain("Comfortable shoes");
+    expect(namesList).not.toContain("Comfortable walking shoes");
+    expect(namesList.filter((name) => name === "Walking shoes")).toHaveLength(1);
+  });
+
   it("adds rain gear when a heavyRain warning is present", () => {
     const result = generatePackingDrafts({
       ...baseInput,
@@ -108,7 +136,7 @@ describe("generatePackingDrafts", () => {
       activities: [{ category: "outdoors", title: "Hiking in the mountains" }],
     });
     expect(names(result)).toEqual(
-      expect.arrayContaining(["Hiking shoes", "Daypack", "Water bottle"]),
+      expect.arrayContaining(["Hiking gear", "Hiking shoes", "Backpack / daypack", "Water bottle"]),
     );
   });
 
@@ -129,7 +157,7 @@ describe("generatePackingDrafts", () => {
     const categories = result.map((d) => d.category);
     expect(categories).toEqual(
       [...categories].sort(
-        (a, b) => ["documents", "electronics", "clothing", "gear"].indexOf(a) - ["documents", "electronics", "clothing", "gear"].indexOf(b),
+        (a, b) => ["documents", "electronics", "toiletries", "clothing", "gear", "activityGear"].indexOf(a) - ["documents", "electronics", "toiletries", "clothing", "gear", "activityGear"].indexOf(b),
       ),
     );
   });

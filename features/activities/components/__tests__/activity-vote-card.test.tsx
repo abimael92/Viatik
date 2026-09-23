@@ -81,9 +81,9 @@ describe("ActivityVoteCard", () => {
     expect(document.querySelector('img[src="https://example.com/stale.png"]')).toBeNull();
   });
 
-  it("uses initials instead of a generated avatar when the account has no avatar set", () => {
+  it("uses initials instead of a generated avatar when the account has no avatar set", async () => {
     render(<ActivityVoteCard activity={activity} currentUserId="user-1" eligibleViaticUsers={2} profiles={[{ id: "user-2", fullName: "Abimael Garcia", avatarUrl: null, avatarSeed: null, email: null }]} />);
-    expect(screen.getByText("AG")).toBeTruthy();
+    await waitFor(() => expect(screen.getByText("AG")).toBeTruthy());
   });
 
   it("lets only the proposal creator cancel the suggestion", async () => {
@@ -94,15 +94,15 @@ describe("ActivityVoteCard", () => {
     await waitFor(() => expect(activityRepository.cancelProposal).toHaveBeenCalledWith("activity-1"));
   });
 
-  it("does not show cancellation to another voter", () => {
+  it("does not show cancellation to another voter", async () => {
     render(<ActivityVoteCard activity={activity} currentUserId="user-1" eligibleViaticUsers={2} />);
-    expect(screen.queryByRole("button", { name: "Cancel suggestion" })).toBeNull();
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Cancel suggestion" })).toBeNull());
   });
 
-  it("disables voting when fewer than two Viatik users are eligible", () => {
+  it("disables voting when fewer than two Viatik users are eligible", async () => {
     render(<ActivityVoteCard activity={activity} currentUserId="user-1" eligibleViaticUsers={1} />);
     const approve = screen.getByRole("button", { name: "Approve" });
-    expect((approve as HTMLButtonElement).disabled).toBe(true);
+    await waitFor(() => expect((approve as HTMLButtonElement).disabled).toBe(true));
     expect(approve.parentElement?.getAttribute("title")).toBe("Requires at least 2 Viatik users");
   });
 

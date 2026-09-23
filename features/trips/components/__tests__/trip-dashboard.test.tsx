@@ -101,6 +101,26 @@ describe("TripDashboard", () => {
     expect(screen.getByTestId("recent-activity-feed").textContent).toContain("All traveler activity for user-1");
   });
 
+  it("keeps the trip setup stepper collapsed by default and allows it to expand", async () => {
+    vi.mocked(tripRepository.watchAll).mockImplementation((callback) => {
+      callback([]);
+      return () => undefined;
+    });
+    render(<TripDashboard userId="user-1" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Create trip" }));
+
+    const toggle = screen.getByRole("button", { name: "Expand trip setup progress" });
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByText("The Itinerary")).toBeNull();
+
+    fireEvent.click(toggle);
+
+    expect(
+      screen.getByRole("button", { name: "Collapse trip setup progress" }).getAttribute("aria-expanded")
+    ).toBe("true");
+    expect(screen.getByText("The Itinerary")).toBeTruthy();
+  });
+
   it("creates trips through the repository", async () => {
     vi.mocked(tripRepository.watchAll).mockImplementation((callback) => {
       callback([]);

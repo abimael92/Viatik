@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SharedTripFeed } from "@/features/feed/components/shared-trip-feed";
@@ -56,5 +56,18 @@ describe("SharedTripFeed", () => {
 
     expect(await screen.findByText("You")).toBeTruthy();
     expect(container.querySelector('img[src="https://example.com/settings-avatar.png"]')).toBeTruthy();
+  });
+
+  it("starts collapsed and can expand a collapsible feed", async () => {
+    render(<SharedTripFeed tripId="trip-1" userId="user-1" collapsible />);
+
+    const toggle = screen.getByRole("button", { name: "Expand trip feed" });
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByText("added expense “dinner” for $34.00")).toBeNull();
+
+    fireEvent.click(toggle);
+
+    expect((await screen.findByRole("button", { name: "Collapse trip feed" })).getAttribute("aria-expanded")).toBe("true");
+    expect(await screen.findByText("added expense “dinner” for $34.00")).toBeTruthy();
   });
 });

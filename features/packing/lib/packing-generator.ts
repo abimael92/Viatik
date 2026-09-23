@@ -8,7 +8,7 @@
  * drafts against the user's existing checklist.
  */
 
-import type { PackingCategory, PackingDraft, PackingGenerationInput } from "@/features/packing/domain/packing-types";
+import { normalizePackingName, type PackingCategory, type PackingDraft, type PackingGenerationInput } from "@/features/packing/domain/packing-types";
 
 type DraftTuple = [PackingCategory, string, number, string | null];
 
@@ -16,17 +16,18 @@ type DraftTuple = [PackingCategory, string, number, string | null];
 export type TemperatureProfile = "cold" | "mild" | "hot";
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+const CATEGORY_ORDER: PackingCategory[] = ["documents", "electronics", "toiletries", "clothing", "gear", "activityGear"];
 
 function dedupe(drafts: DraftTuple[]): PackingDraft[] {
   const seen = new Set<string>();
   const out: PackingDraft[] = [];
   for (const [category, name, quantity, reason] of drafts) {
-    const key = `${category}:${name.toLowerCase()}`;
+    const key = normalizePackingName(name);
     if (seen.has(key)) continue;
     seen.add(key);
     out.push({ category, name, quantity, reason });
   }
-  return out;
+  return out.sort((a, b) => CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category));
 }
 
 /** Nightly count of the trip from its date range (0 when unknown). */
@@ -70,31 +71,37 @@ export function inferTemperatureProfile(latitude: number | null, startDate: stri
 
 const ACTIVITY_GEAR_RULES: Array<{ match: RegExp; items: DraftTuple[] }> = [
   {
-    match: /hiking|trekking|trail|mountain|camping|outdoor|adventure/i,
+    match: /hiking|trekking|trail|mountain|outdoor|adventure/i,
     items: [
-      ["gear", "Hiking shoes", 1, "activity"],
-      ["gear", "Daypack", 1, "activity"],
+      ["activityGear", "Hiking gear", 1, "activity"],
+      ["activityGear", "Hiking shoes", 1, "activity"],
+      ["gear", "Backpack / daypack", 1, "activity"],
       ["gear", "Water bottle", 1, "activity"],
     ],
+  },
+  {
+    match: /camping/i,
+    items: [["activityGear", "Camping gear", 1, "activity"]],
   },
   {
     match: /beach|swim|pool|water|diving|snorkel/i,
     items: [
       ["clothing", "Swimwear", 1, "activity"],
+      ["activityGear", "Beach gear", 1, "activity"],
       ["gear", "Beach towel", 1, "activity"],
     ],
   },
   {
     match: /nightlife|formal|dinner|gala|wedding/i,
-    items: [["clothing", "A nicer outfit", 1, "activity"]],
+    items: [["clothing", "Formal / nice outfit", 1, "activity"]],
   },
   {
     match: /sightseeing|city|walk|tour|culture|museum/i,
-    items: [["clothing", "Comfortable walking shoes", 1, "activity"]],
+    items: [["clothing", "Walking shoes", 1, "activity"]],
   },
   {
     match: /sport|gym|run|cycling|bike/i,
-    items: [["gear", "Sports gear", 1, "activity"]],
+    items: [["activityGear", "Sports gear", 1, "activity"]],
   },
 ];
 
@@ -123,22 +130,56 @@ function gearFromActivities(activities: PackingGenerationInput["activities"]): D
 export function generatePackingDrafts(input: PackingGenerationInput): PackingDraft[] {
   const drafts: DraftTuple[] = [];
 
-  // Documents & essentials — always present.
+  // Documents, money, and core travel essentials — always present.
   drafts.push(["documents", "Passport / ID", 1, "always"]);
+  drafts.push(["documents", "Visa / travel authorization", 1, "recommended"]);
   drafts.push(["documents", "Travel insurance", 1, "always"]);
   drafts.push(["documents", "Booking confirmations", 1, "always"]);
+  drafts.push(["documents", "Driver's license", 1, "recommended"]);
+  drafts.push(["documents", "Credit / debit cards", 1, "recommended"]);
+  drafts.push(["documents", "Cash", 1, "recommended"]);
+
+  drafts.push(["electronics", "Phone", 1, "always"]);
   drafts.push(["electronics", "Phone charger", 1, "always"]);
-  drafts.push(["electronics", "Portable battery", 1, "always"]);
+  drafts.push(["electronics", "Charging cable", 1, "recommended"]);
+  drafts.push(["electronics", "Power bank", 1, "recommended"]);
+  drafts.push(["electronics", "Headphones / earbuds", 1, "recommended"]);
+  drafts.push(["electronics", "Travel adapter", 1, "recommended"]);
+  drafts.push(["electronics", "Laptop + charger", 1, "recommended"]);
+
+  drafts.push(["toiletries", "Toothbrush", 1, "always"]);
+  drafts.push(["toiletries", "Toothpaste", 1, "always"]);
+  drafts.push(["toiletries", "Deodorant", 1, "recommended"]);
+  drafts.push(["toiletries", "Shampoo", 1, "recommended"]);
+  drafts.push(["toiletries", "Body wash", 1, "recommended"]);
+  drafts.push(["toiletries", "Face wash", 1, "recommended"]);
+  drafts.push(["toiletries", "Razor", 1, "recommended"]);
+  drafts.push(["toiletries", "Sunscreen", 1, "recommended"]);
+  drafts.push(["toiletries", "Perfume / cologne", 1, "recommended"]);
+  drafts.push(["toiletries", "Personal medications", 1, "always"]);
+  drafts.push(["toiletries", "Basic first aid", 1, "recommended"]);
+
+  drafts.push(["gear", "Backpack / daypack", 1, "recommended"]);
+  drafts.push(["gear", "Water bottle", 1, "recommended"]);
+  drafts.push(["gear", "Sunglasses", 1, "recommended"]);
+  drafts.push(["gear", "Travel pillow", 1, "recommended"]);
+  drafts.push(["gear", "Laundry bag", 1, "recommended"]);
+  drafts.push(["gear", "Packing cubes", 1, "recommended"]);
 
   // Clothing scales with trip length.
   const days = input.durationDays;
   if (days != null) {
-    drafts.push(["clothing", "Underwear", clamp(days + 1, 2, 7), "duration"]);
-    drafts.push(["clothing", "Socks", clamp(days + 1, 2, 6), "duration"]);
-    drafts.push(["clothing", "Shirts / tops", clamp(days + 1, 2, 5), "duration"]);
-    drafts.push(["clothing", "Pants / bottoms", clamp(Math.ceil(days / 2), 1, 3), "duration"]);
-    drafts.push(["clothing", "Sleepwear", 1, "duration"]);
+    const tripDays = Math.max(1, days);
+    drafts.push(["clothing", "Underwear", clamp(tripDays + 2, 1, 99), "duration"]);
+    drafts.push(["clothing", "Socks", clamp(tripDays + 2, 1, 99), "duration"]);
+    drafts.push(["clothing", "Shirts / tops", clamp(tripDays, 1, 99), "duration"]);
+    drafts.push(["clothing", "Pants / bottoms", clamp(Math.ceil(tripDays / 2), 1, 99), "duration"]);
+    drafts.push(["clothing", "Sleepwear", clamp(Math.min(2, tripDays), 1, 99), "duration"]);
   }
+
+  // Common footwear remains user-adjustable, while context rules add specialty footwear.
+  drafts.push(["clothing", "Casual shoes", 1, "recommended"]);
+  drafts.push(["clothing", "Sandals", 1, "recommended"]);
 
   // Climate band drives seasonal clothing.
   const profile = inferTemperatureProfile(input.latitude, input.startDate);
@@ -150,11 +191,11 @@ export function generatePackingDrafts(input: PackingGenerationInput): PackingDra
   } else if (profile === "hot") {
     drafts.push(["clothing", "Sunscreen", 1, "climate"]);
     drafts.push(["clothing", "Sun hat", 1, "climate"]);
-    drafts.push(["clothing", "Light, breathable clothes", clamp(days != null ? days + 1 : 3, 3, 6), "climate"]);
+    drafts.push(["clothing", "Light, breathable clothes", clamp(Math.max(1, days ?? 1), 1, 99), "climate"]);
     drafts.push(["clothing", "Swimwear", 1, "climate"]);
   } else {
     drafts.push(["clothing", "Light jacket", 1, "climate"]);
-    drafts.push(["clothing", "Comfortable shoes", 1, "climate"]);
+    drafts.push(["clothing", "Walking shoes", 1, "climate"]);
   }
 
   // Weather warnings can push additional rain/cold protection.

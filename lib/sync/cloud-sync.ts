@@ -87,7 +87,18 @@ async function applyRemote(entityType: OutboxEntityType, store: typeof tableDefi
   const pending = await getDb().outboxMutations.where("entityType").equals(entityType).and((mutation) => mutation.entityId === entity.id).last();
   signal?.throwIfAborted();
   const remoteUpdatedAt = "updatedAt" in entity ? entity.updatedAt : new Date().toISOString();
-  
+
+  // Crew confirmation is intentionally device-local until the roster is changed;
+  // preserve it when a remote trip snapshot does not carry the local-only field.
+  if (entityType === "trip" && previous) {
+    const localTripFields: Record<string, unknown> = {};
+    if ("crewConfirmed" in previous && !("crewConfirmed" in entity)) localTripFields.crewConfirmed = previous.crewConfirmed;
+    if ("packingConfirmed" in previous && !("packingConfirmed" in entity)) localTripFields.packingConfirmed = previous.packingConfirmed;
+    if ("personalCareConfirmed" in previous && !("personalCareConfirmed" in entity)) localTripFields.personalCareConfirmed = previous.personalCareConfirmed;
+    if ("vaultNotNeeded" in previous && !("vaultNotNeeded" in entity)) localTripFields.vaultNotNeeded = previous.vaultNotNeeded;
+    if (Object.keys(localTripFields).length > 0) entity = { ...entity, ...localTripFields } as RemoteEntity;
+  }
+
   // Protection: If local entity has a non-null startedAt (trip was started), 
   // don't let remote overwrite it with null. This prevents "unstarting" a trip
   // due to race conditions between local start and remote sync.

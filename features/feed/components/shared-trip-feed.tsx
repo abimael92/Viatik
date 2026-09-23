@@ -1,7 +1,9 @@
 "use client";
 
-import { Activity as ActivityIcon, Camera, CircleDollarSign, Rss } from "lucide-react";
+import { Activity as ActivityIcon, Camera, ChevronDown, ChevronUp, CircleDollarSign, Rss } from "lucide-react";
+import { useId, useState } from "react";
 
+import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import type { FeedEntityType, TripFeedItem } from "@/features/feed/domain/feed-types";
@@ -38,6 +40,7 @@ export function SharedTripFeed({
   userId,
   limit,
   className,
+  collapsible = false,
   heading = "Trip Feed",
   emptyMessage = "No activity yet. Add a photo, expense, or activity to kick things off.",
 }: {
@@ -45,28 +48,47 @@ export function SharedTripFeed({
   userId: string;
   limit?: number;
   className?: string;
+  collapsible?: boolean;
   heading?: string;
   emptyMessage?: string;
 }) {
   const { loading, items, profiles } = useSharedTripFeed(tripId, userId);
+  const [isExpanded, setIsExpanded] = useState(!collapsible);
+  const contentId = useId();
   const visible = limit ? items.slice(0, limit) : items;
 
   return (
     <section aria-labelledby="feed-heading" className={cn("space-y-5", className)}>
-      <div className="flex items-center gap-2">
-        <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-          <Rss className="size-5" aria-hidden />
-        </span>
-        <div>
-          <Heading level={2} id="feed-heading" className="text-xl font-bold">
-            {heading}
-          </Heading>
-          <p className="text-sm text-muted-foreground">
-            What everyone’s been up to on this trip.
-          </p>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+            <Rss className="size-5" aria-hidden />
+          </span>
+          <div>
+            <Heading level={2} id="feed-heading" className="text-xl font-bold">
+              {heading}
+            </Heading>
+            <p className="text-sm text-muted-foreground">
+              What everyone’s been up to on this trip.
+            </p>
+          </div>
         </div>
+        {collapsible && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-expanded={isExpanded}
+            aria-controls={contentId}
+            aria-label={`${isExpanded ? "Collapse" : "Expand"} trip feed`}
+            onClick={() => setIsExpanded((expanded) => !expanded)}
+          >
+            {isExpanded ? <ChevronUp aria-hidden /> : <ChevronDown aria-hidden />}
+          </Button>
+        )}
       </div>
 
+      {(!collapsible || isExpanded) && <div id={contentId}>
       {loading ? (
         <div className="space-y-3">
           {[0, 1, 2].map((item) => (
@@ -102,6 +124,7 @@ export function SharedTripFeed({
           ))}
         </ol>
       )}
+      </div>}
     </section>
   );
 }

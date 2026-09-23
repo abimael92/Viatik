@@ -6,6 +6,10 @@ const migration = readFileSync(
   join(process.cwd(), "supabase/migrations/00000000000033_add_expense_share_split_type.sql"),
   "utf8",
 );
+const personalBudgetMigration = readFileSync(
+  join(process.cwd(), "supabase/migrations/00000000000057_fix_activity_personal_budget_cas_timestamps.sql"),
+  "utf8",
+);
 
 describe("expense-share split_type + trip coordinate sync migration (Phase 2C)", () => {
   it("adds the missing split_type column to expense_shares", () => {
@@ -39,5 +43,10 @@ describe("expense-share split_type + trip coordinate sync migration (Phase 2C)",
   it("preserves the finance entity registrations in the recreated CAS function", () => {
     expect(migration).toMatch(/when 'userWallet' then 'user_wallets'/);
     expect(migration).toMatch(/when 'dailyBudgetOverride' then 'daily_budget_overrides'/);
+  });
+
+  it("supplies created_at and updated_at for personal budget CAS inserts", () => {
+    expect(personalBudgetMigration).toContain("'created_at', now()");
+    expect(personalBudgetMigration).toContain("'updated_at', now()");
   });
 });

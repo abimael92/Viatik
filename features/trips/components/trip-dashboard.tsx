@@ -6,6 +6,7 @@ import {
   AlertCircle,
   CalendarClock,
   CalendarDays,
+  ChevronDown,
   Flag,
   Map,
   MapPin,
@@ -1072,50 +1073,75 @@ function StepHeader({
   onStepClick: (target: number) => void;
 }) {
   const steps = ["The Basics", "The Itinerary", "Group & Media"];
+  const [open, setOpen] = useState(false);
+  const activeTitle = steps[step - 1];
+  const progressId = "trip-setup-progress";
+
   return (
-    <nav aria-label="Trip setup progress" className="mb-6">
-      <ol className="flex gap-3 sm:gap-4">
-        {steps.map((title, index) => {
-          const number = index + 1;
-          const active = step === number;
-          const completed = step > number;
-          return (
-            <li key={title} className="flex flex-1">
-              <button
-                type="button"
-                onClick={() => onStepClick(number)}
-                aria-current={active ? "step" : undefined}
-                aria-label={`${title}${completed ? " (completed)" : ""}`}
-                className="group flex min-h-11 w-full flex-col justify-center gap-2 rounded-md px-0.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <span
-                  className={cn(
-                    "h-1.5 rounded-full transition-colors",
-                    active
-                      ? "bg-primary"
-                      : completed
-                        ? "bg-primary/40"
-                        : "bg-muted group-hover:bg-primary/20"
-                  )}
-                />
-                <span
-                  className={cn(
-                    "text-xs sm:text-sm font-semibold",
-                    active
-                      ? "text-primary"
-                      : completed
-                        ? "text-foreground"
-                        : "text-muted-foreground group-hover:text-foreground"
-                  )}
-                >
-                  {title}
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ol>
-    </nav>
+    <div className="mb-6">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={progressId}
+        aria-label={`${open ? "Collapse" : "Expand"} trip setup progress`}
+        onClick={() => setOpen((value) => !value)}
+        className="flex min-h-11 w-full items-center justify-between gap-3 rounded-md px-1 text-left text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <span>
+          Step {step} of {steps.length}: {activeTitle}
+        </span>
+        <ChevronDown
+          aria-hidden
+          className={cn("size-5 transition-transform duration-200", open && "rotate-180")}
+        />
+      </button>
+
+      {open && (
+        <nav id={progressId} aria-label="Trip setup progress" className="mt-2">
+          <ol className="flex gap-3 sm:gap-4">
+            {steps.map((title, index) => {
+              const number = index + 1;
+              const active = step === number;
+              const completed = step > number;
+              return (
+                <li key={title} className="flex flex-1">
+                  <button
+                    type="button"
+                    onClick={() => onStepClick(number)}
+                    aria-current={active ? "step" : undefined}
+                    aria-label={`${title}${completed ? " (completed)" : ""}`}
+                    className="group flex min-h-11 w-full flex-col justify-center gap-2 rounded-md px-0.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <span
+                      className={cn(
+                        "h-1.5 rounded-full transition-colors",
+                        active
+                          ? "bg-primary"
+                          : completed
+                            ? "bg-primary/40"
+                            : "bg-muted group-hover:bg-primary/20"
+                      )}
+                    />
+                    <span
+                      className={cn(
+                        "text-xs sm:text-sm font-semibold",
+                        active
+                          ? "text-primary"
+                          : completed
+                            ? "text-foreground"
+                            : "text-muted-foreground group-hover:text-foreground"
+                      )}
+                    >
+                      {title}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        </nav>
+      )}
+    </div>
   );
 }
 

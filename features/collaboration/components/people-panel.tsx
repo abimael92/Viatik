@@ -16,7 +16,8 @@ import {
   contactRepository,
   tripTravelerRepository,
 } from "@/features/contacts/data/dexie-contact-repository";
-import type { Contact, ProfileSummary, TripInvitation, TripMember, TripTraveler } from "@/features/domain/entities";
+import type { Contact, ProfileSummary, Trip, TripInvitation, TripMember, TripTraveler } from "@/features/domain/entities";
+import { tripRepository } from "@/features/trips/data/dexie-trip-repository";
 import { cn } from "@/lib/utils";
 
 /**
@@ -26,6 +27,7 @@ import { cn } from "@/lib/utils";
  * to admin when the traveler is first added.
  */
 export function PeoplePanel({ tripId, userId, canEdit }: { tripId: string; userId: string; canEdit: boolean }) {
+  const [trip, setTrip] = useState<Trip | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [travelers, setTravelers] = useState<TripTraveler[]>([]);
   const [members, setMembers] = useState<TripMember[]>([]);
@@ -35,6 +37,7 @@ export function PeoplePanel({ tripId, userId, canEdit }: { tripId: string; userI
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Contact | null>(null);
 
+  useEffect(() => tripRepository.watchById(tripId, (value) => setTrip(value ?? null)), [tripId]);
   useEffect(() => contactRepository.watch(userId, setContacts), [userId]);
   useEffect(() => tripTravelerRepository.watch(tripId, setTravelers), [tripId]);
   useEffect(() => collaborationRepository.watchMembers(tripId, setMembers), [tripId]);
@@ -64,6 +67,17 @@ export function PeoplePanel({ tripId, userId, canEdit }: { tripId: string; userI
     [contactById, travelers]
   );
   const unrepresentedMembers = members.filter((member) => !linkedMemberIds.has(member.userId));
+  const crewConfirmed = trip?.crewConfirmed ?? (members.length > 1 || travelers.length > 1);
+
+  async function setCrewConfirmed(confirmed: boolean) {
+    if (!canEdit) return;
+    setMessage(null);
+    try {
+      await tripRepository.update(tripId, { crewConfirmed: confirmed });
+    } catch (cause) {
+      setMessage(cause instanceof Error ? cause.message : "Unable to update crew status.");
+    }
+  }
 
   async function attachTraveler(contact: Contact) {
     await tripTravelerRepository.attach({
@@ -122,15 +136,36 @@ export function PeoplePanel({ tripId, userId, canEdit }: { tripId: string; userI
         </p>
       </div>
 
+      {/*
       <div className="rounded-xl border bg-muted/40 p-4 text-sm">
         <strong>Travelers</strong> are going on the trip. A traveler with a{" "}
         <strong>Viatik account</strong> can join as a collaborator — toggle <strong>Admin</strong> to
         grant them edit access (default on).
       </div>
+      */}
 
-      {message && <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{message}</p>}
+      <div className="overflow-hidden rounded-2xl border bg-card">
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+          <div>
+            <p className="font-semibold">Crew status</p>
+            <p className="text-sm text-muted-foreground">
+              {crewConfirmed ? "The current roster is confirmed." : "Review the roster before confirming your crew."}
+            </p>
+          </div>
+          {canEdit && (
+            <Button
+              type="button"
+              variant={crewConfirmed ? "outline" : "primary"}
+              onClick={() => void setCrewConfirmed(!crewConfirmed)}
+            >
+              {crewConfirmed ? "Wait, I forgot someone" : "Set as crew confirmed"}
+            </Button>
+          )}
+        </div>
 
-      <div className="divide-y rounded-2xl border bg-card">
+        {message && <p role="alert" className="border-t border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">{message}</p>}
+
+        <div className="divide-y border-t">
         {travelers.map((traveler) => {
           const contact = contactById.get(traveler.contactId);
           const linkedProfileId = contact?.linkedProfileId ?? null;
@@ -193,6 +228,7 @@ export function PeoplePanel({ tripId, userId, canEdit }: { tripId: string; userI
             No named travelers added.
           </div>
         )}
+        </div>
       </div>
 
       {canEdit && (

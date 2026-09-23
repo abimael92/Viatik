@@ -47,7 +47,7 @@ function input(overrides: Partial<ReadinessInput>): ReadinessInput {
     memberCount: 1,
     travelerCount: 1,
     vaultEntryCount: 0,
-    passportOnFile: false,
+    packingItemCount: 0,
     ...overrides,
   };
 }
@@ -69,7 +69,7 @@ describe("computeReadiness", () => {
         memberCount: 2,
         travelerCount: 2,
         vaultEntryCount: 2,
-        passportOnFile: true,
+        packingItemCount: 2,
       })
     );
     expect(result.score).toBe(100);
@@ -92,7 +92,15 @@ describe("computeReadiness", () => {
     expect(result.nextAction?.key).toBe("itinerary");
   });
 
-  it("treats a crew as confirmed when members or travelers exceed one", () => {
+  it("uses the explicit crew confirmation instead of the roster count when provided", () => {
+    const unconfirmed = computeReadiness(input({ trip: makeTrip({ crewConfirmed: false }), travelerCount: 2 }));
+    expect(unconfirmed.items.find((item) => item.key === "crew")?.status).toBe("missing");
+
+    const confirmed = computeReadiness(input({ trip: makeTrip({ crewConfirmed: true }), travelerCount: 1 }));
+    expect(confirmed.items.find((item) => item.key === "crew")?.status).toBe("complete");
+  });
+
+  it("keeps legacy roster-count behavior when no explicit confirmation exists", () => {
     const solo = computeReadiness(input({ memberCount: 1, travelerCount: 1 }));
     expect(solo.items.find((item) => item.key === "crew")?.status).toBe("missing");
 
@@ -100,12 +108,25 @@ describe("computeReadiness", () => {
     expect(withTravelers.items.find((item) => item.key === "crew")?.status).toBe("complete");
   });
 
-  it("flags the passport item from the passportOnFile signal", () => {
-    const without = computeReadiness(input({}));
-    expect(without.items.find((item) => item.key === "passport")?.status).toBe("missing");
+  it("allows a trip to mark the vault as not needed", () => {
+    const result = computeReadiness(input({ trip: makeTrip({ vaultNotNeeded: true }), vaultEntryCount: 0 }));
+    expect(result.items.find((item) => item.key === "docs")?.status).toBe("complete");
+  });
 
-    const withPassport = computeReadiness(input({ passportOnFile: true }));
-    expect(withPassport.items.find((item) => item.key === "passport")?.status).toBe("complete");
+  it("uses explicit packing completion when provided", () => {
+    const incomplete = computeReadiness(input({ trip: makeTrip({ packingConfirmed: false }), packingItemCount: 10 }));
+    expect(incomplete.items.find((item) => item.key === "packing")?.status).toBe("missing");
+
+    const complete = computeReadiness(input({ trip: makeTrip({ packingConfirmed: true }), packingItemCount: 0 }));
+    expect(complete.items.find((item) => item.key === "packing")?.status).toBe("complete");
+  });
+
+  it("keeps legacy packing-list count behavior when no explicit completion exists", () => {
+    const without = computeReadiness(input({ packingItemCount: 0 }));
+    expect(without.items.find((item) => item.key === "packing")?.status).toBe("missing");
+
+    const withPacking = computeReadiness(input({ packingItemCount: 1 }));
+    expect(withPacking.items.find((item) => item.key === "packing")?.status).toBe("complete");
   });
 });
 

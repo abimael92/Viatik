@@ -430,8 +430,12 @@ export function rowToExpense(row: Record<string, unknown>): Expense {
     exchangeRateToBase:
       row.exchange_rate_to_base == null ? null : Number(row.exchange_rate_to_base),
     paidBy:
-      row.paid_by == null ? `traveler:${String(row.paid_by_traveler_id)}` : String(row.paid_by),
-    paidByTravelerId: row.paid_by_traveler_id == null ? null : String(row.paid_by_traveler_id),
+      row.paid_by == null && row.paid_by_traveler_id != null
+        ? `traveler:${String(row.paid_by_traveler_id)}`
+        : String(row.paid_by),
+    ...(row.paid_by_traveler_id == null
+      ? {}
+      : { paidByTravelerId: String(row.paid_by_traveler_id) }),
     splitType: (row.split_type == null ? "equal" : String(row.split_type)) as Expense["splitType"],
     category: (isSpendingCategory(row.category_id)
       ? row.category_id
@@ -477,8 +481,11 @@ export function rowToExpenseShare(row: Record<string, unknown>): ExpenseShare {
     id: String(row.id),
     expenseId: String(row.expense_id),
     paidBy: "",
-    userId: row.user_id == null ? `traveler:${String(row.traveler_id)}` : String(row.user_id),
-    travelerId: row.traveler_id == null ? null : String(row.traveler_id),
+    userId:
+      row.user_id == null && row.traveler_id != null
+        ? `traveler:${String(row.traveler_id)}`
+        : String(row.user_id),
+    ...(row.traveler_id == null ? {} : { travelerId: String(row.traveler_id) }),
     shareAmountMinor: minorUnitsFromRemote(row.share_amount, "share_amount"),
     sharePercentage: row.share_percentage == null ? null : Number(row.share_percentage),
     splitType: (row.split_type == null

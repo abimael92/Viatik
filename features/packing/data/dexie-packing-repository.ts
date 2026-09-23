@@ -2,17 +2,28 @@ import { liveQuery } from "dexie";
 
 import { getCurrentDatabase, type ViatikDatabase } from "@/lib/db/dexie";
 import { logger } from "@/lib/observability/logger";
-import type {
-  PackingCategory,
-  PackingDraft,
-  PackingItem,
-  PackingRepository,
+import {
+  normalizePackingName,
+  type PackingCategory,
+  type PackingDraft,
+  type PackingItem,
+  type PackingRepository,
 } from "@/features/packing/domain/packing-types";
 
 function getDb(): ViatikDatabase {
   const db = getCurrentDatabase();
   if (!db) throw new Error("No database is open. Wrap calls in DatabaseProvider.");
   return db;
+}
+
+function uniquePackingItems(items: PackingItem[]): PackingItem[] {
+  const unique = new Map<string, PackingItem>();
+  for (const item of [...items].sort((a, b) => a.position - b.position)) {
+    const key = normalizePackingName(item.name);
+    const existing = unique.get(key);
+    if (!existing || (existing.isSuggested && !item.isSuggested)) unique.set(key, item);
+  }
+  return [...unique.values()].sort((a, b) => a.position - b.position);
 }
 
 function newPackingItem(
@@ -43,11 +54,12 @@ function newPackingItem(
  */
 export class DexiePackingRepository implements PackingRepository {
   async listByTrip(tripId: string): Promise<PackingItem[]> {
-    return getDb()
+    const items = await getDb()
       .packingItems.where("tripId")
       .equals(tripId)
       .filter((item) => item.deletedAt === null)
       .sortBy("position");
+    return uniquePackingItems(items);
   }
 
   watchByTrip(tripId: string, onChange: (items: PackingItem[]) => void): () => void {
@@ -64,6 +76,27 @@ export class DexiePackingRepository implements PackingRepository {
     await db.packingItems.put({ ...existing, isPacked, updatedAt: new Date().toISOString() });
   }
 
+  async setPacked(ids: string[], isPacked: boolean): Promise<void> {
+    if (!ids.length) return;
+    const db = getDb();
+    const now = new Date().toISOString();
+    await db.transaction("rw", db.packingItems, async () => {
+      for (const id of ids) {
+        const existing = await db.packingItems.get(id);
+        if (existing) await db.packingItems.put({ ...existing, isPacked, updatedAt: now });
+      }
+    });
+  }
+
+  async updateQuantity(id: string, quantity: number): Promise<void> {
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
+      throw new Error("Quantity must be a whole number from 1 to 99.");
+    }
+    const db = getDb();
+    const existing = await db.packingItems.get(id);
+    if (existing) await db.packingItems.put({ ...existing, quantity, updatedAt: new Date().toISOString() });
+  }
+
   async addCustom(input: {
     tripId: string;
     category: PackingCategory;
@@ -74,12 +107,12 @@ export class DexiePackingRepository implements PackingRepository {
     const name = input.name.trim();
     if (!name) throw new Error("Item name is required");
 
+    const existing = await this.listByTrip(input.tripId);
+    const duplicate = existing.find((item) => normalizePackingName(item.name) === normalizePackingName(name));
+    if (duplicate) return duplicate;
+
     const now = new Date().toISOString();
-    const last = await db.packingItems
-      .where("tripId")
-      .equals(input.tripId)
-      .filter((item) => item.deletedAt === null)
-      .last();
+    const last = existing.at(-1);
 
     const item: PackingItem = {
       id: crypto.randomUUID(),
@@ -105,20 +138,30 @@ export class DexiePackingRepository implements PackingRepository {
     await db.packingItems.delete(id);
   }
 
+  async resetToSuggested(tripId: string, drafts: PackingDraft[]): Promise<PackingItem[]> {
+    const db = getDb();
+    await db.packingItems.where("tripId").equals(tripId).delete();
+    return this.applySuggested(tripId, drafts);
+  }
+
   async applySuggested(tripId: string, drafts: PackingDraft[]): Promise<PackingItem[]> {
     const db = getDb();
     const now = new Date().toISOString();
-    const existing = await db.packingItems
-      .where("tripId")
-      .equals(tripId)
-      .filter((item) => item.deletedAt === null)
-      .toArray();
+    const existing = uniquePackingItems(
+      await db.packingItems
+        .where("tripId")
+        .equals(tripId)
+        .filter((item) => item.deletedAt === null)
+        .toArray(),
+    );
 
     const userItems = existing.filter((item) => !item.isSuggested);
     const suggestedItems = existing.filter((item) => item.isSuggested);
 
-    const key = (item: Pick<PackingItem, "category" | "name">) =>
-      `${item.category}:${item.name.toLowerCase()}`;
+    const key = (item: Pick<PackingItem, "name">) => normalizePackingName(item.name);
+    const uniqueDrafts = drafts.filter((draft, index, all) =>
+      all.findIndex((candidate) => key(candidate) === key(draft)) === index,
+    );
 
     // Preserve a matching custom item (so a user-edited line isn't clobbered),
     // otherwise reuse an existing suggestion (keeping its packed state), else
@@ -126,7 +169,7 @@ export class DexiePackingRepository implements PackingRepository {
     const result: PackingItem[] = userItems.map((item) => ({ ...item, updatedAt: now }));
 
     const generatedKeys = new Set<string>();
-    drafts.forEach((draft, index) => {
+    uniqueDrafts.forEach((draft, index) => {
       const draftKey = key(draft);
       generatedKeys.add(draftKey);
 

@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import LayoutProps from "next";
+import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { themeInitScript } from "@/components/theme-initializer";
 import { I18nProvider } from "@/lib/i18n/i18n-provider";
 
 const geistSans = Geist({
@@ -20,21 +22,21 @@ export const metadata: Metadata = {
   description: "Plan trips with friends, even offline. Viatik syncs your itinerary, expenses, and gallery whenever you are back online.",
 };
 
-// Apply the persisted theme before first paint to avoid a flash; falls back to
-// the OS preference (CSS handles prefers-color-scheme when no choice is saved).
-const themeInitScript = `(function(){try{var s=localStorage.getItem("viatik-theme");var r=document.documentElement;if(s==="dark"||s==="light"){r.setAttribute("data-theme",s);}else{r.removeAttribute("data-theme");}var l=localStorage.getItem("viatik-language");if(l==="en"||l==="es"){r.lang=l;}}catch(e){}})();`;
-
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    // The theme init script sets `data-theme` on <html> before React hydrates,
-    // so suppress hydration warnings on this element to avoid a false mismatch.
     <html
       lang="en"
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <Script
+          id="theme-init"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: themeInitScript }}
+        />
+      </head>
       <body className="min-h-full flex flex-col">
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <I18nProvider>
           <ErrorBoundary>{children}</ErrorBoundary>
         </I18nProvider>

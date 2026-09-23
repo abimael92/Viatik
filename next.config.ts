@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
   // Optimize images
   images: {
     formats: ["image/avif", "image/webp"],
+    unoptimized: true,
   },
 
   // Enable React strict mode for better development experience

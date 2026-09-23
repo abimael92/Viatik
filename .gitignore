@@ -48,6 +48,17 @@ supabase/.branches/
 .idea/
 *.log
 
+# Capacitor native build artifacts
+android/.gradle/
+android/build/
+android/app/build/
+android/capacitor-cordova-android-plugins/
+android/.idea/
+ios/App/Pods/
+ios/App/DerivedData/
+ios/App/*.xcworkspace/xcuserdata/
+ios/App/*.xcodeproj/xcuserdata/
+
 # Local tooling and deployment output
 .vercel/
 *.pem
