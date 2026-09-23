@@ -9,7 +9,7 @@ import { expenseRepository } from "@/features/expenses/data/dexie-expense-reposi
 import { mediaRepository } from "@/features/media/data/dexie-media-repository";
 import { feedRepository } from "@/features/feed/data/dexie-feed-repository";
 
-const TEST_USER = "test-feed-user";
+const TEST_USER = "00000000-0000-4000-8000-000000000002";
 
 let db: ViatikDatabase;
 
