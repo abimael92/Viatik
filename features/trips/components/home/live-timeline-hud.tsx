@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { getCurrentDatabase } from "@/lib/db/dexie";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 import type { ActivityChecklistItem, Trip } from "@/features/domain/entities";
 import type { TimelineItem } from "@/features/trips/lib/home-trips";
@@ -70,6 +72,8 @@ export function visibleTimelineWindow<T extends { state: TemporalState }>(
 }
 
 export function LiveTimelineHud({ trip, items, active, userId }: LiveTimelineHudProps) {
+  const { toast } = useToast();
+  const { t } = useI18n();
   const coverUrl = isTripCoverImage(trip.coverImageUrl) ? trip.coverImageUrl : null;
   const gradient = getTripCoverGradient(trip.coverImageUrl);
   const label = trip.destination ?? trip.name;
@@ -84,10 +88,16 @@ export function LiveTimelineHud({ trip, items, active, userId }: LiveTimelineHud
   const [weatherLoading, setWeatherLoading] = useState(true);
   const [showAll, setShowAll] = useState(false);
   const [now, setNow] = useState(() => new Date());
-  const timelineRef = useRef<HTMLDivElement>(null);
+  const [optimisticChecklists, setOptimisticChecklists] = useState<Record<string, ActivityChecklistItem[]>>({});
+  const checklistWriteVersionRef = useRef(new Map<string, number>());
   const timelineId = useId();
   const selectedActivity = selectedActivityId
-    ? items.find((item) => item.id === selectedActivityId) ?? null
+    ? (() => {
+        const item = items.find((candidate) => candidate.id === selectedActivityId);
+        return item
+          ? { ...item, checklist: optimisticChecklists[item.id] ?? item.checklist }
+          : null;
+      })()
     : null;
 
   useEffect(() => {
@@ -125,10 +135,29 @@ export function LiveTimelineHud({ trip, items, active, userId }: LiveTimelineHud
     };
   }, [trip, userId]);
 
+  useEffect(() => {
+    const reconcile = window.setTimeout(() => {
+      setOptimisticChecklists((current) => {
+        let changed = false;
+        const next = { ...current };
+        for (const [activityId, optimistic] of Object.entries(current)) {
+          const persisted = items.find((item) => item.id === activityId);
+          if (!persisted || checklistEquals(normalizeActivityChecklist(persisted.checklist), optimistic)) {
+            delete next[activityId];
+            changed = true;
+          }
+        }
+        return changed ? next : current;
+      });
+    }, 0);
+    return () => window.clearTimeout(reconcile);
+  }, [items]);
+
   const itemsWithState = useMemo(
     () =>
       items.map((item) => ({
         ...item,
+        checklist: optimisticChecklists[item.id] ?? item.checklist,
         formattedTime: formatWallClockTime(item.startTime ?? null),
         state: getTemporalState(
           { startTime: item.startTime ?? null, endTime: item.endTime ?? null, dayDate: item.dayDate },
@@ -137,7 +166,7 @@ export function LiveTimelineHud({ trip, items, active, userId }: LiveTimelineHud
         ),
         startsIn: getTimeUntil(item, now, scheduleTimeZone),
       })),
-    [items, scheduleTimeZone, now],
+    [items, optimisticChecklists, scheduleTimeZone, now],
   );
 
   const currentItem = itemsWithState.find((i) => i.state === "current");
@@ -147,6 +176,13 @@ export function LiveTimelineHud({ trip, items, active, userId }: LiveTimelineHud
     [itemsWithState, showAll],
   );
   const hasMore = itemsWithState.length > INITIAL_VISIBLE_ITEMS;
+  const firstVisibleIndex =
+    displayItems.length > 0
+      ? itemsWithState.findIndex((item) => item.id === displayItems[0]?.id)
+      : 0;
+  const hasHiddenEarlier = !showAll && firstVisibleIndex > 0;
+  const hasHiddenLater =
+    !showAll && firstVisibleIndex + displayItems.length < itemsWithState.length;
 
   const timeUntilNext = currentItem
     ? null
@@ -154,12 +190,36 @@ export function LiveTimelineHud({ trip, items, active, userId }: LiveTimelineHud
       ? futureItems[0].startsIn
       : null;
 
+  function timelineToggle(position: "top" | "bottom", expanded = false) {
+    return (
+      <Button
+        variant="ghost"
+        size="sm"
+        className="mx-auto my-2 flex h-auto w-fit justify-center px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-transparent hover:text-foreground hover:opacity-70"
+        aria-expanded={expanded}
+        aria-controls={timelineId}
+        onClick={() => {
+          setShowAll((value) => !value);
+        }}
+      >
+        <ChevronDown
+          className={cn("size-3.5 transition-transform", (expanded || position === "top") && "rotate-180")}
+          aria-hidden
+        />
+        {expanded ? "Show less" : "Show more"}
+      </Button>
+    );
+  }
+
   async function saveChecklist(
     activityId: string,
     checklist: ActivityChecklistItem[],
     event?: { action: ChecklistFeedAction; itemTitle: string },
   ) {
     const next = normalizeActivityChecklist(checklist);
+    const writeVersion = (checklistWriteVersionRef.current.get(activityId) ?? 0) + 1;
+    checklistWriteVersionRef.current.set(activityId, writeVersion);
+    setOptimisticChecklists((current) => ({ ...current, [activityId]: next }));
     try {
       if (event) {
         await activityRepository.updateChecklist(activityId, next, event);
@@ -167,7 +227,18 @@ export function LiveTimelineHud({ trip, items, active, userId }: LiveTimelineHud
         await activityRepository.update(activityId, { checklist: next });
       }
     } catch {
-      // Live query restores authoritative local state if the write fails.
+      if (checklistWriteVersionRef.current.get(activityId) === writeVersion) {
+        setOptimisticChecklists((current) => {
+          const rollback = { ...current };
+          delete rollback[activityId];
+          return rollback;
+        });
+        toast({
+          title: t("common.activityMustDosSaveErrorTitle"),
+          description: t("common.activityMustDosSaveErrorDescription"),
+          variant: "error",
+        });
+      }
     }
   }
 
@@ -205,14 +276,19 @@ export function LiveTimelineHud({ trip, items, active, userId }: LiveTimelineHud
           {active ? "Today at a glance" : `Up next in ${label}`}
         </h2>
         {timeUntilNext && (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-viatik-magenta/60 bg-viatik-magenta/5 px-3 py-1 text-sm font-semibold text-viatik-magenta">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-viatik-magenta/10 px-3 py-1 text-sm font-semibold text-viatik-magenta dark:bg-viatik-magenta/20">
             <Clock3 className="size-3.5" aria-hidden />
             Next in {timeUntilNext}
           </span>
         )}
       </div>
 
-      <div id={timelineId} ref={timelineRef} className="max-h-[28rem] overflow-y-auto pr-2">
+      {hasMore && hasHiddenEarlier && timelineToggle("top")}
+
+      <div
+        id={timelineId}
+        className={cn("pr-2", !showAll && "max-h-[28rem] overflow-y-auto")}
+      >
         <div className="relative space-y-2">
           <div className="absolute bottom-0 left-4.5 top-0 w-0.5 bg-border/40" aria-hidden />
           {displayItems.map((item, index) => (
@@ -241,26 +317,17 @@ export function LiveTimelineHud({ trip, items, active, userId }: LiveTimelineHud
         )}
       </div>
 
-      {hasMore && (
-        <Button
-          variant="ghost"
-          className="mx-auto mt-3 flex w-fit justify-center px-3 text-muted-foreground hover:bg-transparent hover:text-foreground hover:opacity-70"
-          aria-expanded={showAll}
-          aria-controls={timelineId}
-          onClick={() => {
-            setShowAll((value) => !value);
-            if (!showAll) {
-              requestAnimationFrame(() => timelineRef.current?.scrollTo({ top: timelineRef.current.scrollHeight, behavior: "smooth" }));
-            }
-          }}
-        >
-          <ChevronDown className={cn("size-4 transition-transform", showAll && "rotate-180")} aria-hidden />
-          {showAll ? "Show less" : "Show more"}
-        </Button>
-      )}
+      {hasMore && (showAll
+        ? timelineToggle("bottom", true)
+        : hasHiddenLater && timelineToggle("bottom"))}
 
-      <footer className="mt-5 flex justify-end border-t pt-4">
-        <Button asChild variant="outline" className="shrink-0">
+      <footer className="mt-4 flex justify-end">
+        <Button
+          asChild
+          variant="ghost"
+          size="sm"
+          className="h-auto shrink-0 px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-transparent hover:text-foreground hover:opacity-70"
+        >
           <Link href={tripTabPath(trip.id, "itinerary")}>
             Go to itinerary <ArrowRight className="size-4" aria-hidden />
           </Link>
@@ -285,6 +352,7 @@ export function LiveTimelineHud({ trip, items, active, userId }: LiveTimelineHud
             startsIn: getTimeUntil(selectedActivity, now, scheduleTimeZone),
           }}
           timeZone={scheduleTimeZone}
+          currentUserId={userId}
           onClose={() => setSelectedActivityId(null)}
           onChecklistChange={(checklist, event) => void saveChecklist(selectedActivity.id, checklist, event)}
         />
@@ -408,6 +476,22 @@ function getTimeUntil(item: TimelineItem, now: Date, timeZone: string | null): s
   return `${minutes}m`;
 }
 
+function checklistEquals(
+  left: readonly ActivityChecklistItem[],
+  right: readonly ActivityChecklistItem[],
+): boolean {
+  return left.length === right.length && left.every((item, index) => {
+    const other = right[index];
+    return (
+      other !== undefined &&
+      item.id === other.id &&
+      item.title === other.title &&
+      item.completed === other.completed &&
+      item.archived === other.archived
+    );
+  });
+}
+
 type TimelineCardItem = TimelineItem & {
   formattedTime: string | null;
   state: TemporalState;
@@ -467,7 +551,8 @@ function TimelineCard({
           state === "current" &&
             "border-viatik-magenta/50 bg-viatik-magenta/10 ring-1 ring-viatik-magenta/30",
           state === "past" && "bg-muted/30",
-          state === "future" && "bg-background/80 hover:border-viatik-magenta/30",
+          state === "future" &&
+            "bg-viatik-magenta/5 hover:border-viatik-magenta/30 dark:bg-viatik-magenta/10",
         )}
         role="button"
         tabIndex={0}
@@ -512,7 +597,7 @@ function TimelineCard({
                 </span>
               )}
               {state === "future" && startsIn && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-viatik-magenta/60 bg-viatik-magenta/5 px-2 py-0.5 text-[10px] font-semibold text-viatik-magenta">
+                <span className="inline-flex items-center gap-1 rounded-full bg-viatik-magenta/10 px-2 py-0.5 text-[10px] font-semibold text-viatik-magenta dark:bg-viatik-magenta/20">
                   <Clock3 className="size-3" aria-hidden />
                   Starts in {startsIn}
                 </span>
@@ -548,19 +633,29 @@ function TimelineCard({
 
 function ActivityDetailModal({
   activity,
+  currentUserId,
   onClose,
   onChecklistChange,
 }: {
   activity: TimelineCardItem;
   timeZone?: string | null;
+  currentUserId: string;
   onClose: () => void;
   onChecklistChange: (
     checklist: ActivityChecklistItem[],
     event?: { action: ChecklistFeedAction; itemTitle: string },
   ) => void;
 }) {
+  const { t } = useI18n();
   const checklist = activity.checklist ?? [];
-  const description = activity.description?.trim() || null;
+  const description = activity.description?.trim() || t("common.activityNoDescription");
+  const attendees = (activity.participants ?? [])
+    .filter((participant) => participant.status === "attending")
+    .map((participant, index) => {
+      if (participant.userId === currentUserId) return t("common.you");
+      const displayName = participant.displayName?.trim();
+      return displayName || t("common.activityTravelerFallback", { count: index + 1 });
+    });
   const timeLabel = activity.formattedTime ?? "All day";
   const statusLabel =
     activity.state === "past"
@@ -585,7 +680,38 @@ function ActivityDetailModal({
         </DialogHeader>
 
         <div className="space-y-4">
-          {checklist.length > 0 ? (
+          <section className="space-y-1.5" aria-labelledby="activity-description-heading">
+            <h3 id="activity-description-heading" className="text-sm font-semibold">
+              {t("common.activityDescriptionHeading")}
+            </h3>
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+              {description}
+            </p>
+          </section>
+
+          <section className="space-y-1.5" aria-labelledby="activity-attendees-heading">
+            <h3 id="activity-attendees-heading" className="text-sm font-semibold">
+              {t("common.activityAttendeesHeading")}
+            </h3>
+            {attendees.length > 0 ? (
+              <ul className="flex flex-wrap gap-2" aria-label={t("common.activityAttendeesHeading")}>
+                {attendees.map((name, index) => (
+                  <li
+                    key={`${name}-${index}`}
+                    className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground"
+                  >
+                    {name}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {t("common.activityEveryoneAttending")}
+              </p>
+            )}
+          </section>
+
+          {checklist.length > 0 && (
             <>
               <div className="flex flex-wrap items-center gap-2">
                 {activity.state === "past" && (
@@ -599,7 +725,7 @@ function ActivityDetailModal({
                   </span>
                 )}
                 {activity.state === "future" && activity.startsIn && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-viatik-magenta/10 px-2.5 py-0.5 text-xs font-semibold text-viatik-magenta dark:bg-viatik-magenta/20">
                     <Clock3 className="size-3.5" aria-hidden />
                     Starts in {activity.startsIn}
                   </span>
@@ -628,14 +754,12 @@ function ActivityDetailModal({
               <div className="space-y-2 rounded-xl border border-border/60 p-3">
                 <p className="flex items-center gap-2 text-sm font-semibold">
                   <ListChecks className="size-4 text-primary" aria-hidden />
-                  Sub-tasks
+                  {t("common.activityMustDos")}
                 </p>
                 <ActivityChecklistQuickActions checklist={checklist} onChange={onChecklistChange} />
               </div>
             </>
-          ) : description ? (
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">{description}</p>
-          ) : null}
+          )}
         </div>
 
         <DialogFooter>

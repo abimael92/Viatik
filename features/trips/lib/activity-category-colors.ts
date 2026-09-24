@@ -65,9 +65,11 @@ export function getActivityCategoryColors(category: string): ActivityCategoryCol
 
 export function isUserAttending(activity: Activity, userId: string): boolean {
   if (!activity.participants?.length) return true;
-  return activity.participants.some(
-    (participant) => participant.userId === userId && participant.status === "attending"
-  );
+  const participant = activity.participants.find((candidate) => candidate.userId === userId);
+  // A roster can contain only explicitly selected travelers and omit the trip
+  // owner/current profile. Absence is not a decline; hide only an explicit
+  // pending or declined entry for this user.
+  return participant ? participant.status === "attending" : true;
 }
 
 export function isUserConfirmedAttending(activity: Activity, userId: string): boolean {

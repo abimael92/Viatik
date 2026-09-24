@@ -7,6 +7,7 @@ import type { Trip } from "@/features/domain/entities";
 
 const update = vi.fn().mockResolvedValue(undefined);
 const updateChecklist = vi.fn().mockResolvedValue(undefined);
+const notify = vi.fn();
 
 vi.mock("@/features/activities/data/dexie-activity-repository", () => ({
   activityRepository: {
@@ -17,6 +18,10 @@ vi.mock("@/features/activities/data/dexie-activity-repository", () => ({
 
 vi.mock("@/lib/db/dexie", () => ({
   getCurrentDatabase: () => ({}),
+}));
+
+vi.mock("@/components/ui/toast", () => ({
+  useToast: () => ({ toast: notify }),
 }));
 
 vi.mock("@/features/weather/data/dexie-weather-repository", () => ({
@@ -55,7 +60,7 @@ vi.mock("next/image", () => ({
 }));
 
 vi.mock("next/link", () => ({
-  default: ({ children, href }: { children: React.ReactNode; href: string }) => <a href={href}>{children}</a>,
+  default: ({ children, href, ...props }: React.ComponentProps<"a">) => <a href={href} {...props}>{children}</a>,
 }));
 
 const trip = {
@@ -81,6 +86,10 @@ const items: TimelineItem[] = [
     startTime: "2099-09-23T10:00:00",
     endTime: "2099-09-23T12:00:00",
     tripId: "trip-1",
+    participants: [
+      { userId: "user-1", status: "attending" },
+      { userId: null, travelerId: "traveler-1", displayName: "Alex Chen", status: "attending" },
+    ],
     checklist: [
       { id: "item-1", title: "Sacar efectivo", completed: false, archived: false },
       { id: "item-2", title: "Meet guide", completed: true, archived: false },
@@ -94,6 +103,7 @@ const emptyChecklistItems: TimelineItem[] = [
     id: "activity-empty",
     title: "museo",
     description: "Visit the contemporary art wing first.",
+    participants: [],
     checklist: [],
   },
 ];
@@ -119,16 +129,21 @@ describe("LiveTimelineHud execution UI", () => {
   beforeEach(() => {
     update.mockClear();
     updateChecklist.mockClear();
+    notify.mockClear();
   });
 
   it("shows weather on the timeline header and countdown/progress on cards", async () => {
     render(<LiveTimelineHud trip={trip} items={items} active userId="user-1" />);
 
     const countdown = screen.getByText(/starts in/i);
-    expect(countdown.className).toContain("border-viatik-magenta");
+    expect(countdown.className).toContain("bg-viatik-magenta/10");
+    expect(countdown.className).toContain("dark:bg-viatik-magenta/20");
     expect(countdown.className).toContain("text-viatik-magenta");
     expect(countdown.querySelector("svg")).toBeTruthy();
-    expect(screen.getByLabelText("1 of 2 tasks completed")).toBeTruthy();
+    const futureCard = screen.getByText("compras").closest('[role="button"]');
+    expect(futureCard?.className).toContain("bg-viatik-magenta/5");
+    expect(futureCard?.className).toContain("dark:bg-viatik-magenta/10");
+    expect(screen.getByLabelText("1 of 2 Must-dos complete")).toBeTruthy();
     await waitFor(() => expect(screen.getByLabelText(/°C|Weather unavailable/i)).toBeTruthy());
   });
 
@@ -264,9 +279,51 @@ describe("LiveTimelineHud execution UI", () => {
     expect(toggle.getAttribute("aria-expanded")).toBe("false");
     expect(toggle.className).toContain("w-fit");
     expect(toggle.className).toContain("hover:bg-transparent");
+    const timeline = document.getElementById(toggle.getAttribute("aria-controls")!);
+    expect(timeline!.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(timeline!.className).toContain("max-h-[28rem]");
     fireEvent.click(toggle);
     expect(screen.getByText("bailar")).toBeTruthy();
+    expect(timeline!.className).not.toContain("max-h-[28rem]");
+    expect(timeline!.className).not.toContain("overflow-y-auto");
     expect(screen.getByRole("button", { name: /show less/i }).getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("places Show more above the timeline when older activities are hidden", () => {
+    const pastStops: TimelineItem[] = [1, 2, 3, 4].map((index) => ({
+      id: `past-${index}`,
+      dayDate: "2020-01-01",
+      title: `past stop ${index}`,
+      description: null,
+      timeLabel: `${index + 8}:00`,
+      location: null,
+      category: "sightseeing",
+      startTime: `2020-01-01T${String(index + 8).padStart(2, "0")}:00:00`,
+      endTime: `2020-01-01T${String(index + 9).padStart(2, "0")}:00:00`,
+      tripId: "trip-1",
+      checklist: [],
+    }));
+
+    render(<LiveTimelineHud trip={trip} items={pastStops} active userId="user-1" />);
+
+    const toggle = screen.getByRole("button", { name: /show more/i });
+    const timeline = document.getElementById(toggle.getAttribute("aria-controls")!);
+    expect(toggle.compareDocumentPosition(timeline!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("uses minimal text styling for timeline navigation actions", () => {
+    const fourStops = Array.from({ length: 4 }, (_, index) => ({
+      ...items[0],
+      id: `future-${index}`,
+      title: `future ${index}`,
+      startTime: `2099-09-23T${String(index + 10).padStart(2, "0")}:00:00`,
+    }));
+    render(<LiveTimelineHud trip={trip} items={fourStops} active userId="user-1" />);
+
+    expect(screen.getByRole("button", { name: /show more/i }).className).toContain("text-xs");
+    const itineraryLink = screen.getByRole("link", { name: /go to itinerary/i });
+    expect(itineraryLink.className).toContain("hover:bg-transparent");
+    expect(itineraryLink.className).toContain("text-muted-foreground");
   });
 
   it("visibleTimelineWindow prefers live stops inside a three-item cap", () => {
@@ -294,20 +351,37 @@ describe("LiveTimelineHud execution UI", () => {
     expect(screen.getAllByLabelText(/°C|Weather unavailable/i)).toHaveLength(1);
   });
 
-  it("shows description only when there are no sub-tasks", () => {
+  it("shows description and attendees without Must-do UI when there are no Must-dos", () => {
     render(<LiveTimelineHud trip={trip} items={emptyChecklistItems} active userId="user-1" />);
 
     fireEvent.click(screen.getByText("museo"));
     expect(screen.getByText("Visit the contemporary art wing first.")).toBeTruthy();
-    expect(screen.queryByRole("link", { name: /add sub-tasks/i })).toBeNull();
-    expect(screen.queryByText(/no sub-tasks/i)).toBeNull();
-    expect(screen.queryByText(/sub-tasks/i)).toBeNull();
-    expect(screen.queryByLabelText(/tasks completed/i)).toBeNull();
+    expect(screen.getByText("Description")).toBeTruthy();
+    expect(screen.getByText("Attendees")).toBeTruthy();
+    expect(screen.getByText("Everyone on the trip")).toBeTruthy();
+    expect(screen.queryByText("Must-dos")).toBeNull();
+    expect(screen.queryByLabelText(/Must-dos complete/i)).toBeNull();
     expect(screen.queryByRole("checkbox")).toBeNull();
     expect(screen.queryByRole("button", { name: /archive/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /delete/i })).toBeNull();
   });
 
-  it("shows card progress and interactive checklist after sub-tasks exist", () => {
+  it("represents a missing description with a neutral fallback", () => {
+    render(
+      <LiveTimelineHud
+        trip={trip}
+        items={[{ ...emptyChecklistItems[0], description: null }]}
+        active
+        userId="user-1"
+      />,
+    );
+
+    fireEvent.click(screen.getByText("museo"));
+    expect(screen.getByText("No description provided.")).toBeTruthy();
+    expect(screen.getByText("Everyone on the trip")).toBeTruthy();
+  });
+
+  it("shows description, attendees, and interactive Must-dos when populated", () => {
     const withThree: TimelineItem[] = [
       {
         ...items[0],
@@ -320,15 +394,58 @@ describe("LiveTimelineHud execution UI", () => {
     ];
     render(<LiveTimelineHud trip={trip} items={withThree} active userId="user-1" />);
 
-    expect(screen.getByLabelText("0 of 3 tasks completed")).toBeTruthy();
-    expect(screen.getByText("0/3 tasks completed")).toBeTruthy();
+    expect(screen.getByLabelText("0 of 3 Must-dos complete")).toBeTruthy();
+    expect(screen.getByText("0/3 Must-dos complete")).toBeTruthy();
 
     fireEvent.click(screen.getByText("compras"));
+    expect(screen.getByText("Pick up cash and meet the guide downtown.")).toBeTruthy();
+    expect(screen.getByText("You")).toBeTruthy();
+    expect(screen.getByText("Alex Chen")).toBeTruthy();
+    expect(screen.getByText("Must-dos")).toBeTruthy();
     expect(screen.getByRole("checkbox", { name: "One" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Archive One" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Delete One" })).toBeTruthy();
   });
 
-  it("completes and archives checklist items from the detail sheet with feed-aware updates", async () => {
+  it("optimistically updates the checkbox, count, and progress before Dexie resolves", async () => {
+    let resolveWrite!: () => void;
+    updateChecklist.mockReturnValueOnce(new Promise<void>((resolve) => {
+      resolveWrite = resolve;
+    }));
+    render(<LiveTimelineHud trip={trip} items={items} active userId="user-1" />);
+
+    fireEvent.click(screen.getByText("compras"));
+    const checkbox = screen.getByRole("checkbox", { name: "Sacar efectivo" }) as HTMLInputElement;
+    fireEvent.click(checkbox);
+
+    expect(checkbox.checked).toBe(true);
+    expect(screen.getAllByText("2/2 Must-dos complete").length).toBeGreaterThan(0);
+    const progress = screen.getAllByLabelText("2 of 2 Must-dos complete");
+    expect(progress.length).toBeGreaterThan(0);
+    expect(progress.some((element) => element.querySelector('[style*="width: 100%"]'))).toBe(true);
+
+    resolveWrite();
+    await waitFor(() => expect(updateChecklist).toHaveBeenCalledOnce());
+  });
+
+  it("rolls back optimistic progress and reports a failed local write", async () => {
+    updateChecklist.mockRejectedValueOnce(new Error("Dexie write failed"));
+    render(<LiveTimelineHud trip={trip} items={items} active userId="user-1" />);
+
+    fireEvent.click(screen.getByText("compras"));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Sacar efectivo" }));
+
+    await waitFor(() =>
+      expect(notify).toHaveBeenCalledWith(expect.objectContaining({
+        title: "Must-dos not saved",
+        variant: "error",
+      })),
+    );
+    expect((screen.getByRole("checkbox", { name: "Sacar efectivo" }) as HTMLInputElement).checked).toBe(false);
+    expect(screen.getAllByText("1/2 Must-dos complete").length).toBeGreaterThan(0);
+  });
+
+  it("completes and archives checklist items with feed-aware local updates", async () => {
     render(<LiveTimelineHud trip={trip} items={items} active userId="user-1" />);
 
     fireEvent.click(screen.getByText("compras"));
@@ -354,6 +471,21 @@ describe("LiveTimelineHud execution UI", () => {
           { id: "item-2", title: "Meet guide", completed: true, archived: false },
         ],
         { action: "skipped_checklist_item", itemTitle: "Sacar efectivo" },
+      ),
+    );
+  });
+
+  it("hard-deletes a Must-do through the feed-aware local update path", async () => {
+    render(<LiveTimelineHud trip={trip} items={items} active userId="user-1" />);
+
+    fireEvent.click(screen.getByText("compras"));
+    fireEvent.click(screen.getByRole("button", { name: "Delete Sacar efectivo" }));
+
+    await waitFor(() =>
+      expect(updateChecklist).toHaveBeenCalledWith(
+        "activity-1",
+        [{ id: "item-2", title: "Meet guide", completed: true, archived: false }],
+        { action: "deleted_checklist_item", itemTitle: "Sacar efectivo" },
       ),
     );
   });
