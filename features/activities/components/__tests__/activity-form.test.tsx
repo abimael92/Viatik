@@ -173,4 +173,19 @@ describe("ActivityForm", () => {
     expect(screen.queryByLabelText("Upload image")).toBeNull();
     expect(screen.getByRole("button", { name: "Add transit" })).toBeTruthy();
   });
+
+  it("submits Must-dos with the activity", async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    const { container } = render(<ActivityForm days={["2026-09-16"]} currentUserId="user-1" saving={false} onSubmit={onSubmit} onCancel={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Title"), { target: { value: "Museum" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add Must-do" }));
+    fireEvent.change(screen.getByLabelText("Must-do 1 title"), { target: { value: "Buy tickets" } });
+    fireEvent.submit(container.querySelector("form")!);
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
+      title: "Museum",
+      checklist: [expect.objectContaining({ title: "Buy tickets", completed: false })],
+    })));
+  });
+
 });

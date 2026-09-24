@@ -42,7 +42,7 @@ import {
   normalizeActivityCategory,
   type ActivityCategory,
 } from "@/features/activities/domain/activity-category";
-import type { Activity, ActivityParticipant, ActivityPollOption, ActivityPollStatus, ActivityPollVote, ProfileSummary, TripMember, TripTraveler } from "@/features/domain/entities";
+import type { Activity, ActivityChecklistItem, ActivityParticipant, ActivityPollOption, ActivityPollStatus, ActivityPollVote, ProfileSummary, TripMember, TripTraveler } from "@/features/domain/entities";
 import { decimalFromMinorUnits, parseMinorUnits, type MinorUnits } from "@/features/domain/money";
 import type { TransitSegment } from "@/features/transit/domain/transit-types";
 import { useLocalProfile } from "@/features/profile/lib/use-local-profile";
@@ -52,6 +52,8 @@ import {
   TransitFields,
   type TransitFormValues,
 } from "@/features/transit/components/transit-fields";
+import { ActivityChecklistEditor } from "@/features/activities/components/activity-checklist";
+import { normalizeActivityChecklist } from "@/features/activities/domain/activity-checklist";
 
 const CATEGORY_GROUPS = [
   {
@@ -104,6 +106,7 @@ export type ActivityFormValues =
       votingEndsAt: string | null;
       pollOptions: ActivityPollOption[];
       pollVotes: ActivityPollVote[];
+      checklist: ActivityChecklistItem[];
     }
   | { kind: "transit"; transit: TransitFormValues };
 
@@ -188,6 +191,9 @@ export function ActivityForm({
         }
       : null
   );
+  const [checklist, setChecklist] = useState<ActivityChecklistItem[]>(() =>
+    normalizeActivityChecklist(activity?.checklist),
+  );
   const selectedCategory =
     CATEGORY_OPTIONS.find((option) => option.value === category) ?? CATEGORY_OPTIONS.at(-1)!;
   const uniqueMembers = [...new Map(members.map((member) => [member.userId, member])).values()];
@@ -264,6 +270,7 @@ export function ActivityForm({
       votingEndsAt: shouldVote ? new Date(votingEndsAt).toISOString() : null,
       pollOptions,
       pollVotes: shouldVote && existingVoteOpen ? activity?.pollVotes ?? [] : [],
+      checklist: normalizeActivityChecklist(checklist),
     });
   }
 
@@ -313,6 +320,7 @@ export function ActivityForm({
             <div className="space-y-4">
               <Field label="Title" name="title" defaultValue={activity?.title} required />
               <TextAreaField label="Description" name="description" defaultValue={activity?.description ?? ""} />
+              <ActivityChecklistEditor checklist={checklist} onChange={setChecklist} />
               <div className="space-y-2">
                 <Label htmlFor="activity-dayDate">Day</Label>
                 <select id="activity-dayDate" name="dayDate" defaultValue={activity?.dayDate ?? draft?.dayDate ?? days[0]} className="h-10 w-full rounded-md border bg-background px-3 text-sm">

@@ -2,17 +2,42 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, ChevronDown, Clock3, MapPin, Plus, Sun, Cloud, Droplets } from "lucide-react";
+import { ArrowRight, ChevronDown, Clock3, Cloud, Droplets, ListChecks, MapPin, Plus, Sun } from "lucide-react";
 import { motion } from "framer-motion";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { getCurrentDatabase } from "@/lib/db/dexie";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
-import type { Trip } from "@/features/domain/entities";
+import type { ActivityChecklistItem, Trip } from "@/features/domain/entities";
 import type { TimelineItem } from "@/features/trips/lib/home-trips";
 import { getTripCoverGradient, isTripCoverImage } from "@/features/trips/lib/trip-cover";
-import { activityDateTime, tripTabPath, formatTimeInZone, getTemporalState, type TemporalState } from "@/features/trips/lib/home-trips";
+import {
+  activityDateTime,
+  tripTabPath,
+  formatWallClockTime,
+  getTemporalState,
+  resolveScheduleTimeZone,
+  resolveTripScheduleTimeZone,
+  type TemporalState,
+} from "@/features/trips/lib/home-trips";
+import {
+  ActivityChecklistProgressPill,
+  ActivityChecklistQuickActions,
+} from "@/features/activities/components/activity-checklist";
+import { normalizeActivityChecklist } from "@/features/activities/domain/activity-checklist";
+import { activityRepository } from "@/features/activities/data/dexie-activity-repository";
+import type { ChecklistFeedAction } from "@/features/feed/lib/feed-builder";
 import { weatherRepository } from "@/features/weather/data/dexie-weather-repository";
 import { weatherCodeSummary } from "@/features/weather/domain/weather-warnings";
 import { loadTripWeatherForecast } from "@/features/weather/lib/load-trip-weather-forecast";
@@ -20,17 +45,10 @@ import type { DailyForecast, TripWeatherForecast } from "@/features/weather/doma
 
 const LIVE_DOT_ANIMATION = {
   animate: { opacity: [1, 0.3, 1] },
-  transition: { duration: 1.5, repeat: Infinity, ease: "easeInOut" },
-} as const;
+  transition: { duration: 1.5, repeat: Infinity, ease: "easeInOut" as const },
+};
 
-function destinationTimeZone(trip: Trip): string | null {
-  if (trip.timeZone) return trip.timeZone;
-  const destination = trip.destination?.toLowerCase() ?? "";
-  if (destination.includes("lisbon")) return "Europe/Lisbon";
-  if (destination.includes("tokyo") || destination.includes("kyoto")) return "Asia/Tokyo";
-  if (destination.includes("torres del paine") || destination.includes("patagonia")) return "America/Punta_Arenas";
-  return null;
-}
+const INITIAL_VISIBLE_ITEMS = 3;
 
 interface LiveTimelineHudProps {
   trip: Trip;
@@ -39,30 +57,71 @@ interface LiveTimelineHudProps {
   userId: string;
 }
 
+/** Prefer live/upcoming stops inside a fixed window of `limit` items. */
+export function visibleTimelineWindow<T extends { state: TemporalState }>(
+  items: T[],
+  expanded: boolean,
+  limit = INITIAL_VISIBLE_ITEMS,
+): T[] {
+  if (expanded || items.length <= limit) return items;
+  const firstLive = items.findIndex((item) => item.state !== "past");
+  if (firstLive < 0) return items.slice(-limit);
+  // Keep one trailing past stop for context when the window has room.
+  const start = Math.max(0, firstLive - Math.min(1, limit - 1));
+  return items.slice(start, start + limit);
+}
+
 export function LiveTimelineHud({ trip, items, active, userId }: LiveTimelineHudProps) {
+  const { toast } = useToast();
+  const { t } = useI18n();
   const coverUrl = isTripCoverImage(trip.coverImageUrl) ? trip.coverImageUrl : null;
   const gradient = getTripCoverGradient(trip.coverImageUrl);
   const label = trip.destination ?? trip.name;
-  const timeZone = destinationTimeZone(trip);
+  // Weather / forecast day keys stay on the trip destination zone.
+  const weatherTimeZone = resolveTripScheduleTimeZone(trip);
+  // Active "today" glance compares schedule wall clocks to the traveler's local
+  // now so a stale remote trip.timeZone cannot mark evening stops as ended.
+  const scheduleTimeZone = active ? resolveScheduleTimeZone(null) : weatherTimeZone;
 
-  const [selectedActivity, setSelectedActivity] = useState<TimelineItem | null>(null);
+  const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
   const [weather, setWeather] = useState<TripWeatherForecast | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(true);
-  const [pastLimit, setPastLimit] = useState(0);
-  const [futureExtra, setFutureExtra] = useState(0);
-  const timelineRef = useRef<HTMLDivElement>(null);
+  const [showAll, setShowAll] = useState(false);
+  const [now, setNow] = useState(() => new Date());
+  const [optimisticChecklists, setOptimisticChecklists] = useState<Record<string, ActivityChecklistItem[]>>({});
+  const checklistWriteVersionRef = useRef(new Map<string, number>());
+  const timelineId = useId();
+  const selectedActivity = selectedActivityId
+    ? (() => {
+        const item = items.find((candidate) => candidate.id === selectedActivityId);
+        return item
+          ? { ...item, checklist: optimisticChecklists[item.id] ?? item.checklist }
+          : null;
+      })()
+    : null;
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(new Date()), 30_000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (!getCurrentDatabase()) return;
     return weatherRepository.watchForecast(trip.id, (forecast) => setWeather(forecast ?? null));
   }, [trip.id]);
+
   useEffect(() => {
     if (!getCurrentDatabase()) return;
     let cancelled = false;
     const refresh = () => {
       void loadTripWeatherForecast(trip, userId, true, 0.25)
         .then((result) => {
-          if (!cancelled && (result.status === "hit" || result.status === "fetched" || result.status === "stale-offline")) setWeather(result.forecast);
+          if (
+            !cancelled &&
+            (result.status === "hit" || result.status === "fetched" || result.status === "stale-offline")
+          ) {
+            setWeather(result.forecast);
+          }
         })
         .finally(() => {
           if (!cancelled) setWeatherLoading(false);
@@ -76,150 +135,226 @@ export function LiveTimelineHud({ trip, items, active, userId }: LiveTimelineHud
     };
   }, [trip, userId]);
 
-  // Compute temporal states for each item
+  useEffect(() => {
+    const reconcile = window.setTimeout(() => {
+      setOptimisticChecklists((current) => {
+        let changed = false;
+        const next = { ...current };
+        for (const [activityId, optimistic] of Object.entries(current)) {
+          const persisted = items.find((item) => item.id === activityId);
+          if (!persisted || checklistEquals(normalizeActivityChecklist(persisted.checklist), optimistic)) {
+            delete next[activityId];
+            changed = true;
+          }
+        }
+        return changed ? next : current;
+      });
+    }, 0);
+    return () => window.clearTimeout(reconcile);
+  }, [items]);
+
   const itemsWithState = useMemo(
-    () => {
-      const now = new Date();
-      return items.map((item) => ({
+    () =>
+      items.map((item) => ({
         ...item,
-        formattedTime: formatTimeInZone(item.startTime ?? null, timeZone),
+        checklist: optimisticChecklists[item.id] ?? item.checklist,
+        formattedTime: formatWallClockTime(item.startTime ?? null),
         state: getTemporalState(
           { startTime: item.startTime ?? null, endTime: item.endTime ?? null, dayDate: item.dayDate },
           now,
-          timeZone
+          scheduleTimeZone,
         ),
-      }));
-    },
-    [items, timeZone]
+        startsIn: getTimeUntil(item, now, scheduleTimeZone),
+      })),
+    [items, optimisticChecklists, scheduleTimeZone, now],
   );
 
-  // Separate past, current, future
-  const pastItems = useMemo(() => itemsWithState.filter((i) => i.state === "past"), [itemsWithState]);
   const currentItem = itemsWithState.find((i) => i.state === "current");
   const futureItems = useMemo(() => itemsWithState.filter((i) => i.state === "future"), [itemsWithState]);
+  const displayItems = useMemo(
+    () => visibleTimelineWindow(itemsWithState, showAll, INITIAL_VISIBLE_ITEMS),
+    [itemsWithState, showAll],
+  );
+  const hasMore = itemsWithState.length > INITIAL_VISIBLE_ITEMS;
+  const firstVisibleIndex =
+    displayItems.length > 0
+      ? itemsWithState.findIndex((item) => item.id === displayItems[0]?.id)
+      : 0;
+  const hasHiddenEarlier = !showAll && firstVisibleIndex > 0;
+  const hasHiddenLater =
+    !showAll && firstVisibleIndex + displayItems.length < itemsWithState.length;
 
-  const now = new Date();
-  // Time until next activity
   const timeUntilNext = currentItem
     ? null
     : futureItems.length > 0
-    ? getTimeUntil(futureItems[0], now, timeZone)
-    : null;
+      ? futureItems[0].startsIn
+      : null;
 
-  const initialFutureLimit = 1;
-  const displayFuture = futureItems.slice(0, initialFutureLimit + futureExtra);
-  const displayPast = pastItems.slice(Math.max(0, pastItems.length - pastLimit));
+  function timelineToggle(position: "top" | "bottom", expanded = false) {
+    return (
+      <Button
+        variant="ghost"
+        size="sm"
+        className="mx-auto my-2 flex h-auto w-fit justify-center px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-transparent hover:text-foreground hover:opacity-70"
+        aria-expanded={expanded}
+        aria-controls={timelineId}
+        onClick={() => {
+          setShowAll((value) => !value);
+        }}
+      >
+        <ChevronDown
+          className={cn("size-3.5 transition-transform", (expanded || position === "top") && "rotate-180")}
+          aria-hidden
+        />
+        {expanded ? "Show less" : "Show more"}
+      </Button>
+    );
+  }
 
-  function handleShowPast() {
-    setPastLimit((limit) => limit >= pastItems.length ? 0 : Math.min(pastItems.length, limit + 3));
-    requestAnimationFrame(() => timelineRef.current?.scrollTo({ top: 0, behavior: "smooth" }));
+  async function saveChecklist(
+    activityId: string,
+    checklist: ActivityChecklistItem[],
+    event?: { action: ChecklistFeedAction; itemTitle: string },
+  ) {
+    const next = normalizeActivityChecklist(checklist);
+    const writeVersion = (checklistWriteVersionRef.current.get(activityId) ?? 0) + 1;
+    checklistWriteVersionRef.current.set(activityId, writeVersion);
+    setOptimisticChecklists((current) => ({ ...current, [activityId]: next }));
+    try {
+      if (event) {
+        await activityRepository.updateChecklist(activityId, next, event);
+      } else {
+        await activityRepository.update(activityId, { checklist: next });
+      }
+    } catch {
+      if (checklistWriteVersionRef.current.get(activityId) === writeVersion) {
+        setOptimisticChecklists((current) => {
+          const rollback = { ...current };
+          delete rollback[activityId];
+          return rollback;
+        });
+        toast({
+          title: t("common.activityMustDosSaveErrorTitle"),
+          description: t("common.activityMustDosSaveErrorDescription"),
+          variant: "error",
+        });
+      }
+    }
   }
 
   return (
     <section className="rounded-2xl border bg-card p-5" aria-label={active ? "Live timeline" : "Upcoming itinerary"}>
-      {/* Trip cover header with current time & weather */}
       <div className="mb-4">
         {coverUrl ? (
           <div className="relative -m-5 mb-4 h-28 overflow-hidden rounded-t-2xl">
             <Image src={coverUrl} alt={label} fill sizes="(max-width: 768px) 100vw, 50vw" unoptimized className="object-cover" />
             <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent" />
-            <div className="absolute bottom-0 left-0 right-0 p-3 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
+            <div className="absolute bottom-0 left-0 right-0 flex flex-col gap-2 p-3 sm:flex-row sm:items-end sm:justify-between">
               <p className="text-lg font-bold text-white drop-shadow">{label}</p>
-              <CurrentWeather timeZone={timeZone} weather={weather} loading={weatherLoading} tone="dark" />
+              <CurrentWeather timeZone={weatherTimeZone} weather={weather} loading={weatherLoading} tone="dark" />
             </div>
           </div>
         ) : gradient ? (
           <div className={cn("-m-5 mb-4 flex h-24 items-end rounded-t-2xl px-4 pb-2", gradient.className)}>
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 w-full">
+            <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <p className="text-lg font-bold text-white drop-shadow">{label}</p>
-              <CurrentWeather timeZone={timeZone} weather={weather} loading={weatherLoading} tone="dark" />
+              <CurrentWeather timeZone={weatherTimeZone} weather={weather} loading={weatherLoading} tone="dark" />
             </div>
           </div>
         ) : (
           <div className="-m-5 mb-4 flex h-20 items-end rounded-t-2xl bg-muted px-4 pb-2">
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 w-full">
+            <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <p className="text-lg font-bold text-foreground">{label}</p>
-              <CurrentWeather timeZone={timeZone} weather={weather} loading={weatherLoading} tone="light" />
+              <CurrentWeather timeZone={weatherTimeZone} weather={weather} loading={weatherLoading} tone="light" />
             </div>
           </div>
         )}
       </div>
 
-      {/* Header with next-activity chip */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-base font-semibold">
           {active ? "Today at a glance" : `Up next in ${label}`}
         </h2>
         {timeUntilNext && (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-viatik-magenta/10 px-3 py-1 text-sm font-semibold text-viatik-magenta">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-viatik-magenta/10 px-3 py-1 text-sm font-semibold text-viatik-magenta dark:bg-viatik-magenta/20">
             <Clock3 className="size-3.5" aria-hidden />
             Next in {timeUntilNext}
           </span>
         )}
       </div>
 
-      {pastItems.length > 0 && (
-        <Button variant="ghost" size="sm" className="mb-2 w-full justify-center" onClick={handleShowPast}>
-          <ChevronDown className={cn("size-4 transition-transform", pastLimit === 0 && "rotate-180")} aria-hidden />
-          {pastLimit === 0 ? "Show past" : pastLimit < pastItems.length ? "Show more past" : "Hide past"}
-        </Button>
-      )}
+      {hasMore && hasHiddenEarlier && timelineToggle("top")}
 
-      <div ref={timelineRef} className="max-h-72 overflow-y-auto pr-2">
+      <div
+        id={timelineId}
+        className={cn("pr-2", !showAll && "max-h-[28rem] overflow-y-auto")}
+      >
         <div className="relative space-y-2">
           <div className="absolute bottom-0 left-4.5 top-0 w-0.5 bg-border/40" aria-hidden />
-          {displayPast.map((item) => (
-            <TimelineItem key={item.id} item={item as TimelineItem & { formattedTime: string | null; state: TemporalState }} isCurrent={false} isLast={false} active={active} onClick={() => setSelectedActivity(item)} />
-          ))}
-          {currentItem && (
-            <TimelineItem key={currentItem.id} item={currentItem as TimelineItem & { formattedTime: string | null; state: TemporalState }} isCurrent isLast={displayFuture.length === 0} active={active} onClick={() => setSelectedActivity(currentItem)} />
-          )}
-          {displayFuture.map((item, index) => (
-            <TimelineItem key={item.id} item={item as TimelineItem & { formattedTime: string | null; state: TemporalState }} isCurrent={false} isLast={index === displayFuture.length - 1} active={active} onClick={() => setSelectedActivity(item)} />
+          {displayItems.map((item, index) => (
+            <TimelineCard
+              key={item.id}
+              item={item}
+              isCurrent={item.state === "current"}
+              isLast={index === displayItems.length - 1}
+              tripActive={active}
+              onClick={() => setSelectedActivityId(item.id)}
+            />
           ))}
         </div>
 
-        {/* Empty state */}
         {itemsWithState.length === 0 && (
-          <div className="text-center py-8">
-            <Clock3 className="size-12 mx-auto text-muted-foreground/30" aria-hidden />
+          <div className="py-8 text-center">
+            <Clock3 className="mx-auto size-12 text-muted-foreground/30" aria-hidden />
             <p className="mt-2 text-sm text-muted-foreground">
               {active ? "Nothing scheduled today — enjoy a slow morning." : "No activities planned yet."}
             </p>
-            <Button
-              className="mt-4"
-              size="sm"
-              onClick={() => window.location.href = tripTabPath(trip.id, "itinerary")}
-            >
-              <Plus className="size-4 mr-1.5" aria-hidden />
+            <Button className="mt-4" size="sm" onClick={() => { window.location.href = tripTabPath(trip.id, "itinerary"); }}>
+              <Plus className="mr-1.5 size-4" aria-hidden />
               Add activity
             </Button>
           </div>
         )}
       </div>
 
-      {futureItems.length > initialFutureLimit + futureExtra && (
-        <Button variant="ghost" size="sm" className="mt-2 w-full justify-center" onClick={() => setFutureExtra((extra) => extra + 3)}>
-          <ChevronDown className="size-4" aria-hidden />
-          Show next
-        </Button>
-      )}
+      {hasMore && (showAll
+        ? timelineToggle("bottom", true)
+        : hasHiddenLater && timelineToggle("bottom"))}
 
-      <footer className="mt-5 flex justify-end border-t pt-4">
-        <Button asChild variant="outline" className="shrink-0">
+      <footer className="mt-4 flex justify-end">
+        <Button
+          asChild
+          variant="ghost"
+          size="sm"
+          className="h-auto shrink-0 px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-transparent hover:text-foreground hover:opacity-70"
+        >
           <Link href={tripTabPath(trip.id, "itinerary")}>
             Go to itinerary <ArrowRight className="size-4" aria-hidden />
           </Link>
         </Button>
       </footer>
 
-      {/* Activity detail modal */}
       {selectedActivity && (
         <ActivityDetailModal
-          activity={selectedActivity as TimelineItem & { formattedTime: string | null; state: TemporalState }}
-          timeZone={timeZone}
-          weather={weather}
-          onClose={() => setSelectedActivity(null)}
+          activity={{
+            ...selectedActivity,
+            checklist: selectedActivity.checklist ?? [],
+            formattedTime: formatWallClockTime(selectedActivity.startTime ?? null),
+            state: getTemporalState(
+              {
+                startTime: selectedActivity.startTime ?? null,
+                endTime: selectedActivity.endTime ?? null,
+                dayDate: selectedActivity.dayDate,
+              },
+              now,
+              scheduleTimeZone,
+            ),
+            startsIn: getTimeUntil(selectedActivity, now, scheduleTimeZone),
+          }}
+          timeZone={scheduleTimeZone}
+          currentUserId={userId}
+          onClose={() => setSelectedActivityId(null)}
+          onChecklistChange={(checklist, event) => void saveChecklist(selectedActivity.id, checklist, event)}
         />
       )}
     </section>
@@ -227,7 +362,12 @@ export function LiveTimelineHud({ trip, items, active, userId }: LiveTimelineHud
 }
 
 function dateKeyInZone(date: Date, timeZone: string | null): string {
-  const parts = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: timeZone ?? undefined }).formatToParts(date);
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: timeZone ?? undefined,
+  }).formatToParts(date);
   const value = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? "";
   return `${value("year")}-${value("month")}-${value("day")}`;
 }
@@ -237,8 +377,14 @@ function currentWeather(forecast: DailyForecast, timeZone: string | null, now: D
   const dayIndex = Math.max(0, forecast.dates.indexOf(dayKey));
   const hourly = forecast.hourly;
   if (hourly?.times.length) {
-    const candidates = hourly.times.map((time, index) => ({ time: new Date(time).getTime(), index })).filter(({ time }) => Number.isFinite(time));
-    const closest = candidates.reduce((best, candidate) => Math.abs(candidate.time - now.getTime()) < Math.abs(best.time - now.getTime()) ? candidate : best, candidates[0]);
+    const candidates = hourly.times
+      .map((time, index) => ({ time: new Date(time).getTime(), index }))
+      .filter(({ time }) => Number.isFinite(time));
+    const closest = candidates.reduce(
+      (best, candidate) =>
+        Math.abs(candidate.time - now.getTime()) < Math.abs(best.time - now.getTime()) ? candidate : best,
+      candidates[0],
+    );
     return {
       temperature: hourly.temperature2m[closest.index] ?? null,
       precipitation: hourly.precipitationProbability[closest.index] ?? 0,
@@ -252,33 +398,64 @@ function currentWeather(forecast: DailyForecast, timeZone: string | null, now: D
   };
 }
 
-function CurrentWeather({ timeZone, weather, loading, tone = "light" }: { timeZone: string | null; weather: TripWeatherForecast | null; loading: boolean; tone?: "light" | "dark" }) {
+function CurrentWeather({
+  timeZone,
+  weather,
+  loading,
+  tone = "light",
+}: {
+  timeZone: string | null;
+  weather: TripWeatherForecast | null;
+  loading: boolean;
+  tone?: "light" | "dark";
+}) {
   if (loading) {
-    return <span className={cn("text-sm animate-pulse", tone === "dark" ? "text-white/80" : "text-foreground/70")}>Loading weather…</span>;
+    return (
+      <span className={cn("animate-pulse text-sm", tone === "dark" ? "text-white/80" : "text-foreground/70")}>
+        Loading weather…
+      </span>
+    );
   }
 
   const current = weather ? currentWeather(weather.forecast, timeZone, new Date()) : null;
   const condition = weatherCodeSummary(current?.weatherCode ?? 0);
   const IconComponent = condition.icon === "rain" ? Droplets : condition.icon === "sun" ? Sun : Cloud;
-  const iconColor = condition.icon === "rain"
-    ? tone === "dark" ? "text-sky-300" : "text-sky-600"
-    : condition.icon === "sun"
-      ? tone === "dark" ? "text-yellow-300" : "text-amber-600"
-      : tone === "dark" ? "text-slate-200" : "text-slate-600";
+  const iconColor =
+    condition.icon === "rain"
+      ? tone === "dark"
+        ? "text-sky-300"
+        : "text-sky-600"
+      : condition.icon === "sun"
+        ? tone === "dark"
+          ? "text-yellow-300"
+          : "text-amber-600"
+        : tone === "dark"
+          ? "text-slate-200"
+          : "text-slate-600";
   const temperature = current?.temperature != null ? `${Math.round(current.temperature)}°C` : "Weather unavailable";
 
   return (
     <div
-      className={cn("flex items-center gap-2 rounded-full border px-3 py-2 shadow-sm backdrop-blur-md", tone === "dark" ? "border-white/25 bg-black/35" : "border-border bg-background/95")}
+      className={cn(
+        "flex items-center gap-2 rounded-full border px-3 py-2 shadow-sm backdrop-blur-md",
+        tone === "dark" ? "border-white/25 bg-black/35" : "border-border bg-background/95",
+      )}
       aria-label={`${condition.label}, ${temperature}`}
     >
       <IconComponent className={cn("size-7 shrink-0 stroke-[2.5]", iconColor)} aria-hidden />
       <span className={cn("flex flex-col leading-tight", tone === "dark" ? "text-white" : "text-foreground")}>
         <span className="text-lg font-bold tabular-nums">{temperature}</span>
-        <span className={cn("text-xs font-semibold", tone === "dark" ? "text-white/75" : "text-muted-foreground")}>{condition.label}</span>
+        <span className={cn("text-xs font-semibold", tone === "dark" ? "text-white/75" : "text-muted-foreground")}>
+          {condition.label}
+        </span>
       </span>
       {current && current.precipitation > 0 && (
-        <span className={cn("flex items-center gap-0.5 text-xs font-semibold", tone === "dark" ? "text-sky-200" : "text-sky-700")}>
+        <span
+          className={cn(
+            "flex items-center gap-0.5 text-xs font-semibold",
+            tone === "dark" ? "text-sky-200" : "text-sky-700",
+          )}
+        >
           <Droplets className="size-3" aria-hidden />
           {Math.round(current.precipitation)}%
         </span>
@@ -299,51 +476,61 @@ function getTimeUntil(item: TimelineItem, now: Date, timeZone: string | null): s
   return `${minutes}m`;
 }
 
-interface TimelineItemProps {
-  item: TimelineItem & { formattedTime: string | null; state: TemporalState };
-  isCurrent: boolean;
-  isLast: boolean;
-  active: boolean;
-  onClick: () => void;
+function checklistEquals(
+  left: readonly ActivityChecklistItem[],
+  right: readonly ActivityChecklistItem[],
+): boolean {
+  return left.length === right.length && left.every((item, index) => {
+    const other = right[index];
+    return (
+      other !== undefined &&
+      item.id === other.id &&
+      item.title === other.title &&
+      item.completed === other.completed &&
+      item.archived === other.archived
+    );
+  });
 }
 
-function TimelineItem({
+type TimelineCardItem = TimelineItem & {
+  formattedTime: string | null;
+  state: TemporalState;
+  startsIn: string | null;
+};
+
+function TimelineCard({
   item,
   isCurrent,
   isLast,
-  active,
+  tripActive,
   onClick,
-}: TimelineItemProps) {
-  const { formattedTime, state, title, location, category } = item;
-
-  // Static styles per temporal state
-  const pastStyle = { opacity: 0.5, filter: "grayscale(1)" };
-  const currentStyle = { opacity: 1, filter: "grayscale(0)", scale: 1.02 };
-  const futureStyle = { opacity: 1, filter: "grayscale(0)" };
-
-  const targetStyle = isCurrent ? currentStyle : state === "past" ? pastStyle : futureStyle;
+}: {
+  item: TimelineCardItem;
+  isCurrent: boolean;
+  isLast: boolean;
+  tripActive: boolean;
+  onClick: () => void;
+}) {
+  const { formattedTime, state, title, location, checklist, startsIn } = item;
 
   return (
     <motion.li
       layout
-      initial={targetStyle}
-      animate={targetStyle}
+      initial={false}
+      animate={{ scale: isCurrent ? 1.01 : 1 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
-      className="relative group cursor-pointer"
-      style={targetStyle}
-      onClick={onClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
+      className={cn(
+        "group relative transition-opacity duration-300 ease-out",
+        state === "past" && "opacity-50 grayscale",
+      )}
     >
-      {/* Timeline dot + spine connector */}
-      <div className="absolute left-4.5 top-0 -translate-x-1/2 z-10 flex flex-col items-center">
+      <div className="absolute left-4.5 top-0 z-10 flex -translate-x-1/2 flex-col items-center">
         <motion.div
           className={cn(
             "size-2.5 rounded-full border-2 border-card",
-            state === "current" && "bg-viatik-magenta border-viatik-magenta shadow-[0_0_0_2px_rgba(168,85,247,0.3)]",
+            state === "current" && "border-viatik-magenta bg-viatik-magenta shadow-[0_0_0_2px_rgba(168,85,247,0.3)]",
             state === "past" && "bg-border/40",
-            state === "future" && "bg-background border-primary/20"
+            state === "future" && "border-primary/20 bg-background",
           )}
           animate={isCurrent ? LIVE_DOT_ANIMATION : {}}
         />
@@ -357,170 +544,230 @@ function TimelineItem({
         )}
       </div>
 
-      {/* Activity card */}
       <motion.div
         className={cn(
-          "relative ml-8 flex items-center gap-3 rounded-xl border border-border/60 bg-background/60 p-3",
-          state === "current" && "ring-2 ring-viatik-magenta/30 bg-viatik-magenta/5",
-          state === "past" && "opacity-50 grayscale hover:opacity-50",
-          state === "future" && "hover:bg-background hover:border-border/40"
+          "relative ml-8 cursor-pointer rounded-xl border border-border/60 p-4 transition-all duration-200 ease-out",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+          state === "current" &&
+            "border-viatik-magenta/50 bg-viatik-magenta/10 ring-1 ring-viatik-magenta/30",
+          state === "past" && "bg-muted/30",
+          state === "future" &&
+            "bg-viatik-magenta/5 hover:border-viatik-magenta/30 dark:bg-viatik-magenta/10",
         )}
-        initial={targetStyle}
-        animate={targetStyle}
-        transition={{ duration: 0.3, ease: "easeOut" }}
+        role="button"
+        tabIndex={0}
+        onClick={onClick}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onClick();
+          }
+        }}
       >
-        {/* Time badge */}
-        <div className="shrink-0 flex items-center gap-2">
-          {formattedTime && (
-            <span className={cn(
-              "text-xs font-mono tabular-nums",
-              state === "current" && "text-viatik-magenta font-bold",
-              state === "past" && "text-muted-foreground/60",
-              state === "future" && "text-muted-foreground"
-            )}>
-              {formattedTime}
-            </span>
-          )}
-          {!formattedTime && (
-            <span className="grid size-7 place-items-center rounded-full bg-primary/10 text-primary">
-              <Clock3 className="size-3.5" aria-hidden />
-            </span>
-          )}
-        </div>
-
-        {/* Content */}
-        <div className="min-w-0 flex-1">
-          <span className={cn(
-            "block truncate text-sm font-semibold",
-            state === "current" && "text-viatik-magenta",
-            state === "past" && "text-foreground/60",
-            state === "future" && "text-foreground"
-          )}>
-            {title}
-          </span>
-          {(location || category) && (
-            <span className="mt-0.5 flex flex-wrap gap-1.5 text-xs text-muted-foreground/80">
-              {location && (
-                <span className="flex items-center gap-1">
-                  <MapPin className="size-3" aria-hidden /> {location}
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {formattedTime && (
+                <span
+                  className={cn(
+                    "font-mono text-xs tabular-nums",
+                    state === "current" && "font-bold text-viatik-magenta",
+                    state === "past" && "text-muted-foreground/60",
+                    state === "future" && "text-muted-foreground",
+                  )}
+                >
+                  {formattedTime}
                 </span>
               )}
-              {category && (
-                <span className={cn(
-                  "rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
-                  state === "current" && "bg-viatik-magenta/10 text-viatik-magenta",
-                  state === "past" && "bg-muted/50 text-muted-foreground/60",
-                  state === "future" && "bg-muted text-muted-foreground"
-                )}>
-                  {category}
+              {state === "past" && (
+                <span className="inline-flex items-center rounded-full bg-black/5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground/70 dark:bg-white/10">
+                  Ended
                 </span>
               )}
-            </span>
-          )}
-        </div>
+              {state === "current" && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-viatik-magenta px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm shadow-viatik-magenta/20">
+                  {tripActive && (
+                    <motion.span
+                      className="size-1.5 rounded-full bg-white"
+                      animate={LIVE_DOT_ANIMATION.animate}
+                      transition={LIVE_DOT_ANIMATION.transition}
+                    />
+                  )}
+                  Active
+                </span>
+              )}
+              {state === "future" && startsIn && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-viatik-magenta/10 px-2 py-0.5 text-[10px] font-semibold text-viatik-magenta dark:bg-viatik-magenta/20">
+                  <Clock3 className="size-3" aria-hidden />
+                  Starts in {startsIn}
+                </span>
+              )}
+            </div>
 
-        {/* "Live" indicator for current activity */}
-        {isCurrent && active && (
-          <motion.div
-            className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[10px] font-semibold text-viatik-magenta"
-            animate={LIVE_DOT_ANIMATION}
-          >
-            <span className="relative flex h-1.5 w-1.5 rounded-full bg-viatik-magenta" />
-            <span>Live</span>
-          </motion.div>
-        )}
+            <p
+              className={cn(
+                "truncate text-sm font-semibold",
+                state === "current" && "font-bold text-foreground",
+                state === "past" && "text-foreground/60",
+                state === "future" && "text-foreground",
+              )}
+            >
+              {title}
+            </p>
+
+            {location && (
+              <p className="flex items-center gap-1 text-xs text-muted-foreground/80">
+                <MapPin className="size-3" aria-hidden /> {location}
+              </p>
+            )}
+
+            {(checklist?.length ?? 0) > 0 && (
+              <ActivityChecklistProgressPill checklist={checklist} className="mt-1" />
+            )}
+          </div>
+        </div>
       </motion.div>
     </motion.li>
   );
 }
 
-interface ActivityDetailModalProps {
-  activity: TimelineItem & { formattedTime: string | null; state: TemporalState };
-  timeZone: string | null;
-  weather: TripWeatherForecast | null;
-  onClose: () => void;
-}
-
-
 function ActivityDetailModal({
   activity,
-  timeZone,
-  weather,
+  currentUserId,
   onClose,
-}: ActivityDetailModalProps) {
-  const start = activity.startTime ? new Date(activity.startTime) : null;
-  const end = activity.endTime ? new Date(activity.endTime) : null;
+  onChecklistChange,
+}: {
+  activity: TimelineCardItem;
+  timeZone?: string | null;
+  currentUserId: string;
+  onClose: () => void;
+  onChecklistChange: (
+    checklist: ActivityChecklistItem[],
+    event?: { action: ChecklistFeedAction; itemTitle: string },
+  ) => void;
+}) {
+  const { t } = useI18n();
+  const checklist = activity.checklist ?? [];
+  const description = activity.description?.trim() || t("common.activityNoDescription");
+  const attendees = (activity.participants ?? [])
+    .filter((participant) => participant.status === "attending")
+    .map((participant, index) => {
+      if (participant.userId === currentUserId) return t("common.you");
+      const displayName = participant.displayName?.trim();
+      return displayName || t("common.activityTravelerFallback", { count: index + 1 });
+    });
+  const timeLabel = activity.formattedTime ?? "All day";
+  const statusLabel =
+    activity.state === "past"
+      ? "Ended"
+      : activity.state === "current"
+        ? "Active"
+        : activity.startsIn
+          ? `Starts in ${activity.startsIn}`
+          : null;
 
   return (
-    <>
-      <motion.div
-        className="fixed inset-0 z-50 bg-black/50"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-      />
-      <motion.div
-        className="fixed inset-x-0 bottom-0 z-50 max-h-[90vh] overflow-y-auto rounded-t-2xl border border-border bg-card p-5 sm:p-6"
-        initial={{ opacity: 0, y: 100 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 100 }}
-        transition={{ type: "spring", damping: 25, stiffness: 300 }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          className="absolute right-4 top-4 grid size-9 place-items-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition"
-          onClick={onClose}
-          aria-label="Close"
-        >
-          <ChevronDown className="size-5" aria-hidden />
-        </button>
-
-        {/* Header with time & weather */}
-        <div className="mb-4 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
-          <div>
-            <p className="text-sm text-muted-foreground">{activity.dayDate}</p>
-            <p className="font-mono text-lg font-semibold">{activity.formattedTime ?? "All day"}</p>
-          </div>
-          <CurrentWeather timeZone={timeZone} weather={weather} loading={false} />
-        </div>
+    <Dialog open onOpenChange={(value) => !value && onClose()}>
+      <DialogContent className="max-h-[90dvh] w-[calc(100vw-2rem)] max-w-lg overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{activity.title}</DialogTitle>
+          <DialogDescription>
+            {activity.dayDate}
+            {" · "}
+            {timeLabel}
+            {statusLabel ? ` · ${statusLabel}` : ""}
+          </DialogDescription>
+        </DialogHeader>
 
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">{activity.title}</h3>
-          {(activity.location || activity.category) && (
-            <div className="flex flex-wrap gap-2 text-sm">
+          <section className="space-y-1.5" aria-labelledby="activity-description-heading">
+            <h3 id="activity-description-heading" className="text-sm font-semibold">
+              {t("common.activityDescriptionHeading")}
+            </h3>
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+              {description}
+            </p>
+          </section>
+
+          <section className="space-y-1.5" aria-labelledby="activity-attendees-heading">
+            <h3 id="activity-attendees-heading" className="text-sm font-semibold">
+              {t("common.activityAttendeesHeading")}
+            </h3>
+            {attendees.length > 0 ? (
+              <ul className="flex flex-wrap gap-2" aria-label={t("common.activityAttendeesHeading")}>
+                {attendees.map((name, index) => (
+                  <li
+                    key={`${name}-${index}`}
+                    className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground"
+                  >
+                    {name}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {t("common.activityEveryoneAttending")}
+              </p>
+            )}
+          </section>
+
+          {checklist.length > 0 && (
+            <>
+              <div className="flex flex-wrap items-center gap-2">
+                {activity.state === "past" && (
+                  <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                    Ended
+                  </span>
+                )}
+                {activity.state === "current" && (
+                  <span className="rounded-full bg-viatik-magenta/15 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-viatik-magenta">
+                    Active
+                  </span>
+                )}
+                {activity.state === "future" && activity.startsIn && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-viatik-magenta/10 px-2.5 py-0.5 text-xs font-semibold text-viatik-magenta dark:bg-viatik-magenta/20">
+                    <Clock3 className="size-3.5" aria-hidden />
+                    Starts in {activity.startsIn}
+                  </span>
+                )}
+                <ActivityChecklistProgressPill checklist={checklist} />
+              </div>
+
               {activity.location && (
-                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted/50 text-muted-foreground">
-                  <MapPin className="size-3.5" aria-hidden /> {activity.location}
-                </span>
+                <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <MapPin className="size-3.5 shrink-0" aria-hidden />
+                  {activity.location}
+                </p>
               )}
-              {activity.category && (
-                <span className="px-3 py-1 rounded-full bg-viatik-magenta/10 text-viatik-magenta text-sm font-semibold">
-                  {activity.category}
-                </span>
+
+              {activity.startTime && activity.endTime && (
+                <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Clock3 className="size-3.5 shrink-0" aria-hidden />
+                  <span>
+                    {formatWallClockTime(activity.startTime)}
+                    {" – "}
+                    {formatWallClockTime(activity.endTime)}
+                  </span>
+                </p>
               )}
-            </div>
-          )}
-          {start && end && (
-            <div className="flex items-center gap-3 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <Clock3 className="size-3.5" aria-hidden />
-                {start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: timeZone ?? undefined })}
-              </span>
-              <span className="flex items-center gap-1">
-                <Clock3 className="size-3.5" aria-hidden />
-                {end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: timeZone ?? undefined })}
-              </span>
-            </div>
+
+              <div className="space-y-2 rounded-xl border border-border/60 p-3">
+                <p className="flex items-center gap-2 text-sm font-semibold">
+                  <ListChecks className="size-4 text-primary" aria-hidden />
+                  {t("common.activityMustDos")}
+                </p>
+                <ActivityChecklistQuickActions checklist={checklist} onChange={onChecklistChange} />
+              </div>
+            </>
           )}
         </div>
 
-        <div className="mt-6 pt-4 border-t">
-          <Button className="w-full" variant="outline" onClick={onClose}>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose}>
             Close
           </Button>
-        </div>
-      </motion.div>
-    </>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

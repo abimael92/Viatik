@@ -4,6 +4,8 @@ import type { Activity, Expense } from "@/features/domain/entities";
 import type { TripMedia } from "@/features/domain/entities-media";
 import {
   buildActivityFeed,
+  buildChecklistItemFeed,
+  buildChecklistItemFeedChanges,
   buildExpenseFeed,
   buildMediaFeed,
   isValidFeedDraft,
@@ -98,6 +100,63 @@ describe("buildActivityFeed", () => {
     expect(draft.actorId).toBe("user-a");
     expect(draft.metadata.title).toBe("Hiking");
     expect(draft.metadata.dayDate).toBe("2026-06-01");
+  });
+});
+
+describe("buildChecklistItemFeed", () => {
+  it("builds progress-mutation summaries for Recent activity", () => {
+    expect(
+      buildChecklistItemFeed("completed_checklist_item", baseActivity, "user-a", "Sacar efectivo").summary,
+    ).toBe('completed “Sacar efectivo” on “Hiking”');
+    expect(
+      buildChecklistItemFeed("skipped_checklist_item", baseActivity, "user-a", "Sacar efectivo").summary,
+    ).toBe('skipped “Sacar efectivo” on “Hiking”');
+    expect(
+      buildChecklistItemFeed("restored_checklist_item", baseActivity, "user-a", "Sacar efectivo").summary,
+    ).toBe('restored “Sacar efectivo” on “Hiking”');
+    expect(
+      buildChecklistItemFeed("reopened_checklist_item", baseActivity, "user-a", "Sacar efectivo").summary,
+    ).toBe('reopened “Sacar efectivo” on “Hiking”');
+    expect(
+      buildChecklistItemFeed("deleted_checklist_item", baseActivity, "user-a", "Sacar efectivo").summary,
+    ).toBe('deleted “Sacar efectivo” from “Hiking”');
+  });
+
+  it("is a valid activity feed draft with checklist metadata", () => {
+    const draft = buildChecklistItemFeed(
+      "completed_checklist_item",
+      { ...baseActivity, title: "compras" },
+      "user-a",
+      "Sacar efectivo",
+    );
+    expect(isValidFeedDraft(draft)).toBe(true);
+    expect(draft.verb).toBe("completed_checklist_item");
+    expect(draft.metadata.checklistItemTitle).toBe("Sacar efectivo");
+    expect(draft.summary).toBe('completed “Sacar efectivo” on “compras”');
+  });
+
+  it("derives collaborator feed events from synchronized checklist changes", () => {
+    const previous = {
+      ...baseActivity,
+      checklist: [
+        { id: "complete", title: "Complete me", completed: false, archived: false },
+        { id: "archive", title: "Archive me", completed: false, archived: false },
+        { id: "delete", title: "Delete me", completed: false, archived: false },
+      ],
+    };
+    const current = {
+      ...baseActivity,
+      checklist: [
+        { id: "complete", title: "Complete me", completed: true, archived: false },
+        { id: "archive", title: "Archive me", completed: false, archived: true },
+      ],
+    };
+
+    expect(buildChecklistItemFeedChanges(previous, current, "user-b").map((draft) => draft.verb)).toEqual([
+      "completed_checklist_item",
+      "skipped_checklist_item",
+      "deleted_checklist_item",
+    ]);
   });
 });
 

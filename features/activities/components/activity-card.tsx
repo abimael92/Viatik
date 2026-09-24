@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { ActivityVoteCard } from "@/features/activities/components/activity-vote-card";
+import { ActivityChecklistProgressPill } from "@/features/activities/components/activity-checklist";
 import { collaborationRepository } from "@/features/collaboration/data/dexie-collaboration-repository";
 import { formatActivityTime } from "@/features/activities/lib/activity-time";
 import type { Activity, ProfileSummary } from "@/features/domain/entities";
@@ -145,6 +146,7 @@ export function ActivityCard({ activity, onSelect, onEdit, draggable = true, con
                 Weather
               </span>
             )}
+            <ActivityChecklistProgressPill checklist={activity.checklist} />
           </div>
         </div>
       </article>

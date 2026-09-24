@@ -5,7 +5,13 @@ import type { TripMedia } from "@/features/domain/entities-media";
 import type { TripFeedItem } from "@/features/feed/domain/feed-types";
 import type { TripShareLink } from "@/features/sharing/domain/share-types";
 import type { Notification } from "@/features/notifications/domain/notification-types";
-import { buildActivityFeed, buildExpenseFeed, buildMediaFeed, materializeFeedItem } from "@/features/feed/lib/feed-builder";
+import {
+  buildActivityFeed,
+  buildChecklistItemFeedChanges,
+  buildExpenseFeed,
+  buildMediaFeed,
+  materializeFeedItem,
+} from "@/features/feed/lib/feed-builder";
 import type { VaultEntry, VaultKeyset } from "@/features/vault/domain/vault-types";
 import type { TripWeatherForecast } from "@/features/weather/domain/weather-types";
 import { mediaPayload } from "@/features/media/data/dexie-media-repository";
@@ -147,10 +153,16 @@ async function applyRemote(entityType: OutboxEntityType, store: typeof tableDefi
 
 async function emitRemoteFeedItem(entityType: OutboxEntityType, previous: RemoteEntity | undefined, entity: RemoteEntity): Promise<void> {
   if (entityType !== "activity" && entityType !== "expense" && entityType !== "media") return;
-  if (!("createdBy" in entity) || entity.createdBy === getSyncUser()) return;
+  if (!("createdBy" in entity)) return;
   if (previous && "updatedAt" in previous && "updatedAt" in entity && previous.updatedAt === entity.updatedAt) return;
 
-  let draft;
+  const actorId =
+    entityType === "activity" && previous
+      ? (entity as Activity).updatedBy ?? entity.createdBy
+      : entity.createdBy;
+  if (actorId === getSyncUser()) return;
+
+  let drafts;
   if (entityType === "activity") {
     const activity = entity as Activity;
     const old = previous as Activity | undefined;
@@ -161,30 +173,42 @@ async function emitRemoteFeedItem(entityType: OutboxEntityType, previous: Remote
         : old
           ? "updated_activity"
           : "added_activity";
-    draft = buildActivityFeed(verb, activity, activity.createdBy);
+    const checklistDrafts = old ? buildChecklistItemFeedChanges(old, activity, actorId) : [];
+    drafts = checklistDrafts.length > 0
+      ? checklistDrafts
+      : [buildActivityFeed(verb, activity, actorId)];
   } else if (entityType === "expense") {
     const expense = entity as Expense;
     const verb = expense.deletedAt ? "deleted_expense" : previous ? "updated_expense" : "added_expense";
-    draft = buildExpenseFeed(verb, expense, expense.createdBy);
+    drafts = [buildExpenseFeed(verb, expense, actorId)];
   } else {
     const media = entity as TripMedia;
     const verb = media.deletedAt ? "deleted_photo" : previous ? "updated_photo" : "uploaded_photo";
-    draft = buildMediaFeed(verb, media, media.createdBy);
+    drafts = [buildMediaFeed(verb, media, actorId)];
   }
 
   const sourceUpdatedAt = "updatedAt" in entity ? entity.updatedAt : new Date().toISOString();
-  const duplicate = await getDb().feedItems
-    .where("tripId")
-    .equals(draft.tripId)
-    .filter((item) => item.entityType === draft.entityType && item.entityId === draft.entityId && item.verb === draft.verb && item.metadata.sourceUpdatedAt === sourceUpdatedAt)
-    .first();
-  if (duplicate) return;
+  for (const draft of drafts) {
+    const duplicate = await getDb().feedItems
+      .where("tripId")
+      .equals(draft.tripId)
+      .filter(
+        (item) =>
+          item.entityType === draft.entityType &&
+          item.entityId === draft.entityId &&
+          item.verb === draft.verb &&
+          item.metadata.sourceUpdatedAt === sourceUpdatedAt &&
+          item.metadata.checklistItemTitle === draft.metadata.checklistItemTitle,
+      )
+      .first();
+    if (duplicate) continue;
 
-  const item: TripFeedItem = materializeFeedItem({
-    ...draft,
-    metadata: { ...draft.metadata, sourceUpdatedAt },
-  }, sourceUpdatedAt);
-  await getDb().feedItems.add(item);
+    const item: TripFeedItem = materializeFeedItem({
+      ...draft,
+      metadata: { ...draft.metadata, sourceUpdatedAt },
+    }, sourceUpdatedAt);
+    await getDb().feedItems.add(item);
+  }
 }
 
 async function deleteLocal(store: typeof tableDefinitions[number]["store"], id: string): Promise<void> {

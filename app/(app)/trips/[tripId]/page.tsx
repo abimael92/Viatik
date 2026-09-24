@@ -25,9 +25,9 @@ export default async function TripPage({
   searchParams,
 }: {
   params: Promise<{ tripId: string }>;
-  searchParams: Promise<{ tab?: string; action?: string }>;
+  searchParams: Promise<{ tab?: string; action?: string; activityId?: string }>;
 }) {
-  const [{ tripId }, { tab, action }, supabase] = await Promise.all([params, searchParams, createClient()]);
+  const [{ tripId }, { tab, action, activityId }, supabase] = await Promise.all([params, searchParams, createClient()]);
   const { data } = await supabase.auth.getUser();
   if (!data.user) redirect("/login");
   const initialTab = VALID_TABS.includes(tab as (typeof VALID_TABS)[number]) ? (tab as (typeof VALID_TABS)[number]) : "overview";
@@ -37,6 +37,7 @@ export default async function TripPage({
       userId={data.user.id}
       initialTab={initialTab}
       initialAction={action}
+      initialActivityId={activityId}
       initialMoneyToolsOpen={action === "money-tools"}
     />
   );

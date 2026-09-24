@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
   const put = vi.fn();
+  const tableGet = vi.fn();
   const tableDelete = vi.fn();
   const metadataGet = vi.fn();
   const metadataPut = vi.fn();
@@ -76,7 +77,7 @@ const mocks = vi.hoisted(() => {
       })),
       add: feedItemsAdd,
     },
-    table: vi.fn(() => ({ put, delete: tableDelete })),
+    table: vi.fn(() => ({ get: tableGet, put, delete: tableDelete })),
   };
 
   const client = {
@@ -88,7 +89,7 @@ const mocks = vi.hoisted(() => {
     storage: { from: storageFrom },
   };
 
-  return { put, tableDelete, metadataGet, metadataPut, queryResponses, query, from, upsert, rpc, channel, upload, createSignedUrl, remove, storageFrom, mediaUpdate, pendingMedia, feedItemsAdd, feedItemFirst, db, client, outboxLast, outboxDelete, conflictAdd, contactQueryToArray, contactDelete, outboxAnyOfCount };
+  return { put, tableGet, tableDelete, metadataGet, metadataPut, queryResponses, query, from, upsert, rpc, channel, upload, createSignedUrl, remove, storageFrom, mediaUpdate, pendingMedia, feedItemsAdd, feedItemFirst, db, client, outboxLast, outboxDelete, conflictAdd, contactQueryToArray, contactDelete, outboxAnyOfCount };
 });
 
 vi.mock("@/lib/db/dexie", () => ({
@@ -115,6 +116,7 @@ describe("cloud synchronization", () => {
     mocks.channel.subscribe.mockReturnValue(mocks.channel);
     mocks.client.auth.getUser.mockResolvedValue({ data: { user: { id: "user-1" } } });
     mocks.metadataGet.mockResolvedValue(undefined);
+    mocks.tableGet.mockResolvedValue(undefined);
     mocks.pendingMedia.mockResolvedValue([]);
     mocks.feedItemFirst.mockResolvedValue(undefined);
     mocks.outboxLast.mockResolvedValue(undefined);
@@ -259,6 +261,62 @@ describe("cloud synchronization", () => {
     const registration = mocks.channel.on.mock.calls.find((call) => call[1].table === "activities");
     registration?.[2]({ eventType: "UPDATE", old: {}, new: { id: "activity-1", trip_id: "trip-1", day_date: "2026-01-02", title: "Museum", description: null, location: null, category: "culture", start_time: null, end_time: null, position: 1, created_by: "user-1", created_at: "2026-01-01T00:00:00.000Z", updated_at: "2026-01-02T00:00:00.000Z", deleted_at: null } });
     await vi.waitFor(() => expect(mocks.put).toHaveBeenCalledWith(expect.objectContaining({ id: "activity-1", title: "Museum" })));
+    stop();
+  });
+
+  it("broadcasts a collaborator's checklist mutation as a specific shared-feed event", async () => {
+    configureSyncUser("user-1");
+    mocks.tableGet.mockResolvedValue({
+      id: "activity-checklist",
+      tripId: "trip-1",
+      dayDate: "2026-01-02",
+      title: "Museum",
+      description: null,
+      category: "culture",
+      startTime: null,
+      endTime: null,
+      checklist: [{ id: "task-1", title: "Buy tickets", completed: false, archived: false }],
+      position: 1,
+      estimatedCostMinor: null,
+      createdBy: "user-1",
+      updatedBy: "user-1",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      deletedAt: null,
+    });
+    const stop = startRealtimeSync();
+    const registration = mocks.channel.on.mock.calls.find((call) => call[1].table === "activities");
+
+    registration?.[2]({
+      eventType: "UPDATE",
+      old: {},
+      new: {
+        id: "activity-checklist",
+        trip_id: "trip-1",
+        day_date: "2026-01-02",
+        title: "Museum",
+        description: null,
+        category: "culture",
+        start_time: null,
+        end_time: null,
+        checklist: [{ id: "task-1", title: "Buy tickets", completed: true, archived: false }],
+        position: 1,
+        created_by: "user-1",
+        updated_by: "user-2",
+        created_at: "2026-01-01T00:00:00.000Z",
+        updated_at: "2026-01-02T00:00:00.000Z",
+        deleted_at: null,
+      },
+    });
+
+    await vi.waitFor(() => expect(mocks.feedItemsAdd).toHaveBeenCalledTimes(1));
+    expect(mocks.feedItemsAdd.mock.calls[0][0]).toEqual(expect.objectContaining({
+      actorId: "user-2",
+      verb: "completed_checklist_item",
+      summary: 'completed “Buy tickets” on “Museum”',
+    }));
+
+    configureSyncUser(null);
     stop();
   });
 

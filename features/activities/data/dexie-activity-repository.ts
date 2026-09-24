@@ -2,17 +2,18 @@ import { liveQuery } from "dexie";
 
 import { getCurrentDatabase, type ViatikDatabase } from "@/lib/db/dexie";
 import { TransactionContext } from "@/lib/db/transaction-context";
-import type { Activity } from "@/features/domain/entities";
+import type { Activity, ActivityChecklistItem } from "@/features/domain/entities";
 import type {
   ActivityRepository,
   NewActivity,
 } from "@/features/domain/repositories/activity-repository";
-import { buildActivityFeed, materializeFeedItem } from "@/features/feed/lib/feed-builder";
+import { buildActivityFeed, buildChecklistItemFeed, materializeFeedItem, type ChecklistFeedAction } from "@/features/feed/lib/feed-builder";
 import { emitFeedItem } from "@/features/feed/data/dexie-feed-repository";
 import { append } from "@/lib/sync/outbox-transactional";
 import { getSyncUser } from "@/lib/sync/sync-context";
 import { logger } from "@/lib/observability/logger";
 import { normalizeActivityCategory } from "@/features/activities/domain/activity-category";
+import { normalizeActivityChecklist } from "@/features/activities/domain/activity-checklist";
 
 function getDb(): ViatikDatabase {
   const db = getCurrentDatabase();
@@ -67,6 +68,7 @@ export class DexieActivityRepository implements ActivityRepository {
         votingEndsAt: input.votingEndsAt ?? null,
         pollOptions: input.pollOptions ?? [],
         pollVotes: input.pollVotes ?? [],
+        checklist: normalizeActivityChecklist(input.checklist),
         position: input.position,
         estimatedCostMinor: input.estimatedCostMinor ?? null,
         createdBy: actorId,
@@ -95,12 +97,52 @@ export class DexieActivityRepository implements ActivityRepository {
       if (!previous) throw new Error(`Activity ${id} not found before update`);
       const updatedAt = new Date().toISOString();
       const actorId = getSyncUser() ?? previous.createdBy;
-      await ctx.table<Activity>("activities").update(id, { ...patch, category: patch.category ? normalizeActivityCategory(patch.category) : previous.category, updatedBy: actorId, version: (previous.version ?? 1) + 1, updatedAt });
+      const nextPatch = {
+        ...patch,
+        category: patch.category ? normalizeActivityCategory(patch.category) : previous.category,
+        ...(patch.checklist !== undefined
+          ? { checklist: normalizeActivityChecklist(patch.checklist) }
+          : {}),
+        updatedBy: actorId,
+        version: (previous.version ?? 1) + 1,
+        updatedAt,
+      };
+      await ctx.table<Activity>("activities").update(id, nextPatch);
       const activity = await ctx.table<Activity>("activities").get(id);
       if (!activity) throw new Error(`Activity ${id} not found after update`);
       await append("activity", "update", activity, { tx: ctx, baseUpdatedAt: previous.updatedAt });
       await emitFeedItem(ctx, materializeFeedItem(buildActivityFeed("updated_activity", activity, getSyncUser() ?? activity.createdBy)));
       logger.debug("Activity updated locally", { activityId: activity.id });
+      return activity;
+    });
+  }
+
+  async updateChecklist(
+    id: string,
+    checklist: ActivityChecklistItem[],
+    event: { action: ChecklistFeedAction; itemTitle: string },
+  ): Promise<Activity> {
+    const db = getDb();
+    return TransactionContext.runInTransaction([db.activities, db.feedItems], async (ctx) => {
+      const previous = await ctx.table<Activity>("activities").get(id);
+      if (!previous) throw new Error(`Activity ${id} not found before update`);
+      const updatedAt = new Date().toISOString();
+      const actorId = getSyncUser() ?? previous.createdBy;
+      const nextChecklist = normalizeActivityChecklist(checklist);
+      await ctx.table<Activity>("activities").update(id, {
+        checklist: nextChecklist,
+        updatedBy: actorId,
+        version: (previous.version ?? 1) + 1,
+        updatedAt,
+      });
+      const activity = await ctx.table<Activity>("activities").get(id);
+      if (!activity) throw new Error(`Activity ${id} not found after update`);
+      await append("activity", "update", activity, { tx: ctx, baseUpdatedAt: previous.updatedAt });
+      await emitFeedItem(
+        ctx,
+        materializeFeedItem(buildChecklistItemFeed(event.action, activity, actorId, event.itemTitle)),
+      );
+      logger.debug("Activity checklist updated locally", { activityId: activity.id, action: event.action });
       return activity;
     });
   }

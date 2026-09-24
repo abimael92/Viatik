@@ -56,4 +56,106 @@ describe("DexieActivityRepository", () => {
   it("throws when restoring a missing activity", async () => {
     await expect(activityRepository.restore("missing-id")).rejects.toThrow("missing-id");
   });
+
+  it("persists and updates an embedded checklist through the outbox path", async () => {
+    const created = await activityRepository.create({
+      id: "activity-checklist-1",
+      tripId: "trip-1",
+      dayDate: "2026-06-01",
+      title: "Museum day",
+      checklist: [
+        { id: "item-1", title: "Buy tickets", completed: false, archived: false },
+        { id: "item-2", title: "  ", completed: false, archived: false },
+      ],
+      position: 1,
+      createdBy: TEST_USER,
+    });
+
+    expect(created.checklist).toEqual([{ id: "item-1", title: "Buy tickets", completed: false, archived: false }]);
+    expect(await db.outboxMutations.count()).toBe(1);
+
+    const updated = await activityRepository.update("activity-checklist-1", {
+      checklist: [
+        { id: "item-1", title: "Buy tickets", completed: true, archived: false },
+        { id: "item-2", title: "Meet at entrance", completed: false, archived: false },
+      ],
+    });
+
+    expect(updated.checklist).toEqual([
+      { id: "item-1", title: "Buy tickets", completed: true, archived: false },
+      { id: "item-2", title: "Meet at entrance", completed: false, archived: false },
+    ]);
+    const mutations = await db.outboxMutations.toArray();
+    expect(mutations).toHaveLength(1);
+    expect(mutations[0]?.payload).toMatchObject({
+      checklist: [
+        { id: "item-1", title: "Buy tickets", completed: true, archived: false },
+        { id: "item-2", title: "Meet at entrance", completed: false, archived: false },
+      ],
+    });
+  });
+
+  it("retains checklist items after the local database is closed and reopened", async () => {
+    await activityRepository.create({
+      id: "activity-checklist-reload",
+      tripId: "trip-1",
+      dayDate: "2026-06-01",
+      title: "Museum day",
+      checklist: [{ id: "item-1", title: "Buy tickets", completed: true, archived: false }],
+      position: 1,
+      createdBy: TEST_USER,
+    });
+
+    db.close();
+    await db.open();
+    setCurrentDatabase(db);
+
+    expect((await activityRepository.listByTrip("trip-1"))[0]?.checklist).toEqual([
+      { id: "item-1", title: "Buy tickets", completed: true, archived: false },
+    ]);
+  });
+
+  it("updateChecklist atomically updates the parent activity and emits specific feed entries", async () => {
+    await activityRepository.create({
+      id: "activity-checklist-feed-1",
+      tripId: "trip-1",
+      dayDate: "2026-06-01",
+      title: "compras",
+      checklist: [{ id: "item-1", title: "Sacar efectivo", completed: false, archived: false }],
+      position: 2,
+      createdBy: TEST_USER,
+    });
+
+    const feedBefore = await db.feedItems.count();
+    const completed = await activityRepository.updateChecklist(
+      "activity-checklist-feed-1",
+      [{ id: "item-1", title: "Sacar efectivo", completed: true, archived: false }],
+      { action: "completed_checklist_item", itemTitle: "Sacar efectivo" },
+    );
+
+    expect(completed).toMatchObject({
+      checklist: [{ id: "item-1", title: "Sacar efectivo", completed: true, archived: false }],
+      updatedBy: TEST_USER,
+      version: 2,
+    });
+    const feed = await db.feedItems.orderBy("createdAt").reverse().toArray();
+    expect(feed.length).toBe(feedBefore + 1);
+    expect(feed[0]).toMatchObject({
+      verb: "completed_checklist_item",
+      entityType: "activity",
+      entityId: "activity-checklist-feed-1",
+      summary: 'completed “Sacar efectivo” on “compras”',
+    });
+
+    const deleted = await activityRepository.updateChecklist(
+      "activity-checklist-feed-1",
+      [],
+      { action: "deleted_checklist_item", itemTitle: "Sacar efectivo" },
+    );
+    expect(deleted).toMatchObject({ checklist: [], updatedBy: TEST_USER, version: 3 });
+    expect((await db.feedItems.orderBy("createdAt").reverse().first())).toMatchObject({
+      verb: "deleted_checklist_item",
+      summary: 'deleted “Sacar efectivo” from “compras”',
+    });
+  });
 });

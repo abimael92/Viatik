@@ -14,6 +14,24 @@ function quote(value: string): string {
   return `“${value}”`;
 }
 
+const EMPTY_ACTIVITY_VERBS: Record<FeedVerb, string> = {
+  added_activity: "",
+  updated_activity: "",
+  deleted_activity: "",
+  restored_activity: "",
+  completed_checklist_item: "",
+  reopened_checklist_item: "",
+  skipped_checklist_item: "",
+  restored_checklist_item: "",
+  deleted_checklist_item: "",
+  added_expense: "",
+  updated_expense: "",
+  deleted_expense: "",
+  uploaded_photo: "",
+  updated_photo: "",
+  deleted_photo: "",
+};
+
 /**
  * Activity feed builders. `actorId` is the member who performed the action;
  * for `create` this is the activity's `createdBy`, for edits/deletes it is
@@ -22,17 +40,11 @@ function quote(value: string): string {
 export function buildActivityFeed(verb: FeedVerb, activity: Activity, actorId: string): FeedItemDraft {
   const title = activity.title.trim() || "activity";
   const summaryByVerb: Record<FeedVerb, string> = {
+    ...EMPTY_ACTIVITY_VERBS,
     added_activity: `added ${quote(title)} to the itinerary`,
     updated_activity: `updated the activity ${quote(title)}`,
     deleted_activity: `removed the activity ${quote(title)}`,
     restored_activity: `restored the activity ${quote(title)}`,
-    // Not applicable to activities.
-    added_expense: "",
-    updated_expense: "",
-    deleted_expense: "",
-    uploaded_photo: "",
-    updated_photo: "",
-    deleted_photo: "",
   };
   return {
     tripId: activity.tripId,
@@ -50,22 +62,77 @@ export function buildActivityFeed(verb: FeedVerb, activity: Activity, actorId: s
   };
 }
 
+export type ChecklistFeedAction =
+  | "completed_checklist_item"
+  | "reopened_checklist_item"
+  | "skipped_checklist_item"
+  | "restored_checklist_item"
+  | "deleted_checklist_item";
+
+/** Feed entry for an on-the-go checklist mutation. */
+export function buildChecklistItemFeed(
+  verb: ChecklistFeedAction,
+  activity: Activity,
+  actorId: string,
+  itemTitle: string,
+): FeedItemDraft {
+  const task = itemTitle.trim() || "a Must-do";
+  const activityTitle = activity.title.trim() || "activity";
+  const summaryByVerb: Record<ChecklistFeedAction, string> = {
+    completed_checklist_item: `completed ${quote(task)} on ${quote(activityTitle)}`,
+    reopened_checklist_item: `reopened ${quote(task)} on ${quote(activityTitle)}`,
+    skipped_checklist_item: `skipped ${quote(task)} on ${quote(activityTitle)}`,
+    restored_checklist_item: `restored ${quote(task)} on ${quote(activityTitle)}`,
+    deleted_checklist_item: `deleted ${quote(task)} from ${quote(activityTitle)}`,
+  };
+  return {
+    tripId: activity.tripId,
+    actorId,
+    verb,
+    entityType: "activity",
+    entityId: activity.id,
+    summary: summaryByVerb[verb],
+    metadata: {
+      title: activity.title,
+      dayDate: activity.dayDate,
+      category: activity.category,
+      checklistItemTitle: task,
+    },
+  };
+}
+
+/** Derive specific checklist events when a collaborator's Activity snapshot arrives. */
+export function buildChecklistItemFeedChanges(
+  previous: Activity,
+  current: Activity,
+  actorId: string,
+): FeedItemDraft[] {
+  const nextById = new Map((current.checklist ?? []).map((item) => [item.id, item]));
+  return (previous.checklist ?? []).flatMap((oldItem) => {
+    const nextItem = nextById.get(oldItem.id);
+    let action: ChecklistFeedAction | null = null;
+
+    if (!nextItem) {
+      action = "deleted_checklist_item";
+    } else if (oldItem.archived !== nextItem.archived) {
+      action = nextItem.archived ? "skipped_checklist_item" : "restored_checklist_item";
+    } else if (oldItem.completed !== nextItem.completed) {
+      action = nextItem.completed ? "completed_checklist_item" : "reopened_checklist_item";
+    }
+
+    return action ? [buildChecklistItemFeed(action, current, actorId, oldItem.title)] : [];
+  });
+}
+
 /** Expense feed builders. */
 export function buildExpenseFeed(verb: FeedVerb, expense: Expense, actorId: string): FeedItemDraft {
   const description = expense.description.trim() || "expense";
   const amount = formatMinorUnits(expense.amountMinor, expense.currency);
   const summaryByVerb: Record<FeedVerb, string> = {
+    ...EMPTY_ACTIVITY_VERBS,
     added_expense: `added expense ${quote(description)} for ${amount}`,
     updated_expense: `updated expense ${quote(description)}`,
     deleted_expense: `removed expense ${quote(description)}`,
-    // Not applicable to expenses.
-    added_activity: "",
-    updated_activity: "",
-    deleted_activity: "",
-    restored_activity: "",
-    uploaded_photo: "",
-    updated_photo: "",
-    deleted_photo: "",
   };
   return {
     tripId: expense.tripId,
@@ -87,17 +154,10 @@ export function buildExpenseFeed(verb: FeedVerb, expense: Expense, actorId: stri
 /** Media (photo) feed builders. */
 export function buildMediaFeed(verb: FeedVerb, media: TripMedia, actorId: string): FeedItemDraft {
   const summaryByVerb: Record<FeedVerb, string> = {
+    ...EMPTY_ACTIVITY_VERBS,
     uploaded_photo: "uploaded a photo to the gallery",
     updated_photo: "updated a photo caption",
     deleted_photo: "removed a photo from the gallery",
-    // Not applicable to media.
-    added_activity: "",
-    updated_activity: "",
-    deleted_activity: "",
-    restored_activity: "",
-    added_expense: "",
-    updated_expense: "",
-    deleted_expense: "",
   };
   return {
     tripId: media.tripId,
