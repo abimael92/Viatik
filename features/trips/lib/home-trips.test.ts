@@ -14,7 +14,7 @@ const TEST_NOW = new Date("2024-06-15T12:00:00Z");
 describe("buildTimeline participation", () => {
   const base = { id: "activity-1", tripId: "trip-1", dayDate: "2026-09-16", title: "Museum", description: null, category: "sightseeing", startTime: null, endTime: null, position: 1, estimatedCostMinor: null, createdBy: "user-1", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", deletedAt: null } satisfies Activity;
 
-  it("includes open/legacy activities and attending ones; hides declined/pending/others", () => {
+  it("includes open, attending, and missing-roster activities; hides explicit declined or pending status", () => {
     const activities = [
       { ...base, id: "open", participants: [] },
       { ...base, id: "attending", participants: [{ userId: "user-1", status: "attending" as const }] },
@@ -29,10 +29,10 @@ describe("buildTimeline participation", () => {
         limit: 10,
         currentUserId: "user-1",
       }).map((item) => item.id),
-    ).toEqual(["open", "attending"]);
+    ).toEqual(["open", "attending", "missing"]);
   });
 
-  it("keeps remaining itinerary days visible for an active-trip today scope", () => {
+  it("keeps past, current, and future itinerary days visible for an active trip", () => {
     const activities = [
       { ...base, id: "yesterday", dayDate: "2026-09-15", participants: [] },
       { ...base, id: "today", dayDate: "2026-09-16", participants: [] },
@@ -45,7 +45,31 @@ describe("buildTimeline participation", () => {
         limit: 10,
         currentUserId: "user-1",
       }).map((item) => item.id),
-    ).toEqual(["today", "tomorrow"]);
+    ).toEqual(["yesterday", "today", "tomorrow"]);
+  });
+
+  it("retains participant snapshots for activity detail attendees", () => {
+    const participants = [
+      { userId: "user-1", status: "attending" as const },
+      {
+        userId: null,
+        travelerId: "traveler-1",
+        displayName: "Alex Chen",
+        status: "attending" as const,
+      },
+    ];
+
+    const [item] = buildTimeline(
+      [{ ...base, participants }],
+      {
+        scope: "upcoming",
+        today: "2026-09-15",
+        limit: 10,
+        currentUserId: "user-1",
+      },
+    );
+
+    expect(item.participants).toEqual(participants);
   });
 });
 

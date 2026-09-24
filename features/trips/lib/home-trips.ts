@@ -1,4 +1,4 @@
-import type { Activity, ActivityChecklistItem, Trip } from "@/features/domain/entities";
+import type { Activity, ActivityChecklistItem, ActivityParticipant, Trip } from "@/features/domain/entities";
 import { normalizeActivityChecklist } from "@/features/activities/domain/activity-checklist";
 import { resolveTripStatus } from "@/features/trips/lib/trip-status";
 import { isUserAttending } from "@/features/trips/lib/activity-category-colors";
@@ -108,8 +108,10 @@ export interface TimelineItem {
   endTime?: string | null;
   /** Trip ID for deep-linking. */
   tripId?: string;
-  /** Ordered sub-tasks for on-the-go progress tracking. */
+  /** Ordered activity checklist items for on-the-go progress tracking. */
   checklist: ActivityChecklistItem[];
+  /** Participant snapshots retained for the activity detail attendees section. */
+  participants?: ActivityParticipant[];
 }
 
 function timeLabel(startTime: string | null): string | null {
@@ -324,9 +326,9 @@ export function resolveTripScheduleTimeZone(trip: {
 }
 
 /**
- * Builds the timeline feed for a trip. `scope` picks whether to surface the
- * remaining itinerary from today onward (active trip) or the next `limit`
- * chronological items (upcoming planned trip).
+ * Builds the chronological timeline feed for a trip. Active trips retain past
+ * activities so the Home window can show ended context and reveal earlier
+ * items above; callers control the visible window and item limit.
  *
  * Participation: hide only activities the user has declined / is not attending
  * when a participants list exists. Empty participants means the stop is open to
@@ -336,7 +338,7 @@ export function buildTimeline(
   activities: Activity[],
   options: { scope: "today" | "upcoming"; today: string; limit: number; currentUserId: string }
 ): TimelineItem[] {
-  const { scope, today, limit, currentUserId } = options;
+  const { limit, currentUserId } = options;
   const sorted = [...activities]
     .filter((activity) => activity.deletedAt === null && isUserAttending(activity, currentUserId))
     .sort((a, b) => {
@@ -348,10 +350,7 @@ export function buildTimeline(
       return a.position - b.position;
     });
 
-  // Active trips: today + later days so newly added upcoming stops stay on Home.
-  const scoped = scope === "today" ? sorted.filter((activity) => activity.dayDate >= today) : sorted;
-
-  return scoped.slice(0, limit).map((activity) => ({
+  return sorted.slice(0, limit).map((activity) => ({
     id: activity.id,
     dayDate: activity.dayDate,
     title: activity.title,
@@ -363,5 +362,6 @@ export function buildTimeline(
     endTime: activity.endTime,
     tripId: activity.tripId,
     checklist: normalizeActivityChecklist(activity.checklist),
+    participants: activity.participants ?? [],
   }));
 }
