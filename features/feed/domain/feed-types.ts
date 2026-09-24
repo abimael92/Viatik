@@ -21,8 +21,10 @@ export type FeedVerb =
   | "deleted_activity"
   | "restored_activity"
   | "completed_checklist_item"
+  | "reopened_checklist_item"
   | "skipped_checklist_item"
-  | "restored_checklist_item";
+  | "restored_checklist_item"
+  | "deleted_checklist_item";
 
 /** Which kind of entity the feed entry refers to. */
 export type FeedEntityType = "expense" | "media" | "activity";
@@ -37,8 +39,10 @@ export const FEED_VERBS_BY_ENTITY: Record<FeedEntityType, ReadonlyArray<FeedVerb
     "deleted_activity",
     "restored_activity",
     "completed_checklist_item",
+    "reopened_checklist_item",
     "skipped_checklist_item",
     "restored_checklist_item",
+    "deleted_checklist_item",
   ],
 };
 

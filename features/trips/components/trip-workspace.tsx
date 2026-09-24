@@ -86,6 +86,7 @@ import { TripDetailsSection } from "@/features/trips/components/trip-details-sec
 import { TripGallery } from "@/features/trips/components/trip-gallery";
 // import { TripHealthBar } from "@/features/trips/components/trip-health-bar";
 import { getTripCoverGradient, isTripCoverImage } from "@/features/trips/lib/trip-cover";
+import { replaceActivitySnapshot } from "@/features/trips/lib/activity-snapshot";
 import { tripRepository } from "@/features/trips/data/dexie-trip-repository";
 import { mediaRepository } from "@/features/media/data/dexie-media-repository";
 import { VaultPanel } from "@/features/vault/components/vault-panel";
@@ -284,7 +285,7 @@ export function TripWorkspace({
     (member) => member.userId === userId && (member.role === "owner" || member.role === "editor")
   );
 
-  // Home timeline "Add sub-tasks" deep-links here; open the editor once the activity is local.
+  // Home timeline activity links open the editor once the activity is local.
   useEffect(() => {
     const activityId = pendingEditActivityId.current;
     if (!activityId || members.length === 0) return;
@@ -986,6 +987,9 @@ export function TripWorkspace({
         canEdit={canEdit}
         onClose={() => setActivityDialog(null)}
         onEdit={editActivity}
+        onSaved={(saved) =>
+          setActivities((current) => replaceActivitySnapshot(current, saved))
+        }
         onError={setError}
         onDelete={handleDeleteActivity}
       />
@@ -1387,6 +1391,7 @@ function ActivityDialog({
   canEdit,
   onClose,
   onEdit,
+  onSaved,
   onError,
   onDelete,
 }: {
@@ -1401,10 +1406,15 @@ function ActivityDialog({
   canEdit: boolean;
   onClose: () => void;
   onEdit: (activity: Activity) => void;
+  onSaved: (activity: Activity) => void;
   onError: (message: string) => void;
   onDelete: (activity: Activity) => void;
 }) {
-  const activity = state && state !== "new" && "activity" in state ? state.activity : undefined;
+  const stateActivity =
+    state && state !== "new" && "activity" in state ? state.activity : undefined;
+  const activity = stateActivity
+    ? activities.find((candidate) => candidate.id === stateActivity.id) ?? stateActivity
+    : undefined;
   const draft = state && state !== "new" && "draft" in state ? state.draft : undefined;
   const transitSegment =
     state && state !== "new" && "transitSegment" in state ? state.transitSegment : undefined;
@@ -1469,10 +1479,11 @@ function ActivityDialog({
           checklist: values.checklist,
         };
         const activityId = activity?.id ?? crypto.randomUUID();
+        let savedActivity: Activity;
         if (activity) {
-          await activityRepository.update(activity.id, activityValues);
+          savedActivity = await activityRepository.update(activity.id, activityValues);
         } else {
-          await activityRepository.create({
+          savedActivity = await activityRepository.create({
             id: activityId,
             tripId: trip.id,
             ...activityValues,
@@ -1487,6 +1498,7 @@ function ActivityDialog({
           });
           if (transitSegment) await transitRepository.remove(transitSegment.id);
         }
+        onSaved(savedActivity);
         if (values.personalBudgetMinor !== null) {
           await activityPersonalBudgetRepository.upsert({
             id: currentPersonalBudget?.id ?? crypto.randomUUID(),

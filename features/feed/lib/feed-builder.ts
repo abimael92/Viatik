@@ -20,8 +20,10 @@ const EMPTY_ACTIVITY_VERBS: Record<FeedVerb, string> = {
   deleted_activity: "",
   restored_activity: "",
   completed_checklist_item: "",
+  reopened_checklist_item: "",
   skipped_checklist_item: "",
   restored_checklist_item: "",
+  deleted_checklist_item: "",
   added_expense: "",
   updated_expense: "",
   deleted_expense: "",
@@ -60,21 +62,28 @@ export function buildActivityFeed(verb: FeedVerb, activity: Activity, actorId: s
   };
 }
 
-export type ChecklistFeedAction = "completed_checklist_item" | "skipped_checklist_item" | "restored_checklist_item";
+export type ChecklistFeedAction =
+  | "completed_checklist_item"
+  | "reopened_checklist_item"
+  | "skipped_checklist_item"
+  | "restored_checklist_item"
+  | "deleted_checklist_item";
 
-/** Feed entry for on-the-go checklist progress (complete / skip / restore). */
+/** Feed entry for an on-the-go checklist mutation. */
 export function buildChecklistItemFeed(
   verb: ChecklistFeedAction,
   activity: Activity,
   actorId: string,
   itemTitle: string,
 ): FeedItemDraft {
-  const task = itemTitle.trim() || "a task";
+  const task = itemTitle.trim() || "a Must-do";
   const activityTitle = activity.title.trim() || "activity";
   const summaryByVerb: Record<ChecklistFeedAction, string> = {
     completed_checklist_item: `completed ${quote(task)} on ${quote(activityTitle)}`,
+    reopened_checklist_item: `reopened ${quote(task)} on ${quote(activityTitle)}`,
     skipped_checklist_item: `skipped ${quote(task)} on ${quote(activityTitle)}`,
     restored_checklist_item: `restored ${quote(task)} on ${quote(activityTitle)}`,
+    deleted_checklist_item: `deleted ${quote(task)} from ${quote(activityTitle)}`,
   };
   return {
     tripId: activity.tripId,
@@ -90,6 +99,29 @@ export function buildChecklistItemFeed(
       checklistItemTitle: task,
     },
   };
+}
+
+/** Derive specific checklist events when a collaborator's Activity snapshot arrives. */
+export function buildChecklistItemFeedChanges(
+  previous: Activity,
+  current: Activity,
+  actorId: string,
+): FeedItemDraft[] {
+  const nextById = new Map((current.checklist ?? []).map((item) => [item.id, item]));
+  return (previous.checklist ?? []).flatMap((oldItem) => {
+    const nextItem = nextById.get(oldItem.id);
+    let action: ChecklistFeedAction | null = null;
+
+    if (!nextItem) {
+      action = "deleted_checklist_item";
+    } else if (oldItem.archived !== nextItem.archived) {
+      action = nextItem.archived ? "skipped_checklist_item" : "restored_checklist_item";
+    } else if (oldItem.completed !== nextItem.completed) {
+      action = nextItem.completed ? "completed_checklist_item" : "reopened_checklist_item";
+    }
+
+    return action ? [buildChecklistItemFeed(action, current, actorId, oldItem.title)] : [];
+  });
 }
 
 /** Expense feed builders. */
