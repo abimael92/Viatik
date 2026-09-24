@@ -71,6 +71,13 @@ export function restoreActivityChecklistItem(
   );
 }
 
+export function removeActivityChecklistItem(
+  checklist: readonly ActivityChecklistItem[],
+  itemId: string,
+): ActivityChecklistItem[] {
+  return checklist.filter((item) => item.id !== itemId);
+}
+
 export function activeActivityChecklistItems(
   checklist: readonly ActivityChecklistItem[] | null | undefined,
 ): ActivityChecklistItem[] {

@@ -7,6 +7,7 @@ import {
   MAX_ACTIVITY_CHECKLIST_ITEMS,
   MAX_ACTIVITY_CHECKLIST_TITLE_LENGTH,
   normalizeActivityChecklist,
+  removeActivityChecklistItem,
   restoreActivityChecklistItem,
   toggleActivityChecklistItem,
 } from "@/features/activities/domain/activity-checklist";
@@ -85,6 +86,13 @@ describe("checklist progress actions", () => {
       id: "c",
       archived: false,
     });
+  });
+
+  it("removes an item without changing its siblings", () => {
+    expect(removeActivityChecklistItem(checklist, "b")).toEqual([
+      { id: "a", title: "One", completed: false, archived: false },
+      { id: "c", title: "Three", completed: false, archived: true },
+    ]);
   });
 
   it("counts only active items toward progress", () => {

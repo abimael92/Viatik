@@ -13,10 +13,13 @@ import {
   createActivityChecklistItem,
   MAX_ACTIVITY_CHECKLIST_ITEMS,
   normalizeActivityChecklist,
+  removeActivityChecklistItem,
   restoreActivityChecklistItem,
   toggleActivityChecklistItem,
 } from "@/features/activities/domain/activity-checklist";
 import type { ActivityChecklistItem } from "@/features/domain/entities";
+import type { ChecklistFeedAction } from "@/features/feed/lib/feed-builder";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 export function ActivityChecklistProgressPill({
@@ -26,6 +29,7 @@ export function ActivityChecklistProgressPill({
   checklist: readonly ActivityChecklistItem[] | null | undefined;
   className?: string;
 }) {
+  const { t } = useI18n();
   const progress = activityChecklistProgress(checklist);
   if (progress.total === 0) return null;
 
@@ -36,7 +40,10 @@ export function ActivityChecklistProgressPill({
         "inline-flex items-center gap-1.5 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground",
         className,
       )}
-      aria-label={`${progress.completed} of ${progress.total} tasks completed`}
+      aria-label={t("common.activityMustDosProgressAria", {
+        completed: progress.completed,
+        total: progress.total,
+      })}
     >
       <span className="relative h-1.5 w-14 overflow-hidden rounded-full bg-border/80" aria-hidden>
         <span
@@ -44,12 +51,15 @@ export function ActivityChecklistProgressPill({
           style={{ width: `${Math.round(ratio * 100)}%` }}
         />
       </span>
-      {progress.completed}/{progress.total} tasks completed
+      {t("common.activityMustDosProgress", {
+        completed: progress.completed,
+        total: progress.total,
+      })}
     </span>
   );
 }
 
-/** On-the-go Home actions: mark done or soft-skip (archive). No structure editing. */
+/** On-the-go Home actions for existing activity checklist items. */
 export function ActivityChecklistQuickActions({
   checklist,
   onChange,
@@ -57,9 +67,10 @@ export function ActivityChecklistQuickActions({
   checklist: readonly ActivityChecklistItem[];
   onChange: (
     next: ActivityChecklistItem[],
-    event?: { action: "completed_checklist_item" | "skipped_checklist_item" | "restored_checklist_item"; itemTitle: string },
+    event?: { action: ChecklistFeedAction; itemTitle: string },
   ) => void;
 }) {
+  const { t } = useI18n();
   const [showSkipped, setShowSkipped] = useState(false);
   const active = activeActivityChecklistItems(checklist);
   const skipped = checklist.filter((item) => item.archived);
@@ -69,7 +80,7 @@ export function ActivityChecklistQuickActions({
   return (
     <div className="space-y-2">
       {active.length > 0 ? (
-        <ul className="space-y-1" aria-label="Activity checklist">
+        <ul className="space-y-1" aria-label={t("common.activityMustDoList")}>
           {active.map((item) => (
             <li key={item.id} className="flex min-h-11 items-center gap-2 rounded-lg px-1 hover:bg-muted/60">
               <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 py-1.5">
@@ -79,11 +90,10 @@ export function ActivityChecklistQuickActions({
                     checked={item.completed}
                     onChange={() => {
                       const next = normalizeActivityChecklist(toggleActivityChecklistItem(checklist, item.id));
-                      if (!item.completed) {
-                        onChange(next, { action: "completed_checklist_item", itemTitle: item.title });
-                      } else {
-                        onChange(next);
-                      }
+                      onChange(next, {
+                        action: item.completed ? "reopened_checklist_item" : "completed_checklist_item",
+                        itemTitle: item.title,
+                      });
                     }}
                     className="peer size-5 appearance-none rounded-md border border-border bg-background transition-colors checked:border-primary checked:bg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     aria-label={item.title}
@@ -102,8 +112,8 @@ export function ActivityChecklistQuickActions({
                 variant="ghost"
                 size="icon"
                 className="size-11 shrink-0 text-muted-foreground"
-                aria-label={`Archive ${item.title}`}
-                title="Can't do this — archive for now"
+                aria-label={t("common.activityMustDoArchive", { name: item.title })}
+                title={t("common.activityMustDoArchiveTitle")}
                 onClick={() =>
                   onChange(normalizeActivityChecklist(archiveActivityChecklistItem(checklist, item.id)), {
                     action: "skipped_checklist_item",
@@ -113,12 +123,29 @@ export function ActivityChecklistQuickActions({
               >
                 <Archive aria-hidden />
               </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-11 shrink-0 text-destructive"
+                aria-label={t("common.activityMustDoDelete", { name: item.title })}
+                onClick={() =>
+                  onChange(normalizeActivityChecklist(removeActivityChecklistItem(checklist, item.id)), {
+                    action: "deleted_checklist_item",
+                    itemTitle: item.title,
+                  })
+                }
+              >
+                <Trash2 aria-hidden />
+              </Button>
             </li>
           ))}
         </ul>
       ) : (
         <p className="px-1 text-xs text-muted-foreground">
-          {skipped.length > 0 ? "All remaining tasks were archived." : "All tasks done."}
+          {skipped.length > 0
+            ? t("common.activityMustDosAllArchived")
+            : t("common.activityMustDosAllDone")}
         </p>
       )}
 
@@ -130,11 +157,11 @@ export function ActivityChecklistQuickActions({
             aria-expanded={showSkipped}
             onClick={() => setShowSkipped((value) => !value)}
           >
-            <span>Archived ({skipped.length})</span>
+            <span>{t("common.activityMustDosArchived", { count: skipped.length })}</span>
             <ChevronDown className={cn("size-3.5 transition-transform", showSkipped && "rotate-180")} aria-hidden />
           </button>
           {showSkipped && (
-            <ul className="space-y-1" aria-label="Archived tasks">
+            <ul className="space-y-1" aria-label={t("common.activityMustDosArchivedList")}>
               {skipped.map((item) => (
                 <li key={item.id} className="flex min-h-11 items-center gap-2 rounded-lg px-1">
                   <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground line-through">{item.title}</span>
@@ -143,7 +170,7 @@ export function ActivityChecklistQuickActions({
                     variant="ghost"
                     size="icon"
                     className="size-11 shrink-0"
-                    aria-label={`Restore ${item.title}`}
+                    aria-label={t("common.activityMustDoRestore", { name: item.title })}
                     onClick={() =>
                       onChange(normalizeActivityChecklist(restoreActivityChecklistItem(checklist, item.id)), {
                         action: "restored_checklist_item",
@@ -152,6 +179,21 @@ export function ActivityChecklistQuickActions({
                     }
                   >
                     <RotateCcw aria-hidden />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="size-11 shrink-0 text-destructive"
+                    aria-label={t("common.activityMustDoDelete", { name: item.title })}
+                    onClick={() =>
+                      onChange(normalizeActivityChecklist(removeActivityChecklistItem(checklist, item.id)), {
+                        action: "deleted_checklist_item",
+                        itemTitle: item.title,
+                      })
+                    }
+                  >
+                    <Trash2 aria-hidden />
                   </Button>
                 </li>
               ))}
@@ -170,6 +212,7 @@ export function ActivityChecklistEditor({
   checklist: ActivityChecklistItem[];
   onChange: (next: ActivityChecklistItem[]) => void;
 }) {
+  const { t } = useI18n();
   const atLimit = checklist.length >= MAX_ACTIVITY_CHECKLIST_ITEMS;
 
   function updateTitle(id: string, title: string) {
@@ -192,7 +235,7 @@ export function ActivityChecklistEditor({
 
   function addItem() {
     if (atLimit) return;
-    const item = createActivityChecklistItem("New task");
+    const item = createActivityChecklistItem(t("common.activityMustDoNew"));
     if (!item) return;
     onChange([...checklist, item]);
   }
@@ -201,18 +244,18 @@ export function ActivityChecklistEditor({
     <fieldset className="space-y-3 rounded-xl border p-3">
       <legend className="flex items-center gap-2 px-1 text-sm font-semibold">
         <ListChecks className="size-4 text-primary" aria-hidden />
-        Sub-task checklist
+        {t("common.activityMustDos")}
       </legend>
       <p className="text-xs text-muted-foreground">
-        Plan the steps here. On Home, travelers only check them off or skip ones they can&apos;t do.
+        {t("common.activityMustDosEditorHelp")}
       </p>
 
       {checklist.length === 0 ? (
         <p className="rounded-lg border border-dashed px-3 py-4 text-center text-sm text-muted-foreground">
-          No sub-tasks yet. Add the first step for this activity.
+          {t("common.activityMustDosEmpty")}
         </p>
       ) : (
-        <ul className="space-y-2" aria-label="Editable checklist">
+        <ul className="space-y-2" aria-label={t("common.activityMustDoList")}>
           {checklist.map((item, index) => (
             <li key={item.id} className="flex items-center gap-2">
               <div className="flex shrink-0 flex-col">
@@ -221,7 +264,7 @@ export function ActivityChecklistEditor({
                   variant="ghost"
                   size="icon"
                   className="size-8"
-                  aria-label={`Move task ${index + 1} up`}
+                  aria-label={t("common.activityMustDoMoveUp", { count: index + 1 })}
                   disabled={index === 0}
                   onClick={() => moveItem(item.id, -1)}
                 >
@@ -232,7 +275,7 @@ export function ActivityChecklistEditor({
                   variant="ghost"
                   size="icon"
                   className="size-8"
-                  aria-label={`Move task ${index + 1} down`}
+                  aria-label={t("common.activityMustDoMoveDown", { count: index + 1 })}
                   disabled={index === checklist.length - 1}
                   onClick={() => moveItem(item.id, 1)}
                 >
@@ -240,18 +283,18 @@ export function ActivityChecklistEditor({
                 </Button>
               </div>
               <Label htmlFor={`checklist-title-${item.id}`} className="sr-only">
-                Task {index + 1} title
+                {t("common.activityMustDoTitle", { count: index + 1 })}
               </Label>
               <Input
                 id={`checklist-title-${item.id}`}
                 value={item.title}
                 onChange={(event) => updateTitle(item.id, event.target.value)}
-                placeholder="Task title"
+                placeholder={t("common.activityMustDoPlaceholder")}
                 className={cn("min-h-11", item.archived && "text-muted-foreground line-through")}
               />
               {item.archived && (
                 <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                  Skipped
+                  {t("common.activityMustDoSkipped")}
                 </span>
               )}
               <Button
@@ -259,7 +302,7 @@ export function ActivityChecklistEditor({
                 variant="ghost"
                 size="icon"
                 className="size-11 shrink-0"
-                aria-label={`Remove task ${index + 1}`}
+                aria-label={t("common.activityMustDoRemove", { count: index + 1 })}
                 onClick={() => removeItem(item.id)}
               >
                 <Trash2 aria-hidden />
@@ -271,7 +314,7 @@ export function ActivityChecklistEditor({
 
       <Button type="button" variant="outline" className="w-full" disabled={atLimit} onClick={addItem}>
         <Plus aria-hidden />
-        {atLimit ? "Checklist limit reached" : "Add sub-task"}
+        {atLimit ? t("common.activityMustDosLimit") : t("common.activityMustDoAdd")}
       </Button>
     </fieldset>
   );

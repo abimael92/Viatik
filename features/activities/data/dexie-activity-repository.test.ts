@@ -95,7 +95,27 @@ describe("DexieActivityRepository", () => {
     });
   });
 
-  it("updateChecklist emits a specific checklist feed entry instead of updated_activity", async () => {
+  it("retains checklist items after the local database is closed and reopened", async () => {
+    await activityRepository.create({
+      id: "activity-checklist-reload",
+      tripId: "trip-1",
+      dayDate: "2026-06-01",
+      title: "Museum day",
+      checklist: [{ id: "item-1", title: "Buy tickets", completed: true, archived: false }],
+      position: 1,
+      createdBy: TEST_USER,
+    });
+
+    db.close();
+    await db.open();
+    setCurrentDatabase(db);
+
+    expect((await activityRepository.listByTrip("trip-1"))[0]?.checklist).toEqual([
+      { id: "item-1", title: "Buy tickets", completed: true, archived: false },
+    ]);
+  });
+
+  it("updateChecklist atomically updates the parent activity and emits specific feed entries", async () => {
     await activityRepository.create({
       id: "activity-checklist-feed-1",
       tripId: "trip-1",
@@ -107,12 +127,17 @@ describe("DexieActivityRepository", () => {
     });
 
     const feedBefore = await db.feedItems.count();
-    await activityRepository.updateChecklist(
+    const completed = await activityRepository.updateChecklist(
       "activity-checklist-feed-1",
       [{ id: "item-1", title: "Sacar efectivo", completed: true, archived: false }],
       { action: "completed_checklist_item", itemTitle: "Sacar efectivo" },
     );
 
+    expect(completed).toMatchObject({
+      checklist: [{ id: "item-1", title: "Sacar efectivo", completed: true, archived: false }],
+      updatedBy: TEST_USER,
+      version: 2,
+    });
     const feed = await db.feedItems.orderBy("createdAt").reverse().toArray();
     expect(feed.length).toBe(feedBefore + 1);
     expect(feed[0]).toMatchObject({
@@ -120,6 +145,17 @@ describe("DexieActivityRepository", () => {
       entityType: "activity",
       entityId: "activity-checklist-feed-1",
       summary: 'completed “Sacar efectivo” on “compras”',
+    });
+
+    const deleted = await activityRepository.updateChecklist(
+      "activity-checklist-feed-1",
+      [],
+      { action: "deleted_checklist_item", itemTitle: "Sacar efectivo" },
+    );
+    expect(deleted).toMatchObject({ checklist: [], updatedBy: TEST_USER, version: 3 });
+    expect((await db.feedItems.orderBy("createdAt").reverse().first())).toMatchObject({
+      verb: "deleted_checklist_item",
+      summary: 'deleted “Sacar efectivo” from “compras”',
     });
   });
 });
