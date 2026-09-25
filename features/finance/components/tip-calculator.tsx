@@ -15,6 +15,7 @@ import {
   getTipCustoms,
   parseAmount,
 } from "@/features/finance/lib/currency-converter";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 const TIP_PRESETS = [0, 10, 12, 15, 18, 20];
@@ -26,6 +27,7 @@ const TIP_PRESETS = [0, 10, 12, 15, 18, 20];
  * currency converter.
  */
 export function TipSplitCalculator({ trip }: { trip: Trip }) {
+  const { t } = useI18n();
   const baseCurrency = (trip.baseCurrency || "USD").toUpperCase() as CurrencyCode;
   const customs = useMemo(() => getTipCustoms(trip.destination), [trip.destination]);
   const [currency, setCurrency] = useState<CurrencyCode>(
@@ -63,12 +65,12 @@ export function TipSplitCalculator({ trip }: { trip: Trip }) {
     <div className="space-y-4">
       <div className="rounded-2xl border bg-card p-5">
         <div className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
-          <Receipt className="size-5 text-primary" /> Tip &amp; split calculator
+          <Receipt className="size-5 text-primary" /> {t("copy.tipSplitCalculator")}
         </div>
 
         <div className="mt-4 space-y-4">
           <div>
-            <Label htmlFor="tip-amount">Subtotal</Label>
+            <Label htmlFor="tip-amount">{t("copy.subtotal")}</Label>
             <div className="mt-1.5 flex gap-2">
               <Input
                 id="tip-amount"
@@ -81,7 +83,7 @@ export function TipSplitCalculator({ trip }: { trip: Trip }) {
               <select
                 value={currency}
                 onChange={(event) => setCurrency(event.target.value as CurrencyCode)}
-                aria-label="Currency"
+                aria-label={t("common.currency")}
                 className="h-10 w-24 rounded-md border bg-background px-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {SUPPORTED_CURRENCIES.map((code) => (
@@ -94,7 +96,7 @@ export function TipSplitCalculator({ trip }: { trip: Trip }) {
           </div>
 
           <div>
-            <Label>Tip</Label>
+            <Label>{t("copy.tip")}</Label>
             <div className="mt-2 flex flex-wrap gap-2">
               {TIP_PRESETS.map((percent) => (
                 <button
@@ -120,7 +122,7 @@ export function TipSplitCalculator({ trip }: { trip: Trip }) {
                   value={tipPercent}
                   onChange={(event) => setTipPercent(Number(event.target.value) || 0)}
                   className="h-9 w-16 border-0 p-0 text-center font-semibold focus-visible:ring-0"
-                  aria-label="Custom tip percent"
+                  aria-label={t("copy.customTipPercent")}
                 />
               </div>
             </div>
@@ -128,7 +130,7 @@ export function TipSplitCalculator({ trip }: { trip: Trip }) {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="tip-tax">Tax %</Label>
+              <Label htmlFor="tip-tax">{t("copy.taxPercent")}</Label>
               <Input
                 id="tip-tax"
                 type="number"
@@ -140,7 +142,7 @@ export function TipSplitCalculator({ trip }: { trip: Trip }) {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="tip-people">Split between</Label>
+              <Label htmlFor="tip-people">{t("copy.splitBetween")}</Label>
               <div className="flex items-center gap-2">
                 <Users className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                 <Input
@@ -157,9 +159,9 @@ export function TipSplitCalculator({ trip }: { trip: Trip }) {
 
           {breakdown ? (
             <div className="rounded-lg bg-muted p-4">
-              <BreakdownRow label="Subtotal" value={formatAmount(breakdown.subtotalMinor, currency)} />
+              <BreakdownRow label={t("copy.subtotal")} value={formatAmount(breakdown.subtotalMinor, currency)} />
               <BreakdownRow
-                label={`Tip (${breakdown.tipPercent}%)`}
+                label={`${t("copy.tip")} (${breakdown.tipPercent}%)`}
                 value={formatAmount(breakdown.tipMinor, currency)}
               />
               {breakdown.taxPercent > 0 && (
@@ -169,7 +171,7 @@ export function TipSplitCalculator({ trip }: { trip: Trip }) {
                 />
               )}
               <div className="mt-2 border-t pt-2">
-                <BreakdownRow label="Total" value={formatAmount(breakdown.totalMinor, currency)} strong />
+                <BreakdownRow label={t("copy.total")} value={formatAmount(breakdown.totalMinor, currency)} strong />
                 <p className="mt-1 text-right text-xs text-muted-foreground">
                   ≈ {formatAmount(breakdown.perPersonMinor, currency)} per person
                 </p>
@@ -177,7 +179,7 @@ export function TipSplitCalculator({ trip }: { trip: Trip }) {
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Enter a subtotal above to see the tip, tax, and split breakdown.
+              {t("copy.tipEmpty")}
             </p>
           )}
         </div>
@@ -197,10 +199,10 @@ export function TipSplitCalculator({ trip }: { trip: Trip }) {
         </div>
         <p className="mt-3 text-sm text-card-foreground">{customs.tipGuide}</p>
         <p className="mt-2 text-sm text-muted-foreground">
-          <span className="font-semibold text-card-foreground">Taxes:</span> {customs.taxNote}
+          <span className="font-semibold text-card-foreground">{t("copy.taxes")}</span> {customs.taxNote}
         </p>
         <p className="mt-2 text-sm text-muted-foreground">
-          <span className="font-semibold text-card-foreground">Paying:</span> {customs.roundingNote}
+          <span className="font-semibold text-card-foreground">{t("copy.paying")}</span> {customs.roundingNote}
         </p>
       </div>
     </div>

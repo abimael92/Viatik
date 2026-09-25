@@ -1,5 +1,7 @@
 "use client";
 
+import { localizeThrownError } from "@/lib/i18n/localize-error";
+
 import { ArrowRight, PiggyBank, Wallet } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -89,7 +91,7 @@ export function BudgetSettings({
       });
       setEditing(false);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t("common.noBudget"));
+      setError(localizeThrownError(cause, t, "common.noBudget"));
     } finally {
       setSaving(false);
     }
@@ -153,12 +155,12 @@ export function BudgetSettings({
             </p>
             {recommendedDaily !== null ? (
               <p className="text-xs text-primary">
-                {t("common.recommended")}: <span className="font-semibold">{formatMinorUnits(recommendedDaily, baseCurrency)}</span>/day
+                {t("common.recommended")}: <span className="font-semibold">{formatMinorUnits(recommendedDaily, baseCurrency)}</span>{t("copy.perDay")}
                 {" "}— keeps ~10% of your {formatMinorUnits(totalBudget!, baseCurrency)} budget as a buffer over {dayCount} day{dayCount === 1 ? "" : "s"}.
               </p>
             ) : (
               <p className="text-xs text-muted-foreground">
-                Set a total budget to see a recommended daily amount.
+                {t("copy.setBudgetPacing")}
               </p>
             )}
           </div>
@@ -186,7 +188,7 @@ export function BudgetSettings({
               <div>
                 <p className="text-xs text-muted-foreground">{t("common.dailyTarget")}</p>
                 <p className="font-mono text-2xl font-bold tabular-nums">
-                  {formatMinorUnits(dailyTarget, baseCurrency)}<span className="text-sm font-normal text-muted-foreground">/day</span>
+                  {formatMinorUnits(dailyTarget, baseCurrency)}<span className="text-sm font-normal text-muted-foreground">{t("copy.perDay")}</span>
                 </p>
               </div>
             )}
@@ -206,6 +208,7 @@ export function BudgetSettings({
 
 /** Read-only "1 local = rate yours" line shown next to the budget fields. */
 function ReadOnlyConversion({ trip, baseCurrency }: { trip: Trip; baseCurrency: string }) {
+  const { t } = useI18n();
   const customs = useMemo(() => getTipCustoms(trip.destination), [trip.destination]);
   const nativeCurrency = (customs.currencies[0] ?? baseCurrency).toUpperCase() as CurrencyCode;
   const [rate, setRate] = useState<number | null>(null);
@@ -243,7 +246,7 @@ function ReadOnlyConversion({ trip, baseCurrency }: { trip: Trip; baseCurrency: 
             {rate !== null ? new Intl.NumberFormat(undefined, { maximumFractionDigits: 4 }).format(rate) : "—"}
           </span>
           <span className="font-semibold text-foreground">{baseCurrency.toUpperCase()}</span>
-          <span className={cn("text-xs")}>· local → your currency</span>
+          <span className={cn("text-xs")}>{t("copy.localToCurrency")}</span>
         </span>
       )}
     </div>
