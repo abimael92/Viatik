@@ -1,5 +1,7 @@
 "use client";
 
+import { localizeThrownError } from "@/lib/i18n/localize-error";
+
 import { App } from "@capacitor/app";
 import { ChevronDown, Footprints } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -11,6 +13,7 @@ import { stepRepository } from "@/features/steps/data/dexie-step-repository";
 import type { DailyStepCount } from "@/features/steps/domain/step-types";
 import { HealthService } from "@/lib/health/health-service";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 export function TripStepsWidget({
   tripId,
@@ -25,6 +28,7 @@ export function TripStepsWidget({
   endDate: string;
   compact?: boolean;
 }) {
+  const { t } = useI18n();
   const [records, setRecords] = useState<DailyStepCount[]>([]);
   const [open, setOpen] = useState(false);
   const [connecting, setConnecting] = useState(false);
@@ -54,13 +58,13 @@ export function TripStepsWidget({
         await stepRepository.upsert({ userId, tripId, dayDate: result.dayDate, steps: result.steps });
       } catch (cause) {
         if (showError) {
-          setError(cause instanceof Error ? cause.message : "Unable to sync health steps.");
+          setError(localizeThrownError(cause, t, "Unable to sync health steps."));
         }
       } finally {
         setSyncing(false);
       }
     },
-    [healthService, today, tripId, tripStarted, userId]
+    [healthService, t, today, tripId, tripStarted, userId]
   );
 
   useEffect(() => {
@@ -91,29 +95,29 @@ export function TripStepsWidget({
         return;
       }
       if (!permission.readSteps) {
-        setError("Health access was not granted. Enable step access in your device settings.");
+        setError(t("copy.healthAccessDenied"));
         return;
       }
       await syncToday(true);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to connect health data.");
+      setError(localizeThrownError(cause, t, "Unable to connect health data."));
     } finally {
       setConnecting(false);
     }
-  }, [healthService, syncToday]);
+  }, [healthService, syncToday, t]);
 
   if (!tripStarted) {
     return (
       <Card
         role="region"
-        aria-label="Walking steps"
+        aria-label={t("copy.walkingSteps")}
         className={cn(compact ? "p-4" : "p-5", "bg-linear-to-br from-[#11998e] to-[#38ef7d] text-emerald-950 shadow-sm dark:from-[#064e3b] dark:via-[#047857] dark:to-[#10b981] dark:text-emerald-50")}
       >
         <div className="flex items-center gap-3">
           <StepIcon />
           <div>
-            <Heading level={2} className="text-base font-semibold">Walking steps</Heading>
-            <p className="text-sm text-emerald-950/70 dark:text-emerald-100/70">Waiting for trip start</p>
+            <Heading level={2} className="text-base font-semibold">{t("copy.walkingSteps")}</Heading>
+            <p className="text-sm text-emerald-950/70 dark:text-emerald-100/70">{t("copy.waitingTripStart")}</p>
           </div>
         </div>
       </Card>
@@ -123,14 +127,14 @@ export function TripStepsWidget({
   return (
     <Card
       role="region"
-      aria-label="Walking steps"
+      aria-label={t("copy.walkingSteps")}
       className={cn(compact ? "p-4" : "p-5", "bg-linear-to-br from-[#11998e] to-[#38ef7d] text-emerald-950 shadow-sm dark:from-[#064e3b] dark:via-[#047857] dark:to-[#10b981] dark:text-emerald-50")}
     >
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <StepIcon />
           <div className="min-w-0">
-            <Heading level={2} className="text-base font-semibold">Walking steps</Heading>
+            <Heading level={2} className="text-base font-semibold">{t("copy.walkingSteps")}</Heading>
             <p className="text-xs text-emerald-950/70 dark:text-emerald-100/70" aria-live="polite">
               {syncing ? "Syncing health data…" : todayRecord ? "Synced from HealthKit or Health Connect" : "Native Health access required"}
             </p>
@@ -139,7 +143,7 @@ export function TripStepsWidget({
         <div className="flex shrink-0 items-center gap-2">
           <p className="text-right text-xl font-bold tabular-nums">
             {todayRecord ? `${todayRecord.steps.toLocaleString()} steps` : "—"}
-            <span className="block text-xs font-normal text-emerald-950/70 dark:text-emerald-100/70">today</span>
+            <span className="block text-xs font-normal text-emerald-950/70 dark:text-emerald-100/70">{t("copy.today")}</span>
           </p>
           {!compact && (
             <Button
@@ -173,7 +177,7 @@ export function TripStepsWidget({
 
       {!compact && open && (
         <div id="trip-steps-content">
-          <div className="mt-5 flex items-end gap-2" aria-label="Trip step history">
+          <div className="mt-5 flex items-end gap-2" aria-label={t("copy.tripStepHistory")}>
             {days.map((day) => {
               const record = records.find((item) => item.dayDate === day);
               const height = record ? Math.max(12, Math.round((record.steps / maxSteps) * 72)) : 8;

@@ -1,5 +1,7 @@
 "use client";
 
+import { localizeThrownError } from "@/lib/i18n/localize-error";
+
 import Link from "next/link";
 import { Bell, CalendarDays, Check, CreditCard, Map, UserRound, Vote } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -8,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
 import { notificationRepository } from "@/features/notifications/data/dexie-notification-repository";
 import type { Notification } from "@/features/notifications/domain/notification-types";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 const icons = {
   friend_request: UserRound,
@@ -18,12 +21,13 @@ const icons = {
 } as const;
 
 export function NotificationBell({ userId }: { userId: string }) {
+  const { t } = useI18n();
   const [count, setCount] = useState(0);
   useEffect(() => notificationRepository.watchUnreadCount(userId, setCount), [userId]);
   return (
     <Link
       href="/notifications"
-      aria-label={count ? `${count} unread notifications` : "Notifications"}
+      aria-label={count ? t("copy.unreadNotifications", { count }) : t("copy.notificationsTitle")}
       className="relative grid size-11 place-items-center rounded-lg text-side-muted transition hover:bg-side-hover hover:text-side-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-viatik-magenta"
     >
       <Bell className="size-5" aria-hidden />
@@ -40,6 +44,7 @@ export function NotificationBell({ userId }: { userId: string }) {
 }
 
 export function NotificationCenter({ userId }: { userId: string }) {
+  const { t } = useI18n();
   const [items, setItems] = useState<Notification[]>([]);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => notificationRepository.watch(userId, setItems), [userId]);
@@ -48,7 +53,7 @@ export function NotificationCenter({ userId }: { userId: string }) {
     try {
       await notificationRepository.markRead(item.id);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to update notification.");
+      setError(localizeThrownError(cause, t, "copy.unableUpdateNotification"));
     }
   }
 
@@ -56,7 +61,7 @@ export function NotificationCenter({ userId }: { userId: string }) {
     try {
       await notificationRepository.markAllRead(userId);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to update notifications.");
+      setError(localizeThrownError(cause, t, "copy.unableUpdateNotifications"));
     }
   }
 
@@ -65,18 +70,16 @@ export function NotificationCenter({ userId }: { userId: string }) {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <Heading level={1} className="text-3xl font-bold">
-            Notifications
+            {t("copy.notificationsTitle")}
           </Heading>
-          <p className="mt-1 text-muted-foreground">
-            Stay on top of trip decisions, connections, and shared expenses.
-          </p>
+          <p className="mt-1 text-muted-foreground">{t("copy.notificationsDescription")}</p>
         </div>
         <Button
           variant="outline"
           onClick={() => void markAllRead()}
           disabled={!items.some((item) => !item.isRead)}
         >
-          Mark all as read
+          {t("copy.markAllRead")}
         </Button>
       </div>
       {error && (
@@ -88,7 +91,7 @@ export function NotificationCenter({ userId }: { userId: string }) {
         {items.length === 0 ? (
           <div className="p-10 text-center text-sm text-muted-foreground">
             <Bell className="mx-auto size-8 opacity-50" aria-hidden />
-            <p className="mt-3">You’re all caught up.</p>
+            <p className="mt-3">{t("copy.allCaughtUp")}</p>
           </div>
         ) : (
           <ul role="list" className="divide-y divide-border/60">
@@ -103,35 +106,36 @@ export function NotificationCenter({ userId }: { userId: string }) {
 }
 
 function NotificationRow({ item, onRead }: { item: Notification; onRead: () => void }) {
+  const { t } = useI18n();
   const Icon = icons[item.type];
   const action =
     item.type === "friend_request" ? (
       <>
         <Button size="sm" variant="primary" onClick={onRead}>
-          Accept
+          {t("common.accept")}
         </Button>
         <Button size="sm" variant="outline" onClick={onRead}>
-          Decline
+          {t("common.decline")}
         </Button>
       </>
     ) : item.type === "vote_pending" ? (
       <Button size="sm" variant="primary" asChild>
         <Link href={`/trips/${item.referenceId}`} onClick={onRead}>
-          Vote Now
+          {t("copy.voteNow")}
         </Link>
       </Button>
     ) : item.type === "settlement_pending" ? (
       <Button size="sm" variant="primary" onClick={onRead}>
-        Pay
+        {t("copy.pay")}
       </Button>
     ) : item.type === "trip_invitation" ? (
       <Button size="sm" variant="outline" onClick={onRead}>
-        View invitation
+        {t("copy.viewInvitation")}
       </Button>
     ) : (
       <Button size="sm" variant="outline" asChild>
         <Link href={`/trips/${item.referenceId}`} onClick={onRead}>
-          View Itinerary
+          {t("copy.viewItineraryTitle")}
         </Link>
       </Button>
     );
@@ -150,11 +154,11 @@ function NotificationRow({ item, onRead }: { item: Notification; onRead: () => v
           </p>
         </div>
         {!item.isRead && (
-          <span className="size-2 shrink-0 rounded-full bg-viatik-red" aria-label="Unread" />
+          <span className="size-2 shrink-0 rounded-full bg-viatik-red" aria-label={t("copy.unread")} />
         )}
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        <Button size="sm" variant="ghost" aria-label="Mark notification as read" onClick={onRead}>
+        <Button size="sm" variant="ghost" aria-label={t("copy.markNotificationRead")} onClick={onRead}>
           <Check className="size-4" aria-hidden />
         </Button>
         {action}
