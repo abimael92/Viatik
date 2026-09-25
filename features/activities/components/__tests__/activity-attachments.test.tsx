@@ -32,8 +32,8 @@ vi.mock("@/components/ui/dropdown-menu", () => ({
   DropdownMenu: ({ children }: PropsWithChildren) => <>{children}</>,
   DropdownMenuTrigger: ({ children }: PropsWithChildren) => <>{children}</>,
   DropdownMenuContent: ({ children }: PropsWithChildren) => <div>{children}</div>,
-  DropdownMenuItem: ({ children, onSelect }: PropsWithChildren<{ onSelect?: () => void }>) => (
-    <button type="button" role="menuitem" onClick={onSelect}>{children}</button>
+  DropdownMenuItem: ({ children, onSelect, className }: PropsWithChildren<{ onSelect?: () => void; className?: string }>) => (
+    <button type="button" role="menuitem" className={className} onClick={onSelect}>{children}</button>
   ),
 }));
 
@@ -85,8 +85,13 @@ describe("ActivityAttachmentsEditor", () => {
 
     const trigger = screen.getByRole("button", { name: "Attachments" });
     expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(trigger.className).toContain("bg-amber-200");
     fireEvent.click(trigger);
     expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByRole("button", { name: "Add attachment" }).className).toContain("from-amber-300");
+    expect(screen.getByRole("menuitem", { name: "Photo" }).className).toContain("text-amber-950");
+    expect(screen.getByRole("menuitem", { name: "Link" }).className).toContain("text-sky-950");
+    expect(screen.getByRole("menuitem", { name: "Location pin" }).className).toContain("text-teal-950");
     expect(document.getElementById(trigger.getAttribute("aria-controls")!)?.getAttribute("role")).toBe("region");
 
     fireEvent.click(screen.getByRole("menuitem", { name: "Link" }));

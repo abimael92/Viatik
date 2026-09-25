@@ -34,6 +34,16 @@ import { mediaRepository } from "@/features/media/data/dexie-media-repository";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { useSyncStatus } from "@/lib/sync/use-sync-status";
 
+const EXTRA_ADD =
+  "w-full border-amber-400 bg-gradient-to-b from-amber-300 to-orange-500 text-amber-950 hover:brightness-105 dark:border-amber-600 dark:from-amber-600 dark:to-orange-800 dark:text-amber-50";
+const EXTRA_SAVE =
+  "border-transparent bg-gradient-to-b from-sky-400 to-sky-600 text-white hover:brightness-105 dark:from-sky-500 dark:to-sky-800";
+const EXTRA_CANCEL =
+  "border-slate-300 bg-slate-100 text-slate-800 hover:bg-slate-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100";
+const MENU_PHOTO = "text-amber-950 focus:bg-amber-100 dark:text-amber-100 dark:focus:bg-amber-900";
+const MENU_LINK = "text-sky-950 focus:bg-sky-100 dark:text-sky-100 dark:focus:bg-sky-900";
+const MENU_PIN = "text-teal-950 focus:bg-teal-100 dark:text-teal-100 dark:focus:bg-teal-900";
+
 const COMPRESSION_OPTIONS = {
   maxSizeMB: 0.5,
   maxWidthOrHeight: 1600,
@@ -338,9 +348,11 @@ export function ActivityAttachmentsEditor({
       id="activity-attachments"
       title={t("common.activityAttachments")}
       defaultOpen={defaultOpen ?? attachments.length > 0}
+      className="border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/40"
+      triggerClassName="bg-amber-200 text-amber-950 hover:bg-amber-300 dark:bg-amber-800 dark:text-amber-50 dark:hover:bg-amber-700"
       badge={
         attachments.length > 0 ? (
-          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+          <span className="rounded-full border border-amber-400 bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-900 dark:border-amber-600 dark:bg-amber-900 dark:text-amber-100">
             {attachments.length}
           </span>
         ) : null
@@ -371,21 +383,21 @@ export function ActivityAttachmentsEditor({
 
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
-            <Button type="button" variant="outline" className="w-full border-border bg-muted hover:bg-muted/80" disabled={atLimit}>
+            <Button type="button" variant="outline" className={EXTRA_ADD} disabled={atLimit}>
               <Plus aria-hidden />
               {atLimit ? t("common.activityAttachmentsLimit") : t("common.activityAttachmentsAdd")}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-(--radix-dropdown-menu-trigger-width)">
-            <DropdownMenuItem onSelect={() => fileInputRef.current?.click()}>
+            <DropdownMenuItem className={MENU_PHOTO} onSelect={() => fileInputRef.current?.click()}>
               <ImagePlus aria-hidden />
               {t("common.activityAttachmentsAddPhoto")}
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setAdding("link")}>
+            <DropdownMenuItem className={MENU_LINK} onSelect={() => setAdding("link")}>
               <Link2 aria-hidden />
               {t("common.activityAttachmentsAddLink")}
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setAdding("location")}>
+            <DropdownMenuItem className={MENU_PIN} onSelect={() => setAdding("location")}>
               <MapPin aria-hidden />
               {t("common.activityAttachmentsAddLocation")}
             </DropdownMenuItem>
@@ -411,8 +423,8 @@ export function ActivityAttachmentsEditor({
             <Input id="activity-attachment-description" value={linkDescription} onChange={(event) => setLinkDescription(event.target.value)} />
             {linkError && <p role="alert" className="text-sm text-destructive">{linkError}</p>}
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <Button type="button" variant="outline" className="border-border bg-background" onClick={() => setAdding(null)}>{t("common.cancel")}</Button>
-              <Button type="button" variant="default" onClick={saveLink}>{t("common.activityAttachmentsSaveLink")}</Button>
+              <Button type="button" variant="outline" className={EXTRA_CANCEL} onClick={() => setAdding(null)}>{t("common.cancel")}</Button>
+              <Button type="button" variant="default" className={EXTRA_SAVE} onClick={saveLink}>{t("common.activityAttachmentsSaveLink")}</Button>
             </div>
           </div>
         )}
@@ -548,7 +560,7 @@ function AttachmentPlaceSearch({
           ))}
         </div>
       )}
-      <Button type="button" variant="outline" onClick={onCancel}>{t("common.cancel")}</Button>
+      <Button type="button" variant="outline" className={EXTRA_CANCEL} onClick={onCancel}>{t("common.cancel")}</Button>
     </div>
   );
 }
