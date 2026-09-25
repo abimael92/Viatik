@@ -41,6 +41,7 @@ import { SharedTripFeed } from "@/features/feed/components/shared-trip-feed";
 import { ItineraryBoard } from "@/features/activities/components/itinerary-board";
 import { WeekCalendar } from "@/features/activities/components/week-calendar";
 import {
+  ActivityCloneHeaderButton,
   ActivityForm,
   type ActivityFormValues,
 } from "@/features/activities/components/activity-form";
@@ -48,9 +49,11 @@ import {
   ActivityCloneDialog,
   type ActivityCloneTiming,
 } from "@/features/activities/components/activity-clone-dialog";
+import { ActivityAttachmentsSection } from "@/features/activities/components/activity-attachments";
 import { ActivityLocationCard } from "@/features/activities/components/activity-location-card";
 import { ProposalsSection } from "@/features/activities/components/proposals-section";
 import { activityRepository } from "@/features/activities/data/dexie-activity-repository";
+import { saveActivityPlanning } from "@/features/activities/data/save-activity-planning";
 import { activityPersonalBudgetRepository } from "@/features/activities/data/dexie-activity-personal-budget-repository";
 import { formatActivityTime } from "@/features/activities/lib/activity-time";
 import { PeoplePanel } from "@/features/collaboration/components/people-panel";
@@ -1410,6 +1413,7 @@ function ActivityDialog({
   onError: (message: string) => void;
   onDelete: (activity: Activity) => void;
 }) {
+  const { t } = useI18n();
   const stateActivity =
     state && state !== "new" && "activity" in state ? state.activity : undefined;
   const activity = stateActivity
@@ -1476,28 +1480,27 @@ function ActivityDialog({
           votingEndsAt: values.votingEndsAt,
           pollOptions: values.pollOptions,
           pollVotes: values.pollVotes,
+          attachments: values.attachments,
           checklist: values.checklist,
         };
         const activityId = activity?.id ?? crypto.randomUUID();
-        let savedActivity: Activity;
-        if (activity) {
-          savedActivity = await activityRepository.update(activity.id, activityValues);
-        } else {
-          savedActivity = await activityRepository.create({
+        const savedActivity = await saveActivityPlanning({
+          existing: activity,
+          pendingImages: values.pendingImages,
+          activity: {
             id: activityId,
             tripId: trip.id,
             ...activityValues,
-            position:
-              Math.max(
-                0,
-                ...activities
-                  .filter((item) => item.dayDate === activityValues.dayDate)
-                  .map((item) => item.position)
-              ) + 1024,
+            position: activity?.position ?? Math.max(
+              0,
+              ...activities
+                .filter((item) => item.dayDate === activityValues.dayDate)
+                .map((item) => item.position)
+            ) + 1024,
             createdBy: userId,
-          });
-          if (transitSegment) await transitRepository.remove(transitSegment.id);
-        }
+          },
+        });
+        if (!activity && transitSegment) await transitRepository.remove(transitSegment.id);
         onSaved(savedActivity);
         if (values.personalBudgetMinor !== null) {
           await activityPersonalBudgetRepository.upsert({
@@ -1544,6 +1547,7 @@ function ActivityDialog({
         votingEndsAt: activity.votingEndsAt ?? null,
         pollOptions: activity.pollOptions ?? [],
         pollVotes: activity.pollVotes ?? [],
+        attachments: activity.attachments ?? [],
         checklist: activity.checklist ?? [],
         position:
           Math.max(
@@ -1583,34 +1587,34 @@ function ActivityDialog({
           </DialogHeader>
           <dl className="space-y-3 text-sm">
             <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">Day</dt>
+              <dt className="text-muted-foreground">{t("common.day")}</dt>
               <dd>{formatDate(activity.dayDate)}</dd>
             </div>
             {activity.startTime && (
               <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Time</dt>
+                <dt className="text-muted-foreground">{t("common.startTime")}</dt>
                 <dd>{formatActivityTime(activity.startTime)}</dd>
               </div>
             )}
             {activity.timingSpecificity === "flexible" && activity.flexiblePeriod && (
               <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Time</dt>
+                <dt className="text-muted-foreground">{t("common.flexiblePeriod")}</dt>
                 <dd className="capitalize">{activity.flexiblePeriod}</dd>
               </div>
             )}
             {activity.bookingReference && (
               <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Booking reference</dt>
+                <dt className="text-muted-foreground">{t("common.booking")}</dt>
                 <dd className="font-mono">{activity.bookingReference}</dd>
               </div>
             )}
             <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">Category</dt>
+              <dt className="text-muted-foreground">{t("common.category")}</dt>
               <dd className="capitalize">{activity.category}</dd>
             </div>
             {activity.description && (
               <div>
-                <dt className="text-muted-foreground">Description</dt>
+                <dt className="text-muted-foreground">{t("common.description")}</dt>
                 <dd className="mt-1">{activity.description}</dd>
               </div>
             )}
@@ -1622,14 +1626,15 @@ function ActivityDialog({
               placeId={activity.placeId}
             />
           )}
+          <ActivityAttachmentsSection attachments={activity.attachments ?? []} />
           <DialogFooter>
             {canEdit && (
-              <Button type="button" variant="primary" onClick={() => onEdit(activity)}>
-                Edit activity
+              <Button type="button" variant="default" onClick={() => onEdit(activity)}>
+                {t("common.editActivity")}
               </Button>
             )}
             <Button type="button" onClick={onClose}>
-              Close
+              {t("common.close")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1638,24 +1643,27 @@ function ActivityDialog({
   }
   return (
     <Dialog open={open} onOpenChange={(value) => !value && onClose()}>
-      <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] max-w-4xl overflow-y-auto">
-        <DialogHeader>
+      <DialogContent
+        className="max-h-[90vh] w-[calc(100vw-2rem)] max-w-4xl overflow-y-auto"
+        headerActions={activity ? <ActivityCloneHeaderButton onClick={() => setCloneOpen(true)} /> : undefined}
+      >
+        <DialogHeader className={activity ? "pr-24" : "pr-12"}>
           <DialogTitle>
             {transitSegment
-              ? "Edit transit"
+              ? t("common.editTransit")
               : activity
-                ? "Edit activity"
+                ? t("common.editActivity")
                 : forceVote
-                  ? "Add proposal"
-                  : "Add activity"}
+                  ? t("common.addProposal")
+                  : t("common.addActivity")}
           </DialogTitle>
           <DialogDescription>
-            Plan a stop in your day. It stays available offline.
+            {t("common.planStop")}
           </DialogDescription>
         </DialogHeader>
         {activity && loadedBudgetForActivityId !== activity.id ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
-            Loading your private budget...
+            {t("common.loadingPrivateBudget")}
           </p>
         ) : (
           <ActivityForm
@@ -1691,7 +1699,6 @@ function ActivityDialog({
                 createdBy: userId,
               });
             }}
-            onClone={activity ? () => setCloneOpen(true) : undefined}
             onDelete={
               transitSegment
                 ? async () => {
