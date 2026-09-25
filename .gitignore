@@ -59,6 +59,9 @@ ios/App/DerivedData/
 ios/App/*.xcworkspace/xcuserdata/
 ios/App/*.xcodeproj/xcuserdata/
 
+# Local git worktrees checked out beside the main tree
+.worktrees/
+
 # Local tooling and deployment output
 .vercel/
 *.pem

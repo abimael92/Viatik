@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { GuestTripView } from "@/features/sharing/components/guest-trip-view";
+import { ShareInactiveMessage } from "@/features/sharing/components/share-inactive-message";
 import { loadSharedTripSnapshot } from "@/features/sharing/lib/shared-trip";
 import { getServiceClient } from "@/lib/supabase/service-client";
 
@@ -18,15 +19,7 @@ export default async function SharePage({ params }: { params: Promise<{ slug: st
 
   if (result.status === "not_found") notFound();
   if (result.status === "inactive") {
-    return (
-      <main className="mx-auto flex min-h-screen w-full max-w-md flex-col items-center justify-center px-6 text-center">
-        <p className="text-6xl" aria-hidden>📷</p>
-        <h1 className="mt-4 text-xl font-bold">This share link is no longer active</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          The trip owner may have turned it off or the trip is no longer available.
-        </p>
-      </main>
-    );
+    return <ShareInactiveMessage />;
   }
 
   return <GuestTripView snapshot={result.snapshot} />;

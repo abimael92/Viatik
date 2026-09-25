@@ -764,7 +764,7 @@ export function TripWorkspace({
                     variant="ai"
                     onClick={() => setScoutOpen((open) => !open)}
                     aria-expanded={scoutVisible}
-                    className="h-11 min-w-44 items-center justify-center gap-1 overflow-visible rounded-xl border-2 border-sky-300 bg-sky-50 px-4 text-sky-950 shadow-sm hover:bg-sky-100"
+                    className="h-11 min-w-44 items-center justify-center gap-1 overflow-visible rounded-xl border-2 border-sky-300 bg-sky-50 px-4 text-sky-950 shadow-sm hover:bg-sky-100 dark:border-cyan-300 dark:bg-cyan-200 dark:text-cyan-950 dark:hover:bg-cyan-300"
                   >
                     <span className="flex items-center justify-center gap-1 overflow-visible leading-none">
                       <Image
@@ -1246,7 +1246,7 @@ function Overview({
             <Button
               variant="ai"
               onClick={() => setScoutOpen(true)}
-              className="h-11 justify-center px-4"
+              className="h-11 justify-center rounded-xl border-2 border-sky-300 bg-sky-50 px-4 text-sky-950 shadow-sm hover:bg-sky-100 dark:border-cyan-300 dark:bg-cyan-200 dark:text-cyan-950 dark:hover:bg-cyan-300"
             >
               <span className="flex items-center justify-center gap-1 overflow-visible leading-none">
                 <Image
