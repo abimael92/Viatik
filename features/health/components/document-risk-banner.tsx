@@ -11,6 +11,7 @@ import {
   summarizeDocuments,
   validateDocument,
 } from "@/features/health/lib/document-validator";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 /**
@@ -27,6 +28,7 @@ export function DocumentRiskBanner({
   destination?: string | null;
   travelDate?: string | null;
 }) {
+  const { t } = useI18n();
   const [documents, setDocuments] = useState<TravelDocument[]>([]);
   useEffect(() => healthRepository.watchByUser(userId, setDocuments), [userId]);
 
@@ -61,7 +63,7 @@ export function DocumentRiskBanner({
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold">
-          {blocking ? "Travel documents may fail border checks" : "Some travel documents need attention"}
+          {blocking ? t("copy.docsMayFail") : t("copy.docsNeedAttention")}
         </p>
         <ul className="mt-1 space-y-0.5 text-sm text-muted-foreground">
           {lines.map((document) => {

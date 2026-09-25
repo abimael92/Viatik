@@ -1,5 +1,7 @@
 "use client";
 
+import { localizeThrownError } from "@/lib/i18n/localize-error";
+
 import { CalendarClock, CloudRain, Loader2, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -114,7 +116,7 @@ export function WeatherConflictModal({
       const position = nextDayPosition(activities.filter((a) => a.dayDate === suggestion.dayDate));
       await rescheduleActivity(activity, { dayDate: suggestion.dayDate, startTime: suggestion.startTime, position }, { activity: activityRepository });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to reschedule this activity.");
+      setError(localizeThrownError(cause, t, "Unable to reschedule this activity."));
     } finally {
       setPendingId(null);
     }
@@ -127,7 +129,7 @@ export function WeatherConflictModal({
       const swap = suggestIndoorSwap(activity);
       await swapActivityIndoor(activity, swap, { activity: activityRepository });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to swap this activity.");
+      setError(localizeThrownError(cause, t, "Unable to swap this activity."));
     } finally {
       setPendingId(null);
     }

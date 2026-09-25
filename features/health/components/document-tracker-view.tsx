@@ -1,5 +1,7 @@
 "use client";
 
+import { localizeThrownError } from "@/lib/i18n/localize-error";
+
 import { AlertTriangle, BadgeCheck, FileText, Pencil, Plus, Trash2, XCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -27,6 +29,7 @@ import {
   validateDocument,
   type DocumentValidationResult,
 } from "@/features/health/lib/document-validator";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 type StatusStyle = { badge: string; dot: string; icon: typeof FileText };
@@ -35,12 +38,6 @@ const STATUS_STYLES: Record<DocumentValidationResult["status"], StatusStyle> = {
   valid: { badge: "bg-emerald-500/10 text-emerald-600", dot: "bg-emerald-500", icon: BadgeCheck },
   warning: { badge: "bg-amber-500/10 text-amber-600", dot: "bg-amber-500", icon: AlertTriangle },
   invalid: { badge: "bg-destructive/10 text-destructive", dot: "bg-destructive", icon: XCircle },
-};
-
-const STATUS_LABELS: Record<DocumentValidationResult["status"], string> = {
-  valid: "Valid",
-  warning: "Expiring soon",
-  invalid: "Action needed",
 };
 
 interface DocumentFormState {
@@ -90,8 +87,14 @@ export function DocumentTrackerView({
   destination?: string | null;
   travelDate?: string | null;
 }) {
+  const { t } = useI18n();
   const [documents, setDocuments] = useState<TravelDocument[]>([]);
   const [dialog, setDialog] = useState<{ open: boolean; editing: TravelDocument | null }>({ open: false, editing: null });
+  const statusLabels: Record<DocumentValidationResult["status"], string> = {
+    valid: t("copy.valid"),
+    warning: t("copy.expiringSoon"),
+    invalid: t("copy.actionNeeded"),
+  };
 
   useEffect(() => healthRepository.watchByUser(userId, setDocuments), [userId]);
 
@@ -115,23 +118,23 @@ export function DocumentTrackerView({
           </span>
           <div>
             <Heading level={2} id="health-heading" className="text-xl font-bold">
-              Documents & health
+              {t("copy.documentsHealth")}
             </Heading>
             <p className="text-sm text-muted-foreground">
-              Passports, visas, and records checked against this trip’s entry rules.
+              {t("copy.documentsHealthHelp")}
             </p>
           </div>
         </div>
         <Button type="button" variant="primary" onClick={openAdd}>
-          <Plus className="size-4" /> Add document
+          <Plus className="size-4" /> {t("copy.addDocument")}
         </Button>
       </div>
 
       {documents.length > 0 && (
         <div className="flex flex-wrap gap-2" role="status" aria-live="polite">
-          <SummaryChip label="Valid" count={summary.valid} className="bg-emerald-500/10 text-emerald-600" />
-          <SummaryChip label="Expiring soon" count={summary.warning} className="bg-amber-500/10 text-amber-600" />
-          <SummaryChip label="Action needed" count={summary.invalid} className="bg-destructive/10 text-destructive" />
+          <SummaryChip label={t("copy.valid")} count={summary.valid} className="bg-emerald-500/10 text-emerald-600" />
+          <SummaryChip label={t("copy.expiringSoon")} count={summary.warning} className="bg-amber-500/10 text-amber-600" />
+          <SummaryChip label={t("copy.actionNeeded")} count={summary.invalid} className="bg-destructive/10 text-destructive" />
         </div>
       )}
 
@@ -139,10 +142,10 @@ export function DocumentTrackerView({
         <div className="rounded-2xl border border-dashed p-10 text-center">
           <FileText className="mx-auto size-8 text-muted-foreground" aria-hidden />
           <Heading level={3} className="mt-3 text-base font-semibold">
-            No documents tracked
+            {t("copy.noDocumentsTracked")}
           </Heading>
           <p className="mt-1 text-sm text-muted-foreground">
-            Add your passport, visa, insurance, or vaccination record to get expiry alerts before you fly.
+            {t("copy.addPassportPrompt")}
           </p>
         </div>
       ) : (
@@ -166,7 +169,7 @@ export function DocumentTrackerView({
                     </div>
                   </div>
                   <span className={cn("rounded-full px-2.5 py-1 text-xs font-semibold", style.badge)}>
-                    {STATUS_LABELS[result.status]}
+                    {statusLabels[result.status]}
                   </span>
                 </div>
 
@@ -181,7 +184,7 @@ export function DocumentTrackerView({
 
                 <div className="mt-4 flex gap-2">
                   <Button type="button" size="sm" variant="outline" onClick={() => openEdit(document)}>
-                    <Pencil className="size-4" /> Edit
+                    <Pencil className="size-4" /> {t("common.edit")}
                   </Button>
                   <Button
                     type="button"
@@ -190,7 +193,7 @@ export function DocumentTrackerView({
                     className="text-muted-foreground hover:text-destructive"
                     onClick={() => void healthRepository.remove(document.id)}
                   >
-                    <Trash2 className="size-4" /> Remove
+                    <Trash2 className="size-4" /> {t("copy.remove")}
                   </Button>
                 </div>
               </div>
@@ -269,6 +272,7 @@ function DocumentFormDialog({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useI18n();
   const [form, setForm] = useState<DocumentFormState>(() => (initial ? toForm(initial) : EMPTY_FORM));
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -278,7 +282,7 @@ function DocumentFormDialog({
 
   const save = async () => {
     if (!form.expiresOn) {
-      setError("Expiry date is required.");
+      setError(t("copy.expiryRequired"));
       return;
     }
     const now = new Date().toISOString();
@@ -305,7 +309,7 @@ function DocumentFormDialog({
       await healthRepository.upsert(document);
       onSaved();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to save document.");
+      setError(localizeThrownError(cause, t, "Unable to save document."));
     } finally {
       setSaving(false);
     }
@@ -327,7 +331,7 @@ function DocumentFormDialog({
       <div className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <Label htmlFor="doc-type">Type</Label>
+            <Label htmlFor="doc-type">{t("copy.type")}</Label>
             <select
               id="doc-type"
               value={form.type}
@@ -342,7 +346,7 @@ function DocumentFormDialog({
             </select>
           </div>
           <div>
-            <Label htmlFor="doc-number">Document number</Label>
+            <Label htmlFor="doc-number">{t("copy.documentNumber")}</Label>
             <Input
               id="doc-number"
               value={form.documentNumber}
@@ -354,30 +358,30 @@ function DocumentFormDialog({
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <Label htmlFor="doc-issued">Issue date</Label>
+            <Label htmlFor="doc-issued">{t("copy.issueDate")}</Label>
             <Input id="doc-issued" type="date" value={form.issuedOn} onChange={(event) => set("issuedOn", event.target.value)} />
           </div>
           <div>
             <Label htmlFor="doc-expires">
-              Expiry date <span className="text-destructive">*</span>
+              {t("copy.expiryDate")} <span className="text-destructive">*</span>
             </Label>
             <Input id="doc-expires" type="date" required value={form.expiresOn} onChange={(event) => set("expiresOn", event.target.value)} />
           </div>
         </div>
 
         <div>
-          <Label htmlFor="doc-country">Country of issue</Label>
-          <Input id="doc-country" value={form.countryOfIssue} onChange={(event) => set("countryOfIssue", event.target.value)} placeholder="e.g. United States" />
+          <Label htmlFor="doc-country">{t("copy.countryOfIssue")}</Label>
+          <Input id="doc-country" value={form.countryOfIssue} onChange={(event) => set("countryOfIssue", event.target.value)} placeholder={t("copy.placeholderCountry")} />
         </div>
 
         <div>
-          <Label htmlFor="doc-countries">Applies in (comma-separated)</Label>
-          <Input id="doc-countries" value={form.countries} onChange={(event) => set("countries", event.target.value)} placeholder="e.g. United States, Canada" />
+          <Label htmlFor="doc-countries">{t("copy.appliesIn")}</Label>
+          <Input id="doc-countries" value={form.countries} onChange={(event) => set("countries", event.target.value)} placeholder={t("copy.placeholderCountries")} />
         </div>
 
         <div>
-          <Label htmlFor="doc-notes">Notes</Label>
-          <Input id="doc-notes" value={form.notes} onChange={(event) => set("notes", event.target.value)} placeholder="Optional" />
+          <Label htmlFor="doc-notes">{t("copy.notes")}</Label>
+          <Input id="doc-notes" value={form.notes} onChange={(event) => set("notes", event.target.value)} placeholder={t("copy.optional")} />
         </div>
 
         {error && <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
@@ -385,10 +389,10 @@ function DocumentFormDialog({
 
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onClose}>
-          Cancel
+          {t("common.cancel")}
         </Button>
         <Button type="button" onClick={() => void save()} disabled={saving}>
-          {saving ? "Saving…" : initial ? "Save changes" : "Add document"}
+          {saving ? t("settings.saving") : initial ? t("common.saveChanges") : t("copy.addDocument")}
         </Button>
       </DialogFooter>
     </DialogContent>

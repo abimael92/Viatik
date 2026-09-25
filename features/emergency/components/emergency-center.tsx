@@ -18,13 +18,23 @@ import {
   type EmergencyCenterData,
 } from "@/features/emergency/lib/use-emergency-center-data";
 import { telHref } from "@/features/emergency/lib/emergency-numbers";
+import { useI18n } from "@/lib/i18n/i18n-provider";
+import type { TranslationKey } from "@/lib/i18n/translations";
 import { cn } from "@/lib/utils";
 
-const CATEGORY_LABELS: Record<VaultEntryCategory, string> = {
-  passport: "Passport",
-  insurance: "Travel insurance",
-  visa: "Visa",
-  other: "Other",
+const CATEGORY_KEYS: Record<VaultEntryCategory, TranslationKey> = {
+  passport: "common.passport",
+  insurance: "copy.travelInsurance",
+  visa: "copy.visa",
+  other: "common.other",
+};
+
+const EMERGENCY_LABEL_KEYS: Record<string, TranslationKey> = {
+  "General emergency": "copy.generalEmergency",
+  Police: "copy.police",
+  Medical: "copy.medical",
+  Fire: "copy.fire",
+  "Medical & fire": "copy.medicalAndFire",
 };
 
 /**
@@ -53,6 +63,7 @@ export function EmergencyCenter({
   settingsHref?: string;
   trigger: (open: () => void) => ReactNode;
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const data = useEmergencyCenterData({ ownerId, tripId, destination, refreshKey });
@@ -75,10 +86,8 @@ export function EmergencyCenter({
                 <ShieldAlert className="size-5" />
               </span>
               <div>
-                <DialogTitle>Emergency Center</DialogTitle>
-                <DialogDescription>
-                  Critical safety info, always available — even without a connection.
-                </DialogDescription>
+                <DialogTitle>{t("copy.emergencyCenter")}</DialogTitle>
+                <DialogDescription>{t("copy.emergencyCenterDescription")}</DialogDescription>
               </div>
             </div>
           </DialogHeader>
@@ -95,11 +104,14 @@ export function EmergencyCenter({
 }
 
 function LocalNumbersSection({ data }: { data: EmergencyCenterData }) {
+  const { t } = useI18n();
   return (
     <section aria-labelledby="ec-numbers-heading" className="rounded-2xl border border-destructive/30 bg-card p-4">
       <div className="flex items-center gap-2">
         <Phone className="size-5 text-destructive" aria-hidden />
-        <h3 id="ec-numbers-heading" className="text-sm font-semibold">Local emergency numbers</h3>
+        <h3 id="ec-numbers-heading" className="text-sm font-semibold">
+          {t("copy.localEmergencyNumbers")}
+        </h3>
         {data.destination.country && (
           <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
             {data.destination.country}
@@ -107,24 +119,26 @@ function LocalNumbersSection({ data }: { data: EmergencyCenterData }) {
         )}
       </div>
       <div className="mt-3 grid gap-2">
-        {data.destination.numbers.map((entry, index) => (
-          <a
-            key={`${entry.number}-${index}`}
-            href={telHref(entry.number)}
-            className={cn(
-              buttonVariants({ variant: "outline", size: "lg" }),
-              "justify-between border-destructive/20 hover:border-destructive/40"
-            )}
-          >
-            <span className="text-sm text-muted-foreground">{entry.label}</span>
-            <span className="font-mono text-base font-bold tabular-nums">{entry.number}</span>
-          </a>
-        ))}
+        {data.destination.numbers.map((entry, index) => {
+          const labelKey = EMERGENCY_LABEL_KEYS[entry.label];
+          return (
+            <a
+              key={`${entry.number}-${index}`}
+              href={telHref(entry.number)}
+              className={cn(
+                buttonVariants({ variant: "outline", size: "lg" }),
+                "justify-between border-destructive/20 hover:border-destructive/40"
+              )}
+            >
+              <span className="text-sm text-muted-foreground">
+                {labelKey ? t(labelKey) : entry.label}
+              </span>
+              <span className="font-mono text-base font-bold tabular-nums">{entry.number}</span>
+            </a>
+          );
+        })}
       </div>
-      <p className="mt-3 text-xs text-muted-foreground">
-        Numbers are a best-effort match for your trip destination. Tapping a number dials it
-        directly.
-      </p>
+      <p className="mt-3 text-xs text-muted-foreground">{t("copy.emergencyNumbersDisclaimer")}</p>
     </section>
   );
 }
@@ -136,11 +150,14 @@ function EmergencyContactSection({
   data: EmergencyCenterData;
   settingsHref: string;
 }) {
+  const { t } = useI18n();
   return (
     <section aria-labelledby="ec-contact-heading" className="rounded-2xl border border-destructive/30 bg-card p-4">
       <div className="flex items-center gap-2">
         <ShieldAlert className="size-5 text-destructive" aria-hidden />
-        <h3 id="ec-contact-heading" className="text-sm font-semibold">Emergency contact</h3>
+        <h3 id="ec-contact-heading" className="text-sm font-semibold">
+          {t("common.emergencyContact")}
+        </h3>
       </div>
       {data.loading ? (
         <div className="mt-3 h-12 animate-pulse rounded-lg bg-muted" />
@@ -157,16 +174,14 @@ function EmergencyContactSection({
             className={cn(buttonVariants({ variant: "primary", size: "lg" }), "justify-center")}
           >
             <Phone className="size-5" />
-            Call {data.emergencyContact.phone}
+            {t("copy.callNumber", { phone: data.emergencyContact.phone })}
           </a>
         </div>
       ) : (
         <div className="mt-3 rounded-lg border border-dashed p-4">
-          <p className="text-sm text-muted-foreground">
-            Add an emergency contact so help is one tap away, even offline.
-          </p>
+          <p className="text-sm text-muted-foreground">{t("copy.addEmergencyContactOffline")}</p>
           <Link href={settingsHref} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-3")}>
-            Add in Settings
+            {t("copy.addInSettings")}
           </Link>
         </div>
       )}
@@ -181,28 +196,27 @@ function CriticalDocsSection({
   data: EmergencyCenterData;
   vaultHref: string;
 }) {
+  const { t } = useI18n();
   return (
     <section aria-labelledby="ec-docs-heading" className="rounded-2xl border border-destructive/30 bg-card p-4">
       <div className="flex items-center gap-2">
         <FileText className="size-5 text-destructive" aria-hidden />
-        <h3 id="ec-docs-heading" className="text-sm font-semibold">Critical documents</h3>
+        <h3 id="ec-docs-heading" className="text-sm font-semibold">
+          {t("copy.criticalDocuments")}
+        </h3>
       </div>
       {data.criticalDocs === null ? (
         <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-dashed p-4">
           <div className="flex items-start gap-2">
             <Lock className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
-            <p className="text-sm text-muted-foreground">
-              Unlock the vault to see your passports, insurance, and visas here.
-            </p>
+            <p className="text-sm text-muted-foreground">{t("copy.unlockVaultDocs")}</p>
           </div>
           <Link href={vaultHref} className={buttonVariants({ variant: "outline", size: "sm" })}>
-            Unlock vault
+            {t("copy.unlockVault")}
           </Link>
         </div>
       ) : data.criticalDocs.length === 0 ? (
-        <p className="mt-3 text-sm text-muted-foreground">
-          No passport, insurance, or visa documents stored in this trip’s vault yet.
-        </p>
+        <p className="mt-3 text-sm text-muted-foreground">{t("copy.noCriticalDocs")}</p>
       ) : (
         <ul className="mt-3 space-y-2">
           {data.criticalDocs.map((doc) => (
@@ -213,7 +227,7 @@ function CriticalDocsSection({
               >
                 <span className="min-w-0 truncate text-sm font-medium">{doc.title}</span>
                 <span className="shrink-0 rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive">
-                  {CATEGORY_LABELS[doc.category]}
+                  {t(CATEGORY_KEYS[doc.category])}
                 </span>
               </Link>
             </li>
