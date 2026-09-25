@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useI18n } from "@/lib/i18n/i18n-provider";
+import { localizeUserError } from "@/lib/i18n/localize-error";
 import { cn } from "@/lib/utils";
 
 const STEPS = ["Identity", "Contact details", "Travel details"];
@@ -163,7 +164,7 @@ export function OnboardingForm({ email, next, initialName = "" }: { email: strin
     setMessage(null);
     startTransition(async () => {
       const result = await completeOnboarding(values.fullName.trim(), avatar, details);
-      if (!result.success) return setMessage(result.error);
+      if (!result.success) return setMessage(localizeUserError(result.error, t, "errors.profileSaveFailed"));
       router.replace(next);
       router.refresh();
     });
@@ -173,10 +174,8 @@ export function OnboardingForm({ email, next, initialName = "" }: { email: strin
     <form className="space-y-6" onSubmit={submit}>
       <div>
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">{t("common.travelDetails")}</p>
-        <h1 className="mt-3 text-3xl font-bold tracking-tight">Make Viatik yours</h1>
-        <p className="mt-2 text-muted-foreground">
-          Your name and phone are required — the rest is optional and stays private to you.
-        </p>
+        <h1 className="mt-3 text-3xl font-bold tracking-tight">{t("copy.makeViatikYours")}</h1>
+        <p className="mt-2 text-muted-foreground">{t("copy.namePhoneRequired")}</p>
       </div>
 
       <StepHeader step={step} onNavigate={handleStepNavigate} />
@@ -197,7 +196,7 @@ export function OnboardingForm({ email, next, initialName = "" }: { email: strin
             onChange={(event) => setField("fullName", event.target.value)}
             error={fieldErrors.fullName}
             autoComplete="name"
-            placeholder="John Doe"
+            placeholder={t("copy.placeholderJohn")}
             required
             autoFocus
           />
@@ -224,15 +223,13 @@ export function OnboardingForm({ email, next, initialName = "" }: { email: strin
               <ShieldCheck className="size-5" />
             </span>
             <div>
-              <h3 className="text-sm font-semibold">Emergency contact</h3>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Private safety details for the person to contact during an emergency. All optional.
-              </p>
+              <h3 className="text-sm font-semibold">{t("common.emergencyContact")}</h3>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("copy.emergencyContactIntro")}</p>
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label={t("common.contactName")} name="emergencyContactName" value={values.emergencyContactName} onChange={(event) => setField("emergencyContactName", event.target.value)} placeholder="Jane Doe" />
-            <Field label={t("common.relationship")} name="emergencyContactRelationship" value={values.emergencyContactRelationship} onChange={(event) => setField("emergencyContactRelationship", event.target.value)} placeholder="Parent, partner, friend…" />
+            <Field label={t("common.contactName")} name="emergencyContactName" value={values.emergencyContactName} onChange={(event) => setField("emergencyContactName", event.target.value)} placeholder={t("copy.placeholderJane")} />
+            <Field label={t("common.relationship")} name="emergencyContactRelationship" value={values.emergencyContactRelationship} onChange={(event) => setField("emergencyContactRelationship", event.target.value)} placeholder={t("copy.placeholderRelationship")} />
             <Field label={t("common.emergencyPhone")} name="emergencyContactPhone" type="tel" inputMode="tel" value={values.emergencyContactPhone} onChange={(event) => setField("emergencyContactPhone", event.target.value)} placeholder="+1 555 012 3456" />
           </div>
         </section>
@@ -246,25 +243,23 @@ export function OnboardingForm({ email, next, initialName = "" }: { email: strin
             </span>
             <div>
               <h3 className="text-sm font-semibold">{t("common.travelDetails")}</h3>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Optional context for planning age-aware activities and shared trips.
-              </p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("copy.optionalAgeContext")}</p>
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label={t("common.dateOfBirth")} name="birthDate" type="date" value={values.birthDate} onChange={(event) => setField("birthDate", event.target.value)} max={new Date().toISOString().slice(0, 10)} required error={fieldErrors.birthDate} />
-            <Field label={t("settings.preferredLanguage")} name="preferredLanguage" value={values.preferredLanguage} onChange={(event) => setField("preferredLanguage", event.target.value)} placeholder="English" maxLength={35} />
+            <Field label={t("settings.preferredLanguage")} name="preferredLanguage" value={values.preferredLanguage} onChange={(event) => setField("preferredLanguage", event.target.value)} placeholder={t("common.english")} maxLength={35} />
             <SelectField label={t("common.preferredCurrency")} name="preferredCurrency" value={values.preferredCurrency} onChange={(event) => setField("preferredCurrency", event.target.value)}>
-              <option value="">Not specified</option>
-              <option value="USD">USD — US Dollar</option>
-              <option value="EUR">EUR — Euro</option>
-              <option value="GBP">GBP — British Pound</option>
-              <option value="CAD">CAD — Canadian Dollar</option>
-              <option value="MXN">MXN — Mexican Peso</option>
-              <option value="JPY">JPY — Japanese Yen</option>
+              <option value="">{t("common.notSpecified")}</option>
+              <option value="USD">{t("copy.usd")}</option>
+              <option value="EUR">{t("copy.eur")}</option>
+              <option value="GBP">{t("copy.gbp")}</option>
+              <option value="CAD">{t("copy.cad")}</option>
+              <option value="MXN">{t("copy.mxn")}</option>
+              <option value="JPY">{t("copy.jpy")}</option>
             </SelectField>
-            <Field label={t("common.dietaryRestrictions")} name="dietaryRestrictions" value={values.dietaryRestrictions} onChange={(event) => setField("dietaryRestrictions", event.target.value)} placeholder="vegetarian, gluten-free" helper={t("common.separateComma")} />
-            <Field label={t("common.allergies")} name="allergies" value={values.allergies} onChange={(event) => setField("allergies", event.target.value)} placeholder="nuts, shellfish" helper={t("common.separateComma")} />
+            <Field label={t("common.dietaryRestrictions")} name="dietaryRestrictions" value={values.dietaryRestrictions} onChange={(event) => setField("dietaryRestrictions", event.target.value)} placeholder={t("copy.placeholderDiet")} helper={t("common.separateComma")} />
+            <Field label={t("common.allergies")} name="allergies" value={values.allergies} onChange={(event) => setField("allergies", event.target.value)} placeholder={t("copy.placeholderAllergies")} helper={t("common.separateComma")} />
             <Field label="Passport issuing country" name="passportIssuingCountry" value={values.passportIssuingCountry} onChange={(event) => setField("passportIssuingCountry", event.target.value)} placeholder="US" minLength={2} maxLength={2} helper="Two-letter country code only." />
             <Field label="Passport expiration" name="passportExpiresOn" type="date" value={values.passportExpiresOn} onChange={(event) => setField("passportExpiresOn", event.target.value)} helper="No passport number is stored." />
           </div>
@@ -302,8 +297,9 @@ function StepHeader({
   step: number;
   onNavigate: (step: number) => void;
 }) {
+  const { t } = useI18n();
   return (
-    <nav aria-label="Profile setup progress" className="mb-2">
+    <nav aria-label={t("copy.profileSetupProgress")} className="mb-2">
       <ol className="flex gap-3 sm:gap-4">
         {STEPS.map((title, index) => {
           const number = index + 1;

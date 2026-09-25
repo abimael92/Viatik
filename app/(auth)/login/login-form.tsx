@@ -12,6 +12,7 @@ import {
   sendEmailOtp,
   verifyEmailOtp,
 } from "@/app/actions/auth";
+import { localizeThrownError, localizeUserError } from "@/lib/i18n/localize-error";
 import { AvatarPicker, type AvatarChange } from "@/components/ui/avatar-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,27 +49,29 @@ function formatCooldown(seconds: number) {
   return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
 }
 
-function passwordStrength(pw: string) {
+function passwordStrength(pw: string, t: ReturnType<typeof useI18n>["t"]) {
   const rules = [
-    { label: "At least 8 characters", met: pw.length >= 8 },
-    { label: "Uppercase letter", met: /[A-Z]/.test(pw) },
-    { label: "Lowercase letter", met: /[a-z]/.test(pw) },
-    { label: "A number", met: /\d/.test(pw) },
-    { label: "A symbol", met: /[^A-Za-z0-9]/.test(pw) },
+    { label: t("auth.passwordHint"), met: pw.length >= 8 },
+    { label: t("copy.uppercaseLetter"), met: /[A-Z]/.test(pw) },
+    { label: t("copy.lowercaseLetter"), met: /[a-z]/.test(pw) },
+    { label: t("copy.aNumber"), met: /\d/.test(pw) },
+    { label: t("copy.aSymbol"), met: /[^A-Za-z0-9]/.test(pw) },
   ];
   const score = rules.filter((rule) => rule.met).length;
   const meta =
     score <= 2
-      ? { label: "Weak", bar: "bg-destructive" }
+      ? { label: t("copy.weak"), bar: "bg-destructive" }
       : score === 3
-        ? { label: "Fair", bar: "bg-amber-500" }
+        ? { label: t("copy.fair"), bar: "bg-amber-500" }
         : score === 4
-          ? { label: "Good", bar: "bg-lime-500" }
-          : { label: "Strong", bar: "bg-success" };
+          ? { label: t("copy.good"), bar: "bg-lime-500" }
+          : { label: t("copy.strong"), bar: "bg-success" };
   return { score, rules, meta };
 }
 
 export function LoginForm({ mode = "login", next, initialError }: LoginFormProps) {
+  const { t } = useI18n();
+
   const router = useRouter();
   const refs = useRef<Array<HTMLInputElement | null>>([]);
   const [email, setEmail] = useState("");
@@ -82,7 +85,7 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
   const [registered, setRegistered] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarSeed, setAvatarSeed] = useState<string | null>(null);
-  const strength = passwordStrength(password);
+  const strength = passwordStrength(password, t);
   const passwordsMatch = password === confirmPassword;
 
   function handleAvatarChange(change: AvatarChange) {
@@ -100,7 +103,6 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
   const [success, setSuccess] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
   const [pending, startTransition] = useTransition();
-  const { t } = useI18n();
 
   useEffect(() => {
     if (!cooldown) return;
@@ -120,7 +122,7 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
     startTransition(async () => {
       if (mode === "register") {
         const result = await registerWithPassword(email, password, fullName, phone, birthDate, avatarFile, avatarSeed);
-        if (!result.success) return setMessage(result.error);
+        if (!result.success) return setMessage(localizeUserError(result.error, t, "errors.unexpected"));
         // With email confirmation enabled, a new signup has no session yet.
         if (result.data?.confirmRequired) {
           setRegistered(true);
@@ -128,7 +130,7 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
         }
       } else {
         const result = await loginWithPassword(email, password);
-        if (!result.success) return setMessage(result.error);
+        if (!result.success) return setMessage(localizeUserError(result.error, t, "errors.unexpected"));
       }
       goHome();
     });
@@ -140,7 +142,7 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
     startTransition(async () => {
       const result = await sendEmailOtp(email, mode === "register", mode === "register" ? fullName : undefined, mode === "register" ? phone : undefined);
       if (!result.success) {
-        setMessage(result.error);
+        setMessage(localizeUserError(result.error, t, "errors.unexpected"));
         if (result.retryAfter) setCooldown(result.retryAfter);
         return;
       }
@@ -173,7 +175,7 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
         router.replace(profile?.full_name?.trim() ? safeNext(next) : `/onboarding?next=${encodeURIComponent(safeNext(next))}`);
         router.refresh();
       } catch (error) {
-        setMessage(error instanceof Error ? error.message : "Passkey sign-in was cancelled.");
+        setMessage(localizeThrownError(error, t, "Passkey sign-in was cancelled."));
       }
     });
   }
@@ -183,7 +185,7 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
     setSuccess(null);
     startTransition(async () => {
       const result = await developmentLogin();
-      if (!result.success) return setMessage(result.error);
+      if (!result.success) return setMessage(localizeUserError(result.error, t, "errors.unexpected"));
       router.replace(result.data.onboarded ? safeNext(next) : `/onboarding?next=${encodeURIComponent(safeNext(next))}`);
       router.refresh();
     });
@@ -194,7 +196,7 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
     setSuccess(null);
     startTransition(async () => {
       const result = await verifyEmailOtp(email, codeOrToken);
-      if (!result.success) return setMessage(result.error);
+      if (!result.success) return setMessage(localizeUserError(result.error, t, "errors.unexpected"));
       router.replace(
         mode === "register"
           ? safeNext(next)
@@ -207,7 +209,7 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
   }
 
   function verifyCode(code = digits.join("")) {
-    if (code.length !== OTP_LENGTH) return setMessage(`Enter the complete ${OTP_LENGTH}-digit code.`);
+    if (code.length !== OTP_LENGTH) return setMessage(t("errors.completeCode", { count: OTP_LENGTH }));
     verifyEmail(code);
   }
 
@@ -290,9 +292,7 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
           <button type="button" className="font-semibold text-primary disabled:text-muted-foreground" disabled={pending || cooldown > 0} onClick={requestCode}>
             {cooldown ? t("auth.resendIn", { time: formatCooldown(cooldown) }) : t("auth.resend")}
           </button>
-          <button type="button" className="text-muted-foreground hover:text-foreground" onClick={() => { setSent(false); setDigits(Array.from({ length: OTP_LENGTH }, () => "")); setMessage(null); }}>
-            Back to email and password
-          </button>
+          <button type="button" className="text-muted-foreground hover:text-foreground" onClick={() => { setSent(false); setDigits(Array.from({ length: OTP_LENGTH }, () => "")); setMessage(null); }}>{t("copy.backToPassword")}</button>
         </div>
       </div>
     );
@@ -301,15 +301,15 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
   return (
     <form className="space-y-6" onSubmit={submitWithPassword}>
       <div>
-        <p className="mb-2 text-sm font-semibold text-primary">{mode === "register" ? "New to Viatik" : "Existing account"}</p>
-        <h1 className="text-3xl font-bold tracking-tight">{mode === "register" ? "Create your account" : "Welcome back"}</h1>
+        <p className="mb-2 text-sm font-semibold text-primary">{mode === "register" ? t("auth.newToViatik") : t("auth.existingAccount")}</p>
+        <h1 className="text-3xl font-bold tracking-tight">{mode === "register" ? t("auth.createAccount") : t("auth.signInWelcome")}</h1>
         <p className="mt-2 text-muted-foreground">
-          {mode === "register" ? "Sign up to create trips, invite friends, and keep every plan in one place." : "Sign in with the email already connected to your Viatik account."}
+          {mode === "register" ? t("auth.registerDescription") : t("auth.loginDescription")}
         </p>
       </div>
       {mode === "register" && (
         <ul className="grid gap-2 rounded-xl bg-muted/60 p-4 text-sm">
-          {["Your profile and trips saved securely", "Shared itineraries and expenses", "Offline access while you travel"].map((item) => <li key={item} className="flex items-center gap-2"><Check className="size-5 text-success" />{item}</li>)}
+          {[t("auth.secureProfile"), t("auth.sharedExpenses"), t("auth.offlineAccess")].map((item) => <li key={item} className="flex items-center gap-2"><Check className="size-5 text-success" />{item}</li>)}
         </ul>
       )}
       {mode === "register" && (
@@ -318,45 +318,45 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
           src={null}
           name={fullName}
           onChange={handleAvatarChange}
-          uploadHint="Optional · randomize a playful avatar or upload a photo (up to 2 MB)."
+          uploadHint={t("auth.optionalAvatar")}
         />
       )}
       {mode === "register" && (
         <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="fullName">Display name <span className="text-destructive" aria-hidden="true">*</span></Label>
+            <Label htmlFor="fullName">{t("common.displayName")}<span className="text-destructive" aria-hidden="true">*</span></Label>
             <div className="relative">
               <User className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input id="fullName" name="fullName" type="text" autoComplete="name" placeholder="John Doe" minLength={2} maxLength={60} required autoFocus value={fullName} onChange={(event) => setFullName(event.target.value)} disabled={pending} className="pl-9" />
+              <Input id="fullName" name="fullName" type="text" autoComplete="name" placeholder={t("copy.placeholderJohn")} minLength={2} maxLength={60} required autoFocus value={fullName} onChange={(event) => setFullName(event.target.value)} disabled={pending} className="pl-9" />
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email">Email address <span className="text-destructive" aria-hidden="true">*</span></Label>
+            <Label htmlFor="email">{t("auth.email")} <span className="text-destructive" aria-hidden="true">*</span></Label>
             <div className="relative">
               <Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input id="email" name="email" type="email" autoComplete="email" placeholder="you@example.com" required value={email} onChange={(event) => setEmail(event.target.value)} disabled={pending} className="pl-9" />
+              <Input id="email" name="email" type="email" autoComplete="email" placeholder={t("copy.placeholderEmail")} required value={email} onChange={(event) => setEmail(event.target.value)} disabled={pending} className="pl-9" />
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone number <span className="text-destructive" aria-hidden="true">*</span></Label>
+            <Label htmlFor="phone">{t("auth.phone")} <span className="text-destructive" aria-hidden="true">*</span></Label>
             <div className="relative">
               <Phone className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input id="phone" name="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="+1 555 012 3456" required value={phone} onChange={(event) => setPhone(event.target.value)} disabled={pending} className="pl-9" />
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="birthDate">Date of birth <span className="text-destructive" aria-hidden="true">*</span></Label>
+            <Label htmlFor="birthDate">{t("common.dateOfBirth")}<span className="text-destructive" aria-hidden="true">*</span></Label>
             <div className="relative">
               <CalendarDays className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input id="birthDate" name="birthDate" type="date" required max={new Date().toISOString().slice(0, 10)} value={birthDate} onChange={(event) => setBirthDate(event.target.value)} disabled={pending} className="pl-9" />
             </div>
           </div>
           <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="password">Password <span className="text-destructive" aria-hidden="true">*</span></Label>
+            <Label htmlFor="password">{t("auth.password")} <span className="text-destructive" aria-hidden="true">*</span></Label>
             <div className="relative">
               <Lock className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input id="password" name="password" type={showPassword ? "text" : "password"} autoComplete="new-password" placeholder="At least 8 characters" minLength={8} required value={password} onChange={(event) => setPassword(event.target.value)} disabled={pending} className="pl-9 pr-10" />
-              <button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "Hide password" : "Show password"} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <Input id="password" name="password" type={showPassword ? "text" : "password"} autoComplete="new-password" placeholder={t("auth.passwordHint")} minLength={8} required value={password} onChange={(event) => setPassword(event.target.value)} disabled={pending} className="pl-9 pr-10" />
+              <button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                 {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
               </button>
             </div>
@@ -381,33 +381,33 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
             )}
           </div>
           <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="confirmPassword">Confirm password <span className="text-destructive" aria-hidden="true">*</span></Label>
+            <Label htmlFor="confirmPassword">{t("auth.confirmPassword")} <span className="text-destructive" aria-hidden="true">*</span></Label>
             <div className="relative">
               <Lock className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input id="confirmPassword" name="confirmPassword" type={showConfirm ? "text" : "password"} autoComplete="new-password" placeholder="Repeat your password" required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} disabled={pending} className="pl-9 pr-10" />
-              <button type="button" onClick={() => setShowConfirm((value) => !value)} aria-label={showConfirm ? "Hide password" : "Show password"} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <Input id="confirmPassword" name="confirmPassword" type={showConfirm ? "text" : "password"} autoComplete="new-password" placeholder={t("auth.repeatPassword")} required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} disabled={pending} className="pl-9 pr-10" />
+              <button type="button" onClick={() => setShowConfirm((value) => !value)} aria-label={showConfirm ? t("auth.hidePassword") : t("auth.showPassword")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                 {showConfirm ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
               </button>
             </div>
-            {confirmPassword && !passwordsMatch && <p className="text-xs text-destructive">Passwords don&apos;t match.</p>}
+            {confirmPassword && !passwordsMatch && <p className="text-xs text-destructive">{t("auth.mismatch")}</p>}
           </div>
         </div>
       )}
       {mode === "login" && (
         <div className="grid gap-y-5">
           <div className="space-y-2">
-            <Label htmlFor="email">Email address</Label>
+            <Label htmlFor="email">{t("auth.email")}</Label>
             <div className="relative">
               <Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input id="email" name="email" type="email" autoComplete="email" placeholder="you@example.com" required autoFocus value={email} onChange={(event) => setEmail(event.target.value)} disabled={pending} className="pl-9" />
+              <Input id="email" name="email" type="email" autoComplete="email" placeholder={t("copy.placeholderEmail")} required autoFocus value={email} onChange={(event) => setEmail(event.target.value)} disabled={pending} className="pl-9" />
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">{t("auth.password")}</Label>
             <div className="relative">
               <Lock className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input id="password" name="password" type={showPassword ? "text" : "password"} autoComplete="current-password" placeholder="Your password" required value={password} onChange={(event) => setPassword(event.target.value)} disabled={pending} className="pl-9 pr-10" />
-              <button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "Hide password" : "Show password"} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <Input id="password" name="password" type={showPassword ? "text" : "password"} autoComplete="current-password" placeholder={t("auth.yourPassword")} required value={password} onChange={(event) => setPassword(event.target.value)} disabled={pending} className="pl-9 pr-10" />
+              <button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                 {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
               </button>
             </div>
@@ -417,34 +417,34 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
       {message && <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{message}</p>}
       {success && <p role="status" className="rounded-lg bg-success/10 p-3 text-sm text-success">{success}</p>}
       <Button type="submit" variant="primary" className="w-full" size="lg" disabled={pending || !email || !password || (mode === "register" && (!fullName || !phone || !birthDate || !passwordsMatch || strength.score < 4))}>
-        {pending ? "Please wait…" : mode === "register" ? "Create account" : "Sign in"}
+        {pending ? t("auth.pleaseWait") : mode === "register" ? t("auth.createAccount") : t("auth.signIn")}
       </Button>
       <div className="text-center">
         <button type="button" className="text-sm font-semibold text-primary hover:underline disabled:text-muted-foreground" disabled={pending} onClick={requestCode}>
-          Use a one-time code instead
+          {t("auth.useCode")}
         </button>
         <p className="mt-1 text-xs text-muted-foreground">
-          {mode === "register" ? "We’ll email a confirmation to verify your address before your password works." : "Prefer a code? We’ll send a secure code to your email."}
+          {mode === "register" ? t("auth.confirmationNote") : t("auth.codeNote")}
         </p>
       </div>
       {mode === "login" && (
         <div className="space-y-3 border-t pt-5">
           <Button type="button" variant="outline" className="w-full" size="lg" disabled={pending} onClick={signInWithPasskey}>
-            <KeyRound className="size-5" />Sign in with a passkey
+            <KeyRound className="size-5" />{t("auth.passkey")}
           </Button>
-          <p className="text-center text-xs text-muted-foreground">Use a passkey already registered with your Viatik account.</p>
+          <p className="text-center text-xs text-muted-foreground">{t("auth.passkeyNote")}</p>
         </div>
       )}
       {mode === "login" && process.env.NODE_ENV === "development" && (
         <div className="border-t pt-5">
-          <Button type="button" variant="outline" className="w-full" disabled={pending} onClick={openDevelopmentAccount}>Open development account</Button>
-          <p className="mt-2 text-center text-xs text-muted-foreground">Local development only. No email is sent.</p>
+          <Button type="button" variant="outline" className="w-full" disabled={pending} onClick={openDevelopmentAccount}>{t("auth.developmentAccount")}</Button>
+          <p className="mt-2 text-center text-xs text-muted-foreground">{t("auth.localOnly")}</p>
         </div>
       )}
       <p className="text-center text-sm">
-        {mode === "register" ? "Already have an account? " : "New to Viatik? "}
+        {mode === "register" ? `${t("auth.alreadyHaveAccount")} ` : `${t("auth.newToViatikQuestion")} `}
         <Link className="font-semibold text-primary hover:underline" href={mode === "register" ? "/login" : "/register"}>
-          {mode === "register" ? "Sign in" : "Create an account"}
+          {mode === "register" ? t("auth.signIn") : t("auth.createAnAccount")}
         </Link>
       </p>
     </form>
