@@ -40,7 +40,7 @@ repository/application boundaries and an optimistic outbox sync engine.
 
 ## Features (`features/`)
 
-activities (optional photos, rich links, and location pins on the Activity; edit modal is a two-zone layout: category/title/description left, logistics right, Must-dos and participants full-width), ai (Scout — itinerary ideas, works offline), collaboration, community/feed,
+activities (optional photos, rich links, and location pins on the Activity Extras tab; edit modal uses Details / Group & money / Extras tabs), ai (Scout — itinerary ideas, works offline), collaboration, community/feed,
 contacts, emergency, expenses (multi-currency splits + immutable settlement ledger), finance (budgets), health
 (passport/visa tracking), journal, maps, media, packing, polls, profile, sharing,
 transit, trips (activity Must-dos on itinerary + home timeline actions),

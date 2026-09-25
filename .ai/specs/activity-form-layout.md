@@ -5,16 +5,27 @@
 
 ## Problem
 
-The activity edit modal stacked Must-dos and day/time on the left, leaving a tall empty column on the right. Footer actions competed: a solid red delete, a labeled clone, and a gradient save.
+A two-column activity modal stacked too many fields, hid later sections, and left an unbalanced empty column.
 
 ## Layout
 
-- **Zone A (two columns):** left = category, title, description. Right = location, budget, vote, day, and time controls.
-- **Zone B (full width):** Must-dos, then a single Participants block (attendee chips + manual add).
-- Clone is a header icon next to the dialog close control, not a footer button.
-- Delete is ghost/outline with destructive text. Save is solid `primary` (no magenta→red gradient).
-- Participants and vote groups use a muted fill instead of dashed or heavy borders.
+The dialog title and footer stay outside the tabs. The tab strip uses a blue → magenta → amber track. Each trigger has its own two-stop gradient when active (sky, fuchsia, amber). Inner activity fields use three tabs:
+
+- **Details:** category, title, description, location, lodging reservation (when applicable), day, time specificity, start/end or flexible period.
+- **Group & money:** optional personal budget, send to group vote, and a single Participants block (attendee chips + manual add).
+- **Extras:** Attachments (photos, links, location pins) and Must-dos at full width.
+
+Section fills are a simple muted surface with a border. Selected participant chips use a white card and a primary border so they stay readable on the section.
+
+Transit still replaces the tabbed body after category is set to Transit. Hidden tab panels stay mounted so submit still reads every field.
+
+## Actions and styling
+
+- Clone is a header icon next to the dialog close control.
+- Delete is ghost with destructive text.
+- Save is solid `primary` (no magenta→red gradient).
+- Sections use a muted fill and a light border. Selected chips use a primary border.
 
 ## Localization
 
-Activity form labels resolve through `common.*` (and `copy.*` / `errors.*` via the shared translator). Spanish: Título, Descripción, Hora exacta, Hora de inicio, Hora de fin, Participantes.
+Tab labels: Details / Detalles, Extras, Group & money / Grupo y finanzas. Field labels stay on `common.*`.
