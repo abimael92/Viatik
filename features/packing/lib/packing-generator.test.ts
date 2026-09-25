@@ -74,6 +74,12 @@ describe("generatePackingDrafts", () => {
         "Packing cubes",
         "Casual shoes",
         "Sandals",
+        "Travel adapter",
+        "Power bank",
+        "Toiletry kit",
+        "Pain relievers",
+        "Light jacket",
+        "Document copies",
       ]),
     );
   });

@@ -2,9 +2,10 @@
 
 import { localizeThrownError } from "@/lib/i18n/localize-error";
 
-import { Check, ChevronDown, Luggage, Minus, Plus, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
+import { Check, ChevronDown, Luggage, Minus, Plus, RefreshCw, RotateCcw, Trash } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Heading } from "@/components/ui/heading";
@@ -14,12 +15,14 @@ import type { Activity, Trip } from "@/features/domain/entities";
 import { packingRepository } from "@/features/packing/data/dexie-packing-repository";
 import { tripRepository } from "@/features/trips/data/dexie-trip-repository";
 import {
+  normalizePackingName,
   PACKING_CATEGORIES,
   PACKING_CATEGORY_LABELS,
   type PackingCategory,
   type PackingItem,
 } from "@/features/packing/domain/packing-types";
 import { generatePackingDrafts, tripDurationDays } from "@/features/packing/lib/packing-generator";
+import { isUntouchedSuggestion, packingItemLabel } from "@/features/packing/lib/packing-item-label";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
@@ -153,6 +156,12 @@ export function PackingListView({ tripId, trip, activities, canEdit = true }: { 
       setRefreshing(false);
     }
   }, [buildDrafts, t, tripId]);
+
+  const draftQuantityByName = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const draft of buildDrafts()) map.set(normalizePackingName(draft.name), draft.quantity);
+    return map;
+  }, [buildDrafts]);
 
   const grouped = useMemo(() => {
     const map = new Map<PackingCategory, PackingItem[]>();
@@ -295,9 +304,12 @@ export function PackingListView({ tripId, trip, activities, canEdit = true }: { 
                 </div>
                 {!collapsed && (
                   <ul id={categoryContentId} className="mt-3 space-y-1">
-                  {categoryItems.map((item) => (
+                  {categoryItems.map((item) => {
+                    const label = packingItemLabel(item.name, t);
+                    const untouched = isUntouchedSuggestion(item, draftQuantityByName.get(normalizePackingName(item.name)));
+                    return (
                     <li key={item.id}>
-                      <div className="group flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-muted/60">
+                      <div className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-muted/60">
                         <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
                           <span className="relative inline-flex size-5 shrink-0">
                             <input
@@ -305,7 +317,7 @@ export function PackingListView({ tripId, trip, activities, canEdit = true }: { 
                               checked={item.isPacked}
                               onChange={() => void handleToggle(item)}
                               className="peer size-5 appearance-none rounded-md border border-border bg-background transition-colors checked:border-primary checked:bg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                              aria-label={t("common.markPacked", { name: item.name, status: item.isPacked ? t("common.unpacked") : t("common.packed") })}
+                              aria-label={t("common.markPacked", { name: label, status: item.isPacked ? t("common.unpacked") : t("common.packed") })}
                             />
                             <Check
                               className="pointer-events-none absolute inset-0 m-auto size-3.5 text-primary-foreground opacity-0 transition-opacity peer-checked:opacity-100"
@@ -315,15 +327,15 @@ export function PackingListView({ tripId, trip, activities, canEdit = true }: { 
                           <span className="min-w-0">
                             <span
                               className={cn(
-                                "block text-sm",
+                                "flex min-w-0 flex-wrap items-center gap-2 text-sm",
                                 item.isPacked && "text-muted-foreground line-through"
                               )}
                             >
-                              {item.name}
-                              {item.isSuggested && item.suggestedReason === "always" && (
-                                <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
-                                  {t("common.suggested")}
-                                </span>
+                              <span className="min-w-0">{label}</span>
+                              {untouched && (
+                                <Badge className="min-h-0 border border-primary bg-primary px-1.5 py-0 text-[10px] font-semibold normal-case tracking-normal text-primary-foreground">
+                                  {t("common.packingSuggestion")}
+                                </Badge>
                               )}
                             </span>
                             {item.suggestedReason && item.suggestedReason !== "recommended" && (
@@ -341,23 +353,23 @@ export function PackingListView({ tripId, trip, activities, canEdit = true }: { 
                             )}
                           </span>
                         </label>
-                        <div className="flex shrink-0 items-center rounded-md border bg-background/60">
+                        <div className="flex shrink-0 items-center gap-1">
                           <button
                             type="button"
-                            className="grid size-8 place-items-center text-muted-foreground hover:text-foreground disabled:opacity-40"
+                            className="grid size-8 place-items-center rounded-md bg-linear-to-br from-secondary to-viatik-blue text-white hover:opacity-90 disabled:opacity-40"
                             onClick={() => void handleQuantity(item, -1)}
                             disabled={item.quantity <= 1}
-                            aria-label={t("common.decreaseQuantity", { name: item.name })}
+                            aria-label={t("common.decreaseQuantity", { name: label })}
                           >
                             <Minus className="size-3.5" aria-hidden />
                           </button>
-                          <span className="min-w-6 text-center text-xs tabular-nums">{item.quantity}</span>
+                          <span className="min-w-7 bg-transparent px-1 text-center text-xs font-semibold tabular-nums">{item.quantity}</span>
                           <button
                             type="button"
-                            className="grid size-8 place-items-center text-muted-foreground hover:text-foreground disabled:opacity-40"
+                            className="grid size-8 place-items-center rounded-md bg-linear-to-br from-secondary to-viatik-blue text-white hover:opacity-90 disabled:opacity-40"
                             onClick={() => void handleQuantity(item, 1)}
                             disabled={item.quantity >= 99}
-                            aria-label={t("common.increaseQuantity", { name: item.name })}
+                            aria-label={t("common.increaseQuantity", { name: label })}
                           >
                             <Plus className="size-3.5" aria-hidden />
                           </button>
@@ -365,14 +377,15 @@ export function PackingListView({ tripId, trip, activities, canEdit = true }: { 
                         <button
                           type="button"
                           onClick={() => void handleRemove(item.id)}
-                          className="rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100"
-                          aria-label={t("common.removeItem", { name: item.name })}
+                          className="grid size-11 shrink-0 place-items-center rounded-md text-destructive transition-colors hover:bg-destructive/10 active:bg-destructive/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                          aria-label={t("common.deletePackingItem")}
                         >
-                          <Trash2 className="size-4" aria-hidden />
+                          <Trash className="size-4" aria-hidden />
                         </button>
                       </div>
                     </li>
-                  ))}
+                    );
+                  })}
                   </ul>
                 )}
               </div>
@@ -387,13 +400,13 @@ export function PackingListView({ tripId, trip, activities, canEdit = true }: { 
         </Heading>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
           <Label className="sr-only" htmlFor="packing-category">
-            Category
+            {t("common.category")}
           </Label>
           <select
             id="packing-category"
             value={newCategory}
             onChange={(event) => setNewCategory(event.target.value as PackingCategory)}
-            className="h-10 rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="h-11 rounded-lg border border-secondary/60 bg-secondary/5 px-3 text-sm focus-visible:border-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40"
             aria-label={t("common.category")}
           >
             {PACKING_CATEGORIES.map((category) => (
@@ -403,7 +416,7 @@ export function PackingListView({ tripId, trip, activities, canEdit = true }: { 
             ))}
           </select>
           <Label className="sr-only" htmlFor="packing-name">
-            Item name
+            {t("common.itemName")}
           </Label>
           <Input
             id="packing-name"
@@ -413,7 +426,7 @@ export function PackingListView({ tripId, trip, activities, canEdit = true }: { 
               if (event.key === "Enter" && newName.trim()) void handleAdd();
             }}
             placeholder={t("common.itemName")}
-            className="flex-1"
+            className="h-11 flex-1 rounded-lg border-secondary/60 bg-secondary/5 focus-visible:border-secondary focus-visible:ring-secondary/40"
           />
           <Button type="button" onClick={() => void handleAdd()} disabled={adding || !newName.trim()}>
             <Plus className="size-4" /> {t("common.addItem")}
