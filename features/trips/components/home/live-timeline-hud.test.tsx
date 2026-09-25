@@ -30,6 +30,38 @@ vi.mock("@/features/weather/data/dexie-weather-repository", () => ({
   },
 }));
 
+vi.mock("@/features/media/data/dexie-media-repository", () => ({
+  mediaRepository: {
+    watchByIds: (_ids: string[], onChange: (media: unknown[]) => void) => {
+      onChange([]);
+      return () => undefined;
+    },
+  },
+}));
+
+vi.mock("@/lib/sync/use-sync-status", () => ({
+  useSyncStatus: () => ({ isOnline: true }),
+}));
+
+vi.mock("@/features/expenses/components/expense-form-sheet", () => ({
+  ExpenseFormSheet: (props: {
+    open: boolean;
+    initialData?: { activityId?: string | null; description?: string; date?: string; category?: string | null };
+    onClose: () => void;
+  }) =>
+    props.open ? (
+      <div data-testid="expense-form-sheet">
+        <p data-testid="expense-handoff-description">{props.initialData?.description}</p>
+        <p data-testid="expense-handoff-activity">{props.initialData?.activityId}</p>
+        <p data-testid="expense-handoff-date">{props.initialData?.date}</p>
+        <p data-testid="expense-handoff-category">{props.initialData?.category}</p>
+        <button type="button" data-testid="cancel-expense" onClick={props.onClose}>
+          Cancel expense
+        </button>
+      </div>
+    ) : null,
+}));
+
 vi.mock("@/features/weather/lib/load-trip-weather-forecast", () => ({
   loadTripWeatherForecast: vi.fn().mockResolvedValue({
     status: "hit",
@@ -488,5 +520,108 @@ describe("LiveTimelineHud execution UI", () => {
         { action: "deleted_checklist_item", itemTitle: "Sacar efectivo" },
       ),
     );
+  });
+
+  it("opens a prefilled expense sheet after an editor completes a purchase Must-do", async () => {
+    const purchaseItems: TimelineItem[] = [
+      {
+        ...items[0],
+        checklist: [
+          { id: "item-pay", title: "Pagar estacionamiento", completed: false, archived: false },
+        ],
+      },
+    ];
+    render(
+      <LiveTimelineHud trip={trip} items={purchaseItems} active userId="user-1" canManageExpenses />,
+    );
+
+    fireEvent.click(screen.getByText("compras"));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Pagar estacionamiento" }));
+
+    await waitFor(() => expect(updateChecklist).toHaveBeenCalledOnce());
+    expect(screen.getByTestId("expense-form-sheet")).toBeTruthy();
+    expect(screen.getByTestId("expense-handoff-description").textContent).toBe("Pagar estacionamiento");
+    expect(screen.getByTestId("expense-handoff-activity").textContent).toBe("activity-1");
+    expect(screen.getByTestId("expense-handoff-date").textContent).toBe("2099-09-23");
+    expect(screen.getByTestId("expense-handoff-category").textContent).toBe("activities");
+  });
+
+  it("does not open an expense sheet for a non-purchase Must-do", async () => {
+    render(
+      <LiveTimelineHud trip={trip} items={items} active userId="user-1" canManageExpenses />,
+    );
+
+    fireEvent.click(screen.getByText("compras"));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Sacar efectivo" }));
+
+    await waitFor(() => expect(updateChecklist).toHaveBeenCalledOnce());
+    expect(screen.queryByTestId("expense-form-sheet")).toBeNull();
+  });
+
+  it("keeps the Must-do completed when the expense sheet is canceled", async () => {
+    const purchaseItems: TimelineItem[] = [
+      {
+        ...items[0],
+        checklist: [
+          { id: "item-pay", title: "Comprar entradas", completed: false, archived: false },
+        ],
+      },
+    ];
+    render(
+      <LiveTimelineHud trip={trip} items={purchaseItems} active userId="user-1" canManageExpenses />,
+    );
+
+    fireEvent.click(screen.getByText("compras"));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Comprar entradas" }));
+    await waitFor(() => expect(screen.getByTestId("expense-form-sheet")).toBeTruthy());
+
+    fireEvent.click(screen.getByTestId("cancel-expense"));
+    expect(screen.queryByTestId("expense-form-sheet")).toBeNull();
+    expect((screen.getByRole("checkbox", { name: "Comprar entradas" }) as HTMLInputElement).checked).toBe(true);
+    expect(updateChecklist).toHaveBeenCalledTimes(1);
+  });
+
+  it("never opens the expense sheet for a viewer", async () => {
+    const purchaseItems: TimelineItem[] = [
+      {
+        ...items[0],
+        checklist: [
+          { id: "item-pay", title: "Pagar estacionamiento", completed: false, archived: false },
+        ],
+      },
+    ];
+    render(<LiveTimelineHud trip={trip} items={purchaseItems} active userId="user-1" />);
+
+    fireEvent.click(screen.getByText("compras"));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Pagar estacionamiento" }));
+
+    await waitFor(() => expect(updateChecklist).toHaveBeenCalledOnce());
+    expect(screen.queryByTestId("expense-form-sheet")).toBeNull();
+  });
+
+  it("does not open the expense sheet when the checklist write fails", async () => {
+    updateChecklist.mockRejectedValueOnce(new Error("Dexie write failed"));
+    const purchaseItems: TimelineItem[] = [
+      {
+        ...items[0],
+        checklist: [
+          { id: "item-pay", title: "Pagar estacionamiento", completed: false, archived: false },
+        ],
+      },
+    ];
+    render(
+      <LiveTimelineHud trip={trip} items={purchaseItems} active userId="user-1" canManageExpenses />,
+    );
+
+    fireEvent.click(screen.getByText("compras"));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Pagar estacionamiento" }));
+
+    await waitFor(() =>
+      expect(notify).toHaveBeenCalledWith(expect.objectContaining({
+        title: "Must-dos not saved",
+        variant: "error",
+      })),
+    );
+    expect(screen.queryByTestId("expense-form-sheet")).toBeNull();
   });
 });
