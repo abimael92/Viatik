@@ -9,7 +9,7 @@ vi.mock("@/features/expenses/data/dexie-settlement-repository", () => ({
   settlementRepository: { create: vi.fn().mockResolvedValue({ id: "settlement-1" }) },
 }));
 vi.mock("@/features/expenses/data/dexie-expense-repository", () => ({
-  expenseRepository: { update: vi.fn(), create: vi.fn(), settleShare: vi.fn() },
+  expenseRepository: { update: vi.fn(), create: vi.fn() },
 }));
 
 afterEach(() => cleanup());
@@ -50,7 +50,7 @@ describe("SettleUpSheet", () => {
       }),
     );
     expect(expenseRepository.update).not.toHaveBeenCalled();
-    expect(expenseRepository.settleShare).not.toHaveBeenCalled();
+    expect(expenseRepository.create).not.toHaveBeenCalled();
     expect(onSaved).toHaveBeenCalledOnce();
   });
 });

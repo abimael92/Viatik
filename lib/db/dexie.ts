@@ -455,6 +455,23 @@ export class ViatikDatabase extends Dexie {
     this.version(36).stores({
       dailyStepCounts: "id, tripId, userId, dayDate, [tripId+userId], [userId+dayDate], updatedAt",
     });
+
+    // v37: settlement ledger date. Creating a settlement is the repayment;
+    // expenses stay immutable. Backfill date from createdAt.
+    this.version(37).stores({
+      expenseSettlements: "id, tripId, fromUserId, toUserId, date, updatedAt, deletedAt",
+    }).upgrade(async (transaction) => {
+      await transaction.table("expenseSettlements").toCollection().modify((settlement: Record<string, unknown>) => {
+        if (typeof settlement.date !== "string" || !settlement.date) {
+          const createdAt = typeof settlement.createdAt === "string" ? settlement.createdAt : new Date().toISOString();
+          settlement.date = createdAt.slice(0, 10);
+        }
+        if (settlement.status === "pending" && settlement.deletedAt == null) {
+          settlement.status = "settled";
+          settlement.settledAt = settlement.settledAt ?? settlement.createdAt ?? new Date().toISOString();
+        }
+      });
+    });
   }
 }
 

@@ -13,8 +13,6 @@ export interface ExpenseRepository {
     patch: Partial<Omit<Expense, "id" | "tripId">>
   ): Promise<Expense>;
   replaceShares(expenseId: string, shares: NewExpense["shares"]): Promise<void>;
-  /** One-tap settlement: mark a single share as paid (sets `settledAt`). */
-  settleShare(shareId: string): Promise<void>;
   remove(id: string): Promise<void>;
 }
 
