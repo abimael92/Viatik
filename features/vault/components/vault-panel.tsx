@@ -1,5 +1,7 @@
 "use client";
 
+import { localizeThrownError } from "@/lib/i18n/localize-error";
+
 import { Lock, Plus, Shield, Unlock } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -10,12 +12,14 @@ import { useToast } from "@/components/ui/toast";
 import type { VaultEntry, VaultEntryValues, VaultKeyset } from "@/features/vault/domain/vault-types";
 import { vaultRepository } from "@/features/vault/data/dexie-vault-repository";
 import { tripRepository } from "@/features/trips/data/dexie-trip-repository";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { webCryptoVault, type VaultSession } from "@/lib/security/web-crypto-vault";
 import { VaultUnlockDialog } from "./vault-unlock-dialog";
 import { VaultEntryDialog } from "./vault-entry-dialog";
 import { VaultEntryCard } from "./vault-entry-card";
 
 export function VaultPanel({ tripId, userId }: { tripId: string; userId: string }) {
+  const { t } = useI18n();
   const [keyset, setKeyset] = useState<VaultKeyset | null | undefined>(undefined);
   const [session, setSession] = useState<VaultSession | null>(() => webCryptoVault.getSession(userId) ?? null);
   const [entries, setEntries] = useState<VaultEntry[]>([]);
@@ -46,7 +50,7 @@ export function VaultPanel({ tripId, userId }: { tripId: string; userId: string 
           const values = await webCryptoVault.decrypt(entry, session);
           next.set(entry.id, values);
         } catch {
-          next.set(entry.id, { title: entry.id, username: null, secret: "Unable to decrypt", notes: null, category: "other" });
+          next.set(entry.id, { title: entry.id, username: null, secret: t("errors.vaultDecrypt"), notes: null, category: "other" });
         }
       }
       if (!cancelled) setDecrypted(next);
@@ -54,7 +58,7 @@ export function VaultPanel({ tripId, userId }: { tripId: string; userId: string 
     return () => {
       cancelled = true;
     };
-  }, [entries, session, userId]);
+  }, [entries, session, t, userId]);
 
   const handleVaultNotNeeded = useCallback(async () => {
     setPending(true);
@@ -62,11 +66,11 @@ export function VaultPanel({ tripId, userId }: { tripId: string; userId: string 
     try {
       await tripRepository.update(tripId, { vaultNotNeeded: true });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to update vault status.");
+      setError(localizeThrownError(cause, t, "Unable to update vault status."));
     } finally {
       setPending(false);
     }
-  }, [tripId]);
+  }, [t, tripId]);
 
   const handleUnlock = useCallback(
     async (passphrase: string) => {
@@ -79,12 +83,12 @@ export function VaultPanel({ tripId, userId }: { tripId: string; userId: string 
         setSession(newSession);
         setDialog(null);
       } catch (cause) {
-        setError(cause instanceof Error ? cause.message : "Unable to unlock vault.");
+        setError(localizeThrownError(cause, t, "Unable to unlock vault."));
       } finally {
         setPending(false);
       }
     },
-    [keyset, userId]
+    [keyset, t, userId]
   );
 
   const handleCreateKeyset = useCallback(
@@ -103,12 +107,12 @@ export function VaultPanel({ tripId, userId }: { tripId: string; userId: string 
         await tripRepository.update(tripId, { vaultNotNeeded: false });
         setDialog(null);
       } catch (cause) {
-        setError(cause instanceof Error ? cause.message : "Unable to create vault.");
+        setError(localizeThrownError(cause, t, "Unable to create vault."));
       } finally {
         setPending(false);
       }
     },
-    [tripId, userId]
+    [t, tripId, userId]
   );
 
   const handleSave = useCallback(
@@ -131,12 +135,12 @@ export function VaultPanel({ tripId, userId }: { tripId: string; userId: string 
         setDialog(null);
         setEditing(null);
       } catch (cause) {
-        setError(cause instanceof Error ? cause.message : "Unable to save entry.");
+        setError(localizeThrownError(cause, t, "Unable to save entry."));
       } finally {
         setPending(false);
       }
     },
-    [editing, session, tripId, userId]
+    [editing, session, t, tripId, userId]
   );
 
   const handleDelete = useCallback((entry: VaultEntry) => {
@@ -151,9 +155,9 @@ export function VaultPanel({ tripId, userId }: { tripId: string; userId: string 
       await vaultRepository.removeEntry(entry.id, userId);
       toast({ title: "Vault entry deleted", variant: "success" });
     } catch (cause) {
-      toast({ title: "Unable to delete entry", description: cause instanceof Error ? cause.message : "Please try again.", variant: "error" });
+      toast({ title: t("copy.unableDeleteEntry"), description: localizeThrownError(cause, t, "Please try again."), variant: "error" });
     }
-  }, [deleteEntry, toast, userId]);
+  }, [deleteEntry, t, toast, userId]);
 
   const handleCopy = useCallback(
     async (text: string, label: string) => {
@@ -162,10 +166,10 @@ export function VaultPanel({ tripId, userId }: { tripId: string; userId: string 
         setCopyToast(`Copied ${label}`);
         window.setTimeout(() => setCopyToast((current) => (current === `Copied ${label}` ? null : current)), 2000);
       } catch {
-        setError("Clipboard access denied.");
+        setError(t("copy.clipboardDenied"));
       }
     },
-    []
+    [t]
   );
 
   const handleLock = useCallback(() => {
@@ -184,17 +188,17 @@ export function VaultPanel({ tripId, userId }: { tripId: string; userId: string 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <Heading level={2} id="vault-heading" className="text-2xl font-bold">
-            Vault
+            {t("common.secureVault")}
           </Heading>
-          <p className="text-muted-foreground">Private, encrypted notes and credentials for this trip.</p>
+          <p className="text-muted-foreground">{t("copy.vaultHelp")}</p>
         </div>
         {session && (
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={handleLock}>
-              <Lock className="size-5" /> Lock
+              <Lock className="size-5" /> {t("copy.lock")}
             </Button>
             <Button variant="primary" onClick={() => { setEditing(null); setDialog("entry"); }}>
-              <Plus className="size-5" /> Add entry
+              <Plus className="size-5" /> {t("copy.addEntry")}
             </Button>
           </div>
         )}
@@ -205,7 +209,7 @@ export function VaultPanel({ tripId, userId }: { tripId: string; userId: string 
           <span className="mx-auto grid size-12 place-items-center rounded-full bg-primary/10 text-primary">
             <Shield className="size-6" />
           </span>
-          <Heading level={3} className="mt-4 text-base font-semibold">Your vault is locked</Heading>
+          <Heading level={3} className="mt-4 text-base font-semibold">{t("copy.vaultLocked")}</Heading>
           <p className="mt-1 text-sm text-muted-foreground">
             {keyset === undefined
               ? "Checking vault status…"
@@ -220,7 +224,7 @@ export function VaultPanel({ tripId, userId }: { tripId: string; userId: string 
               disabled={keyset === undefined}
             >
               <Unlock className="size-5" />
-              {keyset ? "Unlock vault" : "Create vault"}
+              {keyset ? t("copy.unlockVault") : "Create vault"}
             </Button>
             {!keyset && keyset !== undefined && (
               <Button
@@ -228,7 +232,7 @@ export function VaultPanel({ tripId, userId }: { tripId: string; userId: string 
                 onClick={() => void handleVaultNotNeeded()}
                 disabled={pending}
               >
-                Not needed
+                {t("copy.notNeeded")}
               </Button>
             )}
           </div>
@@ -251,9 +255,9 @@ export function VaultPanel({ tripId, userId }: { tripId: string; userId: string 
         <div className="grid gap-4">
           {sortedEntries.length === 0 ? (
             <div className="rounded-2xl border border-dashed p-10 text-center">
-              <p className="text-muted-foreground">No entries yet.</p>
+              <p className="text-muted-foreground">{t("copy.noEntries")}</p>
               <Button className="mt-4" onClick={() => { setEditing(null); setDialog("entry"); }}>
-                <Plus className="size-5" /> Add your first entry
+                <Plus className="size-5" /> {t("copy.addFirstEntry")}
               </Button>
             </div>
           ) : (
@@ -295,9 +299,9 @@ export function VaultPanel({ tripId, userId }: { tripId: string; userId: string 
       <ConfirmDialog
         open={deleteEntry !== null}
         onOpenChange={(open) => !open && setDeleteEntry(null)}
-        title="Delete vault entry?"
+        title={t("copy.deleteVaultEntry")}
         description={deleteEntry ? `Delete “${decrypted.get(deleteEntry.id)?.title ?? "this entry"}” from your vault?` : ""}
-        confirmLabel="Delete"
+        confirmLabel={t("copy.delete")}
         onConfirm={() => void confirmDelete()}
       />
     </section>

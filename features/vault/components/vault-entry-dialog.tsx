@@ -19,12 +19,14 @@ import {
   type VaultEntryCategory,
   type VaultEntryValues,
 } from "@/features/vault/domain/vault-types";
+import { useI18n } from "@/lib/i18n/i18n-provider";
+import type { TranslationKey } from "@/lib/i18n/translations";
 
-const CATEGORY_LABELS: Record<VaultEntryCategory, string> = {
-  passport: "Passport",
-  insurance: "Travel insurance",
-  visa: "Visa",
-  other: "Other",
+const CATEGORY_KEYS: Record<VaultEntryCategory, TranslationKey> = {
+  passport: "common.passport",
+  insurance: "copy.travelInsurance",
+  visa: "copy.visa",
+  other: "common.other",
 };
 
 export function VaultEntryDialog({
@@ -42,6 +44,7 @@ export function VaultEntryDialog({
   pending?: boolean;
   error?: string | null;
 }) {
+  const { t } = useI18n();
   const [title, setTitle] = useState(() => values?.title ?? "");
   const [username, setUsername] = useState(() => values?.username ?? "");
   const [secret, setSecret] = useState(() => values?.secret ?? "");
@@ -76,26 +79,26 @@ export function VaultEntryDialog({
         <DialogHeader>
           <DialogTitle>{values ? "Edit vault entry" : "Add vault entry"}</DialogTitle>
           <DialogDescription>
-            This entry is encrypted on your device before it is stored or synced.
+            {t("copy.vaultEncrypted")}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="vault-entry-title">
-              Title <span className="text-destructive" aria-hidden="true">*</span>
+              {t("common.title")} <span className="text-destructive" aria-hidden="true">*</span>
             </Label>
             <Input
               id="vault-entry-title"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
-              placeholder="Hotel safe code"
+              placeholder={t("copy.placeholderSafe")}
               required
               autoFocus
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="vault-entry-category">Document type</Label>
+            <Label htmlFor="vault-entry-category">{t("copy.documentType")}</Label>
             <select
               id="vault-entry-category"
               value={category}
@@ -104,30 +107,29 @@ export function VaultEntryDialog({
             >
               {VAULT_ENTRY_CATEGORIES.map((value) => (
                 <option key={value} value={value}>
-                  {CATEGORY_LABELS[value]}
+                  {t(CATEGORY_KEYS[value])}
                 </option>
               ))}
             </select>
             <p className="text-xs text-muted-foreground">
-              Marking a document as a passport, insurance, or visa lets it surface as a critical
-              shortcut in the Emergency Center.
+              {t("copy.documentTypeHelp")}
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="vault-entry-username">Username (optional)</Label>
+            <Label htmlFor="vault-entry-username">{t("copy.usernameOptional")}</Label>
             <Input
               id="vault-entry-username"
               value={username}
               onChange={(event) => setUsername(event.target.value)}
-              placeholder="jordan@example.com"
+              placeholder={t("copy.placeholderJordanEmail")}
               autoComplete="off"
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="vault-entry-secret">
-              Secret <span className="text-destructive" aria-hidden="true">*</span>
+              {t("copy.secret")} <span className="text-destructive" aria-hidden="true">*</span>
             </Label>
             <div className="relative">
               <Input
@@ -152,12 +154,12 @@ export function VaultEntryDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="vault-entry-notes">Notes (optional)</Label>
+            <Label htmlFor="vault-entry-notes">{t("copy.notesOptional")}</Label>
             <textarea
               id="vault-entry-notes"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
-              placeholder="Room 412, checkout behind the painting…"
+              placeholder={t("copy.placeholderNotes")}
               rows={3}
               maxLength={500}
               className="w-full resize-y rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50"
@@ -172,10 +174,10 @@ export function VaultEntryDialog({
 
           <DialogFooter>
             <Button type="button" variant="outline" disabled={pending} onClick={() => onOpenChange(false)}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button type="submit" variant="primary" disabled={pending}>
-              {pending ? "Saving…" : values ? "Update entry" : "Add entry"}
+              {pending ? "Saving…" : values ? "Update entry" : t("copy.addEntry")}
             </Button>
           </DialogFooter>
         </form>

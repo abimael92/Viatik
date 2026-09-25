@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
 import type { VaultEntry, VaultEntryValues } from "@/features/vault/domain/vault-types";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 export function VaultEntryCard({
   entry,
@@ -20,6 +21,7 @@ export function VaultEntryCard({
   onDelete: () => void;
   onCopy: (text: string, label: string) => void;
 }) {
+  const { t } = useI18n();
   const [revealed, setRevealed] = useState(false);
 
   if (!values) {
@@ -40,7 +42,7 @@ export function VaultEntryCard({
           <Heading level={3} className="truncate text-base font-semibold">{values.title}</Heading>
           {values.username && (
             <p className="text-sm text-muted-foreground">
-              <span className="sr-only">Username</span>
+              <span className="sr-only">{t("copy.username")}</span>
               {values.username}
             </p>
           )}
