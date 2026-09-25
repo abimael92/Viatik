@@ -28,11 +28,13 @@ import type { ScoutDndPayload } from "@/features/ai/lib/ai-scout-dnd";
 import { DayColumn } from "@/features/activities/components/day-column";
 import { ActivityCard } from "@/features/activities/components/activity-card";
 import { useI18n } from "@/lib/i18n/i18n-provider";
+import { matchesAttendanceFilter, type ActivityAttendanceFilter } from "@/features/trips/lib/activity-category-colors";
 
 interface ItineraryBoardProps {
   tripId: string;
   dayDates: string[];
   category?: string;
+  attendance?: ActivityAttendanceFilter;
   onSelect?: (activity: Activity) => void;
   onEdit?: (activity: Activity) => void;
   readOnly?: boolean;
@@ -53,6 +55,7 @@ export function ItineraryBoard({
   tripId,
   dayDates,
   category = "all",
+  attendance = "all",
   onSelect,
   onEdit,
   readOnly = false,
@@ -86,12 +89,13 @@ export function ItineraryBoard({
     for (const date of dayDates) map.set(date, []);
     for (const activity of activities ?? []) {
       if (category !== "all" && activity.category !== category) continue;
+      if (currentUserId && !matchesAttendanceFilter(activity, currentUserId, attendance)) continue;
       const list = map.get(activity.dayDate) ?? [];
       list.push(activity);
       map.set(activity.dayDate, list);
     }
     return map;
-  }, [activities, category, dayDates]);
+  }, [activities, attendance, category, currentUserId, dayDates]);
 
   const activeActivity = useMemo(
     () => (activities ?? []).find((a) => a.id === activeId),
