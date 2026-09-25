@@ -29,7 +29,9 @@ describe("ActivityChecklistEditor", () => {
 
     expect(screen.getByText("Must-dos")).toBeTruthy();
     expect(screen.getByText("No Must-dos yet. Add the first one for this activity.")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Add Must-do" }));
+    const addMustDo = screen.getByRole("button", { name: "Add Must-do" });
+    expect(addMustDo.className).toContain("from-lime-300");
+    fireEvent.click(addMustDo);
     expect(onChange).toHaveBeenCalledWith([
       expect.objectContaining({ title: "New Must-do", completed: false, archived: false }),
     ]);
