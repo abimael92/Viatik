@@ -35,6 +35,10 @@ repository/application boundaries and an optimistic outbox sync engine.
   optional avatar. Profile row is pre-created at signup so onboarding isn't forced.
 - **Email confirmation** is required for new signups; the app shows a "check your
   email" screen until the address is confirmed.
+- **Password reset** starts from "Forgot password?" on sign-in. The recovery link
+  is confirmed at `/auth/confirm` and the new password is set at `/reset-password`.
+  Supabase needs the redirect allow list, the recovery email template, and custom
+  SMTP described in `.ai/specs/password-reset.md`.
 - **Production email requires custom SMTP** in Supabase (built-in sender is limited
   to ~2/hr). Auth actions live in `app/actions/auth.ts`.
 
