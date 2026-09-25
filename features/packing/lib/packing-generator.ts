@@ -138,6 +138,7 @@ export function generatePackingDrafts(input: PackingGenerationInput): PackingDra
   drafts.push(["documents", "Driver's license", 1, "recommended"]);
   drafts.push(["documents", "Credit / debit cards", 1, "recommended"]);
   drafts.push(["documents", "Cash", 1, "recommended"]);
+  drafts.push(["documents", "Document copies", 1, "recommended"]);
 
   drafts.push(["electronics", "Phone", 1, "always"]);
   drafts.push(["electronics", "Phone charger", 1, "always"]);
@@ -157,7 +158,11 @@ export function generatePackingDrafts(input: PackingGenerationInput): PackingDra
   drafts.push(["toiletries", "Sunscreen", 1, "recommended"]);
   drafts.push(["toiletries", "Perfume / cologne", 1, "recommended"]);
   drafts.push(["toiletries", "Personal medications", 1, "always"]);
+  drafts.push(["toiletries", "Pain relievers", 1, "recommended"]);
   drafts.push(["toiletries", "Basic first aid", 1, "recommended"]);
+  drafts.push(["toiletries", "Toiletry kit", 1, "recommended"]);
+  drafts.push(["toiletries", "Hand sanitizer", 1, "recommended"]);
+  drafts.push(["toiletries", "Hairbrush", 1, "recommended"]);
 
   drafts.push(["gear", "Backpack / daypack", 1, "recommended"]);
   drafts.push(["gear", "Water bottle", 1, "recommended"]);
@@ -165,6 +170,10 @@ export function generatePackingDrafts(input: PackingGenerationInput): PackingDra
   drafts.push(["gear", "Travel pillow", 1, "recommended"]);
   drafts.push(["gear", "Laundry bag", 1, "recommended"]);
   drafts.push(["gear", "Packing cubes", 1, "recommended"]);
+  drafts.push(["gear", "Earplugs", 1, "recommended"]);
+  drafts.push(["gear", "Sleep mask", 1, "recommended"]);
+  drafts.push(["gear", "Insect repellent", 1, "recommended"]);
+  drafts.push(["gear", "Luggage lock", 1, "recommended"]);
 
   // Clothing scales with trip length.
   const days = input.durationDays;
@@ -180,6 +189,7 @@ export function generatePackingDrafts(input: PackingGenerationInput): PackingDra
   // Common footwear remains user-adjustable, while context rules add specialty footwear.
   drafts.push(["clothing", "Casual shoes", 1, "recommended"]);
   drafts.push(["clothing", "Sandals", 1, "recommended"]);
+  drafts.push(["clothing", "Light jacket", 1, "recommended"]);
 
   // Climate band drives seasonal clothing.
   const profile = inferTemperatureProfile(input.latitude, input.startDate);
