@@ -54,4 +54,10 @@ describe("native passkey login", () => {
     expect(mocks.getUser).not.toHaveBeenCalled();
     expect(mocks.replace).not.toHaveBeenCalled();
   });
+
+  it("links to the password reset request", () => {
+    render(<LoginForm />);
+
+    expect(screen.getByRole("link", { name: /forgot password/i }).getAttribute("href")).toBe("/forgot-password");
+  });
 });
