@@ -1,14 +1,11 @@
 import { liveQuery } from "dexie";
 
+import type { Decision, DecisionOption, DecisionVote } from "@/features/domain/entities";
 import { getCurrentDatabase, type ViatikDatabase } from "@/lib/db/dexie";
+import { TransactionContext } from "@/lib/db/transaction-context";
 import { logger } from "@/lib/observability/logger";
-import type {
-  NewPoll,
-  Poll,
-  PollOption,
-  PollRepository,
-  PollVote,
-} from "@/features/polls/domain/poll-types";
+import { append } from "@/lib/sync/outbox-transactional";
+import type { NewPoll, Poll, PollRepository, PollVote } from "@/features/polls/domain/poll-types";
 
 function getDb(): ViatikDatabase {
   const db = getCurrentDatabase();
@@ -16,27 +13,74 @@ function getDb(): ViatikDatabase {
   return db;
 }
 
-function newOption(pollId: string, label: string, position: number, now: string): PollOption {
+function hintString(resolution: Record<string, unknown> | null, key: string): string | null {
+  const value = resolution?.[key];
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+function toPoll(decision: Decision, options: DecisionOption[]): Poll {
   return {
-    id: crypto.randomUUID(),
-    pollId,
-    label: label.trim(),
-    position,
-    createdAt: now,
+    id: decision.id,
+    tripId: decision.tripId,
+    question: decision.question,
+    options: options
+      .filter((option) => option.deletedAt === null)
+      .sort((left, right) => left.position - right.position)
+      .map((option) => ({
+        id: option.id,
+        pollId: decision.id,
+        label: option.label,
+        position: option.position,
+        createdAt: option.createdAt,
+      })),
+    createdBy: decision.createdBy,
+    status: decision.status === "open" || decision.status === "draft" ? "active" : "closed",
+    dayDate: hintString(decision.resolution, "dayDate"),
+    location: hintString(decision.resolution, "location"),
+    category: hintString(decision.resolution, "category"),
+    scheduledActivityId: hintString(decision.resolution, "scheduledActivityId"),
+    createdAt: decision.createdAt,
+    updatedAt: decision.updatedAt,
+    deletedAt: decision.deletedAt,
+  };
+}
+
+function toVote(vote: DecisionVote): PollVote {
+  return {
+    id: vote.id,
+    pollId: vote.decisionId,
+    optionId: vote.optionId,
+    userId: vote.userId,
+    createdAt: vote.createdAt,
+    updatedAt: vote.updatedAt,
   };
 }
 
 /**
- * Local-only, Dexie-backed group polls. Polls and votes are device-local (like
- * `feedItems`/`packingItems`) and are never pushed through the sync outbox.
+ * Crew polls are shared decisions. Every trip member can read them and vote.
+ * The Poll shape is what the screen renders.
  */
 export class DexiePollRepository implements PollRepository {
   async listByTrip(tripId: string): Promise<Poll[]> {
-    return getDb()
-      .polls.where("tripId")
+    const db = getDb();
+    const decisions = await db.decisions
+      .where("tripId")
       .equals(tripId)
-      .filter((poll) => poll.deletedAt === null)
-      .sortBy("createdAt");
+      .filter((decision) => decision.deletedAt === null && decision.type === "standalone_poll")
+      .toArray();
+    const decisionIds = new Set(decisions.map((decision) => decision.id));
+    const options = decisions.length
+      ? await db.decisionOptions.where("decisionId").anyOf([...decisionIds]).toArray()
+      : [];
+    const shared = decisions.map((decision) =>
+      toPoll(decision, options.filter((option) => option.decisionId === decision.id)),
+    );
+    const legacy = await db.polls
+      .where("tripId")
+      .equals(tripId)
+      .filter((poll) => poll.deletedAt === null && !decisionIds.has(poll.id))
+      .toArray();
+    return [...shared, ...legacy].sort((left, right) => left.createdAt.localeCompare(right.createdAt));
   }
 
   watchByTrip(tripId: string, onChange: (polls: Poll[]) => void): () => void {
@@ -45,13 +89,15 @@ export class DexiePollRepository implements PollRepository {
   }
 
   async listVotesByPoll(pollId: string): Promise<PollVote[]> {
+    const shared = (await getDb().decisionVotes.where("decisionId").equals(pollId).toArray())
+      .filter((vote) => vote.deletedAt === null)
+      .map(toVote);
+    if (shared.length > 0) return shared;
     return getDb().pollVotes.where("pollId").equals(pollId).toArray();
   }
 
   watchVotesByPoll(pollId: string, onChange: (votes: PollVote[]) => void): () => void {
-    const subscription = liveQuery(() => this.listVotesByPoll(pollId)).subscribe({
-      next: onChange,
-    });
+    const subscription = liveQuery(() => this.listVotesByPoll(pollId)).subscribe({ next: onChange });
     return () => subscription.unsubscribe();
   }
 
@@ -63,38 +109,129 @@ export class DexiePollRepository implements PollRepository {
     if (labels.length < 2) throw new Error("A poll needs at least two options");
 
     const now = new Date().toISOString();
-    const pollId = crypto.randomUUID();
-    const options = labels.map((label, index) => newOption(pollId, label, index, now));
-
-    const poll: Poll = {
-      id: pollId,
+    const decisionId = crypto.randomUUID();
+    const decision: Decision = {
+      id: decisionId,
       tripId: input.tripId,
+      type: "standalone_poll",
       question,
-      options,
-      createdBy: input.createdBy,
-      status: "active",
-      dayDate: input.dayDate ?? null,
-      location: input.location ?? null,
-      category: input.category ?? null,
-      scheduledActivityId: null,
+      status: "open",
+      votingEndsAt: null,
+      resolution: {
+        dayDate: input.dayDate ?? null,
+        location: input.location ?? null,
+        category: input.category ?? null,
+        scheduledActivityId: null,
+      },
+      resolvedBy: null,
+      resolvedAt: null,
       createdAt: now,
+      createdBy: input.createdBy,
       updatedAt: now,
+      updatedBy: input.createdBy,
+      version: 1,
       deletedAt: null,
+      deletedBy: null,
     };
-    await db.polls.add(poll);
-    logger.debug("Poll created locally", { pollId, tripId: input.tripId });
-    return poll;
+    const options: DecisionOption[] = labels.map((label, index) => ({
+      id: crypto.randomUUID(),
+      decisionId,
+      label,
+      metadata: {},
+      position: index,
+      createdAt: now,
+      createdBy: input.createdBy,
+      updatedAt: now,
+      updatedBy: input.createdBy,
+      version: 1,
+      deletedAt: null,
+      deletedBy: null,
+    }));
+
+    await TransactionContext.runInTransaction([db.decisions, db.decisionOptions], async (ctx) => {
+      await ctx.table<Decision>("decisions").add(decision);
+      await append("decision", "insert", decision, { tx: ctx, baseUpdatedAt: null });
+      for (const option of options) {
+        await ctx.table<DecisionOption>("decisionOptions").add(option);
+        await append("decisionOption", "insert", { ...option, tripId: input.tripId }, { tx: ctx, baseUpdatedAt: null });
+      }
+    });
+    logger.debug("Poll created for the crew", { pollId: decisionId, tripId: input.tripId });
+    return toPoll(decision, options);
   }
 
   async castVote(pollId: string, optionId: string, userId: string): Promise<PollVote> {
     const db = getDb();
+    const decision = await db.decisions.get(pollId);
+    if (!decision || decision.deletedAt !== null) return this.castLegacyVote(pollId, optionId, userId);
+    if (decision.status !== "open" && decision.status !== "draft") {
+      throw new Error("This poll is closed and no longer accepts votes");
+    }
+    const option = await db.decisionOptions.get(optionId);
+    if (!option || option.decisionId !== pollId || option.deletedAt !== null) {
+      throw new Error("That option no longer exists on this poll");
+    }
+    const now = new Date().toISOString();
+    const existing = await db.decisionVotes.where("[decisionId+userId]").equals([pollId, userId]).first();
+    const vote: DecisionVote = existing
+      ? { ...existing, optionId, updatedAt: now, updatedBy: userId, deletedAt: null, deletedBy: null }
+      : {
+          id: crypto.randomUUID(),
+          decisionId: pollId,
+          optionId,
+          userId,
+          createdAt: now,
+          createdBy: userId,
+          updatedAt: now,
+          updatedBy: userId,
+          version: 1,
+          deletedAt: null,
+          deletedBy: null,
+        };
+    await TransactionContext.runInTransaction([db.decisionVotes], async (ctx) => {
+      await ctx.table<DecisionVote>("decisionVotes").put(vote);
+      await append(existing ? "decisionVote" : "decisionVote", existing ? "update" : "insert", { ...vote, tripId: decision.tripId }, {
+        tx: ctx,
+        baseUpdatedAt: existing ? existing.updatedAt : null,
+      });
+    });
+    return toVote(vote);
+  }
+
+  async close(id: string): Promise<Poll> {
+    const db = getDb();
+    const decision = await db.decisions.get(id);
+    if (!decision) return this.closeLegacy(id);
+    const updated: Decision = { ...decision, status: "closed", updatedAt: new Date().toISOString() };
+    await TransactionContext.runInTransaction([db.decisions], async (ctx) => {
+      await ctx.table<Decision>("decisions").put(updated);
+      await append("decision", "update", updated, { tx: ctx, baseUpdatedAt: decision.updatedAt });
+    });
+    return toPoll(updated, await db.decisionOptions.where("decisionId").equals(id).toArray());
+  }
+
+  async markScheduled(id: string, activityId: string): Promise<Poll> {
+    const db = getDb();
+    const decision = await db.decisions.get(id);
+    if (!decision) return this.scheduleLegacy(id, activityId);
+    const updated: Decision = {
+      ...decision,
+      resolution: { ...(decision.resolution ?? {}), scheduledActivityId: activityId },
+      updatedAt: new Date().toISOString(),
+    };
+    await TransactionContext.runInTransaction([db.decisions], async (ctx) => {
+      await ctx.table<Decision>("decisions").put(updated);
+      await append("decision", "update", updated, { tx: ctx, baseUpdatedAt: decision.updatedAt });
+    });
+    return toPoll(updated, await db.decisionOptions.where("decisionId").equals(id).toArray());
+  }
+
+  private async castLegacyVote(pollId: string, optionId: string, userId: string): Promise<PollVote> {
+    const db = getDb();
     const poll = await db.polls.get(pollId);
     if (!poll || poll.deletedAt !== null) throw new Error("Poll not found");
     if (poll.status !== "active") throw new Error("This poll is closed and no longer accepts votes");
-    if (!poll.options.some((option) => option.id === optionId)) {
-      throw new Error("That option no longer exists on this poll");
-    }
-
+    if (!poll.options.some((option) => option.id === optionId)) throw new Error("That option no longer exists on this poll");
     const now = new Date().toISOString();
     const existing = await db.pollVotes.where("[pollId+userId]").equals([pollId, userId]).first();
     if (existing) {
@@ -102,38 +239,24 @@ export class DexiePollRepository implements PollRepository {
       await db.pollVotes.put(updated);
       return updated;
     }
-
-    const vote: PollVote = {
-      id: crypto.randomUUID(),
-      pollId,
-      optionId,
-      userId,
-      createdAt: now,
-      updatedAt: now,
-    };
+    const vote: PollVote = { id: crypto.randomUUID(), pollId, optionId, userId, createdAt: now, updatedAt: now };
     await db.pollVotes.add(vote);
     return vote;
   }
 
-  async close(id: string): Promise<Poll> {
-    const db = getDb();
-    const poll = await db.polls.get(id);
+  private async closeLegacy(id: string): Promise<Poll> {
+    const poll = await getDb().polls.get(id);
     if (!poll) throw new Error(`Poll ${id} not found`);
     const updated: Poll = { ...poll, status: "closed", updatedAt: new Date().toISOString() };
-    await db.polls.put(updated);
+    await getDb().polls.put(updated);
     return updated;
   }
 
-  async markScheduled(id: string, activityId: string): Promise<Poll> {
-    const db = getDb();
-    const poll = await db.polls.get(id);
+  private async scheduleLegacy(id: string, activityId: string): Promise<Poll> {
+    const poll = await getDb().polls.get(id);
     if (!poll) throw new Error(`Poll ${id} not found`);
-    const updated: Poll = {
-      ...poll,
-      scheduledActivityId: activityId,
-      updatedAt: new Date().toISOString(),
-    };
-    await db.polls.put(updated);
+    const updated: Poll = { ...poll, scheduledActivityId: activityId, updatedAt: new Date().toISOString() };
+    await getDb().polls.put(updated);
     return updated;
   }
 }

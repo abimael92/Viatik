@@ -34,6 +34,11 @@ describe("DexiePollRepository", () => {
     expect(poll.status).toBe("active");
     expect(poll.options.map((option) => option.label)).toEqual(["Ramen", "Burritos"]);
     expect(poll.options.every((option) => option.pollId === poll.id)).toBe(true);
+    expect((await db.outboxMutations.toArray()).map((mutation) => mutation.entityType).sort()).toEqual([
+      "decision",
+      "decisionOption",
+      "decisionOption",
+    ]);
   });
 
   it("requires a question and at least two options", async () => {
