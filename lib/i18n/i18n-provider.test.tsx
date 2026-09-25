@@ -60,11 +60,23 @@ describe("I18nProvider", () => {
 
   it("localizes activity Must-do terminology without changing readiness checklist copy", () => {
     expect(translate("en", "common.activityMustDo")).toBe("Must-do");
+    expect(translate("en", "common.activityAttachments")).toBe("Attachments");
+    expect(translate("es", "common.activityAttachments")).toBe("Adjuntos");
     expect(translate("en", "common.activityMustDos")).toBe("Must-dos");
     expect(translate("es", "common.activityMustDo")).toBe("Imprescindible");
     expect(translate("es", "common.activityMustDos")).toBe("Imprescindibles");
     expect(translate("es", "common.activityMustDosProgress", { completed: 1, total: 2 }))
       .toBe("1/2 Imprescindibles completados");
     expect(translate("en", "common.viewChecklist")).toBe("View checklist");
+  });
+
+  it("localizes activity form labels into Spanish", () => {
+    expect(translate("en", "common.title")).toBe("Title");
+    expect(translate("es", "common.title")).toBe("Título");
+    expect(translate("es", "common.description")).toBe("Descripción");
+    expect(translate("es", "common.exactTime")).toBe("Hora exacta");
+    expect(translate("es", "common.startTime")).toBe("Hora de inicio");
+    expect(translate("es", "common.endTime")).toBe("Hora de fin");
+    expect(translate("es", "common.participants")).toBe("Participantes");
   });
 });

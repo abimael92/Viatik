@@ -1,3 +1,6 @@
+import { errorCopy } from "@/lib/i18n/error-copy";
+import { frontendCopy } from "@/lib/i18n/frontend-copy";
+
 export const SUPPORTED_LOCALES = ["en", "es"] as const;
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
 
@@ -128,6 +131,9 @@ export const translations = {
       eatExplore: "Eat & explore",
       other: "Other",
       lodging: "Lodging",
+      lodgingReservation: "Lodging reservation",
+      lodgingReservationHelp: "For a house, hotel, motel, Airbnb, or other stay.",
+      lodgingReservationReference: "Lodging reservation reference",
       foodDrink: "Food & drink",
       sightseeing: "Sightseeing",
       entertainment: "Entertainment",
@@ -138,11 +144,15 @@ export const translations = {
       description: "Description",
       day: "Day",
       timeSpecificity: "Time specificity",
-      exactTime: "Exact time",
+      exactTime: "Exact Time",
       flexible: "Flexible",
       startTime: "Start time",
       endTime: "End time",
       flexiblePeriod: "Flexible period",
+      morning: "Morning",
+      afternoon: "Afternoon",
+      evening: "Evening",
+      anytime: "Anytime",
       booking: "Booking",
       confirmationCode: "Add a confirmation code",
       bookingReference: "Booking Reference / Confirmation Code",
@@ -152,6 +162,7 @@ export const translations = {
       voteHelp: "Ask travelers to approve this plan or suggest another.",
       votingEnds: "Voting ends",
       whosGoing: "Who's going?",
+      participants: "Participants",
       you: "You",
       going: "Going",
       notGoing: "Not going",
@@ -159,9 +170,48 @@ export const translations = {
       travelerName: "Traveler name",
       adding: "Adding…",
       addTraveler: "Add traveler",
+      tripMember: "Trip member",
+      unableToAddTraveler: "Unable to add traveler.",
+      travelerAddedSelected: "{{name}} added and selected.",
+      loadingPrivateBudget: "Loading your private budget...",
       deleteActivity: "Delete activity",
       quickClone: "Quick clone",
       saveActivity: "Save activity",
+      activityFormTabDetails: "Details",
+      activityFormTabExtras: "Extras",
+      activityFormTabGroup: "Group & money",
+      activityAttachments: "Attachments",
+      activityAttachmentsHelp: "A small gallery so travelers can see what this stop is about.",
+      activityAttachmentsEmpty: "No attachments yet.",
+      activityAttachmentsAdd: "Add attachment",
+      activityAttachmentsAddPhoto: "Photo",
+      activityAttachmentsAddLink: "Link",
+      activityAttachmentsAddLocation: "Location pin",
+      activityAttachmentsLimit: "Attachment limit reached",
+      activityAttachmentsUrl: "Link URL",
+      activityAttachmentsLinkTitle: "Link title",
+      activityAttachmentsLinkDescription: "Description (optional)",
+      activityAttachmentsSaveLink: "Save link",
+      activityAttachmentsRemove: "Remove {{name}}",
+      activityAttachmentsMoveUp: "Move attachment {{count}} up",
+      activityAttachmentsMoveDown: "Move attachment {{count}} down",
+      activityAttachmentsReady: "Photos save when you save the activity.",
+      activityAttachmentsPending: "Uploads when you reconnect",
+      activityAttachmentsUploading: "Uploading photo…",
+      activityAttachmentsUploadFailed: "Photo could not be uploaded",
+      activityAttachmentsRetry: "Retry upload",
+      activityAttachmentsSyncing: "Photo is still syncing",
+      activityAttachmentsOpenLink: "Open {{name}}",
+      activityAttachmentsOpenMaps: "Open {{name}} in maps",
+      activityAttachmentsViewPhoto: "View photo {{name}}",
+      activityAttachmentsPhotoPreview: "Photo preview",
+      activityAttachmentsPhotoBrowseHelp: "Use the arrow keys to browse photos",
+      activityAttachmentsMorePhotos: "+{{count}}",
+      activityAttachmentsPreparing: "Preparing photo…",
+      activityAttachmentsInvalidImage: "Choose a JPEG, PNG, WebP, or HEIC image up to 10 MB.",
+      activityAttachmentsInvalidUrl: "Enter a valid http or https link.",
+      activityAttachmentsList: "Activity attachments",
+      activityAttachmentsSection: "Attachments",
       activityMustDos: "Must-dos",
       activityMustDo: "Must-do",
       activityMustDosEditorHelp: "Plan the essentials here. On Home, travelers can complete, archive, restore, or delete existing Must-dos.",
@@ -325,6 +375,9 @@ export const translations = {
       aboutTrip: "About this trip",
       quickActions: "Quick actions",
       addActivity: "Add activity",
+      editActivity: "Edit activity",
+      editTransit: "Edit transit",
+      planStop: "Plan a stop in your day. It stays available offline.",
       addExpense: "Add expense",
       addPhotos: "Add photos",
       daysLeft: "{{count}} days left",
@@ -832,6 +885,9 @@ export const translations = {
       eatExplore: "Comer y explorar",
       other: "Otro",
       lodging: "Alojamiento",
+      lodgingReservation: "Reserva de alojamiento",
+      lodgingReservationHelp: "Para una casa, hotel, motel, Airbnb u otra estancia.",
+      lodgingReservationReference: "Referencia de reserva de alojamiento",
       foodDrink: "Comida y bebida",
       sightseeing: "Turismo",
       entertainment: "Entretenimiento",
@@ -847,6 +903,10 @@ export const translations = {
       startTime: "Hora de inicio",
       endTime: "Hora de fin",
       flexiblePeriod: "Periodo flexible",
+      morning: "Mañana",
+      afternoon: "Tarde",
+      evening: "Noche",
+      anytime: "Cualquier momento",
       booking: "Reserva",
       confirmationCode: "Añade un código de confirmación",
       bookingReference: "Referencia de reserva / código de confirmación",
@@ -856,6 +916,7 @@ export const translations = {
       voteHelp: "Pide a los viajeros que aprueben el plan o sugieran otro.",
       votingEnds: "La votación termina",
       whosGoing: "¿Quién va?",
+      participants: "Participantes",
       you: "Tú",
       going: "Va",
       notGoing: "No va",
@@ -863,9 +924,48 @@ export const translations = {
       travelerName: "Nombre del viajero",
       adding: "Añadiendo…",
       addTraveler: "Añadir viajero",
+      tripMember: "Miembro del viaje",
+      unableToAddTraveler: "No se pudo añadir el viajero.",
+      travelerAddedSelected: "{{name}} se añadió y quedó seleccionado.",
+      loadingPrivateBudget: "Cargando tu presupuesto privado...",
       deleteActivity: "Eliminar actividad",
       quickClone: "Clonar rápido",
       saveActivity: "Guardar actividad",
+      activityFormTabDetails: "Detalles",
+      activityFormTabExtras: "Extras",
+      activityFormTabGroup: "Grupo y finanzas",
+      activityAttachments: "Adjuntos",
+      activityAttachmentsHelp: "Una galería breve para que se vea de qué va esta parada.",
+      activityAttachmentsEmpty: "Aún no hay adjuntos.",
+      activityAttachmentsAdd: "Añadir adjunto",
+      activityAttachmentsAddPhoto: "Foto",
+      activityAttachmentsAddLink: "Enlace",
+      activityAttachmentsAddLocation: "Pin de ubicación",
+      activityAttachmentsLimit: "Se alcanzó el límite de adjuntos",
+      activityAttachmentsUrl: "URL del enlace",
+      activityAttachmentsLinkTitle: "Título del enlace",
+      activityAttachmentsLinkDescription: "Descripción (opcional)",
+      activityAttachmentsSaveLink: "Guardar enlace",
+      activityAttachmentsRemove: "Quitar {{name}}",
+      activityAttachmentsMoveUp: "Mover el adjunto {{count}} arriba",
+      activityAttachmentsMoveDown: "Mover el adjunto {{count}} abajo",
+      activityAttachmentsReady: "Las fotos se guardan al guardar la actividad.",
+      activityAttachmentsPending: "Se subirá al reconectar",
+      activityAttachmentsUploading: "Subiendo foto…",
+      activityAttachmentsUploadFailed: "No se pudo subir la foto",
+      activityAttachmentsRetry: "Reintentar subida",
+      activityAttachmentsSyncing: "La foto se está sincronizando",
+      activityAttachmentsOpenLink: "Abrir {{name}}",
+      activityAttachmentsOpenMaps: "Abrir {{name}} en mapas",
+      activityAttachmentsViewPhoto: "Ver foto {{name}}",
+      activityAttachmentsPhotoPreview: "Vista previa de la foto",
+      activityAttachmentsPhotoBrowseHelp: "Usa las flechas para ver otras fotos",
+      activityAttachmentsMorePhotos: "+{{count}}",
+      activityAttachmentsPreparing: "Preparando foto…",
+      activityAttachmentsInvalidImage: "Elige una imagen JPEG, PNG, WebP o HEIC de hasta 10 MB.",
+      activityAttachmentsInvalidUrl: "Introduce un enlace http o https válido.",
+      activityAttachmentsList: "Adjuntos de la actividad",
+      activityAttachmentsSection: "Adjuntos",
       activityMustDos: "Imprescindibles",
       activityMustDo: "Imprescindible",
       activityMustDosEditorHelp: "Planifica aquí lo esencial. En Inicio, los viajeros pueden completar, archivar, restaurar o eliminar los Imprescindibles existentes.",
@@ -1029,6 +1129,9 @@ export const translations = {
       aboutTrip: "Sobre este viaje",
       quickActions: "Acciones rápidas",
       addActivity: "Añadir actividad",
+      editActivity: "Editar actividad",
+      editTransit: "Editar transporte",
+      planStop: "Planifica una parada en tu día. Queda disponible sin conexión.",
       addExpense: "Añadir gasto",
       addPhotos: "Añadir fotos",
       daysLeft: "Quedan {{count}} días",
@@ -1418,14 +1521,21 @@ export type TranslationKey =
   | `navigation.${keyof TranslationTree["navigation"] & string}`
   | `sync.${keyof TranslationTree["sync"] & string}`
   | `auth.${keyof TranslationTree["auth"] & string}`
-  | `settings.${keyof TranslationTree["settings"] & string}`;
+  | `settings.${keyof TranslationTree["settings"] & string}`
+  | `copy.${keyof typeof frontendCopy.en & string}`
+  | `errors.${keyof typeof errorCopy.en & string}`;
 
 export function isLocale(value: string | null | undefined): value is Locale {
   return value === "en" || value === "es";
 }
 
 export function translate(locale: Locale, key: TranslationKey, variables?: Record<string, string | number>): string {
-  const [namespace, name] = key.split(".") as [keyof TranslationTree, string];
-  const value = translations[locale][namespace][name as never] as string;
+  const [namespace, name] = key.split(".") as [string, string];
+  const value =
+    namespace === "copy"
+      ? frontendCopy[locale][name as keyof typeof frontendCopy.en]
+      : namespace === "errors"
+        ? errorCopy[locale][name as keyof typeof errorCopy.en]
+        : (translations[locale][namespace as keyof TranslationTree] as Record<string, string>)[name];
   return value.replace(/{{(\w+)}}/g, (_, variable: string) => String(variables?.[variable] ?? `{{${variable}}}`));
 }
