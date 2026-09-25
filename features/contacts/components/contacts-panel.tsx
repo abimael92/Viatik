@@ -1,5 +1,7 @@
 "use client";
 
+import { localizeThrownError } from "@/lib/i18n/localize-error";
+
 import { UserPlus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -12,12 +14,14 @@ import { ContactRequestInbox } from "@/features/contacts/components/ContactReque
 import { contactRepository } from "@/features/contacts/data/dexie-contact-repository";
 import type { CurrentPublicProfile } from "@/features/contacts/lib/profile-directory";
 import type { Contact } from "@/features/domain/entities";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 export function contactsPageContacts(contacts: Contact[]): Contact[] {
   return contacts.filter((contact) => Boolean(contact.linkedProfileId));
 }
 
 export function ContactsPanel({ userId, ownProfile }: { userId: string; ownProfile: CurrentPublicProfile }) {
+  const { t } = useI18n();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [editing, setEditing] = useState<Contact | null | undefined>(undefined);
   const [viewing, setViewing] = useState<Contact | null>(null);
@@ -56,7 +60,7 @@ export function ContactsPanel({ userId, ownProfile }: { userId: string; ownProfi
     try {
       await contactRepository.remove(contact.id, userId);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to remove contact.");
+      setError(localizeThrownError(cause, t, "Unable to remove contact."));
     }
   }
 
@@ -64,14 +68,14 @@ export function ContactsPanel({ userId, ownProfile }: { userId: string; ownProfi
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <Heading level={1} className="text-3xl font-bold">Contacts</Heading>
+          <Heading level={1} className="text-3xl font-bold">{t("copy.contacts")}</Heading>
           <p className="mt-1 text-muted-foreground">
-            Mutual connections for shared trips and safe settlements. Private details are never exposed.
+            {t("copy.mutualConnections")}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="primary" onClick={() => setEditing(null)}>
-            <UserPlus className="size-5" /> Add Contact
+            <UserPlus className="size-5" /> {t("copy.addContact")}
           </Button>
         </div>
       </div>

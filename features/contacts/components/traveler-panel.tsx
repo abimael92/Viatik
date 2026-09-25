@@ -1,5 +1,7 @@
 "use client";
 
+import { localizeThrownError } from "@/lib/i18n/localize-error";
+
 import Link from "next/link";
 import { Pencil, Trash2, UserPlus, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -12,6 +14,7 @@ import {
   tripTravelerRepository,
 } from "@/features/contacts/data/dexie-contact-repository";
 import type { Contact, TripTraveler } from "@/features/domain/entities";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 export function TravelerPanel({
   tripId,
@@ -22,6 +25,7 @@ export function TravelerPanel({
   userId: string;
   canEdit: boolean;
 }) {
+  const { t } = useI18n();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [travelers, setTravelers] = useState<TripTraveler[]>([]);
   const [message, setMessage] = useState<string | null>(null);
@@ -52,22 +56,21 @@ export function TravelerPanel({
       form.reset();
       setMessage(null);
     } catch (cause) {
-      setMessage(cause instanceof Error ? cause.message : "Unable to add traveler.");
+      setMessage(localizeThrownError(cause, t, "Unable to add traveler."));
     }
   }
 
   return (
     <section className="space-y-5">
       <div>
-        <Heading level={2} className="text-2xl font-bold">Travelers</Heading>
+        <Heading level={2} className="text-2xl font-bold">{t("common.travelers")}</Heading>
         <p className="text-muted-foreground">
-          People going on this vacation. Everyone can see their names; their email and phone stay
-          private to you.
+          {t("copy.vacationPeople")}
         </p>
       </div>
       <div className="rounded-xl border bg-muted/40 p-4 text-sm">
-        <strong>Travelers</strong> are going on the trip. <strong>Collaborators</strong> have a
-        Viatik account and permission to view or edit the trip.
+        <strong>{t("common.travelers")}</strong> {t("copy.travelersGoing")}{" "}
+        <strong>{t("copy.collaborators")}</strong> {t("copy.collaboratorsHaveAccount")}
       </div>
       {message && (
         <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
@@ -91,7 +94,7 @@ export function TravelerPanel({
                 <Button
                   variant="ghost"
                   size="icon"
-                  aria-label={`Edit ${traveler.displayName}`}
+                  aria-label={t("common.editContact", { name: traveler.displayName })}
                   onClick={() => setEditing(contact ?? null)}
                 >
                   <Pencil className="size-5" />
@@ -101,7 +104,7 @@ export function TravelerPanel({
                 <Button
                   variant="ghost"
                   size="icon"
-                  aria-label={`Remove ${traveler.displayName}`}
+                  aria-label={t("common.removeContact", { name: traveler.displayName })}
                   onClick={() => void tripTravelerRepository.remove(traveler.id)}
                 >
                   <Trash2 className="size-5 text-destructive" />
@@ -113,7 +116,7 @@ export function TravelerPanel({
         {!travelers.length && (
           <div className="p-8 text-center text-sm text-muted-foreground">
             <Users className="mx-auto mb-2 size-7" />
-            No named travelers added.
+            {t("copy.noNamedTravelers")}
           </div>
         )}
       </div>
@@ -122,32 +125,32 @@ export function TravelerPanel({
           <div className="rounded-2xl border bg-card p-5">
             <div className="flex items-center gap-2">
               <UserPlus className="size-5 text-primary" />
-              <Heading level={3} className="text-base font-semibold">Add someone new</Heading>
+              <Heading level={3} className="text-base font-semibold">{t("common.addSomeoneNew")}</Heading>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              Their contact is saved privately for future trips.
+              {t("copy.contactSavedFuture")}
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <Button variant="primary" onClick={() => setCreating(true)}>
-                Add new contact
+                {t("copy.addNewContact")}
               </Button>
             </div>
           </div>
           <form onSubmit={attach} className="rounded-2xl border bg-card p-5">
-            <Heading level={3} className="text-base font-semibold">Add an existing contact</Heading>
+            <Heading level={3} className="text-base font-semibold">{t("copy.addExistingContact")}</Heading>
             <p className="mt-1 text-sm text-muted-foreground">
-              Reuse someone already in your private contacts.
+              {t("copy.reuseContact")}
             </p>
             <div className="mt-4 space-y-3">
               <select
-                aria-label="Existing contact"
+                aria-label={t("copy.existingContact")}
                 name="contactId"
                 required
                 defaultValue=""
                 className="h-10 w-full rounded-md border bg-background px-3 text-sm"
               >
                 <option value="" disabled>
-                  Select a contact
+                  {t("copy.selectContact")}
                 </option>
                 {available.map((contact) => (
                   <option key={contact.id} value={contact.id}>
@@ -156,11 +159,11 @@ export function TravelerPanel({
                 ))}
               </select>
               <Button type="submit" variant="primary" disabled={!available.length}>
-                Add traveler
+                {t("common.addTraveler")}
               </Button>
             </div>
             <Button asChild variant="link" className="mt-3 px-0">
-              <Link href="/contacts">Open contacts list</Link>
+              <Link href="/contacts">{t("copy.openContactsList")}</Link>
             </Button>
           </form>
         </div>
