@@ -54,6 +54,33 @@ describe("DexieActivityRepository", () => {
     expect(list[0].id).toBe("activity-1");
   });
 
+  it("queues only the current user's attendance", async () => {
+    await activityRepository.create({
+      id: "activity-rsvp",
+      tripId: "trip-1",
+      dayDate: "2026-06-01",
+      title: "Museum",
+      participants: [
+        { userId: TEST_USER, status: "attending" },
+        { userId: "user-2", status: "attending" },
+      ],
+      position: 1,
+      createdBy: TEST_USER,
+    });
+    await db.outboxMutations.clear();
+
+    const updated = await activityRepository.setAttendance("activity-rsvp", TEST_USER, "declined");
+
+    expect(updated.participants).toEqual([
+      { userId: TEST_USER, status: "declined" },
+      { userId: "user-2", status: "attending" },
+    ]);
+    expect(updated.title).toBe("Museum");
+    const mutations = await db.outboxMutations.toArray();
+    expect(mutations).toHaveLength(1);
+    expect(mutations[0]).toMatchObject({ entityType: "activity", operation: "update" });
+  });
+
   it("throws when restoring a missing activity", async () => {
     await expect(activityRepository.restore("missing-id")).rejects.toThrow("missing-id");
   });

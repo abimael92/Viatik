@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { contactRepository } from "@/features/contacts/data/dexie-contact-repository";
+import { FAMILY_ROLES, FAMILY_ROLE_LABELS, isFamilyRole } from "@/features/contacts/lib/family-roles";
 import type { Contact } from "@/features/domain/entities";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
@@ -41,6 +42,7 @@ export function ContactRequestInbox({
 }) {
   const { t } = useI18n();
   const [tab, setTab] = useState<Tab>("contacts");
+  const [relationship, setRelationship] = useState("all");
   const inbound = contacts.filter(
     (contact) => contact.connectionStatus === "pending" && contact.connectionDirection === "inbound"
   );
@@ -48,7 +50,12 @@ export function ContactRequestInbox({
     (contact) => contact.connectionStatus === "pending" && contact.connectionDirection === "outbound"
   );
   const established = contacts.filter(
-    (contact) => contact.connectionStatus === "accepted" || contact.connectionStatus === "unverified_offline"
+    (contact) =>
+      (contact.connectionStatus === "accepted" || contact.connectionStatus === "unverified_offline") &&
+      (relationship === "all" ||
+        (isFamilyRole(relationship)
+          ? contact.relationship === "family" && contact.relationshipDetail === relationship
+          : contact.relationship === relationship))
   );
 
   async function accept(contact: Contact) {
@@ -92,7 +99,24 @@ export function ContactRequestInbox({
       </div>
 
       {tab === "contacts" ? (
-        established.length ? (
+        <>
+        <select
+          aria-label={t("common.relationship")}
+          value={relationship}
+          onChange={(event) => setRelationship(event.target.value)}
+          className="h-10 rounded-lg border bg-background px-3 text-sm"
+        >
+          <option value="all">{t("common.all")}</option>
+          <option value="family">{t("copy.family")}</option>
+          {FAMILY_ROLES.map((role) => (
+            <option key={role} value={role}>{t(FAMILY_ROLE_LABELS[role])}</option>
+          ))}
+          <option value="friend">{t("copy.friend")}</option>
+          <option value="coworker">{t("copy.coworker")}</option>
+          <option value="roommate">{t("copy.roommate")}</option>
+          <option value="other">{t("common.other")}</option>
+        </select>
+        {established.length ? (
           <div className="space-y-3 rounded-2xl border bg-card p-3.5 sm:p-6">
             {established.map((contact) => (
               <div
@@ -124,8 +148,10 @@ export function ContactRequestInbox({
                       <p className="truncate text-sm sm:text-base font-semibold text-foreground group-hover:text-primary transition-colors">
                         {contact.fullName}
                       </p>
-                      <Badge className={cn("text-[10px] capitalize font-semibold py-0.5 px-2", RELATIONSHIP_STYLES[contact.relationship])}>
-                        {contact.relationship}
+                      <Badge className={cn("text-[10px] font-semibold py-0.5 px-2", RELATIONSHIP_STYLES[contact.relationship])}>
+                        {contact.relationship === "family" && contact.relationshipDetail && isFamilyRole(contact.relationshipDetail)
+                          ? t(FAMILY_ROLE_LABELS[contact.relationshipDetail])
+                          : t(contact.relationship === "family" ? "copy.family" : contact.relationship === "friend" ? "copy.friend" : contact.relationship === "coworker" ? "copy.coworker" : contact.relationship === "roommate" ? "copy.roommate" : "common.other")}
                       </Badge>
                       <Badge variant="muted" className="text-[10px] capitalize font-medium py-0.5 px-2">
                         {contact.travelerType}
@@ -178,7 +204,8 @@ export function ContactRequestInbox({
           </div>
         ) : (
           <EmptyState icon={<Users className="size-8" />} title={t("common.noContacts")} subtitle={t("common.addSomeone")} />
-        )
+        )}
+        </>
       ) : inbound.length || outbound.length ? (
         <div className="space-y-6 rounded-2xl border bg-card p-3.5 sm:p-6">
           {inbound.length > 0 && (

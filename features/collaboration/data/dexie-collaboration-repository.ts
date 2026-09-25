@@ -2,7 +2,8 @@ import { liveQuery } from "dexie";
 
 import { getCurrentDatabase, type ViatikDatabase } from "@/lib/db/dexie";
 import { TransactionContext } from "@/lib/db/transaction-context";
-import type { ProfileSummary, TripInvitation, TripMember, TripMemberRole } from "@/features/domain/entities";
+import type { ProfileSummary, Trip, TripInvitation, TripMember, TripMemberRole } from "@/features/domain/entities";
+import type { Notification } from "@/features/notifications/domain/notification-types";
 import type { CollaborationRepository } from "@/features/domain/repositories/collaboration-repository";
 import { append } from "@/lib/sync/outbox-transactional";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
@@ -90,7 +91,7 @@ export class DexieCollaborationRepository implements CollaborationRepository {
 
   async setMemberRoleByUser(tripId: string, userId: string, role: Exclude<TripMemberRole, "owner">, byUserId: string): Promise<void> {
     const db = getDb();
-    return TransactionContext.runInTransaction([db.tripMembers], async (ctx) => {
+    return TransactionContext.runInTransaction([db.tripMembers, db.notifications, db.trips], async (ctx) => {
       const now = new Date().toISOString();
       const existing = await ctx.table<TripMember>("tripMembers")
         .where("[tripId+userId]").equals([tripId, userId])
@@ -119,6 +120,21 @@ export class DexieCollaborationRepository implements CollaborationRepository {
       };
       await ctx.table<TripMember>("tripMembers").add(member);
       await append("tripMember", "insert", member, { tx: ctx, baseUpdatedAt: null });
+      const trip = await ctx.table<Trip>("trips").get(tripId);
+      const notification: Notification = {
+        id: crypto.randomUUID(),
+        userId,
+        type: "trip_added",
+        referenceId: tripId,
+        isRead: false,
+        pushSentAt: null,
+        message: trip?.name?.trim() || "__trip__",
+        createdAt: now,
+        updatedAt: now,
+        version: 1,
+      };
+      await ctx.table<Notification>("notifications").put(notification);
+      await append("notification", "insert", notification, { tx: ctx, baseUpdatedAt: null });
     });
   }
 
