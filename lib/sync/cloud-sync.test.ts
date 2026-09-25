@@ -343,4 +343,42 @@ describe("cloud synchronization", () => {
     configureSyncUser(null);
     stop();
   });
+
+  it("reconstructs a collaborator settlement feed item from a remote insert", async () => {
+    configureSyncUser("user-1");
+    mocks.tableGet.mockResolvedValue(undefined);
+    const stop = startRealtimeSync();
+    const registration = mocks.channel.on.mock.calls.find((call) => call[1].table === "expense_settlements");
+
+    registration?.[2]({
+      eventType: "INSERT",
+      old: {},
+      new: {
+        id: "settlement-2",
+        trip_id: "trip-1",
+        from_user_id: "user-2",
+        to_user_id: "user-3",
+        amount: "4000",
+        currency: "USD",
+        date: "2026-09-24",
+        created_by: "user-2",
+        created_at: "2026-09-24T12:00:00.000Z",
+        updated_at: "2026-09-24T12:00:00.000Z",
+        deleted_at: null,
+      },
+    });
+
+    await vi.waitFor(() => expect(mocks.feedItemsAdd).toHaveBeenCalledTimes(1));
+    expect(mocks.feedItemsAdd.mock.calls[0][0]).toEqual(expect.objectContaining({
+      tripId: "trip-1",
+      actorId: "user-2",
+      verb: "logged_settlement",
+      entityType: "settlement",
+      entityId: "settlement-2",
+      summary: expect.stringMatching(/paid .* to a traveler/),
+    }));
+
+    configureSyncUser(null);
+    stop();
+  });
 });
