@@ -3,6 +3,7 @@
 import * as React from "react";
 import { CheckCircle2, Info, TriangleAlert, X } from "lucide-react";
 
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 type ToastVariant = "success" | "info" | "error";
@@ -61,11 +62,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
 export function Toaster() {
   const { toasts, dismiss } = useToast();
+  const { t } = useI18n();
 
   return (
     <div
       aria-live="polite"
-      aria-label="Notifications"
+      aria-label={t("copy.notificationsTitle")}
       className="pointer-events-none fixed inset-x-0 top-4 z-[100] flex flex-col items-center gap-2 px-4 sm:items-end sm:pr-6"
     >
       {toasts.map(({ id, title, description, variant }) => {
@@ -86,7 +88,7 @@ export function Toaster() {
             <button
               type="button"
               onClick={() => dismiss(id)}
-              aria-label="Dismiss notification"
+              aria-label={t("copy.dismissNotification")}
               className="shrink-0 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <X className="size-4" aria-hidden />

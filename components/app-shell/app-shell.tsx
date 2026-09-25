@@ -179,7 +179,7 @@ export function AppShell({
           <span>{t("sync.error")}</span>
           {sync.lastError && (
             <details className="max-w-2xl text-xs text-destructive/80">
-              <summary className="cursor-pointer">Technical details</summary>
+              <summary className="cursor-pointer">{t("copy.technicalDetails")}</summary>
               <code className="mt-1 block wrap-break-word text-left">{sync.lastError}</code>
             </details>
           )}
@@ -297,7 +297,7 @@ export function AppShell({
             );
             if (comingSoon) {
               return (
-                <button key={href} type="button" disabled title="Coming soon" aria-disabled="true" className={cls}>
+                <button key={href} type="button" disabled title={t("common.comingSoon")} aria-disabled="true" className={cls}>
                   <Icon className="size-6" />
                   {label}
                 </button>
