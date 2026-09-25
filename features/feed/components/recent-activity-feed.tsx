@@ -5,6 +5,7 @@ import { Rss } from "lucide-react";
 import { Heading } from "@/components/ui/heading";
 import { FeedRow } from "@/features/feed/components/shared-trip-feed";
 import { useRecentActivity } from "@/features/feed/lib/use-recent-activity";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 /**
@@ -23,6 +24,7 @@ export function RecentActivityFeed({
   className?: string;
   emptyMessage?: string;
 }) {
+  const { t } = useI18n();
   const { loading, items, profiles } = useRecentActivity(userId);
   const visible = limit ? items.slice(0, limit) : items;
 
@@ -36,7 +38,7 @@ export function RecentActivityFeed({
           <Rss className="size-4" aria-hidden />
         </span>
         <Heading level={2} id="recent-activity-heading" className="text-base font-semibold">
-          Recent activity
+          {t("common.recentActivity")}
         </Heading>
       </div>
 

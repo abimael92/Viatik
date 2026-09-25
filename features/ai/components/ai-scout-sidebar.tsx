@@ -1,5 +1,7 @@
 "use client";
 
+import { localizeThrownError } from "@/lib/i18n/localize-error";
+
 import { Check, Clock, GripVertical, Loader2, MapPin, Plus, RefreshCw, TrainFront, X } from "lucide-react";
 import Image from "next/image";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -182,7 +184,7 @@ export function AiScoutSidebar({
       const key = `${index}:${dayDate}`;
       setAddedKeys((prev) => new Set(prev).add(key));
     } catch (cause) {
-      onError(cause instanceof Error ? cause.message : "Unable to add that activity.");
+      onError(localizeThrownError(cause, t, "Unable to add that activity."));
     } finally {
       setAdding(false);
     }
@@ -192,7 +194,7 @@ export function AiScoutSidebar({
     <header className="flex items-start justify-between gap-3 border-b border-border p-5">
       <div className="flex items-center gap-3">
         <span className="grid size-25 place-items-center overflow-hidden ">
-          <Image src="/Scout.png" alt="Scout the fox" width={66} height={66} className="size-25 object-contain object-center" />
+          <Image src="/Scout.png" alt={t("common.scoutFox")} width={66} height={66} className="size-25 object-contain object-center" />
         </span>
         <div>
           <h2 className="font-semibold">{t("common.scout")}</h2>
@@ -275,7 +277,7 @@ export function AiScoutSidebar({
             />
             <motion.div
               role="dialog"
-              aria-label="AI Activity Scout"
+              aria-label={t("copy.aiActivityScout")}
               className="absolute left-1/2 top-1/2 flex h-[min(80vh,40rem)] w-[min(40rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-border/60 bg-background shadow-2xl"
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -295,7 +297,7 @@ export function AiScoutSidebar({
     return (
       <aside
         role="dialog"
-        aria-label="AI Activity Scout"
+        aria-label={t("copy.aiActivityScout")}
         className="flex h-[min(80vh,40rem)] max-h-[calc(100vh-6rem)] w-full max-w-sm shrink-0 flex-col overflow-hidden rounded-2xl border border-border/60 bg-fuchsia-100/20 shadow-lg ring-2 ring-viatik-magenta/40"
       >
         {header}
@@ -310,7 +312,7 @@ export function AiScoutSidebar({
         <div className="pointer-events-none fixed inset-0 z-50">
           <motion.aside
             role="dialog"
-            aria-label="AI Activity Scout"
+            aria-label={t("copy.aiActivityScout")}
             className="pointer-events-auto absolute right-4 top-20 flex h-[min(80vh,40rem)] max-h-[calc(100vh-6rem)] w-[min(24rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-border/60 bg-background shadow-2xl"
             initial={reducedMotion ? { x: 0, opacity: 0 } : { x: "110%", opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
@@ -409,10 +411,8 @@ function SuggestionCard({
         <div className="border-t border-border bg-muted/30 p-3">
           {expanded ? (
             <div className="space-y-2">
-              <p className="px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Add to which day? Drag the card to a column, or pick a day and time:
-              </p>
-              {days.length === 0 && <p className="px-1 text-sm text-muted-foreground">Set trip dates to add this activity.</p>}
+              <p className="px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t("copy.addToWhichDay")}</p>
+              {days.length === 0 && <p className="px-1 text-sm text-muted-foreground">{t("copy.setTripDatesToAdd")}</p>}
               <div className="max-h-40 space-y-1 overflow-y-auto">
                 {days.map((dayDate) => {
                   const key = `${index}:${dayDate}`;
@@ -437,9 +437,9 @@ function SuggestionCard({
                         className="shrink-0"
                       >
                         {added ? (
-                          <span className="flex items-center gap-1 text-xs font-medium text-success"><Check className="size-3.5" aria-hidden />Added</span>
+                          <span className="flex items-center gap-1 text-xs font-medium text-success"><Check className="size-3.5" aria-hidden />{t("copy.added")}</span>
                         ) : (
-                          <><Plus className="size-4" />Add</>
+                          <><Plus className="size-4" />{t("common.add")}</>
                         )}
                       </Button>
                     </div>

@@ -1,5 +1,7 @@
 "use client";
 
+import { localizeThrownError } from "@/lib/i18n/localize-error";
+
 import { CalendarDays, Clock, Heart, ListChecks, MapPin, Search, Sparkles, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -65,7 +67,7 @@ export function CommunityFeed({ userId }: { userId: string }) {
       router.push("/trips");
       router.refresh();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : t("common.unableAddItinerary"));
+      setMessage(localizeThrownError(error, t, "common.unableAddItinerary"));
     } finally {
       setDuplicating(false);
     }

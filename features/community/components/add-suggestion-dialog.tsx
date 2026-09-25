@@ -1,5 +1,7 @@
 "use client";
 
+import { localizeThrownError } from "@/lib/i18n/localize-error";
+
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Sparkles, ChevronLeft, ChevronRight, CalendarDays, UserPlus, Users, X } from "lucide-react";
@@ -26,6 +28,7 @@ import { expenseRepository } from "@/features/expenses/data/dexie-expense-reposi
 import { tripRepository } from "@/features/trips/data/dexie-trip-repository";
 import { getMaxEndDate, getTripDurationError } from "@/features/trips/lib/trip-duration";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 const CURRENCIES = ["USD", "EUR", "JPY", "GBP", "MXN", "CAD", "AUD", "BRL"];
@@ -63,9 +66,9 @@ function buildPreviewActivities(template: PublicTripTemplate, userId: string, st
 }
 
 const STEPS = [
-  { key: "basics", label: "The Basics", icon: Sparkles },
-  { key: "itinerary", label: "The Itinerary", icon: CalendarDays },
-  { key: "group", label: "Group & Media", icon: Users },
+  { key: "basics", labelKey: "copy.theBasics", icon: Sparkles },
+  { key: "itinerary", labelKey: "copy.theItinerary", icon: CalendarDays },
+  { key: "group", labelKey: "copy.groupAndMedia", icon: Users },
 ] as const;
 
 /** Custom itinerary preview for the suggestion dialog - works with in-memory activities */
@@ -78,6 +81,7 @@ function ItineraryPreview({
   activities: Activity[];
   onActivityMove?: (activityId: string, newDayDate: string) => void;
 }) {
+  const { t } = useI18n();
   // Group activities by day
   const activitiesByDay = useMemo(() => {
     const map = new Map<string, Activity[]>();
@@ -151,7 +155,7 @@ function ItineraryPreview({
                     ))}
                     {(!activitiesByDay.get(dayDate) || activitiesByDay.get(dayDate)!.length === 0) && (
                       <div className="h-8 border-dashed border-border/50 rounded-lg flex items-center justify-center text-xs text-muted-foreground">
-                        Drop activities here
+                        {t("copy.dropActivitiesHere")}
                       </div>
                     )}
                   </div>
@@ -174,6 +178,7 @@ function SuggestionForm({
   userId: string;
   onAdded: () => void;
 }) {
+  const { t } = useI18n();
   const router = useRouter();
   const today = new Date().toISOString().slice(0, 10);
   const suggestedDays = durationDays(template.source.trip.startDate, template.source.trip.endDate);
@@ -255,7 +260,7 @@ function SuggestionForm({
         errors.name = "Enter a name between 2 and 60 characters.";
       }
       if (!startDate || !endDate) {
-        errors.dates = "Start and end dates are required.";
+        errors.dates = t("copy.datesRequired");
       } else if (startDate < today) {
         errors.dates = "Start date cannot be before today.";
       } else if (dateError) {
@@ -263,8 +268,8 @@ function SuggestionForm({
       }
     }
     if (s === 2) {
-      if (!Number.isInteger(adultCount) || adultCount < 1 || adultCount > 99) errors.adultCount = "Enter a whole number from 1 to 99.";
-      if (!Number.isInteger(childCount) || childCount < 0 || childCount > 99) errors.childCount = "Enter a whole number from 0 to 99.";
+      if (!Number.isInteger(adultCount) || adultCount < 1 || adultCount > 99) errors.adultCount = t("copy.wholeNumberAdults1");
+      if (!Number.isInteger(childCount) || childCount < 0 || childCount > 99) errors.childCount = t("copy.wholeNumberRange0");
       if (manualTravelers.some((traveler) => traveler.fullName.trim().length < 2)) errors.travelers = "Enter a name for every added traveler.";
       const namedAdults = Object.values(selectedContacts).filter((type) => type === "adult").length + manualTravelers.filter((traveler) => traveler.travelerType === "adult").length;
       const namedChildren = Object.values(selectedContacts).filter((type) => type === "child").length + manualTravelers.filter((traveler) => traveler.travelerType === "child").length;
@@ -354,7 +359,7 @@ function SuggestionForm({
       router.push("/trips");
       router.refresh();
     } catch (cause) {
-      setMessage(cause instanceof Error ? cause.message : "Unable to add this trip.");
+      setMessage(localizeThrownError(cause, t, "Unable to add this trip."));
       setSaving(false);
     }
   }
@@ -380,7 +385,7 @@ function SuggestionForm({
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Add this trip</DialogTitle>
+        <DialogTitle>{t("copy.addThisTrip")}</DialogTitle>
         <DialogDescription>
           Start from “{template.name}” — set your dates and adjust anything before adding it to
           your trips.
@@ -389,7 +394,7 @@ function SuggestionForm({
 
       <div className="space-y-4">
         {/* Step progress indicator */}
-        <nav aria-label="Trip setup progress" className="mb-4">
+        <nav aria-label={t("copy.tripSetupProgress")} className="mb-4">
           <ol className="flex gap-2 sm:gap-3">
             {STEPS.map((s, index) => {
               const active = step === index;
@@ -400,7 +405,7 @@ function SuggestionForm({
                     type="button"
                     onClick={() => goToStep(index)}
                     aria-current={active ? "step" : undefined}
-                    aria-label={`${s.label}${completed ? " (completed)" : ""}`}
+                    aria-label={`${t(s.labelKey)}${completed ? ` (${t("copy.done")})` : ""}`}
                     className="group flex min-h-10 w-full flex-col justify-center gap-1.5 rounded-md px-0.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <span
@@ -415,7 +420,7 @@ function SuggestionForm({
                         active ? "text-primary" : completed ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
                       )}
                     >
-                      {s.label}
+                      {t(s.labelKey)}
                     </span>
                   </button>
                 </li>
@@ -427,12 +432,12 @@ function SuggestionForm({
         {step === 0 && (
           <div className="space-y-4">
             <div>
-              <Label htmlFor="suggestion-name">Trip name</Label>
+              <Label htmlFor="suggestion-name">{t("copy.tripName")}</Label>
               <Input
                 id="suggestion-name"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
-                placeholder="My trip name"
+                placeholder={t("copy.placeholderTripName")}
                 className="mt-1"
                 aria-invalid={Boolean(fieldErrors.name)}
               />
@@ -440,31 +445,31 @@ function SuggestionForm({
             </div>
 
             <div>
-              <Label htmlFor="suggestion-destination">Destination</Label>
+              <Label htmlFor="suggestion-destination">{t("copy.destination")}</Label>
               <Input
                 id="suggestion-destination"
                 value={destination}
                 onChange={(event) => setDestination(event.target.value)}
-                placeholder="e.g. Kyoto, Japan"
+                placeholder={t("copy.placeholderDestination")}
                 className="mt-1"
               />
             </div>
 
             <div>
-              <Label htmlFor="suggestion-description">Description</Label>
+              <Label htmlFor="suggestion-description">{t("copy.description")}</Label>
               <textarea
                 id="suggestion-description"
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
                 rows={2}
-                placeholder="A short note about this trip…"
+                placeholder={t("copy.placeholderTripNote")}
                 className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
               />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <Label htmlFor="suggestion-start">Start date</Label>
+                <Label htmlFor="suggestion-start">{t("copy.startDate")}</Label>
                 <Input
                   id="suggestion-start"
                   type="date"
@@ -476,7 +481,7 @@ function SuggestionForm({
                 />
               </div>
               <div>
-                <Label htmlFor="suggestion-end">End date</Label>
+                <Label htmlFor="suggestion-end">{t("copy.endDate")}</Label>
                 <Input
                   id="suggestion-end"
                   type="date"
@@ -505,11 +510,11 @@ function SuggestionForm({
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
-                Your itinerary preview — drag activities between days to reschedule.
+                {t("copy.yourItineraryPreview")}
               </p>
               {endDateManuallySet && (
                 <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
-                  Custom dates (template duration overridden)
+                  {t("copy.customDates")}
                 </span>
               )}
             </div>
@@ -517,7 +522,7 @@ function SuggestionForm({
               {dayDates.length === 0 ? (
                 <div className="p-8 text-center text-muted-foreground">
                   <CalendarDays className="size-8 mx-auto mb-2 text-muted-foreground/50" />
-                  <p>Set start and end dates to see the itinerary</p>
+                  <p>{t("copy.setDatesPreview")}</p>
                 </div>
               ) : (
                 <ItineraryPreview
@@ -544,7 +549,7 @@ function SuggestionForm({
           <div className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-3">
               <div>
-                <Label htmlFor="suggestion-adults">Adults</Label>
+                <Label htmlFor="suggestion-adults">{t("copy.adults")}</Label>
                 <Input
                   id="suggestion-adults"
                   type="number"
@@ -557,7 +562,7 @@ function SuggestionForm({
                 />
               </div>
               <div>
-                <Label htmlFor="suggestion-children">Children</Label>
+                <Label htmlFor="suggestion-children">{t("copy.children")}</Label>
                 <Input
                   id="suggestion-children"
                   type="number"
@@ -569,7 +574,7 @@ function SuggestionForm({
                 />
               </div>
               <div>
-                <Label htmlFor="suggestion-currency">Currency</Label>
+                <Label htmlFor="suggestion-currency">{t("common.currency")}</Label>
                 <select
                   id="suggestion-currency"
                   value={baseCurrency}
@@ -588,10 +593,10 @@ function SuggestionForm({
             {fieldErrors.childCount && <p className="text-xs text-destructive">{fieldErrors.childCount}</p>}
 
             <fieldset id="travelers" className="space-y-3 rounded-xl border p-4">
-              <legend className="px-1 text-sm font-semibold">Named travelers</legend>
+              <legend className="px-1 text-sm font-semibold">{t("copy.namedTravelers")}</legend>
               {contacts.length > 0 ? (
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold text-muted-foreground">From your contacts</p>
+                  <p className="text-xs font-semibold text-muted-foreground">{t("copy.fromContacts")}</p>
                   {contacts.map((contact) => (
                     <label key={contact.id} className="flex items-center gap-3 rounded-lg bg-muted/50 p-2">
                       <input
@@ -615,7 +620,7 @@ function SuggestionForm({
                   ))}
                 </div>
               ) : (
-                <p className="rounded-lg border border-dashed bg-muted/30 p-3 text-sm text-muted-foreground">No saved contacts yet. You can add travelers manually below.</p>
+                <p className="rounded-lg border border-dashed bg-muted/30 p-3 text-sm text-muted-foreground">{t("copy.noSavedContacts")}</p>
               )}
 
               {manualTravelers.map((traveler, index) => (
@@ -629,7 +634,7 @@ function SuggestionForm({
                     }}><X /></Button>
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2">
-                    <Input aria-label={`Traveler ${index + 1} full name`} placeholder="Full name" value={traveler.fullName} onChange={(event) => setManualTravelers((items) => items.map((item) => item.id === traveler.id ? { ...item, fullName: event.target.value } : item))} />
+                    <Input aria-label={`Traveler ${index + 1} full name`} placeholder={t("common.fullName")} value={traveler.fullName} onChange={(event) => setManualTravelers((items) => items.map((item) => item.id === traveler.id ? { ...item, fullName: event.target.value } : item))} />
                     <select aria-label={`Traveler ${index + 1} type`} value={traveler.travelerType} onChange={(event) => {
                       const travelerType = event.target.value as TravelerType;
                       if (travelerType !== traveler.travelerType) {
@@ -637,9 +642,9 @@ function SuggestionForm({
                         else { setAdultCount((count) => Math.max(1, count - 1)); setChildCount((count) => Math.min(99, count + 1)); }
                       }
                       setManualTravelers((items) => items.map((item) => item.id === traveler.id ? { ...item, travelerType } : item));
-                    }} className="h-10 rounded-md border bg-background px-3 text-sm"><option value="adult">Adult</option><option value="child">Child</option></select>
-                    <Input aria-label={`Traveler ${index + 1} email`} type="email" placeholder="Email (optional)" value={traveler.email} onChange={(event) => setManualTravelers((items) => items.map((item) => item.id === traveler.id ? { ...item, email: event.target.value } : item))} />
-                    <Input aria-label={`Traveler ${index + 1} phone`} type="tel" placeholder="Phone (optional)" value={traveler.phone} onChange={(event) => setManualTravelers((items) => items.map((item) => item.id === traveler.id ? { ...item, phone: event.target.value } : item))} />
+                    }} className="h-10 rounded-md border bg-background px-3 text-sm"><option value="adult">{t("copy.adult")}</option><option value="child">{t("copy.child")}</option></select>
+                    <Input aria-label={`Traveler ${index + 1} email`} type="email" placeholder={t("copy.placeholderEmailOptional")} value={traveler.email} onChange={(event) => setManualTravelers((items) => items.map((item) => item.id === traveler.id ? { ...item, email: event.target.value } : item))} />
+                    <Input aria-label={`Traveler ${index + 1} phone`} type="tel" placeholder={t("copy.placeholderPhoneOptional")} value={traveler.phone} onChange={(event) => setManualTravelers((items) => items.map((item) => item.id === traveler.id ? { ...item, phone: event.target.value } : item))} />
                   </div>
                 </div>
               ))}
@@ -647,12 +652,12 @@ function SuggestionForm({
               <Button type="button" variant="outline" size="sm" onClick={() => {
                 setManualTravelers((items) => [...items, { id: crypto.randomUUID(), fullName: "", email: "", phone: "", travelerType: "adult" }]);
                 setAdultCount((count) => Math.min(99, count + 1));
-              }}><UserPlus />Add traveler manually</Button>
+              }}><UserPlus />{t("common.addTravelerManually")}</Button>
             </fieldset>
 
             <div>
-              <Label htmlFor="suggestion-cover">Cover image</Label>
-              <p className="text-xs text-muted-foreground">JPG, PNG, or WebP up to 5 MB.</p>
+              <Label htmlFor="suggestion-cover">{t("copy.coverImage")}</Label>
+              <p className="text-xs text-muted-foreground">{t("copy.imageTypes")}</p>
               <Input id="suggestion-cover" type="file" accept="image/jpeg,image/png,image/webp" className="mt-1" onChange={(event) => setCoverFile(event.target.files?.[0] ?? null)} />
               {fieldErrors.coverImage && <p role="alert" className="mt-1 text-xs font-semibold text-destructive">{fieldErrors.coverImage}</p>}
             </div>
@@ -669,20 +674,20 @@ function SuggestionForm({
       <DialogFooter className="mt-2">
         <Button type="button" variant="outline" onClick={handleBack} disabled={step === 0 || saving}>
           <ChevronLeft className="size-4 mr-1" aria-hidden />
-          Back
+          {t("common.back")}
         </Button>
         <Button type="button" variant="outline" onClick={onAdded} disabled={saving}>
-          Cancel
+          {t("common.cancel")}
         </Button>
         {step < STEPS.length - 1 ? (
           <Button variant="primary" onClick={handleNext} disabled={saving}>
-            Next
+            {t("common.next")}
             <ChevronRight className="size-4 ml-1" aria-hidden />
           </Button>
         ) : (
           <Button variant="primary" onClick={() => void save()} disabled={saving}>
             <Sparkles className="size-4" aria-hidden />
-            {saving ? "Adding…" : "Add to my trips"}
+            {saving ? t("common.adding") : "Add to my trips"}
           </Button>
         )}
       </DialogFooter>
