@@ -18,26 +18,33 @@ export function Collapsible({
   children,
   defaultOpen = false,
   badge,
+  className,
+  triggerClassName,
 }: {
   title: string;
   id: string;
   children: React.ReactNode;
   defaultOpen?: boolean;
   badge?: React.ReactNode;
+  className?: string;
+  triggerClassName?: string;
 }) {
   const [open, setOpen] = React.useState(defaultOpen);
   const buttonId = `${id}-trigger`;
   const panelId = `${id}-panel`;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border/60 bg-card/70 backdrop-blur-md">
+    <div className={cn("overflow-hidden rounded-2xl border border-border/60 bg-card/70 backdrop-blur-md", className)}>
       <button
         type="button"
         id={buttonId}
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((value) => !value)}
-        className="flex min-h-11 w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-semibold transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className={cn(
+          "flex min-h-11 w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-semibold transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          triggerClassName,
+        )}
       >
         <span className="flex items-center gap-2">
           {title}
