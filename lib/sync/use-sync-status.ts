@@ -26,7 +26,15 @@ export function useSyncStatus(): SyncStatusState {
 
   useEffect(() => {
     const unsubscribe = subscribeToSync((status, pending, retryablePending, lastSyncAt, lastError) => {
-      setState((previous) => ({ ...previous, status, pending, retryablePending, lastSyncAt, lastError, isOnline: navigator.onLine }));
+      setState((previous) => ({
+        ...previous,
+        status,
+        pending,
+        retryablePending,
+        lastSyncAt,
+        lastError,
+        isOnline: status !== "offline",
+      }));
     });
     // Only surface conflicts that are still unresolved (resolvedAt is null).
     // Sync conflicts auto-resolve during sync (remote wins), so counting every
@@ -34,24 +42,9 @@ export function useSyncStatus(): SyncStatusState {
     // resolve" forever.
     const conflictSubscription = liveQuery(() => db.syncConflicts.filter((conflict) => conflict.resolvedAt === null).count()).subscribe({ next: (conflicts) => setState((previous) => ({ ...previous, conflicts })) });
 
-    function handleOnline() {
-      setState((prev) => ({ ...prev, isOnline: true }));
-    }
-
-    function handleOffline() {
-      setState((prev) => ({ ...prev, isOnline: false }));
-    }
-
-    const onlineTimer = window.setTimeout(() => setState((previous) => ({ ...previous, isOnline: navigator.onLine })), 0);
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-
     return () => {
-      window.clearTimeout(onlineTimer);
       unsubscribe();
       conflictSubscription.unsubscribe();
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
     };
   }, [db]);
 
