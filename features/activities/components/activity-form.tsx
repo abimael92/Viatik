@@ -7,6 +7,7 @@ import {
   CopyPlus,
   Landmark,
   MapPin,
+  Paperclip,
   Shapes,
   ShoppingBag,
   Ticket,
@@ -14,6 +15,7 @@ import {
   TrainFront,
   Trash2,
   UserPlus,
+  Users,
   Utensils,
   Vote,
 } from "lucide-react";
@@ -26,6 +28,7 @@ import {
   type PlaceSuggestion,
 } from "@/app/actions/places";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,48 +45,88 @@ import {
   normalizeActivityCategory,
   type ActivityCategory,
 } from "@/features/activities/domain/activity-category";
-import type { Activity, ActivityChecklistItem, ActivityParticipant, ActivityPollOption, ActivityPollStatus, ActivityPollVote, ProfileSummary, TripMember, TripTraveler } from "@/features/domain/entities";
+import type { Activity, ActivityAttachment, ActivityChecklistItem, ActivityParticipant, ActivityPollOption, ActivityPollStatus, ActivityPollVote, ProfileSummary, TripMember, TripTraveler } from "@/features/domain/entities";
 import { decimalFromMinorUnits, parseMinorUnits, type MinorUnits } from "@/features/domain/money";
 import type { TransitSegment } from "@/features/transit/domain/transit-types";
 import { useLocalProfile } from "@/features/profile/lib/use-local-profile";
 import { useI18n } from "@/lib/i18n/i18n-provider";
+import type { TranslationKey } from "@/lib/i18n/translations";
+import { cn } from "@/lib/utils";
 import {
   getTransitFormValues,
   TransitFields,
   type TransitFormValues,
 } from "@/features/transit/components/transit-fields";
+import { ActivityAttachmentsEditor } from "@/features/activities/components/activity-attachments";
 import { ActivityChecklistEditor } from "@/features/activities/components/activity-checklist";
+import { normalizeActivityAttachments, type PendingActivityImage } from "@/features/activities/domain/activity-attachments";
 import { normalizeActivityChecklist } from "@/features/activities/domain/activity-checklist";
 
 const CATEGORY_GROUPS = [
   {
-    label: "Travel & stay",
+    labelKey: "common.travelStay" as const satisfies TranslationKey,
     options: [
-      { value: "transit", label: "Transit", icon: TrainFront },
-      { value: "lodging", label: "Lodging", icon: BedDouble },
+      { value: "transit", labelKey: "common.transit" as const satisfies TranslationKey, icon: TrainFront },
+      { value: "lodging", labelKey: "common.lodging" as const satisfies TranslationKey, icon: BedDouble },
     ],
   },
   {
-    label: "Eat & explore",
+    labelKey: "common.eatExplore" as const satisfies TranslationKey,
     options: [
-      { value: "food-and-drink", label: "Food & Drink", icon: Utensils },
-      { value: "sightseeing", label: "Sightseeing", icon: Landmark },
-      { value: "entertainment", label: "Entertainment", icon: Ticket },
-      { value: "active", label: "Active", icon: Bike },
-      { value: "shopping", label: "Shopping", icon: ShoppingBag },
+      { value: "food-and-drink", labelKey: "common.foodDrink" as const satisfies TranslationKey, icon: Utensils },
+      { value: "sightseeing", labelKey: "common.sightseeing" as const satisfies TranslationKey, icon: Landmark },
+      { value: "entertainment", labelKey: "common.entertainment" as const satisfies TranslationKey, icon: Ticket },
+      { value: "active", labelKey: "common.active" as const satisfies TranslationKey, icon: Bike },
+      { value: "shopping", labelKey: "common.shopping" as const satisfies TranslationKey, icon: ShoppingBag },
     ],
   },
   {
-    label: "Other",
-    options: [{ value: "general", label: "General", icon: Shapes }],
+    labelKey: "common.other" as const satisfies TranslationKey,
+    options: [{ value: "general", labelKey: "common.general" as const satisfies TranslationKey, icon: Shapes }],
   },
 ] as const;
 
 const CATEGORY_OPTIONS: ReadonlyArray<{
   value: ActivityCategory;
-  label: string;
+  labelKey: TranslationKey;
   icon: typeof TrainFront;
 }> = CATEGORY_GROUPS.flatMap((group) => [...group.options]);
+
+const LIGHT_SECTION = "rounded-xl border border-border bg-muted/50 p-3 dark:bg-muted/30";
+const LIGHT_CHIP =
+  "rounded-xl border border-border bg-background p-3 aria-pressed:border-primary aria-pressed:bg-primary/10";
+const ACTIVITY_TAB =
+  "gap-1.5 border text-xs font-semibold opacity-75 transition-all hover:opacity-100 hover:brightness-105 sm:text-sm data-[state=active]:border-transparent data-[state=active]:text-white data-[state=active]:opacity-100 data-[state=active]:shadow-md data-[state=active]:hover:brightness-110";
+
+const FLEXIBLE_PERIODS = [
+  { value: "morning", labelKey: "common.morning" as const satisfies TranslationKey },
+  { value: "afternoon", labelKey: "common.afternoon" as const satisfies TranslationKey },
+  { value: "evening", labelKey: "common.evening" as const satisfies TranslationKey },
+  { value: "anytime", labelKey: "common.anytime" as const satisfies TranslationKey },
+] as const;
+
+export function ActivityCloneHeaderButton({
+  onClick,
+  className,
+}: {
+  onClick: () => void;
+  className?: string;
+}) {
+  const { t } = useI18n();
+  return (
+    <button
+      type="button"
+      aria-label={t("common.quickClone")}
+      className={cn(
+        "grid size-11 place-items-center rounded-lg text-muted-foreground opacity-70 transition-opacity hover:text-foreground hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        className,
+      )}
+      onClick={onClick}
+    >
+      <CopyPlus className="size-5" aria-hidden />
+    </button>
+  );
+}
 
 export type ActivityFormValues =
   | {
@@ -106,6 +149,8 @@ export type ActivityFormValues =
       votingEndsAt: string | null;
       pollOptions: ActivityPollOption[];
       pollVotes: ActivityPollVote[];
+      attachments: ActivityAttachment[];
+      pendingImages: PendingActivityImage[];
       checklist: ActivityChecklistItem[];
     }
   | { kind: "transit"; transit: TransitFormValues };
@@ -127,7 +172,6 @@ export function ActivityForm({
   onCancel,
   onDelete,
   onAddTraveler,
-  onClone,
 }: {
   activity?: Activity;
   transitSegment?: TransitSegment;
@@ -146,7 +190,6 @@ export function ActivityForm({
   onCancel: () => void;
   onDelete?: () => void;
   onAddTraveler?: (name: string) => Promise<TripTraveler>;
-  onClone?: () => void;
 }) {
   const { t } = useI18n();
   const localProfile = useLocalProfile(currentUserId ?? "");
@@ -191,6 +234,10 @@ export function ActivityForm({
         }
       : null
   );
+  const [attachments, setAttachments] = useState<ActivityAttachment[]>(() =>
+    normalizeActivityAttachments(activity?.attachments),
+  );
+  const [pendingImages, setPendingImages] = useState<PendingActivityImage[]>([]);
   const [checklist, setChecklist] = useState<ActivityChecklistItem[]>(() =>
     normalizeActivityChecklist(activity?.checklist),
   );
@@ -210,6 +257,24 @@ export function ActivityForm({
   function changeStartTime(nextStartTime: string) {
     setStartTime(nextStartTime);
     if (!endTimeEdited) setEndTime(nextStartTime ? defaultEndTime(nextStartTime, category) : "");
+  }
+
+  async function addManualTraveler() {
+    const name = manualTravelerName.trim();
+    if (!onAddTraveler || addingTraveler || name.length === 0) return;
+    setAddingTraveler(true);
+    setParticipantMessage(null);
+    try {
+      const traveler = await onAddTraveler(name);
+      setAddedTravelers((current) => [...current, traveler]);
+      setAttendingParticipantKeys((current) => new Set(current).add(travelerKey(traveler.id)));
+      setManualTravelerName("");
+      setParticipantMessage(t("common.travelerAddedSelected", { name: traveler.displayName }));
+    } catch (cause) {
+      setParticipantMessage(cause instanceof Error ? cause.message : t("common.unableToAddTraveler"));
+    } finally {
+      setAddingTraveler(false);
+    }
   }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -270,169 +335,255 @@ export function ActivityForm({
       votingEndsAt: shouldVote ? new Date(votingEndsAt).toISOString() : null,
       pollOptions,
       pollVotes: shouldVote && existingVoteOpen ? activity?.pollVotes ?? [] : [],
+      attachments: normalizeActivityAttachments(attachments),
+      pendingImages,
       checklist: normalizeActivityChecklist(checklist),
     });
   }
 
-  return (
-    <form onSubmit={submit} className="space-y-4">
-      <div className="space-y-2">
-        <Label>Category</Label>
-        <input type="hidden" name="category" value={category} />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button type="button" variant="outline" className="w-full justify-between font-normal">
-              <span className="flex items-center gap-2">
-                <selectedCategory.icon aria-hidden />
-                {selectedCategory.label}
-              </span>
-              <ChevronDown aria-hidden />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-(--radix-dropdown-menu-trigger-width)">
-            {CATEGORY_GROUPS.map((group, index) => (
-              <DropdownMenuGroup key={group.label}>
-                {index > 0 && <DropdownMenuSeparator />}
-                <DropdownMenuLabel className="text-xs text-muted-foreground">
-                  {group.label}
-                </DropdownMenuLabel>
-                {group.options.map((option) => (
-                  <DropdownMenuItem key={option.value} onSelect={() => selectCategory(option.value)}>
-                    <option.icon aria-hidden />
-                    {option.label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuGroup>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+  const categoryField = (
+    <div className="space-y-2">
+      <Label>{t("common.category")}</Label>
+      <input type="hidden" name="category" value={category} />
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button type="button" variant="outline" className="w-full justify-between font-normal">
+            <span className="flex items-center gap-2">
+              <selectedCategory.icon aria-hidden />
+              {t(selectedCategory.labelKey)}
+            </span>
+            <ChevronDown aria-hidden />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-(--radix-dropdown-menu-trigger-width)">
+          {CATEGORY_GROUPS.map((group, index) => (
+            <DropdownMenuGroup key={group.labelKey}>
+              {index > 0 && <DropdownMenuSeparator />}
+              <DropdownMenuLabel className="text-xs text-muted-foreground">
+                {t(group.labelKey)}
+              </DropdownMenuLabel>
+              {group.options.map((option) => (
+                <DropdownMenuItem key={option.value} onSelect={() => selectCategory(option.value)}>
+                  <option.icon aria-hidden />
+                  {t(option.labelKey)}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
 
+  return (
+    <form onSubmit={submit} className="space-y-5">
       {category === "transit" ? (
-        <TransitFields
-          defaultDay={activity?.dayDate ?? draft?.dayDate ?? days[0] ?? new Date().toISOString().slice(0, 10)}
-          onTicketChange={setTicketImage}
-          segment={transitSegment}
-        />
-      ) : (
         <>
-          <div className="grid items-start gap-5 lg:grid-cols-2">
-            <div className="space-y-4">
-              <Field label="Title" name="title" defaultValue={activity?.title} required />
-              <TextAreaField label="Description" name="description" defaultValue={activity?.description ?? ""} />
-              <ActivityChecklistEditor checklist={checklist} onChange={setChecklist} />
+          {categoryField}
+          <TransitFields
+            defaultDay={activity?.dayDate ?? draft?.dayDate ?? days[0] ?? new Date().toISOString().slice(0, 10)}
+            onTicketChange={setTicketImage}
+            segment={transitSegment}
+          />
+        </>
+      ) : (
+        <Tabs defaultValue="details" className="space-y-0">
+          <TabsList
+            aria-label={t("common.activity")}
+            className="h-12 border border-border bg-muted p-1.5"
+          >
+            <TabsTrigger
+              value="details"
+              className={`${ACTIVITY_TAB} border-sky-300 bg-sky-100 text-sky-950 data-[state=active]:bg-gradient-to-b data-[state=active]:from-sky-400 data-[state=active]:to-sky-600 dark:border-sky-700 dark:bg-sky-950 dark:text-sky-50`}
+            >
+              <MapPin className="size-4" aria-hidden />
+              {t("common.activityFormTabDetails")}
+            </TabsTrigger>
+            <TabsTrigger
+              value="group"
+              className={`${ACTIVITY_TAB} border-fuchsia-300 bg-fuchsia-100 text-fuchsia-950 data-[state=active]:bg-gradient-to-b data-[state=active]:from-fuchsia-400 data-[state=active]:to-fuchsia-700 dark:border-fuchsia-700 dark:bg-fuchsia-950 dark:text-fuchsia-50`}
+            >
+              <Users className="size-4" aria-hidden />
+              {t("common.activityFormTabGroup")}
+            </TabsTrigger>
+            <TabsTrigger
+              value="extras"
+              className={`${ACTIVITY_TAB} border-amber-300 bg-amber-100 text-amber-950 data-[state=active]:bg-gradient-to-b data-[state=active]:from-amber-400 data-[state=active]:to-orange-600 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-50`}
+            >
+              <Paperclip className="size-4" aria-hidden />
+              {t("common.activityFormTabExtras")}
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="details" forceMount className="space-y-4 data-[state=inactive]:hidden">
+            {categoryField}
+            <Field label={t("common.title")} name="title" defaultValue={activity?.title} required />
+            <TextAreaField label={t("common.description")} name="description" defaultValue={activity?.description ?? ""} />
+            <ActivityPlaceField defaultValue={activity?.formattedAddress ?? activity?.placeName ?? ""} onPlaceSelect={(details) => setPlace(details)} onClear={() => setPlace(null)} />
+            {category === "lodging" && (
               <div className="space-y-2">
-                <Label htmlFor="activity-dayDate">Day</Label>
-                <select id="activity-dayDate" name="dayDate" defaultValue={activity?.dayDate ?? draft?.dayDate ?? days[0]} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
-                  {days.map((day) => <option key={day} value={day}>{formatDate(day)}</option>)}
-                </select>
+                <button type="button" aria-pressed={bookingEnabled} className={`flex w-full items-center justify-between text-left ${LIGHT_SECTION}`} onClick={() => setBookingEnabled((enabled) => !enabled)}>
+                  <span>
+                    <span className="block text-sm font-semibold">{t("common.lodgingReservation")}</span>
+                    <span className="block text-xs text-muted-foreground">{t("common.lodgingReservationHelp")}</span>
+                  </span>
+                  <span className={`relative h-6 w-11 rounded-full transition-colors ${bookingEnabled ? "bg-primary" : "bg-muted"}`}>
+                    <span className={`absolute top-1 size-4 rounded-full bg-background shadow-sm transition-transform ${bookingEnabled ? "translate-x-6" : "translate-x-1"}`} />
+                  </span>
+                </button>
+                {bookingEnabled && (
+                  <div className="relative">
+                    <TicketCheck className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+                    <Input aria-label={t("common.lodgingReservationReference")} name="bookingReference" defaultValue={activity?.bookingReference ?? ""} autoCapitalize="characters" autoComplete="off" className="pl-9 font-mono uppercase" />
+                  </div>
+                )}
               </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="activity-dayDate">{t("common.day")}</Label>
+              <select id="activity-dayDate" name="dayDate" defaultValue={activity?.dayDate ?? draft?.dayDate ?? days[0]} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
+                {days.map((day) => <option key={day} value={day}>{formatDate(day)}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label>{t("common.timeSpecificity")}</Label>
+              <div className="grid grid-cols-2 rounded-xl border border-border bg-muted/50 p-1 dark:bg-muted/30">
+                {(["exact", "flexible"] as const).map((specificity) => (
+                  <button key={specificity} type="button" data-active={timingSpecificity === specificity} className="h-9 rounded-lg px-3 text-sm font-medium text-muted-foreground transition-colors data-[active=true]:bg-background data-[active=true]:text-primary data-[active=true]:shadow-sm dark:data-[active=true]:text-foreground" onClick={() => setTimingSpecificity(specificity)}>
+                    {specificity === "exact" ? t("common.exactTime") : t("common.flexible")}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {timingSpecificity === "exact" ? (
+              <div className="grid grid-cols-2 gap-3">
+                <ControlledTimeField label={t("common.startTime")} name="startTime" value={startTime} onChange={changeStartTime} />
+                <ControlledTimeField label={t("common.endTime")} name="endTime" value={endTime} onChange={(value) => { setEndTime(value); setEndTimeEdited(Boolean(value)); }} />
+              </div>
+            ) : (
               <div className="space-y-2">
-                <Label>Time specificity</Label>
-                <div className="grid grid-cols-2 rounded-xl border border-border/40 bg-muted/40 p-1">
-                  {(["exact", "flexible"] as const).map((specificity) => (
-                    <button key={specificity} type="button" data-active={timingSpecificity === specificity} className="h-9 rounded-lg px-3 text-sm font-medium text-muted-foreground transition-colors data-[active=true]:bg-background data-[active=true]:text-foreground data-[active=true]:shadow-sm" onClick={() => setTimingSpecificity(specificity)}>
-                      {specificity === "exact" ? "Exact Time" : "Flexible"}
-                    </button>
+                <Label>{t("common.flexiblePeriod")}</Label>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {FLEXIBLE_PERIODS.map((period) => (
+                    <Button key={period.value} type="button" size="sm" variant={flexiblePeriod === period.value ? "default" : "outline"} onClick={() => setFlexiblePeriod(period.value)}>
+                      {t(period.labelKey)}
+                    </Button>
                   ))}
                 </div>
               </div>
-              {timingSpecificity === "exact" ? (
-                <div className="grid grid-cols-2 gap-3">
-                  <ControlledTimeField label="Start time" name="startTime" value={startTime} onChange={changeStartTime} />
-                  <ControlledTimeField label="End time" name="endTime" value={endTime} onChange={(value) => { setEndTime(value); setEndTimeEdited(Boolean(value)); }} />
+            )}
+          </TabsContent>
+          <TabsContent value="group" forceMount className="space-y-4 data-[state=inactive]:hidden">
+            {currentUserId && (
+              <div className="space-y-2">
+                <Label htmlFor="activity-personalBudget">{t("common.myBudget")}</Label>
+                <p className="text-xs text-muted-foreground">{t("common.privateBudget")}</p>
+                <div className="flex">
+                  <span className="inline-flex h-10 items-center rounded-l-md border border-r-0 border-success/40 bg-gradient-to-b from-success/35 to-success/80 px-3 text-sm font-medium text-success-foreground">{currency}</span>
+                  <Input id="activity-personalBudget" name="personalBudget" inputMode="decimal" defaultValue={personalBudgetMinor == null ? "" : decimalFromMinorUnits(personalBudgetMinor, currency)} placeholder="0.00" className="rounded-l-none" />
                 </div>
-              ) : (
-                <div className="space-y-2">
-                  <Label>Flexible period</Label>
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
-                    {(["morning", "afternoon", "evening", "anytime"] as const).map((period) => (
-                      <Button key={period} type="button" size="sm" variant={flexiblePeriod === period ? "default" : "outline"} className="capitalize" onClick={() => setFlexiblePeriod(period)}>{period}</Button>
-                    ))}
-                  </div>
+              </div>
+            )}
+            <div className="space-y-2 rounded-xl border border-primary/30 bg-gradient-to-b from-primary/20 to-primary/50 p-3">
+              <button type="button" aria-pressed={sendToVote} className="flex w-full items-center justify-between gap-3 text-left" onClick={() => setSendToVote((enabled) => !enabled)}>
+                <span className="flex items-start gap-3">
+                  <Vote className="mt-0.5 size-5 text-primary" aria-hidden />
+                  <span>
+                    <span className="block text-sm font-semibold">{t("common.sendToVote")}</span>
+                    <span className="block text-xs text-muted-foreground">{t("common.voteHelp")}</span>
+                  </span>
+                </span>
+                <span className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${sendToVote ? "bg-primary" : "bg-muted"}`}>
+                  <span className={`absolute top-1 size-4 rounded-full bg-background shadow-sm transition-transform ${sendToVote ? "translate-x-6" : "translate-x-1"}`} />
+                </span>
+              </button>
+              {sendToVote && (
+                <div className="space-y-2 pt-2">
+                  <Label htmlFor="activity-voting-ends">{t("common.votingEnds")}</Label>
+                  <Input id="activity-voting-ends" type="datetime-local" value={votingEndsAt} min={localDateTimeValue(new Date())} onChange={(event) => setVotingEndsAt(event.target.value)} />
                 </div>
               )}
             </div>
-            <div className="space-y-4">
-              <ActivityPlaceField defaultValue={activity?.formattedAddress ?? activity?.placeName ?? ""} onPlaceSelect={(details) => setPlace(details)} onClear={() => setPlace(null)} />
-              {category === "lodging" && <div className="space-y-2">
-                <button type="button" aria-pressed={bookingEnabled} className="flex w-full items-center justify-between rounded-xl border p-3 text-left" onClick={() => setBookingEnabled((enabled) => !enabled)}>
-                  <span><span className="block text-sm font-semibold">Lodging reservation</span><span className="block text-xs text-muted-foreground">For a house, hotel, motel, Airbnb, or other stay.</span></span>
-                  <span className={`relative h-6 w-11 rounded-full transition-colors ${bookingEnabled ? "bg-primary" : "bg-muted"}`}><span className={`absolute top-1 size-4 rounded-full bg-background shadow-sm transition-transform ${bookingEnabled ? "translate-x-6" : "translate-x-1"}`} /></span>
-                </button>
-                {bookingEnabled && <div className="relative"><TicketCheck className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" aria-hidden /><Input aria-label="Lodging reservation reference" name="bookingReference" defaultValue={activity?.bookingReference ?? ""} autoCapitalize="characters" autoComplete="off" className="pl-9 font-mono uppercase" /></div>}
-              </div>}
-          {currentUserId && <div className="space-y-2">
-            <Label htmlFor="activity-personalBudget">My budget (optional)</Label>
-            <p className="text-xs text-muted-foreground">Private to you. Other travelers cannot see or edit this amount.</p>
-            <div className="flex">
-              <span className="inline-flex h-10 items-center rounded-l-md border border-r-0 bg-muted px-3 text-sm font-medium text-muted-foreground">{currency}</span>
-              <Input id="activity-personalBudget" name="personalBudget" inputMode="decimal" defaultValue={personalBudgetMinor == null ? "" : decimalFromMinorUnits(personalBudgetMinor, currency)} placeholder="0.00" className="rounded-l-none" />
-            </div>
-          </div>}
-          <div className="space-y-2 rounded-xl border p-3">
-            <button type="button" aria-pressed={sendToVote} className="flex w-full items-center justify-between gap-3 text-left" onClick={() => setSendToVote((enabled) => !enabled)}>
-              <span className="flex items-start gap-3"><Vote className="mt-0.5 size-5 text-primary" aria-hidden /><span><span className="block text-sm font-semibold">Send to Group Vote</span><span className="block text-xs text-muted-foreground">Ask travelers to approve this plan or suggest another.</span></span></span>
-              <span className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${sendToVote ? "bg-primary" : "bg-muted"}`}><span className={`absolute top-1 size-4 rounded-full bg-background shadow-sm transition-transform ${sendToVote ? "translate-x-6" : "translate-x-1"}`} /></span>
-            </button>
-            {sendToVote && <div className="space-y-2 pt-2"><Label htmlFor="activity-voting-ends">Voting ends</Label><Input id="activity-voting-ends" type="datetime-local" value={votingEndsAt} min={localDateTimeValue(new Date())} onChange={(event) => setVotingEndsAt(event.target.value)} required /></div>}
-          </div>
-          <fieldset className="space-y-2">
-            <legend className="text-sm font-semibold">Who&apos;s going?</legend>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {uniqueMembers.map((member) => {
-                const key = memberKey(member.userId);
-                const attending = attendingParticipantKeys.has(key);
-                const profile = profileById.get(member.userId);
-                const isCurrentUser = member.userId === currentUserId;
-                const label = isCurrentUser ? "You" : profile?.fullName?.trim() || "Trip member";
-                return (
-                  <button key={member.userId} type="button" aria-label={`${label}: ${attending ? t("common.going") : t("common.notGoing")}`} aria-pressed={attending} className="flex min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition-colors aria-pressed:border-primary aria-pressed:bg-primary/10" onClick={() => toggleParticipant(key, setAttendingParticipantKeys)}>
-                    <UserAvatar seed={isCurrentUser ? localProfile?.avatarSeed : profile?.avatarSeed} src={isCurrentUser ? localProfile?.avatarUrl : profile?.avatarUrl} name={isCurrentUser ? localProfile?.fullName ?? label : label} size="sm" />
-                    <span className="min-w-0 flex-1 truncate text-sm font-medium">{label}</span>
-                    <span className="text-xs text-muted-foreground">{attending ? "Going" : "Not going"}</span>
-                  </button>
-                );
-              })}
-              {visibleTravelers.map((traveler) => {
-                const key = travelerKey(traveler.id);
-                const attending = attendingParticipantKeys.has(key);
-                return (
-                  <button key={traveler.id} type="button" aria-label={`${traveler.displayName}: ${attending ? "Going" : "Not going"}`} aria-pressed={attending} className="flex min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition-colors aria-pressed:border-primary aria-pressed:bg-primary/10" onClick={() => toggleParticipant(key, setAttendingParticipantKeys)}>
-                    <UserAvatar seed={traveler.id} name={traveler.displayName} size="sm" />
-                    <span className="min-w-0 flex-1 truncate text-sm font-medium">{traveler.displayName}</span>
-                    <span className="text-xs text-muted-foreground">{attending ? "Going" : "Not going"}</span>
-                  </button>
-                );
-              })}
-            </div>
-            {onAddTraveler && (
-              <div className="mt-3 flex flex-col gap-2 rounded-xl border border-dashed p-3 sm:flex-row sm:items-end">
-                <div className="min-w-0 flex-1 space-y-2">
-                  <Label htmlFor="activity-new-traveler">Add traveler manually</Label>
-                  <Input id="activity-new-traveler" value={manualTravelerName} onChange={(event) => setManualTravelerName(event.target.value)} placeholder="Traveler name" />
-                </div>
-                <Button type="button" variant="outline" disabled={addingTraveler || manualTravelerName.trim().length < 2} onClick={async () => { setAddingTraveler(true); setParticipantMessage(null); try { const traveler = await onAddTraveler(manualTravelerName.trim()); setAddedTravelers((current) => [...current, traveler]); setAttendingParticipantKeys((current) => new Set(current).add(travelerKey(traveler.id))); setManualTravelerName(""); setParticipantMessage(`${traveler.displayName} added and selected.`); } catch (cause) { setParticipantMessage(cause instanceof Error ? cause.message : "Unable to add traveler."); } finally { setAddingTraveler(false); } }}>
-                  <UserPlus aria-hidden />{addingTraveler ? "Adding..." : "Add traveler"}
-                </Button>
+            <section className={`space-y-3 ${LIGHT_SECTION}`}>
+              <h3 className="text-sm font-semibold">{t("common.participants")}</h3>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {uniqueMembers.map((member) => {
+                  const key = memberKey(member.userId);
+                  const attending = attendingParticipantKeys.has(key);
+                  const profile = profileById.get(member.userId);
+                  const isCurrentUser = member.userId === currentUserId;
+                  const label = isCurrentUser ? t("common.you") : profile?.fullName?.trim() || t("common.tripMember");
+                  return (
+                    <button key={member.userId} type="button" aria-label={`${label}: ${attending ? t("common.going") : t("common.notGoing")}`} aria-pressed={attending} className={`flex min-w-0 items-center gap-3 text-left ${LIGHT_CHIP}`} onClick={() => toggleParticipant(key, setAttendingParticipantKeys)}>
+                      <UserAvatar seed={isCurrentUser ? localProfile?.avatarSeed : profile?.avatarSeed} src={isCurrentUser ? localProfile?.avatarUrl : profile?.avatarUrl} name={isCurrentUser ? localProfile?.fullName ?? label : label} size="sm" />
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium">{label}</span>
+                      <span className={`text-xs font-medium ${attending ? "text-primary" : "text-muted-foreground"}`}>{attending ? t("common.going") : t("common.notGoing")}</span>
+                    </button>
+                  );
+                })}
+                {visibleTravelers.map((traveler) => {
+                  const key = travelerKey(traveler.id);
+                  const attending = attendingParticipantKeys.has(key);
+                  return (
+                    <button key={traveler.id} type="button" aria-label={`${traveler.displayName}: ${attending ? t("common.going") : t("common.notGoing")}`} aria-pressed={attending} className={`flex min-w-0 items-center gap-3 text-left ${LIGHT_CHIP}`} onClick={() => toggleParticipant(key, setAttendingParticipantKeys)}>
+                      <UserAvatar seed={traveler.id} name={traveler.displayName} size="sm" />
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium">{traveler.displayName}</span>
+                      <span className={`text-xs font-medium ${attending ? "text-primary" : "text-muted-foreground"}`}>{attending ? t("common.going") : t("common.notGoing")}</span>
+                    </button>
+                  );
+                })}
               </div>
-            )}
-            {participantMessage && <p role="status" className="mt-2 text-xs text-muted-foreground">{participantMessage}</p>}
-              </fieldset>
-            </div>
-          </div>
-        </>
+              {onAddTraveler && (
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <Label htmlFor="activity-new-traveler">{t("common.addTravelerManually")}</Label>
+                    <Input
+                      id="activity-new-traveler"
+                      value={manualTravelerName}
+                      onChange={(event) => setManualTravelerName(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          void addManualTraveler();
+                        }
+                      }}
+                      placeholder={t("common.travelerName")}
+                    />
+                  </div>
+                  <Button type="button" variant="default" disabled={addingTraveler || manualTravelerName.trim().length === 0} onClick={() => void addManualTraveler()}>
+                    <UserPlus aria-hidden />{addingTraveler ? t("common.adding") : t("common.addTraveler")}
+                  </Button>
+                </div>
+              )}
+              {participantMessage && <p role="status" className="text-xs text-muted-foreground">{participantMessage}</p>}
+            </section>
+          </TabsContent>
+          <TabsContent value="extras" forceMount className="space-y-4 data-[state=inactive]:hidden">
+            <ActivityAttachmentsEditor
+              attachments={attachments}
+              pendingImages={pendingImages}
+              defaultOpen
+              onChange={(nextAttachments, nextPending) => {
+                setAttachments(nextAttachments);
+                setPendingImages(nextPending);
+              }}
+            />
+            <ActivityChecklistEditor checklist={checklist} onChange={setChecklist} />
+          </TabsContent>
+        </Tabs>
       )}
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        {activity && <div className="flex gap-2 sm:mr-auto">
-          {onDelete && <Button type="button" variant="destructive" onClick={onDelete}><Trash2 aria-hidden />Delete activity</Button>}
-          {onClone && <Button type="button" variant="outline" onClick={onClone}><CopyPlus aria-hidden />Quick clone</Button>}
-        </div>}
+        {activity && onDelete && (
+          <div className="sm:mr-auto">
+            <Button type="button" variant="ghost" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={onDelete}>
+              <Trash2 aria-hidden />{t("common.deleteActivity")}
+            </Button>
+          </div>
+        )}
         <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
+          {t("common.cancel")}
         </Button>
-        <Button type="submit" variant="primary" disabled={saving}>
-          {saving ? "Saving..." : category === "transit" ? transitSegment ? "Save transit" : "Add transit" : "Save activity"}
+        <Button type="submit" className="bg-primary text-primary-foreground hover:opacity-90" disabled={saving}>
+          {saving ? t("settings.saving") : category === "transit" ? transitSegment ? t("common.saveTransit") : t("common.addTransit") : t("common.saveActivity")}
         </Button>
       </div>
     </form>
@@ -477,9 +628,11 @@ function ActivityPlaceField({
     }
   }
 
+  const { t } = useI18n();
+
   return (
     <div className="relative space-y-2">
-      <Label htmlFor="activity-place">Location</Label>
+      <Label htmlFor="activity-place">{t("common.location")}</Label>
       <div className="relative">
         <MapPin
           className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground"
@@ -490,7 +643,7 @@ function ActivityPlaceField({
           value={value}
           disabled={pending}
           autoComplete="off"
-          placeholder="Search for a place"
+          placeholder={t("common.searchPlace")}
           className="pl-9"
           onChange={(event) => {
             setValue(event.target.value);
@@ -500,12 +653,13 @@ function ActivityPlaceField({
         />
       </div>
       {suggestions.length > 0 && (
-        <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border bg-popover shadow-lg">
+        <div data-places-suggestions className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border bg-popover shadow-lg">
           {suggestions.map((suggestion) => (
             <button
               key={suggestion.placeId}
               type="button"
               className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-muted"
+              onMouseDown={(event) => event.preventDefault()}
               onClick={() => void select(suggestion)}
             >
               <MapPin className="size-5 text-primary" aria-hidden />
@@ -532,7 +686,18 @@ function Field({
 }
 
 function TextAreaField({ label, name, defaultValue }: { label: string; name: string; defaultValue: string }) {
-  return <div className="space-y-2"><Label htmlFor={`activity-${name}`}>{label}</Label><textarea id={`activity-${name}`} name={name} defaultValue={defaultValue} rows={3} className="flex min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50" /></div>;
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={`activity-${name}`}>{label}</Label>
+      <textarea
+        id={`activity-${name}`}
+        name={name}
+        defaultValue={defaultValue}
+        rows={5}
+        className="flex min-h-32 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+      />
+    </div>
+  );
 }
 
 function memberKey(userId: string): string { return `user:${userId}`; }

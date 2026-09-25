@@ -2,12 +2,30 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import { ActivityForm, defaultEndTime } from "@/features/activities/components/activity-form";
+import { ActivityCloneHeaderButton, ActivityForm, defaultEndTime } from "@/features/activities/components/activity-form";
 
 vi.mock("@/app/actions/places", () => ({
   searchActivityPlaces: vi.fn().mockResolvedValue({ suggestions: [], configured: true }),
   getPlaceDetails: vi.fn(),
 }));
+
+vi.mock("@/features/media/data/dexie-media-repository", () => ({
+  mediaRepository: {
+    watchByIds: (_ids: string[], onChange: (media: unknown[]) => void) => {
+      onChange([]);
+      return () => undefined;
+    },
+    retry: vi.fn(),
+  },
+}));
+
+vi.mock("@/lib/sync/use-sync-status", () => ({
+  useSyncStatus: () => ({ isOnline: true }),
+}));
+
+function openActivityTab(name: string) {
+  fireEvent.click(screen.getByRole("tab", { name }));
+}
 
 vi.mock("@/components/ui/dropdown-menu", () => ({
   DropdownMenu: ({ children }: PropsWithChildren) => <>{children}</>,
@@ -26,6 +44,7 @@ describe("ActivityForm", () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     const { container } = render(<ActivityForm days={["2026-09-16"]} currentUserId="user-1" saving={false} onSubmit={onSubmit} onCancel={vi.fn()} />);
     fireEvent.change(screen.getByLabelText("Title"), { target: { value: "Museum" } });
+    openActivityTab("Group & money");
     fireEvent.click(screen.getByRole("button", { name: /send to group vote/i }));
     fireEvent.submit(container.querySelector("form")!);
 
@@ -51,10 +70,12 @@ describe("ActivityForm", () => {
     confirm.mockRestore();
   });
 
-  it("shows a quick clone action for an existing activity", () => {
+  it("keeps clone out of the form footer and exposes a header icon action", () => {
     const activity = { id: "activity-1", tripId: "trip-1", dayDate: "2026-09-16", title: "Museum", description: null, category: "sightseeing", startTime: null, endTime: null, position: 1, estimatedCostMinor: null, createdBy: "user-1", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", deletedAt: null };
     const onClone = vi.fn();
-    render(<ActivityForm activity={activity} days={["2026-09-16"]} saving={false} onSubmit={vi.fn()} onCancel={vi.fn()} onClone={onClone} />);
+    const { container } = render(<ActivityForm activity={activity} days={["2026-09-16"]} saving={false} onSubmit={vi.fn()} onCancel={vi.fn()} />);
+    expect(container.querySelector("form")?.textContent).not.toContain("Quick clone");
+    render(<ActivityCloneHeaderButton onClick={onClone} />);
     fireEvent.click(screen.getByRole("button", { name: "Quick clone" }));
     expect(onClone).toHaveBeenCalledOnce();
   });
@@ -64,6 +85,7 @@ describe("ActivityForm", () => {
     const timestamp = "2026-01-01T00:00:00Z";
     const members = ["user-1", "user-2"].map((userId, index) => ({ id: `member-${index}`, tripId: "trip-1", userId, role: index === 0 ? "owner" as const : "editor" as const, invitedBy: null, joinedAt: timestamp, roleChangedAt: null, roleChangedBy: null, removedAt: null, removedBy: null, version: 1, createdAt: timestamp, updatedAt: timestamp }));
     const { container } = render(<ActivityForm days={["2026-09-16"]} members={members} profiles={[{ id: "user-2", fullName: "Mika Sato", avatarUrl: "https://example.com/mika.png", avatarSeed: "adventurer|mika", email: null }]} currentUserId="user-1" saving={false} onSubmit={onSubmit} onCancel={vi.fn()} />);
+    openActivityTab("Group & money");
 
     expect(screen.getByRole("button", { name: /you: going/i }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: /mika sato: going/i }).getAttribute("aria-pressed")).toBe("true");
@@ -78,6 +100,7 @@ describe("ActivityForm", () => {
     const members = [{ id: "member-1", tripId: "trip-1", userId: "user-1", role: "owner" as const, invitedBy: null, joinedAt: "2026-01-01T00:00:00Z", roleChangedAt: null, roleChangedBy: null, removedAt: null, removedBy: null, version: 1, createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }];
     const travelers = [{ id: "traveler-1", tripId: "trip-1", contactId: "contact-1", displayName: "Alex Chen", travelerType: "adult" as const, createdBy: "user-1", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", deletedAt: null }];
     render(<ActivityForm days={["2026-09-16"]} members={members} profiles={[{ id: "user-1", fullName: "Alex Chen", avatarUrl: null, avatarSeed: "adventurer|alex", email: null }]} travelers={travelers} saving={false} onSubmit={vi.fn()} onCancel={vi.fn()} />);
+    openActivityTab("Group & money");
 
     expect(screen.getAllByText("Alex Chen")).toHaveLength(1);
   });
@@ -87,6 +110,7 @@ describe("ActivityForm", () => {
     const onAddTraveler = vi.fn().mockResolvedValue({ id: "traveler-2", tripId: "trip-1", contactId: "contact-2", displayName: "Sam Rivera", travelerType: "adult", createdBy: "user-1", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", deletedAt: null });
     const travelers = [{ id: "traveler-1", tripId: "trip-1", contactId: "contact-1", displayName: "Alex Chen", travelerType: "adult" as const, createdBy: "user-1", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", deletedAt: null }];
     const { container } = render(<ActivityForm days={["2026-09-16"]} travelers={travelers} currentUserId="user-1" saving={false} onSubmit={onSubmit} onCancel={vi.fn()} onAddTraveler={onAddTraveler} />);
+    openActivityTab("Group & money");
 
     expect(screen.getByRole("button", { name: /alex chen: going/i })).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Add traveler manually"), { target: { value: "Sam Rivera" } });
@@ -118,6 +142,29 @@ describe("ActivityForm", () => {
     expect(screen.getByRole("button", { name: /anytime/i })).toBeTruthy();
   });
 
+  it("groups attendees under Participants without a dashed traveler border", () => {
+    const travelers = [{ id: "traveler-1", tripId: "trip-1", contactId: "contact-1", displayName: "Alex Chen", travelerType: "adult" as const, createdBy: "user-1", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", deletedAt: null }];
+    const { container } = render(<ActivityForm days={["2026-09-16"]} travelers={travelers} currentUserId="user-1" saving={false} onSubmit={vi.fn()} onCancel={vi.fn()} onAddTraveler={vi.fn()} />);
+    const tabs = screen.getAllByRole("tab").map((tab) => tab.textContent);
+    expect(tabs).toEqual(["Details", "Group & money", "Extras"]);
+    expect(screen.getByRole("tab", { name: "Details" }).className).toMatch(/bg-sky-100/);
+    expect(screen.getByRole("tab", { name: "Group & money" }).className).toMatch(/bg-fuchsia-100/);
+    expect(screen.getByRole("tab", { name: "Extras" }).className).toMatch(/bg-amber-100/);
+    openActivityTab("Group & money");
+    const participants = screen.getByRole("heading", { name: "Participants" }).closest("section");
+    expect(participants).toBeTruthy();
+    expect(participants?.className).toMatch(/border-border/);
+    expect(participants?.className).not.toMatch(/from-viatik-blue/);
+    const chip = screen.getByRole("button", { name: "Alex Chen: Going" });
+    expect(chip.className).toMatch(/bg-background/);
+    expect(chip.className).toMatch(/aria-pressed:border-primary/);
+    expect(screen.queryByText("Who's going?")).toBeNull();
+    expect(screen.getByLabelText("Add traveler manually").closest(".border-dashed")).toBeNull();
+    openActivityTab("Extras");
+    expect(container.querySelector("form")?.textContent).toContain("Attachments");
+    expect(container.querySelector("form")?.textContent).toContain("Must-dos");
+  });
+
   it("places a description textarea below title and reveals booking only when enabled", () => {
     render(<ActivityForm days={["2026-09-16"]} saving={false} onSubmit={vi.fn()} onCancel={vi.fn()} />);
     const title = screen.getByLabelText("Title");
@@ -133,6 +180,7 @@ describe("ActivityForm", () => {
   it("submits the signed-in user's optional budget in minor units", async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     const { container } = render(<ActivityForm days={["2026-09-16"]} currentUserId="user-1" currency="USD" saving={false} onSubmit={onSubmit} onCancel={vi.fn()} />);
+    openActivityTab("Group & money");
     fireEvent.change(screen.getByLabelText("My budget (optional)"), { target: { value: "125.50" } });
     fireEvent.submit(container.querySelector("form")!);
     await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ personalBudgetMinor: 12550n })));
@@ -174,10 +222,22 @@ describe("ActivityForm", () => {
     expect(screen.getByRole("button", { name: "Add transit" })).toBeTruthy();
   });
 
+  it("uses a flat save action and a ghost delete action", () => {
+    const activity = { id: "activity-1", tripId: "trip-1", dayDate: "2026-09-16", title: "Museum", description: null, category: "sightseeing", startTime: null, endTime: null, position: 1, estimatedCostMinor: null, createdBy: "user-1", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", deletedAt: null };
+    render(<ActivityForm activity={activity} days={["2026-09-16"]} saving={false} onSubmit={vi.fn()} onCancel={vi.fn()} onDelete={vi.fn()} />);
+    const save = screen.getByRole("button", { name: "Save activity" });
+    expect(save.className).toMatch(/bg-primary/);
+    expect(save.className).not.toMatch(/from-viatik-magenta/);
+    const remove = screen.getByRole("button", { name: "Delete activity" });
+    expect(remove.className).toMatch(/text-destructive/);
+    expect(remove.className).not.toMatch(/bg-destructive(?!\/)/);
+  });
+
   it("submits Must-dos with the activity", async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     const { container } = render(<ActivityForm days={["2026-09-16"]} currentUserId="user-1" saving={false} onSubmit={onSubmit} onCancel={vi.fn()} />);
     fireEvent.change(screen.getByLabelText("Title"), { target: { value: "Museum" } });
+    openActivityTab("Extras");
     fireEvent.click(screen.getByRole("button", { name: "Add Must-do" }));
     fireEvent.change(screen.getByLabelText("Must-do 1 title"), { target: { value: "Buy tickets" } });
     fireEvent.submit(container.querySelector("form")!);
@@ -185,6 +245,25 @@ describe("ActivityForm", () => {
     await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
       title: "Museum",
       checklist: [expect.objectContaining({ title: "Buy tickets", completed: false })],
+      attachments: [],
+      pendingImages: [],
+    })));
+  });
+
+  it("submits a validated link attachment with the activity", async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    const { container } = render(<ActivityForm days={["2026-09-16"]} currentUserId="user-1" saving={false} onSubmit={onSubmit} onCancel={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Title"), { target: { value: "Museum" } });
+    openActivityTab("Extras");
+    fireEvent.click(screen.getByRole("menuitem", { name: "Link" }));
+    fireEvent.change(screen.getByLabelText("Link URL"), { target: { value: "https://example.com/menu" } });
+    fireEvent.change(screen.getByLabelText("Link title"), { target: { value: "Dinner menu" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save link" }));
+    fireEvent.submit(container.querySelector("form")!);
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
+      title: "Museum",
+      attachments: [expect.objectContaining({ kind: "link", title: "Dinner menu", url: "https://example.com/menu" })],
     })));
   });
 

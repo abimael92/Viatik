@@ -241,7 +241,7 @@ export function ActivityChecklistEditor({
   }
 
   return (
-    <fieldset className="space-y-3 rounded-xl border p-3">
+    <fieldset className="space-y-3">
       <legend className="flex items-center gap-2 px-1 text-sm font-semibold">
         <ListChecks className="size-4 text-primary" aria-hidden />
         {t("common.activityMustDos")}
@@ -312,7 +312,7 @@ export function ActivityChecklistEditor({
         </ul>
       )}
 
-      <Button type="button" variant="outline" className="w-full" disabled={atLimit} onClick={addItem}>
+      <Button type="button" variant="outline" className="w-full border-border bg-muted hover:bg-muted/80" disabled={atLimit} onClick={addItem}>
         <Plus aria-hidden />
         {atLimit ? t("common.activityMustDosLimit") : t("common.activityMustDoAdd")}
       </Button>
