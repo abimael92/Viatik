@@ -1,5 +1,7 @@
 "use client";
 
+import { localizeThrownError } from "@/lib/i18n/localize-error";
+
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -214,7 +216,7 @@ function PersonalView({
       }
       setEditing(false);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t("common.unableSaveWallet"));
+      setError(localizeThrownError(cause, t, "common.unableSaveWallet"));
     } finally {
       setSaving(false);
     }
@@ -228,17 +230,17 @@ function PersonalView({
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <div className="rounded-2xl border bg-card p-4 text-sm text-muted-foreground sm:col-span-2 xl:col-span-4">
-        <p className="font-semibold text-foreground">What you see here</p>
+        <p className="font-semibold text-foreground">{t("copy.whatYouSee")}</p>
         <p className="mt-1">
-          <span className="font-medium text-foreground">Starting balance</span> is the cash you set aside for this trip.{" "}
-          <span className="font-medium text-foreground">Actuals (settled)</span> is your share of expenses already recorded.{" "}
-          <span className="font-medium text-foreground">Planned (estimates)</span> is your equal share of upcoming itinerary costs.{" "}
-          <span className="font-medium text-foreground">True Leftover</span> = starting balance − actuals − planned — the honest amount you can still spend.
+          <span className="font-medium text-foreground">{t("common.startingBalance")}</span> is the cash you set aside for this trip.{" "}
+          <span className="font-medium text-foreground">{t("common.actualsSettled")}</span> is your share of expenses already recorded.{" "}
+          <span className="font-medium text-foreground">{t("common.plannedEstimates")}</span> is your equal share of upcoming itinerary costs.{" "}
+          <span className="font-medium text-foreground">{t("copy.trueLeftover")}</span> = {t("copy.trueLeftoverHelp")}
         </p>
       </div>
       <div className="rounded-2xl border bg-card p-5 xl:col-span-2 xl:row-span-2 flex flex-col justify-between">
         <div className="flex items-center justify-between">
-          <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground"><PiggyBank className="size-5 text-primary" /> True Leftover</span>
+          <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground"><PiggyBank className="size-5 text-primary" /> {t("copy.trueLeftover")}</span>
           <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold", tl != null && tl >= 0n ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive")}>
             {tl != null ? (tl >= 0n ? <ArrowUpRight className="size-3.5" /> : <ArrowDownRight className="size-3.5" />) : null}
             {tl == null ? t("common.noWallet") : tl >= 0n ? t("common.safe") : t("common.over")}
@@ -275,24 +277,24 @@ function PersonalView({
 
       <FinanceCard icon={ReceiptText} label={t("common.actualsSpent")}>
         <p className="font-mono text-2xl font-bold tabular-nums">{formatMinorUnits(personalSpent, baseCurrency)}</p>
-        <p className="text-xs text-muted-foreground">Your share of settled expenses</p>
+        <p className="text-xs text-muted-foreground">{t("copy.yourShareSettled")}</p>
       </FinanceCard>
 
       <FinanceCard icon={Target} label={t("common.plannedEstimates")}>
         <p className="font-mono text-2xl font-bold tabular-nums">{formatMinorUnits(personalPlanned, baseCurrency)}</p>
-        <p className="text-xs text-muted-foreground">Your equal share of upcoming estimates</p>
+        <p className="text-xs text-muted-foreground">{t("copy.yourShareEstimates")}</p>
       </FinanceCard>
 
       <FinanceCard icon={Scale} label={t("common.leftoverActuals")}>
         <p className={cn("font-mono text-2xl font-bold tabular-nums", leftover != null && leftover < 0n ? "text-destructive" : "")}>
           {leftover != null ? formatMinorUnits(leftover < 0n ? -leftover : leftover, walletCurrency) : "—"}
         </p>
-        <p className="text-xs text-muted-foreground">Starting balance minus actuals</p>
+        <p className="text-xs text-muted-foreground">{t("common.startingBalanceMinus")}</p>
       </FinanceCard>
 
       {editing && (
         <form onSubmit={handleSave} className="rounded-2xl border bg-card p-5 xl:col-span-2">
-          <Label htmlFor="startingBalance">Starting balance ({walletCurrency})</Label>
+          <Label htmlFor="startingBalance">{t("common.startingBalance")} ({walletCurrency})</Label>
           <div className="mt-2 flex gap-2">
             <Input
               id="startingBalance"
@@ -338,7 +340,7 @@ function GroupView({
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-2xl border bg-card p-5 xl:col-span-2">
-          <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground"><CircleDollarSign className="size-5 text-primary" /> Group total spent</span>
+          <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground"><CircleDollarSign className="size-5 text-primary" /> {t("copy.groupTotalSpent")}</span>
           <p className="mt-2 font-mono text-3xl font-bold tabular-nums">{formatMinorUnits(groupTotal, baseCurrency)}</p>
           <div className="mt-3 flex items-center gap-3">
             <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
@@ -350,22 +352,22 @@ function GroupView({
 
         <FinanceCard icon={Target} label={t("common.plannedEstimates")}>
           <p className="font-mono text-2xl font-bold tabular-nums">{formatMinorUnits(plannedTotal, baseCurrency)}</p>
-          <p className="text-xs text-muted-foreground">Upcoming itinerary costs</p>
+          <p className="text-xs text-muted-foreground">{t("copy.upcomingCosts")}</p>
         </FinanceCard>
 
         <FinanceCard icon={CalendarDays} label={t("common.daysActive")}>
           <p className="font-mono text-2xl font-bold tabular-nums">{spentDays}<span className="text-base font-normal text-muted-foreground"> / {tripDays}</span></p>
-          <p className="text-xs text-muted-foreground">Days with recorded expenses</p>
+          <p className="text-xs text-muted-foreground">{t("copy.daysWithExpenses")}</p>
         </FinanceCard>
       </div>
 
       <div className="rounded-2xl border bg-card">
         <div className="border-b p-4">
-          <h3 className="font-semibold">Daily pacing</h3>
-          <p className="text-sm text-muted-foreground">Tap a day to see its spent/budget breakdown.</p>
+          <h3 className="font-semibold">{t("copy.dailyPacing")}</h3>
+          <p className="text-sm text-muted-foreground">{t("copy.tapDayBreakdown")}</p>
         </div>
         <div className="divide-y">
-          {pacing.length === 0 && <div className="p-6 text-center text-sm text-muted-foreground">Set trip dates to see daily pacing.</div>}
+          {pacing.length === 0 && <div className="p-6 text-center text-sm text-muted-foreground">{t("copy.setDatesPacing")}</div>}
           {pacing.map((p) => {
             const open = expanded === p.date;
             return (

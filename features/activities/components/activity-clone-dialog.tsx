@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Activity } from "@/features/domain/entities";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 export interface ActivityCloneTiming {
   dayDate: string;
@@ -38,6 +39,7 @@ export function ActivityCloneDialog({
   onOpenChange: (open: boolean) => void;
   onClone: (timing: ActivityCloneTiming) => Promise<void>;
 }) {
+  const { t } = useI18n();
   const defaultDay = nextAvailableDay(activity.dayDate, days);
   const [dayDate, setDayDate] = useState(defaultDay);
   const [startTime, setStartTime] = useState(activity.startTime?.slice(11, 16) ?? "");
@@ -61,12 +63,12 @@ export function ActivityCloneDialog({
     <Dialog open={open} onOpenChange={(value) => !cloning && onOpenChange(value)}>
       <DialogContent className="w-[calc(100vw-2rem)] max-w-md">
         <DialogHeader>
-          <DialogTitle>Clone activity</DialogTitle>
-          <DialogDescription>Choose when the new copy should appear.</DialogDescription>
+          <DialogTitle>{t("copy.cloneActivity")}</DialogTitle>
+          <DialogDescription>{t("copy.cloneActivityHelp")}</DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="clone-day">Date</Label>
+            <Label htmlFor="clone-day">{t("copy.date")}</Label>
             {days.length > 0 ? (
               <select
                 id="clone-day"
@@ -83,7 +85,7 @@ export function ActivityCloneDialog({
 
           {activity.timingSpecificity === "flexible" ? (
             <div className="space-y-2">
-              <Label>Flexible period</Label>
+              <Label>{t("common.flexiblePeriod")}</Label>
               <div className="grid grid-cols-2 gap-2">
                 {(["morning", "afternoon", "evening", "anytime"] as const).map((period) => (
                   <Button key={period} type="button" size="sm" variant={flexiblePeriod === period ? "default" : "outline"} className="capitalize" onClick={() => setFlexiblePeriod(period)}>{period}</Button>
@@ -93,20 +95,20 @@ export function ActivityCloneDialog({
           ) : (
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="clone-start">Start time</Label>
+                <Label htmlFor="clone-start">{t("common.startTime")}</Label>
                 <Input id="clone-start" type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="clone-end">End time</Label>
+                <Label htmlFor="clone-end">{t("common.endTime")}</Label>
                 <Input id="clone-end" type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} />
               </div>
             </div>
           )}
 
           <DialogFooter>
-            <Button type="button" variant="outline" disabled={cloning} onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="button" variant="outline" disabled={cloning} onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
             <Button type="submit" variant="primary" disabled={cloning || !dayDate}>
-              <CopyPlus aria-hidden />{cloning ? "Cloning..." : "Clone activity"}
+              <CopyPlus aria-hidden />{cloning ? "Cloning..." : t("copy.cloneActivity")}
             </Button>
           </DialogFooter>
         </form>

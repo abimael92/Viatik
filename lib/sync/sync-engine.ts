@@ -217,7 +217,10 @@ function mutationPayloadToRow(mutation: OutboxMutation): Record<string, unknown>
 }
 
 function mutationDependencyRank(mutation: OutboxMutation): number {
-  return mutation.entityType === "expense" ? 0 : mutation.entityType === "expenseShare" ? 1 : 2;
+  if (mutation.entityType === "activity") return 0;
+  if (mutation.entityType === "expense") return 1;
+  if (mutation.entityType === "expenseShare") return 2;
+  return 3;
 }
 
 function sortPendingMutations(mutations: OutboxMutation[]): OutboxMutation[] {

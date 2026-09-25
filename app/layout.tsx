@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import LayoutProps from "next";
-import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ErrorBoundary } from "@/components/error-boundary";
-import { themeInitScript } from "@/components/theme-initializer";
+import { ThemeInitScript } from "@/components/theme-initializer";
 import { I18nProvider } from "@/lib/i18n/i18n-provider";
 
 const geistSans = Geist({
@@ -30,11 +29,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
-        <Script
-          id="theme-init"
-          strategy="beforeInteractive"
-          dangerouslySetInnerHTML={{ __html: themeInitScript }}
-        />
+        <ThemeInitScript />
       </head>
       <body className="min-h-full flex flex-col">
         <I18nProvider>

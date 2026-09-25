@@ -1,5 +1,7 @@
 "use client";
 
+import { localizeThrownError } from "@/lib/i18n/localize-error";
+
 import { Check, Clock3, Lightbulb, ThumbsDown, Vote } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -77,7 +79,7 @@ export function ActivityVoteCard({ activity, currentUserId, eligibleViaticUsers 
         await activityRepository.update(activity.id, { pollStatus: "voting", pollVotes: nextVotes });
       }
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to cast vote.");
+      setError(localizeThrownError(cause, t, "Unable to cast vote."));
     } finally {
       setSaving(false);
     }
@@ -89,7 +91,7 @@ export function ActivityVoteCard({ activity, currentUserId, eligibleViaticUsers 
     try {
       await activityRepository.cancelProposal(activity.id);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to cancel the suggestion.");
+      setError(localizeThrownError(cause, t, "Unable to cancel the suggestion."));
     } finally {
       setSaving(false);
     }
@@ -111,7 +113,7 @@ export function ActivityVoteCard({ activity, currentUserId, eligibleViaticUsers 
       });
       setAlternativeOpen(false);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to suggest an alternative.");
+      setError(localizeThrownError(cause, t, "Unable to suggest an alternative."));
     } finally {
       setSaving(false);
     }
@@ -139,8 +141,8 @@ export function ActivityVoteCard({ activity, currentUserId, eligibleViaticUsers 
             const optionVotes = votes.filter((vote) => vote.optionId === option.id);
             return (
               <li key={option.id} className="flex items-center justify-between gap-2 rounded-lg bg-background/70 px-2.5 py-2">
-                <span className="min-w-0 truncate font-medium">{index === 0 ? "Current plan: " : "Alternative: "}{option.label}</span>
-                <span className="shrink-0 text-muted-foreground">{optionVotes.length} {optionVotes.length === 1 ? "vote" : "votes"}</span>
+                <span className="min-w-0 truncate font-medium">{index === 0 ? t("common.currentPlan") : t("common.alternativePrefix")}{option.label}</span>
+                <span className="shrink-0 text-muted-foreground">{optionVotes.length} {optionVotes.length === 1 ? t("common.vote") : t("common.votes")}</span>
               </li>
             );
           })}
@@ -198,6 +200,7 @@ function VoteGroup({ label, choice, activity, profiles }: { label: string; choic
 }
 
 function AlternativeDialog({ open, saving, activity, onOpenChange, onSubmit }: { open: boolean; saving: boolean; activity: Activity; onOpenChange: (open: boolean) => void; onSubmit: (option: Omit<ActivityPollOption, "id" | "proposedBy" | "createdAt">) => Promise<void> }) {
+  const { t } = useI18n();
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
@@ -215,19 +218,19 @@ function AlternativeDialog({ open, saving, activity, onOpenChange, onSubmit }: {
     <Dialog open={open} onOpenChange={(value) => !saving && onOpenChange(value)}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Suggest alternative</DialogTitle>
-          <DialogDescription>Offer another option for the group to consider.</DialogDescription>
+          <DialogTitle>{t("common.suggestAlternative")}</DialogTitle>
+          <DialogDescription>{t("common.offerAlternative")}</DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
-          <div className="space-y-2"><Label htmlFor="alternative-label">Alternative</Label><Input id="alternative-label" name="label" required placeholder="e.g. Modern Art Museum" /></div>
+          <div className="space-y-2"><Label htmlFor="alternative-label">{t("copy.alternative")}</Label><Input id="alternative-label" name="label" required placeholder={t("copy.placeholderMuseum")} /></div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2"><Label htmlFor="alternative-day">Date</Label><Input id="alternative-day" name="dayDate" type="date" defaultValue={activity.dayDate} required /></div>
-            <div className="space-y-2"><Label htmlFor="alternative-time">Start time</Label><Input id="alternative-time" name="startTime" type="time" defaultValue={activity.startTime?.slice(11, 16) ?? ""} /></div>
+            <div className="space-y-2"><Label htmlFor="alternative-day">{t("copy.date")}</Label><Input id="alternative-day" name="dayDate" type="date" defaultValue={activity.dayDate} required /></div>
+            <div className="space-y-2"><Label htmlFor="alternative-time">{t("common.startTime")}</Label><Input id="alternative-time" name="startTime" type="time" defaultValue={activity.startTime?.slice(11, 16) ?? ""} /></div>
           </div>
-          <div className="space-y-2"><Label htmlFor="alternative-location">Location</Label><Input id="alternative-location" name="location" defaultValue={activity.placeName ?? ""} /></div>
+          <div className="space-y-2"><Label htmlFor="alternative-location">{t("common.location")}</Label><Input id="alternative-location" name="location" defaultValue={activity.placeName ?? ""} /></div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" variant="primary" disabled={saving}><Vote aria-hidden />Submit alternative</Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
+            <Button type="submit" variant="primary" disabled={saving}><Vote aria-hidden />{t("common.submitAlternative")}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
 
 import { isLocale, translate, type Locale, type TranslationKey } from "@/lib/i18n/translations";
 
@@ -19,23 +19,25 @@ const defaultContext: I18nContextValue = {
 };
 const I18nContext = createContext<I18nContextValue>(defaultContext);
 
-function getInitialLocale(): Locale {
-  if (typeof window !== "undefined") {
-    try {
-      const storedLocale = window.localStorage.getItem(STORAGE_KEY);
-      if (isLocale(storedLocale)) return storedLocale;
-    } catch {
-      // Fall back to the document locale when storage is unavailable.
-    }
+function readStoredLocale(): Locale | null {
+  try {
+    const storedLocale = window.localStorage.getItem(STORAGE_KEY);
+    return isLocale(storedLocale) ? storedLocale : null;
+  } catch {
+    return null;
   }
-  if (typeof document !== "undefined" && isLocale(document.documentElement.lang)) {
-    return document.documentElement.lang;
-  }
-  return "en";
 }
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(getInitialLocale);
+  // The first render must match the server HTML. A stored locale is applied after hydration.
+  const [locale, setLocaleState] = useState<Locale>("en");
+
+  useLayoutEffect(() => {
+    const storedLocale = readStoredLocale();
+    // First paint must match the server HTML; restore a stored locale once.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time hydration restore
+    if (storedLocale && storedLocale !== "en") setLocaleState(storedLocale);
+  }, []);
 
   const setLocale = useCallback((nextLocale: Locale) => {
     setLocaleState(nextLocale);

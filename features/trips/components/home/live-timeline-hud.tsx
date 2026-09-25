@@ -20,6 +20,11 @@ import { getCurrentDatabase } from "@/lib/db/dexie";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 import type { ActivityChecklistItem, Trip } from "@/features/domain/entities";
+import {
+  isPurchaseOrientedMustDo,
+  spendingCategoryFromActivity,
+} from "@/features/activities/lib/activity-expense-defaults";
+import { ExpenseFormSheet, type ExpenseFormInitialData } from "@/features/expenses/components/expense-form-sheet";
 import type { TimelineItem } from "@/features/trips/lib/home-trips";
 import { getTripCoverGradient, isTripCoverImage } from "@/features/trips/lib/trip-cover";
 import {
@@ -31,6 +36,7 @@ import {
   resolveTripScheduleTimeZone,
   type TemporalState,
 } from "@/features/trips/lib/home-trips";
+import { ActivityAttachmentsSection } from "@/features/activities/components/activity-attachments";
 import {
   ActivityChecklistProgressPill,
   ActivityChecklistQuickActions,
@@ -55,6 +61,7 @@ interface LiveTimelineHudProps {
   items: TimelineItem[];
   active: boolean;
   userId: string;
+  canManageExpenses?: boolean;
 }
 
 /** Prefer live/upcoming stops inside a fixed window of `limit` items. */
@@ -71,7 +78,13 @@ export function visibleTimelineWindow<T extends { state: TemporalState }>(
   return items.slice(start, start + limit);
 }
 
-export function LiveTimelineHud({ trip, items, active, userId }: LiveTimelineHudProps) {
+export function LiveTimelineHud({
+  trip,
+  items,
+  active,
+  userId,
+  canManageExpenses = false,
+}: LiveTimelineHudProps) {
   const { toast } = useToast();
   const { t } = useI18n();
   const coverUrl = isTripCoverImage(trip.coverImageUrl) ? trip.coverImageUrl : null;
@@ -89,6 +102,7 @@ export function LiveTimelineHud({ trip, items, active, userId }: LiveTimelineHud
   const [showAll, setShowAll] = useState(false);
   const [now, setNow] = useState(() => new Date());
   const [optimisticChecklists, setOptimisticChecklists] = useState<Record<string, ActivityChecklistItem[]>>({});
+  const [expenseIntent, setExpenseIntent] = useState<ExpenseFormInitialData | null>(null);
   const checklistWriteVersionRef = useRef(new Map<string, number>());
   const timelineId = useId();
   const selectedActivity = selectedActivityId
@@ -226,6 +240,19 @@ export function LiveTimelineHud({ trip, items, active, userId }: LiveTimelineHud
       } else {
         await activityRepository.update(activityId, { checklist: next });
       }
+      if (
+        canManageExpenses &&
+        event?.action === "completed_checklist_item" &&
+        isPurchaseOrientedMustDo(event.itemTitle)
+      ) {
+        const activity = items.find((item) => item.id === activityId);
+        setExpenseIntent({
+          activityId,
+          description: event.itemTitle.trim(),
+          date: activity?.dayDate,
+          category: spendingCategoryFromActivity(activity?.category),
+        });
+      }
     } catch {
       if (checklistWriteVersionRef.current.get(activityId) === writeVersion) {
         setOptimisticChecklists((current) => {
@@ -353,10 +380,34 @@ export function LiveTimelineHud({ trip, items, active, userId }: LiveTimelineHud
           }}
           timeZone={scheduleTimeZone}
           currentUserId={userId}
+          dismissible={!expenseIntent}
           onClose={() => setSelectedActivityId(null)}
           onChecklistChange={(checklist, event) => void saveChecklist(selectedActivity.id, checklist, event)}
         />
       )}
+
+      {expenseIntent ? (
+        <ExpenseFormSheet
+          key={`${expenseIntent.activityId}-${expenseIntent.description}`}
+          open
+          tripId={trip.id}
+          userId={userId}
+          currency={trip.baseCurrency}
+          initialData={expenseIntent}
+          onClose={() => setExpenseIntent(null)}
+          onSaved={() => {
+            toast({
+              title: t("copy.expenseSavedForActivity"),
+              description: t("copy.expenseSavedForActivityDescription"),
+              variant: "success",
+            });
+            setExpenseIntent(null);
+          }}
+          onError={(message) =>
+            toast({ title: t("copy.unableSaveExpense"), description: message, variant: "error" })
+          }
+        />
+      ) : null}
     </section>
   );
 }
@@ -634,12 +685,14 @@ function TimelineCard({
 function ActivityDetailModal({
   activity,
   currentUserId,
+  dismissible = true,
   onClose,
   onChecklistChange,
 }: {
   activity: TimelineCardItem;
   timeZone?: string | null;
   currentUserId: string;
+  dismissible?: boolean;
   onClose: () => void;
   onChecklistChange: (
     checklist: ActivityChecklistItem[],
@@ -667,7 +720,7 @@ function ActivityDetailModal({
           : null;
 
   return (
-    <Dialog open onOpenChange={(value) => !value && onClose()}>
+    <Dialog open onOpenChange={(value) => !value && dismissible && onClose()}>
       <DialogContent className="max-h-[90dvh] w-[calc(100vw-2rem)] max-w-lg overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{activity.title}</DialogTitle>
@@ -760,6 +813,7 @@ function ActivityDetailModal({
               </div>
             </>
           )}
+          <ActivityAttachmentsSection attachments={activity.attachments ?? []} />
         </div>
 
         <DialogFooter>

@@ -1,5 +1,7 @@
 "use client";
 
+import { localizeThrownError } from "@/lib/i18n/localize-error";
+
 import { CalendarDays, ContactRound, Mail, ShieldCheck, Sparkles, UserRound } from "lucide-react";
 import { useState } from "react";
 
@@ -24,9 +26,10 @@ import { contactRepository } from "@/features/contacts/data/dexie-contact-reposi
 import type { CurrentPublicProfile } from "@/features/contacts/lib/profile-directory";
 import type { Contact, TravelerType, Trip } from "@/features/domain/entities";
 import { useI18n } from "@/lib/i18n/i18n-provider";
+import type { TranslationKey } from "@/lib/i18n/translations";
 import { cn } from "@/lib/utils";
 
-const STEPS = ["Identity", "Contact details", "Travel details"];
+const STEP_KEYS: TranslationKey[] = ["common.identity", "common.contactDetails", "common.travelDetails"];
 
 function parseTags(value: string): string[] {
   return [...new Set(value.split(",").map((tag) => tag.trim().toLowerCase()).filter(Boolean))];
@@ -139,6 +142,7 @@ function ContactForm({
   setPending: (pending: boolean) => void;
 }) {
   const { t } = useI18n();
+  const steps = STEP_KEYS.map((key) => t(key));
   const operation = contact ? "edit" : "create";
   const unified = !contact && !attachToTrip && Boolean(ownProfile);
   const isLinkedToViatik = Boolean(contact?.linkedProfileId);
@@ -156,7 +160,7 @@ function ContactForm({
   // actually reaches them. Submission is only allowed once every step is visited.
   const [visited, setVisited] = useState<boolean[]>(() => [
     true,
-    ...Array(STEPS.length - 1).fill(false),
+    ...Array(STEP_KEYS.length - 1).fill(false),
   ]);
   const allVisited = visited.every(Boolean);
 
@@ -171,7 +175,7 @@ function ContactForm({
           setField("avatarUrl", url);
           setField("avatarSeed", null);
         },
-        () => setError("The selected image could not be read.")
+        () => setError(t("copy.imageUnreadable"))
       );
       return;
     }
@@ -227,13 +231,13 @@ function ContactForm({
     }
     // Forward jumps require every preceding step to have been visited so the
     // flow is mandatory: you can't skip ahead to submit.
-    const skipped = STEPS.slice(0, target - 1).some((_, index) => !visited[index]);
+    const skipped = steps.slice(0, target - 1).some((_, index) => !visited[index]);
     if (skipped) {
       const firstUnvisited = visited.findIndex((visitedStep) => !visitedStep);
       setNotice(
         firstUnvisited === -1
           ? null
-          : `Complete ${STEPS[firstUnvisited]} before moving on.`
+          : `Complete ${steps[firstUnvisited]} before moving on.`
       );
       return;
     }
@@ -282,7 +286,7 @@ function ContactForm({
           return;
         }
       } catch (cause) {
-        setError(cause instanceof Error ? cause.message : "Unable to check upcoming trips.");
+        setError(localizeThrownError(cause, t, "Unable to check upcoming trips."));
         return;
       } finally {
         setPending(false);
@@ -298,11 +302,11 @@ function ContactForm({
       onOpenChange(false);
     } catch (cause) {
       setError(
-        cause instanceof Error
-          ? cause.message
-          : operation === "edit"
-            ? "Unable to update contact."
-            : "Unable to create contact."
+        localizeThrownError(
+          cause,
+          t,
+          operation === "edit" ? "copy.unableUpdateContact" : "copy.unableCreateContact"
+        )
       );
     } finally {
       setPending(false);
@@ -311,7 +315,7 @@ function ContactForm({
 
   const manualForm = (
     <form onSubmit={submit} className="space-y-6 px-4 pb-6 pt-5 sm:px-6 sm:pb-6 sm:pt-6">
-        <StepHeader step={step} onNavigate={handleStepNavigate} />
+        <StepHeader step={step} steps={steps} onNavigate={handleStepNavigate} />
 
         {step === 1 && (
           <div className="space-y-6">
@@ -343,11 +347,11 @@ function ContactForm({
                       <span className="text-sm font-semibold truncate">{values.fullName}</span>
                       <Badge variant="default" className="gap-1 text-[10px] font-semibold py-0.5 px-2">
                         <Sparkles className="size-3" />
-                        {contact?.linkedHandle ? `@${contact.linkedHandle}` : "Viatik Account"}
+                        {contact?.linkedHandle ? `@${contact.linkedHandle}` : t("copy.viatikAccount")}
                       </Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Profile photo and full name are managed by the linked Viatik account and cannot be modified.
+                      {t("copy.profileManaged")}
                     </p>
                   </div>
                 </div>
@@ -367,7 +371,7 @@ function ContactForm({
                   value={values.fullName}
                   onChange={(event) => setField("fullName", event.target.value)}
                   error={fieldErrors.fullName}
-                  placeholder="Jordan Rivera"
+                  placeholder={t("copy.placeholderJordan")}
                   disabled={isLinkedToViatik}
                   helper={
                     isLinkedToViatik
@@ -384,23 +388,23 @@ function ContactForm({
                   onChange={(event) =>
                     setField("relationship", event.target.value as Contact["relationship"])
                   }
-                  helper="Helps organize your private contacts."
+                  helper={t("copy.relationshipHelper")}
                 >
-                  <option value="family">Family</option>
-                  <option value="friend">Friend</option>
-                  <option value="coworker">Coworker</option>
-                  <option value="roommate">Roommate</option>
-                  <option value="other">Other</option>
+                  <option value="family">{t("copy.family")}</option>
+                  <option value="friend">{t("copy.friend")}</option>
+                  <option value="coworker">{t("copy.coworker")}</option>
+                  <option value="roommate">{t("copy.roommate")}</option>
+                  <option value="other">{t("common.other")}</option>
                 </SelectField>
                 <SelectField
                   label={t("common.travelerType")}
                   name="travelerType"
                   value={values.travelerType}
                   onChange={(event) => setField("travelerType", event.target.value as TravelerType)}
-                  helper="Used for traveler counts and planning."
+                  helper={t("copy.travelerTypeHelper")}
                 >
-                  <option value="adult">Adult</option>
-                  <option value="child">Child</option>
+                  <option value="adult">{t("copy.adult")}</option>
+                  <option value="child">{t("copy.child")}</option>
                 </SelectField>
               </div>
             </FormSection>
@@ -412,21 +416,21 @@ function ContactForm({
             <FormSection
               icon={<Mail className="size-5" />}
               title={t("common.contactDetails")}
-              description="Optional details that remain private to your account."
+              description={t("copy.privateDetailsHelp")}
             >
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field
-                  label="Email"
+                  label={t("copy.email")}
                   name="email"
                   type="email"
                   inputMode="email"
                   autoComplete="email"
                   value={values.email}
                   onChange={(event) => setField("email", event.target.value)}
-                  placeholder="jordan@example.com"
+                  placeholder={t("copy.placeholderJordanEmail")}
                 />
                 <Field
-                  label="Phone"
+                  label={t("common.phone")}
                   name="phone"
                   type="tel"
                   inputMode="tel"
@@ -440,27 +444,27 @@ function ContactForm({
             <FormSection
               icon={<ShieldCheck className="size-5" />}
               title={t("common.emergencyContact")}
-              description="Private safety details for the person to contact during an emergency."
+              description={t("copy.emergencyPrivate")}
             >
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field
-                  label="Contact name"
+                  label={t("common.contactName")}
                   name="emergencyContactName"
                   value={values.emergencyContactName}
                   onChange={(event) => setField("emergencyContactName", event.target.value)}
-                  placeholder="Jane Doe"
+                  placeholder={t("copy.placeholderJane")}
                 />
                 <Field
-                  label="Relationship to traveler"
+                  label={t("copy.relationshipToTraveler")}
                   name="emergencyContactRelationship"
                   value={values.emergencyContactRelationship}
                   onChange={(event) =>
                     setField("emergencyContactRelationship", event.target.value)
                   }
-                  placeholder="Parent, partner, friend…"
+                  placeholder={t("copy.placeholderRelationship")}
                 />
                 <Field
-                  label="Emergency phone"
+                  label={t("common.emergencyPhone")}
                   name="emergencyContactPhone"
                   type="tel"
                   inputMode="tel"
@@ -478,11 +482,11 @@ function ContactForm({
             <FormSection
               icon={<CalendarDays className="size-5" />}
               title={t("common.travelDetails")}
-              description="Optional context for planning age-aware activities and future trips."
+              description={t("copy.optionalAgeContextFuture")}
             >
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field
-                  label="Date of birth"
+                  label={t("common.dateOfBirth")}
                   name="birthDate"
                   type="date"
                   value={values.birthDate}
@@ -495,7 +499,7 @@ function ContactForm({
                   name="preferredLanguage"
                   value={values.preferredLanguage}
                   onChange={(event) => setField("preferredLanguage", event.target.value)}
-                  placeholder="English"
+                  placeholder={t("settings.languagePlaceholder")}
                   maxLength={35}
                 />
                 <SelectField
@@ -504,53 +508,52 @@ function ContactForm({
                   value={values.preferredCurrency}
                   onChange={(event) => setField("preferredCurrency", event.target.value)}
                 >
-                  <option value="">Not specified</option>
-                  <option value="USD">USD — US Dollar</option>
-                  <option value="EUR">EUR — Euro</option>
-                  <option value="GBP">GBP — British Pound</option>
-                  <option value="CAD">CAD — Canadian Dollar</option>
-                  <option value="MXN">MXN — Mexican Peso</option>
-                  <option value="JPY">JPY — Japanese Yen</option>
+                  <option value="">{t("common.notSpecified")}</option>
+                  <option value="USD">{t("copy.usd")}</option>
+                  <option value="EUR">{t("copy.eur")}</option>
+                  <option value="GBP">{t("copy.gbp")}</option>
+                  <option value="CAD">{t("copy.cad")}</option>
+                  <option value="MXN">{t("copy.mxn")}</option>
+                  <option value="JPY">{t("copy.jpy")}</option>
                 </SelectField>
                 <Field
-                  label="Dietary restrictions"
+                  label={t("common.dietaryRestrictions")}
                   name="dietaryRestrictions"
                   value={values.dietaryRestrictions}
                   onChange={(event) => setField("dietaryRestrictions", event.target.value)}
-                  placeholder="vegetarian, gluten-free"
-                  helper="Separate multiple items with commas."
+                  placeholder={t("copy.placeholderDiet")}
+                  helper={t("common.separateComma")}
                 />
                 <Field
-                  label="Allergies"
+                  label={t("common.allergies")}
                   name="allergies"
                   value={values.allergies}
                   onChange={(event) => setField("allergies", event.target.value)}
-                  placeholder="nuts, shellfish"
-                  helper="Separate multiple items with commas."
+                  placeholder={t("copy.placeholderAllergies")}
+                  helper={t("common.separateComma")}
                 />
                 <Field
-                  label="Passport issuing country"
+                  label={t("copy.passportIssuingCountry")}
                   name="passportIssuingCountry"
                   value={values.passportIssuingCountry}
                   onChange={(event) => setField("passportIssuingCountry", event.target.value)}
                   placeholder="US"
                   minLength={2}
                   maxLength={2}
-                  helper="Two-letter country code only."
+                  helper={t("copy.passportCountryHelper")}
                 />
                 <Field
-                  label="Passport expiration"
+                  label={t("common.passportExpiration")}
                   name="passportExpiresOn"
                   type="date"
                   value={values.passportExpiresOn}
                   onChange={(event) => setField("passportExpiresOn", event.target.value)}
-                  helper="No passport number is stored."
+                  helper={t("copy.noPassportStored")}
                 />
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="contact-notes">{t("common.notes")}</Label>
                   <p id="contact-notes-help" className="text-xs leading-5 text-muted-foreground">
-                    Add dietary preferences, accessibility needs, or planning context. Avoid
-                    passport numbers and other sensitive identity documents.
+                    {t("copy.privateNotesHelp")}
                   </p>
                   <textarea
                     id="contact-notes"
@@ -559,7 +562,7 @@ function ContactForm({
                     rows={3}
                     value={values.notes}
                     onChange={(event) => setField("notes", event.target.value)}
-                    placeholder="Vegetarian, prefers aisle seats…"
+                    placeholder={t("copy.vegetarianNote")}
                     aria-describedby="contact-notes-help"
                     className="w-full resize-y rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50"
                   />
@@ -568,7 +571,7 @@ function ContactForm({
             </FormSection>
             {upcoming.length > 0 && (
               <fieldset className="space-y-3 rounded-lg border p-3">
-                <legend className="px-1 text-sm font-semibold">Update upcoming trips?</legend>
+                <legend className="px-1 text-sm font-semibold">{t("copy.updateUpcomingTrips")}</legend>
                 <label className="flex gap-2 text-sm">
                   <input
                     type="radio"
@@ -576,7 +579,7 @@ function ContactForm({
                     checked={!propagate}
                     onChange={() => setPropagate(false)}
                   />
-                  Contact only
+                  {t("copy.contactOnly")}
                 </label>
                 <label className="flex gap-2 text-sm">
                   <input
@@ -585,7 +588,7 @@ function ContactForm({
                     checked={propagate}
                     onChange={() => setPropagate(true)}
                   />
-                  Update traveler snapshots
+                  {t("copy.updateTravelerSnapshots")}
                 </label>
                 {propagate && (
                   <div className="ml-5 space-y-2">
@@ -643,21 +646,21 @@ function ContactForm({
               {t("common.back")}
             </Button>
           )}
-          {step < STEPS.length ? (
+          {step < steps.length ? (
             <Button type="button" onClick={handleNext}>
-              Next
+              {t("common.next")}
             </Button>
           ) : (
             <Button type="submit" variant="primary" disabled={pending || !allVisited}>
               {pending
                 ? operation === "edit"
-                  ? "Updating…"
-                  : "Creating…"
+                  ? t("common.updating")
+                  : t("common.creating")
                 : contact
-                  ? "Update contact"
+                  ? t("common.updateContact")
                   : attachToTrip
-                    ? "Save and add"
-                    : "Save contact"}
+                    ? t("common.saveAndAdd")
+                    : t("common.saveContact")}
             </Button>
           )}
         </DialogFooter>
@@ -667,25 +670,25 @@ function ContactForm({
   const relationshipForm = (
     <form onSubmit={submit} className="space-y-6 px-4 pb-6 pt-5 sm:px-6 sm:pb-6 sm:pt-6">
       <div className="space-y-2">
-        <Label htmlFor="contact-relationship-only">Relationship</Label>
+        <Label htmlFor="contact-relationship-only">{t("common.relationship")}</Label>
         <select
           id="contact-relationship-only"
-          aria-label="Relationship"
+          aria-label={t("common.relationship")}
           value={values.relationship}
           onChange={(event) => setField("relationship", event.target.value as Contact["relationship"])}
           className="h-10 w-full rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
         >
-          <option value="family">Family</option>
-          <option value="friend">Friend</option>
-          <option value="coworker">Coworker</option>
-          <option value="roommate">Roommate</option>
-          <option value="other">Other</option>
+          <option value="family">{t("copy.family")}</option>
+          <option value="friend">{t("copy.friend")}</option>
+          <option value="coworker">{t("copy.coworker")}</option>
+          <option value="roommate">{t("copy.roommate")}</option>
+          <option value="other">{t("common.other")}</option>
         </select>
-        <p className="text-xs text-muted-foreground">The linked Viatik profile name and avatar cannot be changed here.</p>
+        <p className="text-xs text-muted-foreground">{t("copy.linkedProfileLocked")}</p>
       </div>
       {error && <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
       <DialogFooter>
-        <Button type="submit" variant="primary" disabled={pending}>{pending ? "Saving…" : "Save relationship"}</Button>
+        <Button type="submit" variant="primary" disabled={pending}>{pending ? t("settings.saving") : "Save relationship"}</Button>
       </DialogFooter>
     </form>
   );
@@ -698,22 +701,22 @@ function ContactForm({
         </span>
         <div className="space-y-1 sm:space-y-1.5">
           <DialogTitle>
-            {contact ? "Edit contact" : attachToTrip ? "Add someone new" : "Add Contact"}
+            {contact ? t("copy.editContact") : attachToTrip ? t("common.addSomeoneNew") : t("copy.addContact")}
           </DialogTitle>
           <DialogDescription className="text-xs sm:text-sm">
             {contact
-              ? "Keep their reusable travel profile and private details up to date."
+              ? t("common.contactProfileUpToDate")
               : unified
-                ? "Choose how you want to add someone to your contacts."
-                : "Create a reusable travel profile for faster trip planning."}
+                ? t("common.chooseAddContact")
+                : t("common.reusableProfile")}
           </DialogDescription>
         </div>
       </div>
       {unified && (
         <TabsList className="mt-4">
-          <TabsTrigger value="manual">Manual</TabsTrigger>
-          <TabsTrigger value="viatik-id">Viatik ID</TabsTrigger>
-          <TabsTrigger value="scan-qr">Scan QR</TabsTrigger>
+          <TabsTrigger value="manual">{t("common.manual")}</TabsTrigger>
+          <TabsTrigger value="viatik-id">{t("common.viatikId")}</TabsTrigger>
+          <TabsTrigger value="scan-qr">{t("common.scanQrTab")}</TabsTrigger>
         </TabsList>
       )}
     </DialogHeader>
@@ -768,15 +771,18 @@ function ContactForm({
 
 function StepHeader({
   step,
+  steps,
   onNavigate,
 }: {
   step: number;
+  steps: string[];
   onNavigate: (step: number) => void;
 }) {
+  const { t } = useI18n();
   return (
-    <nav aria-label="Contact setup progress" className="mb-2">
+    <nav aria-label={t("copy.contactSetupProgress")} className="mb-2">
       <ol className="flex gap-3 sm:gap-4">
-        {STEPS.map((title, index) => {
+        {steps.map((title, index) => {
           const number = index + 1;
           const active = step === number;
           const completed = step > number;

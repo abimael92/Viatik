@@ -126,6 +126,8 @@ function WeatherDayCard({
   forecast: DailyForecast;
   warnings: WeatherWarning[];
 }) {
+  const { t } = useI18n();
+
   const day = getDayWeather(forecast, warnings, dayDate);
 
   return (
@@ -140,7 +142,7 @@ function WeatherDayCard({
         <>
           <div className="flex w-full items-center justify-between gap-2">
             <p className="text-[11px] font-semibold uppercase text-muted-foreground">{formatDay(dayDate)}</p>
-            {day.warnings.length > 0 && <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-semibold text-foreground">Warning</span>}
+            {day.warnings.length > 0 && <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-semibold text-foreground">{t("copy.warning")}</span>}
           </div>
           <div className="mt-2 flex flex-1 items-center gap-3">
             <WeatherIcon icon={weatherIconName(day.summary.icon)} className="size-9 shrink-0 text-primary" />
@@ -153,7 +155,7 @@ function WeatherDayCard({
             </div>
           </div>
         </>
-      ) : <><Cloud className="size-7 text-muted-foreground" /><p className="mt-2 text-[11px] font-semibold uppercase text-muted-foreground">{formatDay(dayDate)}</p><p className="mt-1 text-sm font-semibold">No data</p></>}
+      ) : <><Cloud className="size-7 text-muted-foreground" /><p className="mt-2 text-[11px] font-semibold uppercase text-muted-foreground">{formatDay(dayDate)}</p><p className="mt-1 text-sm font-semibold">{t("copy.noWeatherData")}</p></>}
     </div>
   );
 }

@@ -14,25 +14,26 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
-function passphraseStrength(passphrase: string) {
+function passphraseStrength(passphrase: string, t: ReturnType<typeof useI18n>["t"]) {
   const rules = [
-    { label: "At least 8 characters", met: passphrase.length >= 8 },
-    { label: "Uppercase letter", met: /[A-Z]/.test(passphrase) },
-    { label: "Lowercase letter", met: /[a-z]/.test(passphrase) },
-    { label: "A number", met: /\d/.test(passphrase) },
-    { label: "A symbol", met: /[^A-Za-z0-9]/.test(passphrase) },
+    { label: t("auth.passwordHint"), met: passphrase.length >= 8 },
+    { label: t("copy.uppercaseLetter"), met: /[A-Z]/.test(passphrase) },
+    { label: t("copy.lowercaseLetter"), met: /[a-z]/.test(passphrase) },
+    { label: t("copy.aNumber"), met: /\d/.test(passphrase) },
+    { label: t("copy.aSymbol"), met: /[^A-Za-z0-9]/.test(passphrase) },
   ];
   const score = rules.filter((rule) => rule.met).length;
   const meta =
     score <= 2
-      ? { label: "Weak", bar: "bg-destructive" }
+      ? { label: t("copy.weak"), bar: "bg-destructive" }
       : score === 3
-        ? { label: "Fair", bar: "bg-amber-500" }
+        ? { label: t("copy.fair"), bar: "bg-amber-500" }
         : score === 4
-          ? { label: "Good", bar: "bg-lime-500" }
-          : { label: "Strong", bar: "bg-success" };
+          ? { label: t("copy.good"), bar: "bg-lime-500" }
+          : { label: t("copy.strong"), bar: "bg-success" };
   return { score, rules, meta };
 }
 
@@ -53,12 +54,13 @@ export function VaultUnlockDialog({
   pending?: boolean;
   error?: string | null;
 }) {
+  const { t } = useI18n();
   const [passphrase, setPassphrase] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPassphrase, setShowPassphrase] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [validation, setValidation] = useState<string | null>(null);
-  const strength = passphraseStrength(passphrase);
+  const strength = passphraseStrength(passphrase, t);
   const passphrasesMatch = passphrase === confirm;
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -66,7 +68,7 @@ export function VaultUnlockDialog({
     setValidation(null);
 
     if (passphrase.length < 8) {
-      setValidation("Passphrase must be at least 8 characters.");
+      setValidation(t("auth.passwordHint"));
       return;
     }
     if (mode === "create" && strength.score < 4) {
@@ -85,7 +87,7 @@ export function VaultUnlockDialog({
     }
   }
 
-  const title = mode === "create" ? "Create vault passphrase" : "Unlock vault";
+  const title = mode === "create" ? t("copy.createVaultPassphrase") : t("copy.unlockVault");
   const description =
     mode === "create"
       ? "This passphrase is the only way to decrypt your entries. If you lose it, no one—including Viatik—can recover your data."
@@ -134,7 +136,7 @@ export function VaultUnlockDialog({
               </button>
             </div>
             <p id="vault-passphrase-help" className="text-xs text-muted-foreground">
-              Use a strong, memorable passphrase. Minimum 8 characters.
+              {t("copy.passphraseHelp")}
             </p>
             {mode === "create" && passphrase && (
               <>
@@ -163,7 +165,7 @@ export function VaultUnlockDialog({
 
           {mode === "create" && (
             <div className="space-y-2">
-              <Label htmlFor="vault-passphrase-confirm">Confirm passphrase</Label>
+              <Label htmlFor="vault-passphrase-confirm">{t("copy.confirmPassphrase")}</Label>
               <div className="relative">
                 <Input
                   id="vault-passphrase-confirm"
@@ -188,7 +190,7 @@ export function VaultUnlockDialog({
               </div>
               {confirm && !passphrasesMatch && (
                 <p id="vault-passphrase-mismatch" className="text-xs text-destructive">
-                  Passphrases don&apos;t match.
+                  {t("copy.passphrasesMismatch")}
                 </p>
               )}
             </div>
@@ -196,8 +198,7 @@ export function VaultUnlockDialog({
 
           {mode === "create" && (
             <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
-              <strong>Important:</strong> If you forget this passphrase, your vault entries cannot be
-              recovered. Store it somewhere safe.
+              <strong>{t("copy.important")}</strong> {t("copy.passphraseWarning")}
             </div>
           )}
 
@@ -209,10 +210,10 @@ export function VaultUnlockDialog({
 
           <DialogFooter>
             <Button type="button" variant="outline" disabled={pending} onClick={() => onOpenChange(false)}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button type="submit" variant="primary" disabled={pending}>
-              {pending ? (mode === "create" ? "Creating…" : "Unlocking…") : mode === "create" ? "Create vault" : "Unlock"}
+              {pending ? (mode === "create" ? t("common.creating") : t("copy.unlocking")) : mode === "create" ? t("copy.createVault") : t("copy.unlock")}
             </Button>
           </DialogFooter>
         </form>

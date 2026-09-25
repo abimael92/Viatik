@@ -1,5 +1,7 @@
 "use client";
 
+import { localizeThrownError } from "@/lib/i18n/localize-error";
+
 import { BedDouble, Landmark, LocateFixed, MapPin, Minus, NotebookPen, Plus, TrainFront, Trash2, Utensils } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -314,7 +316,7 @@ export function TripMapView({
       setPinCategory("place");
       setPinMode(false);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to save pin.");
+      setError(localizeThrownError(cause, t, "Unable to save pin."));
     } finally {
       setSaving(false);
     }
@@ -326,7 +328,7 @@ export function TripMapView({
       await pinRepository.remove(marker.id);
       setSelected(null);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to delete pin.");
+      setError(localizeThrownError(cause, t, "Unable to delete pin."));
     }
   }
 

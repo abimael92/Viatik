@@ -3,20 +3,27 @@
 import { ArrowDown, ArrowUp, HandCoins, ReceiptText, Scale } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
+import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { Heading } from "@/components/ui/heading";
+import { useToast } from "@/components/ui/toast";
 import { collaborationRepository } from "@/features/collaboration/data/dexie-collaboration-repository";
 import type { ProfileSummary } from "@/features/domain/entities";
 import { formatMinorUnits, type CurrencyCode, type MinorUnits } from "@/features/domain/money";
-import { useSettlement } from "@/features/expenses/lib/use-settlement";
-import type { SettlementTransfer } from "@/features/expenses/lib/settlement";
+import { SettleUpSheet } from "@/features/expenses/components/settle-up-sheet";
+import { useTripBalances } from "@/features/expenses/lib/use-trip-balances";
+import type { PairwiseDebt } from "@/features/expenses/lib/trip-balances";
 import { useLocalProfile } from "@/features/profile/lib/use-local-profile";
+import { useI18n } from "@/lib/i18n/i18n-provider";
+
+function isMemberUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
 
 /**
- * Splitwise-style settlement for a trip. Shows each traveler's net standing
- * and a step-by-step, debt-minimized list of the fewest cash transfers needed
- * to settle everyone up. All data is read from the local-first Dexie layer, so
- * it works fully offline.
+ * Splitwise-style settlement for a trip. Pairwise nets come from the
+ * immutable ledger (expenses minus settlements). Settle Up appends a
+ * repayment and never mutates a past expense.
  */
 export function SettlementView({
   tripId,
@@ -27,9 +34,12 @@ export function SettlementView({
   userId: string;
   currency: CurrencyCode;
 }) {
-  const { loading, balances, transfers, members } = useSettlement(tripId, currency);
+  const { t } = useI18n();
+  const { toast } = useToast();
+  const { loading, balances, pairwiseDebts, members } = useTripBalances(tripId, currency);
   const localProfile = useLocalProfile(userId);
   const [authorizedProfiles, setAuthorizedProfiles] = useState<ProfileSummary[]>([]);
+  const [selectedDebt, setSelectedDebt] = useState<PairwiseDebt | null>(null);
   const memberIds = useMemo(
     () => [...new Set(members.map((member) => member.userId).filter((id): id is string => Boolean(id)))],
     [members]
@@ -76,10 +86,10 @@ export function SettlementView({
         </span>
         <div>
           <Heading level={2} id="settlement-heading" className="text-xl font-bold">
-            Settlement
+            {t("copy.settlement")}
           </Heading>
           <p className="text-sm text-muted-foreground">
-            Net balances and the fewest transfers to settle up.
+            {t("copy.whoOwesWhomHelp")}
           </p>
         </div>
       </div>
@@ -92,9 +102,34 @@ export function SettlementView({
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           <StandingCard balances={balances} identity={identity} currency={currency} />
-          <TransfersCard transfers={transfers} identity={identity} currency={currency} />
+          <DebtsCard
+            debts={pairwiseDebts}
+            identity={identity}
+            onSettle={setSelectedDebt}
+          />
         </div>
       )}
+
+      <SettleUpSheet
+        key={selectedDebt ? `${selectedDebt.payerId}-${selectedDebt.receiverId}-${selectedDebt.amountMinor}` : "closed"}
+        open={selectedDebt !== null}
+        tripId={tripId}
+        userId={userId}
+        debt={selectedDebt}
+        payerName={selectedDebt ? identity(selectedDebt.payerId).name : ""}
+        receiverName={selectedDebt ? identity(selectedDebt.receiverId).name : ""}
+        onClose={() => setSelectedDebt(null)}
+        onSaved={() =>
+          toast({
+            title: t("copy.settlementLogged"),
+            description: t("copy.settlementLoggedHelp"),
+            variant: "success",
+          })
+        }
+        onError={(message) =>
+          toast({ title: t("copy.unableSaveSettlement"), description: message, variant: "error" })
+        }
+      />
     </section>
   );
 }
@@ -116,6 +151,7 @@ function StandingCard({
   identity: IdentityLookup;
   currency: CurrencyCode;
 }) {
+  const { t } = useI18n();
   const standing = Object.entries(balances)
     .filter(([, balance]) => balance !== 0n)
     .sort((a, b) => Number(b[1] - a[1]));
@@ -124,12 +160,12 @@ function StandingCard({
     <section aria-labelledby="settlement-standing-heading" className="rounded-2xl border bg-card p-4">
       <div className="flex items-center gap-2">
         <Scale className="size-4 text-muted-foreground" aria-hidden />
-        <h3 id="settlement-standing-heading" className="text-sm font-semibold">Traveler standing</h3>
+        <h3 id="settlement-standing-heading" className="text-sm font-semibold">{t("copy.travelerStanding")}</h3>
       </div>
 
       {standing.length === 0 ? (
         <p className="mt-3 text-sm text-muted-foreground">
-          Everyone is settled up. Add expenses to see balances.
+          {t("copy.everyoneSettled")}
         </p>
       ) : (
         <ul className="mt-3 divide-y">
@@ -177,47 +213,53 @@ function IdentityLabel({ identity }: { identity: SettlementIdentity }) {
   );
 }
 
-function TransfersCard({
-  transfers,
+function DebtsCard({
+  debts,
   identity,
-  currency,
+  onSettle,
 }: {
-  transfers: SettlementTransfer[];
+  debts: PairwiseDebt[];
   identity: IdentityLookup;
-  currency: CurrencyCode;
+  onSettle: (debt: PairwiseDebt) => void;
 }) {
+  const { t } = useI18n();
   return (
     <section aria-labelledby="settlement-transfers-heading" className="rounded-2xl border bg-card p-4">
       <div className="flex items-center gap-2">
         <ReceiptText className="size-4 text-muted-foreground" aria-hidden />
-        <h3 id="settlement-transfers-heading" className="text-sm font-semibold">Optimal settlement</h3>
+        <h3 id="settlement-transfers-heading" className="text-sm font-semibold">{t("copy.whoOwesWhom")}</h3>
       </div>
 
-      {transfers.length === 0 ? (
+      {debts.length === 0 ? (
         <p className="mt-3 text-sm text-muted-foreground">
-          No transfers needed — everyone is already settled.
+          {t("copy.noTransfers")}
         </p>
       ) : (
         <ol className="mt-3 space-y-2">
-          {transfers.map((transfer, index) => {
-            const from = identity(transfer.fromUserId);
-            const to = identity(transfer.toUserId);
+          {debts.map((debt) => {
+            const from = identity(debt.payerId);
+            const to = identity(debt.receiverId);
+            const canSettle = isMemberUuid(debt.payerId) && isMemberUuid(debt.receiverId);
             return (
               <li
-                key={`${transfer.fromUserId}-${transfer.toUserId}-${index}`}
-                className="flex items-center gap-3 rounded-lg border bg-background px-3 py-2.5"
+                key={`${debt.payerId}-${debt.receiverId}`}
+                className="flex flex-col gap-3 rounded-lg border bg-background px-3 py-2.5 sm:flex-row sm:items-center"
               >
-                <span className="grid size-6 shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
-                  {index + 1}
-                </span>
                 <p className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 text-sm">
                   <IdentityLabel identity={from} />
-                  <span className="text-muted-foreground">owes</span>
+                  <span className="text-muted-foreground">{t("copy.owes")}</span>
                   <IdentityLabel identity={to} />
                 </p>
-                <span className="shrink-0 font-mono text-sm font-semibold tabular-nums">
-                  {formatMinorUnits(transfer.amountMinor, currency)} {currency}
-                </span>
+                <div className="flex items-center justify-between gap-3 sm:justify-end">
+                  <span className="shrink-0 font-mono text-sm font-semibold tabular-nums">
+                    {formatMinorUnits(debt.amountMinor, debt.currency)} {debt.currency}
+                  </span>
+                  {canSettle && (
+                    <Button type="button" variant="primary" onClick={() => onSettle(debt)}>
+                      {t("copy.settleUp")}
+                    </Button>
+                  )}
+                </div>
               </li>
             );
           })}

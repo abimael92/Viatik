@@ -2,6 +2,7 @@
 
 import React, { Component, ErrorInfo, ReactNode } from "react";
 
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { logger } from "@/lib/observability/logger";
 
 interface Props {
@@ -13,6 +14,60 @@ interface Props {
 interface State {
   hasError: boolean;
   error: Error | null;
+}
+
+function DefaultErrorFallback({
+  error,
+  onTryAgain,
+}: {
+  error: Error | null;
+  onTryAgain: () => void;
+}) {
+  const { t } = useI18n();
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-zinc-50 p-4 dark:bg-black">
+      <div className="max-w-md rounded-lg border border-zinc-200 bg-white p-6 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+        <h2 className="mb-2 text-xl font-semibold text-zinc-900 dark:text-zinc-50">
+          {t("copy.somethingWentWrong")}
+        </h2>
+        <p className="mb-4 text-zinc-600 dark:text-zinc-400">{t("copy.errorApology")}</p>
+        <div className="flex gap-3">
+          <button
+            onClick={() => window.location.reload()}
+            className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
+            {t("copy.reloadPage")}
+          </button>
+          <button
+            onClick={onTryAgain}
+            className="rounded-lg border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          >
+            {t("copy.tryAgain")}
+          </button>
+        </div>
+        {process.env.NODE_ENV === "development" && error && (
+          <details className="mt-4">
+            <summary className="cursor-pointer text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+              {t("copy.errorDetailsDev")}
+            </summary>
+            <pre className="mt-2 overflow-auto rounded bg-zinc-100 p-3 text-xs text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200">
+              {error.toString()}
+              {error.stack}
+            </pre>
+          </details>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function GracefulErrorFallback() {
+  const { t } = useI18n();
+  return (
+    <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+      {t("copy.sectionLoadFailed")}
+    </div>
+  );
 }
 
 /**
@@ -54,41 +109,10 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div className="flex min-h-screen items-center justify-center bg-zinc-50 p-4 dark:bg-black">
-          <div className="max-w-md rounded-lg border border-zinc-200 bg-white p-6 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
-            <h2 className="mb-2 text-xl font-semibold text-zinc-900 dark:text-zinc-50">
-              Something went wrong
-            </h2>
-            <p className="mb-4 text-zinc-600 dark:text-zinc-400">
-              We apologize for the inconvenience. The error has been logged and our team will look into it.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => window.location.reload()}
-                className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-              >
-                Reload page
-              </button>
-              <button
-                onClick={() => this.setState({ hasError: false, error: null })}
-                className="rounded-lg border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-              >
-                Try again
-              </button>
-            </div>
-            {process.env.NODE_ENV === "development" && this.state.error && (
-              <details className="mt-4">
-                <summary className="cursor-pointer text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-                  Error details (development only)
-                </summary>
-                <pre className="mt-2 overflow-auto rounded bg-zinc-100 p-3 text-xs text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200">
-                  {this.state.error.toString()}
-                  {this.state.error.stack}
-                </pre>
-              </details>
-            )}
-          </div>
-        </div>
+        <DefaultErrorFallback
+          error={this.state.error}
+          onTryAgain={() => this.setState({ hasError: false, error: null })}
+        />
       );
     }
 
@@ -111,13 +135,7 @@ export function GracefulErrorBoundary({
 }: GracefulErrorBoundaryProps) {
   return (
     <ErrorBoundary
-      fallback={
-        fallback || (
-          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
-            This section could not be loaded. Please refresh the page.
-          </div>
-        )
-      }
+      fallback={fallback || <GracefulErrorFallback />}
       onError={(error) => {
         logger.warn("Graceful error boundary caught non-critical error", {
           message: error.message,

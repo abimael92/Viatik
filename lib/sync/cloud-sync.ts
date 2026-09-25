@@ -10,6 +10,7 @@ import {
   buildChecklistItemFeedChanges,
   buildExpenseFeed,
   buildMediaFeed,
+  buildSettlementFeed,
   materializeFeedItem,
 } from "@/features/feed/lib/feed-builder";
 import type { VaultEntry, VaultKeyset } from "@/features/vault/domain/vault-types";
@@ -152,15 +153,23 @@ async function applyRemote(entityType: OutboxEntityType, store: typeof tableDefi
 }
 
 async function emitRemoteFeedItem(entityType: OutboxEntityType, previous: RemoteEntity | undefined, entity: RemoteEntity): Promise<void> {
-  if (entityType !== "activity" && entityType !== "expense" && entityType !== "media") return;
+  if (entityType !== "activity" && entityType !== "expense" && entityType !== "media" && entityType !== "settlement") return;
   if (!("createdBy" in entity)) return;
   if (previous && "updatedAt" in previous && "updatedAt" in entity && previous.updatedAt === entity.updatedAt) return;
 
   const actorId =
-    entityType === "activity" && previous
-      ? (entity as Activity).updatedBy ?? entity.createdBy
-      : entity.createdBy;
-  if (actorId === getSyncUser()) return;
+    entityType === "settlement"
+      ? (entity as ExpenseSettlement).fromUserId
+      : entityType === "activity" && previous
+        ? (entity as Activity).updatedBy ?? entity.createdBy
+        : entity.createdBy;
+  if (
+    entityType === "settlement"
+      ? entity.createdBy === getSyncUser()
+      : actorId === getSyncUser()
+  ) {
+    return;
+  }
 
   let drafts;
   if (entityType === "activity") {
@@ -181,6 +190,10 @@ async function emitRemoteFeedItem(entityType: OutboxEntityType, previous: Remote
     const expense = entity as Expense;
     const verb = expense.deletedAt ? "deleted_expense" : previous ? "updated_expense" : "added_expense";
     drafts = [buildExpenseFeed(verb, expense, actorId)];
+  } else if (entityType === "settlement") {
+    const settlement = entity as ExpenseSettlement;
+    if (previous || settlement.deletedAt) return;
+    drafts = [buildSettlementFeed(settlement, actorId, await settlementReceiverName(settlement.toUserId))];
   } else {
     const media = entity as TripMedia;
     const verb = media.deletedAt ? "deleted_photo" : previous ? "updated_photo" : "uploaded_photo";
@@ -209,6 +222,14 @@ async function emitRemoteFeedItem(entityType: OutboxEntityType, previous: Remote
     }, sourceUpdatedAt);
     await getDb().feedItems.add(item);
   }
+}
+
+async function settlementReceiverName(toUserId: string): Promise<string> {
+  const store = getDb().table("profiles");
+  if (!store || typeof store.get !== "function") return "";
+  const profile = await store.get(toUserId);
+  if (!profile || typeof profile !== "object" || !("fullName" in profile)) return "";
+  return String(profile.fullName ?? "").trim();
 }
 
 async function deleteLocal(store: typeof tableDefinitions[number]["store"], id: string): Promise<void> {

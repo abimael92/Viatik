@@ -5,7 +5,13 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { motion } from "motion/react";
 
+import { isDialogDismissExempt } from "@/components/ui/dialog-dismiss";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
+
+function keepPortaledOverlays(event: { target: EventTarget | null; preventDefault: () => void }) {
+  if (isDialogDismissExempt(event.target)) event.preventDefault();
+}
 
 const Dialog = DialogPrimitive.Root;
 const DialogTrigger = DialogPrimitive.Trigger;
@@ -29,12 +35,34 @@ function DialogOverlay({ className, ...props }: React.ComponentProps<typeof Dial
 function DialogContent({
   className,
   children,
+  headerActions,
+  onInteractOutside,
+  onPointerDownOutside,
+  onFocusOutside,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content>) {
+}: React.ComponentProps<typeof DialogPrimitive.Content> & {
+  headerActions?: React.ReactNode;
+}) {
+  const { t } = useI18n();
   return (
     <DialogPortal>
         <DialogOverlay />
-        <DialogPrimitive.Content asChild {...props}>
+        <DialogPrimitive.Content
+          asChild
+          onInteractOutside={(event) => {
+            keepPortaledOverlays(event);
+            onInteractOutside?.(event);
+          }}
+          onPointerDownOutside={(event) => {
+            keepPortaledOverlays(event);
+            onPointerDownOutside?.(event);
+          }}
+          onFocusOutside={(event) => {
+            keepPortaledOverlays(event);
+            onFocusOutside?.(event);
+          }}
+          {...props}
+        >
           <motion.div
             className={cn(
               "fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2",
@@ -47,9 +75,12 @@ function DialogContent({
             transition={{ duration: 0.15 }}
           >
             {children}
+            {headerActions ? (
+              <div className="absolute right-16 top-3 z-10 flex items-center">{headerActions}</div>
+            ) : null}
             <DialogPrimitive.Close
               className="absolute right-3 top-3 grid size-11 place-items-center rounded-lg opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              aria-label="Close dialog"
+              aria-label={t("copy.closeDialog")}
             >
               <X className="size-5" />
             </DialogPrimitive.Close>

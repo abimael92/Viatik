@@ -18,6 +18,7 @@ import {
   type TransitStatusState,
 } from "@/features/transit/domain/transit-types";
 import { deriveStatusState } from "@/features/transit/lib/transit-service";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 const BANNER_TONE: Record<TransitStatusState, string> = {
@@ -46,6 +47,7 @@ interface TransitCardProps {
  * an optional live-status refresh control.
  */
 export function TransitCard({ segment, onSelect, onRefresh, interactive = true }: TransitCardProps) {
+  const { t } = useI18n();
   const state = useMemo(() => deriveStatusState(segment), [segment]);
   const meta = TRANSIT_STATUS_META[state];
   const delayed = state === "delayed" || (segment.delayMinutes != null && segment.delayMinutes > 0);
@@ -56,8 +58,8 @@ export function TransitCard({ segment, onSelect, onRefresh, interactive = true }
   const departureTime = segment.estimatedDeparture ?? segment.scheduledDeparture;
   const arrivalTime = segment.estimatedArrival ?? segment.scheduledArrival;
   const duration = arrivalTimeDuration(departureTime, arrivalTime);
-  const departureLabel = segment.estimatedDeparture ? "Est. departure" : "Scheduled";
-  const arrivalLabel = segment.estimatedArrival ? "Est. arrival" : "Scheduled arrival";
+  const departureLabel = segment.estimatedDeparture ? t("copy.estDeparture") : t("common.scheduled");
+  const arrivalLabel = segment.estimatedArrival ? t("copy.estArrival") : t("copy.scheduledArrival");
   const station = segment.gate ?? segment.platform ?? segment.terminal;
 
   return (
@@ -140,7 +142,7 @@ export function TransitCard({ segment, onSelect, onRefresh, interactive = true }
           className="mt-2 flex items-center gap-1 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-label={`Refresh status for ${identifier || segment.carrier}`}
         >
-          <RefreshCw className="size-3.5" aria-hidden /> Refresh status
+          <RefreshCw className="size-3.5" aria-hidden /> {t("copy.refreshStatus")}
         </button>
       )}
     </article>

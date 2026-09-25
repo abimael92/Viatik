@@ -28,6 +28,8 @@ export interface HomeData {
   hasAnyTrip: boolean;
   /** True when at least one trip is completed or cancelled. */
   hasEndedTrips: boolean;
+  /** True when the current user can insert expenses on the featured trip. */
+  canManageExpenses: boolean;
 }
 
 /**
@@ -111,5 +113,8 @@ export function useHomeData(ownerId: string): HomeData {
     timeline,
     hasAnyTrip: (trips ?? []).length > 0,
     hasEndedTrips: (trips ?? []).some((trip) => isTripEnded(trip)),
+    canManageExpenses: members.some(
+      (member) => member.userId === ownerId && (member.role === "owner" || member.role === "editor"),
+    ),
   };
 }

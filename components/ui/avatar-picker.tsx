@@ -19,6 +19,7 @@ import {
   UserAvatar,
   type AvatarStyle,
 } from "@/components/ui/user-avatar";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 export type AvatarChange = { seed: string | null; src: string | null; file?: File | null };
@@ -98,6 +99,7 @@ export function AvatarPicker({
   onChange: (change: AvatarChange) => void;
   uploadHint?: string;
 }) {
+  const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   const [options, setOptions] = useState<AvatarOption[]>(generateOptions);
@@ -137,14 +139,14 @@ export function AvatarPicker({
       <div className="min-w-0 space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
-            <ImagePlus className="size-5" /> Select avatar
+            <ImagePlus className="size-5" /> {t("copy.selectAvatar")}
           </Button>
           <Button type="button" variant="ghost" size="sm" onClick={() => inputRef.current?.click()}>
-            <Camera className="size-5" /> Upload photo
+            <Camera className="size-5" /> {t("copy.uploadPhoto")}
           </Button>
           {(seed || src) && (
             <Button type="button" variant="ghost" size="sm" onClick={handleRemove}>
-              <Trash2 className="size-5" /> Remove
+              <Trash2 className="size-5" /> {t("copy.remove")}
             </Button>
           )}
         </div>
@@ -154,7 +156,7 @@ export function AvatarPicker({
           type="file"
           accept="image/*"
           className="sr-only"
-          aria-label="Upload avatar image"
+          aria-label={t("copy.uploadAvatar")}
           onChange={(event) => handleFile(event.target.files?.[0])}
         />
 
@@ -164,12 +166,12 @@ export function AvatarPicker({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Choose an avatar</DialogTitle>
-            <DialogDescription>Pick a playful avatar or generate your own.</DialogDescription>
+            <DialogTitle>{t("copy.chooseAvatar")}</DialogTitle>
+            <DialogDescription>{t("copy.avatarHelp")}</DialogDescription>
           </DialogHeader>
 
           <div className="max-h-[60vh] overflow-y-auto pr-1">
-            <div className="grid grid-cols-4 gap-3 sm:grid-cols-5" role="group" aria-label="Avatar options">
+            <div className="grid grid-cols-4 gap-3 sm:grid-cols-5" role="group" aria-label={t("copy.avatarOptions")}>
               {options.map((option) => (
                 <button
                   key={option.seed}
@@ -194,10 +196,10 @@ export function AvatarPicker({
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <Button type="button" variant="outline" size="sm" onClick={handleRandomize}>
-              <Dices className="size-5" /> Randomize
+              <Dices className="size-5" /> {t("copy.randomize")}
             </Button>
             <Button type="button" variant="ghost" size="sm" onClick={handleRegenerate}>
-              <RefreshCw className="size-5" /> Regenerate
+              <RefreshCw className="size-5" /> {t("copy.regenerate")}
             </Button>
           </div>
         </DialogContent>

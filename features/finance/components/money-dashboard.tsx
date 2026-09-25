@@ -1,5 +1,7 @@
 "use client";
 
+import { localizeThrownError } from "@/lib/i18n/localize-error";
+
 import {
   ArrowLeftRight,
   BedDouble,
@@ -77,6 +79,7 @@ import {
 import { useTripSpending } from "@/features/finance/lib/use-trip-spending";
 import type { CurrencyCode } from "@/features/finance/domain/currency-types";
 import { useLocalProfile } from "@/features/profile/lib/use-local-profile";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 const CATEGORY_ICONS: Record<SpendingCategory, typeof Wallet> = {
@@ -169,6 +172,7 @@ export function MoneyDashboard({
   autoOpenTools?: boolean;
   onConsumeAutoOpenExpense?: () => void;
 }) {
+  const { t } = useI18n();
   const baseCurrency = trip.baseCurrency || "USD";
   // The trip's local/destination currency — used as the default for new expenses.
   const locationCurrency = useMemo(
@@ -211,9 +215,10 @@ export function MoneyDashboard({
         dailyTarget,
         trip.startDate,
         trip.endDate,
-        baseCurrency
+        baseCurrency,
+        t("common.noBudget")
       ),
-    [totalSpent, totalBudget, dailyTarget, trip.startDate, trip.endDate, baseCurrency]
+    [totalSpent, totalBudget, dailyTarget, trip.startDate, trip.endDate, baseCurrency, t]
   );
 
   const budgetTone = usageTone(usage);
@@ -226,23 +231,21 @@ export function MoneyDashboard({
           role="status"
           className="rounded-2xl border bg-muted/50 p-4 text-sm text-muted-foreground"
         >
-          You have view-only access. You can review expenses and balances, but only owners and
-          editors can change financial data.
+          {t("copy.viewOnlyFinance")}
         </div>
       )}
       <p className="text-muted-foreground">
-        Track group spending, manage your trip budget, record expenses, and see how much each
-        traveler owes or is owed.
+        {t("copy.trackSpending")}
       </p>
       <section aria-labelledby="spending-overview-heading" className="space-y-4">
         <SectionHeading
           id="spending-overview-heading"
-          title="Spending overview"
-          description="See your current trip total, budget usage, and group standing at a glance."
+          title={t("copy.spendingOverview")}
+          description={t("copy.spendingOverviewHelp")}
         />
         <section aria-labelledby="budget-progress-heading" className="space-y-3">
           <Heading level={3} id="budget-progress-heading" className="text-lg font-bold">
-            Budget progress
+            {t("copy.budgetProgress")}
           </Heading>
           <FinancialHero
             tripId={tripId}
@@ -266,9 +269,9 @@ export function MoneyDashboard({
 
       <div className="flex flex-col gap-3 rounded-2xl border bg-card p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
         <div>
-          <p className="text-sm font-semibold">Trip actions</p>
+          <p className="text-sm font-semibold">{t("copy.tripActions")}</p>
           <p className="text-xs text-muted-foreground">
-            Record a cost or review how the group settles up.
+            {t("copy.recordCost")}
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -280,7 +283,7 @@ export function MoneyDashboard({
               onClick={() => setAddOpen(true)}
             >
               <Plus className="size-5" />
-              Add Expense
+              {t("copy.addExpense")}
             </Button>
           )}
           <Button
@@ -290,23 +293,23 @@ export function MoneyDashboard({
               settlementRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
             }
           >
-            View Settlement
+            {t("copy.viewSettlement")}
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" aria-label="More money actions">
+              <Button variant="outline" size="icon" aria-label={t("copy.moreMoneyActions")}>
                 <MoreHorizontal className="size-5" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onSelect={() => setToolsOpen(true)}>
-                <Wrench className="size-4" /> Money tools
+                <Wrench className="size-4" /> {t("common.moneyTools")}
               </DropdownMenuItem>
               {expenses && expenses.length > 0 && (
                 <DropdownMenuItem
                   onSelect={() => downloadExpensesCsv(expenses.filter((e) => e.deletedAt === null))}
                 >
-                  <Download className="size-4" /> Export CSV
+                  <Download className="size-4" /> {t("copy.exportCsv")}
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>
@@ -317,8 +320,8 @@ export function MoneyDashboard({
       <section aria-labelledby="recent-expenses-heading" className="space-y-3">
         <SectionHeading
           id="recent-expenses-heading"
-          title="Recent expenses"
-          description="Expand an expense to review its split, currency conversion, and local save status."
+          title={t("copy.recentExpenses")}
+          description={t("copy.recentExpensesHelp")}
         />
         <ExpensePanel
           tripId={tripId}
@@ -343,8 +346,8 @@ export function MoneyDashboard({
       >
         <SectionHeading
           id="settlement-section-heading"
-          title="Settlement"
-          description="See who owes or is owed and the fewest transfers needed to settle the trip."
+          title={t("copy.settlement")}
+          description={t("copy.settlementHelp")}
         />
         <SettlementView tripId={tripId} userId={userId} currency={baseCurrency} />
       </section>
@@ -363,14 +366,15 @@ export function MoneyToolsDialog({
   onOpenChange: (open: boolean) => void;
   trip: Trip;
 }) {
+  const { t } = useI18n();
   const [toolsTab, setToolsTab] = useState<"converter" | "tip">("converter");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Money tools</DialogTitle>
-          <DialogDescription>Convert currencies or split a tip.</DialogDescription>
+          <DialogTitle>{t("common.moneyTools")}</DialogTitle>
+          <DialogDescription>{t("copy.convertOrSplit")}</DialogDescription>
         </DialogHeader>
         <div className="flex w-max rounded-md border p-0.5">
           <button
@@ -383,7 +387,7 @@ export function MoneyToolsDialog({
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            Currency converter
+            {t("common.currencyConverter")}
           </button>
           <button
             type="button"
@@ -395,7 +399,7 @@ export function MoneyToolsDialog({
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            Tip &amp; split calculator
+            {t("copy.tipSplitCalculator")}
           </button>
         </div>
         {toolsTab === "converter" ? (
@@ -445,6 +449,7 @@ function FinancialHero({
   canEdit: boolean;
   personalStanding: MinorUnits;
 }) {
+  const { t } = useI18n();
   const [editing, setEditing] = useState(false);
   const [totalInput, setTotalInput] = useState("");
   const [dailyInput, setDailyInput] = useState("");
@@ -506,7 +511,7 @@ function FinancialHero({
       });
       setEditing(false);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to save budget.");
+      setError(localizeThrownError(cause, t, "Unable to save budget."));
     } finally {
       setSaving(false);
     }
@@ -522,7 +527,7 @@ function FinancialHero({
     totalBudget !== null && dayCount > 0 ? recommendedDailyBudget(totalBudget, dayCount) : null;
 
   const standingDetail =
-    personalStanding > 0n ? "You're owed" : personalStanding < 0n ? "You owe" : "Settled up";
+    personalStanding > 0n ? t("copy.youreOwed") : personalStanding < 0n ? t("copy.youOwe") : t("copy.settledUp");
   const standingTone: "ok" | "danger" | "muted" =
     personalStanding > 0n ? "ok" : personalStanding < 0n ? "danger" : "muted";
 
@@ -546,7 +551,7 @@ function FinancialHero({
             {showConvertButton && (
               <button
                 type="button"
-                aria-label="Swap currency"
+                aria-label={t("copy.swapCurrency")}
                 aria-pressed={swapped}
                 onClick={() => setSwapped((value) => !value)}
                 className="grid size-6 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -575,7 +580,7 @@ function FinancialHero({
             className="border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
             onClick={beginEdit}
           >
-            <Pencil className="size-4" /> {totalBudget !== null ? "Edit budget" : "Set budget"}
+            <Pencil className="size-4" /> {totalBudget !== null ? "Edit budget" : t("common.setBudget")}
           </Button>
         )}
       </div>
@@ -603,7 +608,7 @@ function FinancialHero({
 
       <div className="relative mt-5 flex flex-col gap-3 sm:grid sm:grid-cols-3">
         <HeroStat
-          label="Your standing"
+          label={t("copy.yourStanding")}
           value={formatMoney(
             personalStanding < 0n ? -personalStanding : personalStanding,
             baseCurrency
@@ -619,10 +624,10 @@ function FinancialHero({
           }
         />
         <HeroStat
-          label={dailyTarget !== null ? "Daily target" : "Trip days"}
+          label={dailyTarget !== null ? t("common.dailyTarget") : "Trip days"}
           value={
             dailyTarget !== null
-              ? `${formatMoney(dailyTarget, baseCurrency)}/day`
+              ? `${formatMoney(dailyTarget, baseCurrency)}${t("copy.perDay")}`
               : String(dayCount)
           }
         />
@@ -631,7 +636,7 @@ function FinancialHero({
       {editing && (
         <div className="relative mt-5 space-y-3 rounded-2xl border bg-card/80 p-4">
           <div className="space-y-1.5">
-            <Label htmlFor="budget-total">Total trip budget ({userCurrency})</Label>
+            <Label htmlFor="budget-total">{t("common.totalTripBudget")} ({userCurrency})</Label>
             <Input
               id="budget-total"
               inputMode="decimal"
@@ -644,7 +649,7 @@ function FinancialHero({
             )}
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="budget-daily">Daily spending target ({baseCurrency}) · optional</Label>
+            <Label htmlFor="budget-daily">{t("common.dailySpendingTarget")} ({baseCurrency}) · {t("common.optional")}</Label>
             <Input
               id="budget-daily"
               inputMode="decimal"
@@ -653,18 +658,18 @@ function FinancialHero({
               placeholder="e.g. 150.00"
             />
             <p className="text-xs text-muted-foreground">
-              Leave blank to pace spending from your total over the trip duration.
+              {t("common.blankToPace")}
             </p>
             {recommendedDaily !== null ? (
               <p className="text-xs text-primary">
-                Recommended:{" "}
+                {t("common.recommended")}:{" "}
                 <span className="font-semibold">{formatMoney(recommendedDaily, baseCurrency)}</span>
-                /day — keeps ~10% of your {formatMoney(totalBudget!, baseCurrency)} budget as a
+                {t("copy.perDay")} — keeps ~10% of your {formatMoney(totalBudget!, baseCurrency)} budget as a
                 buffer over {dayCount} day{dayCount === 1 ? "" : "s"}.
               </p>
             ) : (
               <p className="text-xs text-muted-foreground">
-                Set a total budget to see a recommended daily amount.
+                {t("copy.setBudgetPacing")}
               </p>
             )}
           </div>
@@ -675,10 +680,10 @@ function FinancialHero({
           )}
           <div className="flex items-center gap-2">
             <Button type="button" size="sm" onClick={() => void handleSave()} disabled={saving}>
-              {saving ? "Saving…" : "Save budget"}
+              {saving ? t("settings.saving") : t("common.saveBudget")}
             </Button>
             <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(false)}>
-              Cancel
+              {t("common.cancel")}
             </Button>
           </div>
         </div>
@@ -781,6 +786,7 @@ function SectionHeading({
 // ---------------------------------------------------------------------------
 
 export function CurrencyCard({ trip, baseCurrency }: { trip: Trip; baseCurrency: string }) {
+  const { t } = useI18n();
   const customs = useMemo(() => getTipCustoms(trip.destination), [trip.destination]);
   const nativeCurrency = (customs.currencies[0] ?? baseCurrency).toUpperCase() as CurrencyCode;
   const [rate, setRate] = useState<number | null>(null);
@@ -804,7 +810,7 @@ export function CurrencyCard({ trip, baseCurrency }: { trip: Trip; baseCurrency:
   return (
     <div className="rounded-2xl border bg-card p-5">
       <div className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
-        <Landmark className="size-5 text-primary" /> Trip currency &amp; rate
+        <Landmark className="size-5 text-primary" /> {t("copy.tripCurrencyRate")}
       </div>
 
       <div className="mt-4 flex items-center gap-3">
@@ -828,7 +834,7 @@ export function CurrencyCard({ trip, baseCurrency }: { trip: Trip; baseCurrency:
                   {rate !== null ? formatRate(rate) : "—"}
                 </span>{" "}
                 {baseCurrency.toUpperCase()}{" "}
-                <span className="text-muted-foreground">(your currency)</span>
+                <span className="text-muted-foreground">{t("copy.yourCurrency")}</span>
               </>
             )}
           </p>
@@ -864,16 +870,17 @@ export function CategoryEnvelopes({
   baseCurrency: string;
   canEdit: boolean;
 }) {
+  const { t } = useI18n();
   const { budget, categoryTotals, allocations } = useTripSpending(tripId, baseCurrency);
 
   return (
     <section aria-labelledby="envelopes-heading" className="space-y-3">
       <div>
         <Heading level={3} id="envelopes-heading" className="text-lg font-bold">
-          Category envelopes
+          {t("copy.categoryEnvelopes")}
         </Heading>
         <p className="text-sm text-muted-foreground">
-          How much you have spent in each category against its cap.
+          {t("copy.categoryCaps")}
         </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -914,6 +921,7 @@ function CategoryEnvelope({
   canEdit: boolean;
   onSetCap: (amountMinor: MinorUnits) => void;
 }) {
+  const { t } = useI18n();
   const Icon = CATEGORY_ICONS[category];
   const [editing, setEditing] = useState(false);
   const [input, setInput] = useState("");
@@ -934,7 +942,7 @@ function CategoryEnvelope({
       onSetCap(input.trim() ? parseMinorUnits(input, baseCurrency) : 0n);
       setEditing(false);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Invalid amount.");
+      setError(localizeThrownError(cause, t, "Invalid amount."));
     }
   }
 
@@ -1006,7 +1014,7 @@ function CategoryEnvelope({
           )}
           <div className="flex items-center gap-2">
             <Button type="button" size="sm" onClick={handleSave}>
-              <Check className="size-4" /> Save
+              <Check className="size-4" /> {t("common.save")}
             </Button>
             <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(false)}>
               <X className="size-4" />
@@ -1028,14 +1036,15 @@ function buildPacingAlerts(
   dailyTarget: MinorUnits | null,
   startDate: string | null,
   endDate: string | null,
-  baseCurrency: string
+  baseCurrency: string,
+  noBudgetMessage: string
 ): PacingAlert[] {
   const alerts: PacingAlert[] = [];
 
   if (totalBudget === null) {
     alerts.push({
       tone: "warn",
-      message: "No budget set — add a total trip budget to track planned versus spent.",
+      message: noBudgetMessage,
     });
     return alerts;
   }

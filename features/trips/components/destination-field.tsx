@@ -7,6 +7,7 @@ import { getPlaceDetails, searchDestinations, type PlaceDetails, type PlaceSugge
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 export function DestinationField({
   value: controlledValue,
@@ -21,6 +22,7 @@ export function DestinationField({
   defaultValue?: string;
   error?: string;
 }) {
+  const { t } = useI18n();
   const isControlled = controlledValue !== undefined;
   const [internalValue, setInternalValue] = useState(defaultValue);
   const value = isControlled ? controlledValue : internalValue;
@@ -71,7 +73,7 @@ export function DestinationField({
 
   return (
     <div className="relative space-y-2">
-      <Label htmlFor="destination">Destination</Label>
+      <Label htmlFor="destination">{t("copy.destination")}</Label>
       {!error && (
         <p id="destination-help" className="text-xs text-muted-foreground">
           {configured
@@ -86,7 +88,7 @@ export function DestinationField({
           name="destination"
           value={value}
           onChange={(event) => setValue(event.target.value)}
-          placeholder="Tokyo, Japan"
+          placeholder={t("copy.placeholderTokyo")}
           maxLength={120}
           autoComplete="off"
           disabled={pendingPlaceId !== null}
@@ -99,13 +101,14 @@ export function DestinationField({
         />
       </div>
       {suggestions.length > 0 && (
-        <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border bg-popover shadow-lg">
+        <div data-places-suggestions className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border bg-popover shadow-lg">
           {suggestions.map((suggestion) => (
             <button
               key={suggestion.placeId}
               type="button"
               disabled={pendingPlaceId === suggestion.placeId}
               className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-muted disabled:opacity-60"
+              onMouseDown={(event) => event.preventDefault()}
               onClick={() => handleSelect(suggestion)}
             >
               <MapPin className="size-5 text-primary" />

@@ -126,6 +126,40 @@ export interface ActivityChecklistItem {
   archived: boolean;
 }
 
+export interface ActivityImageAttachment {
+  id: string;
+  kind: "image";
+  mediaId: string;
+  caption: string | null;
+  altText: string | null;
+}
+
+export interface ActivityLinkAttachment {
+  id: string;
+  kind: "link";
+  url: string;
+  title: string;
+  description: string | null;
+  siteName: string | null;
+  /** Optional cached preview image stored through the normal media pipeline. */
+  previewImageMediaId: string | null;
+}
+
+export interface ActivityLocationAttachment {
+  id: string;
+  kind: "location";
+  name: string;
+  formattedAddress: string | null;
+  latitude: number;
+  longitude: number;
+  placeId: string | null;
+}
+
+export type ActivityAttachment =
+  | ActivityImageAttachment
+  | ActivityLinkAttachment
+  | ActivityLocationAttachment;
+
 export interface Activity {
   id: string;
   tripId: string;
@@ -155,6 +189,8 @@ export interface Activity {
   pollOptions?: ActivityPollOption[];
   /** @deprecated Use the synchronized Decision model instead. */
   pollVotes?: ActivityPollVote[];
+  /** Ordered, bounded media/link/location manifest for this Activity. */
+  attachments?: ActivityAttachment[];
   /** Ordered actions travelers can complete for this activity. */
   checklist?: ActivityChecklistItem[];
   /** Fractional ordering key within (tripId, dayDate) for drag-and-drop reordering. */
@@ -340,22 +376,24 @@ export interface UserWallet {
 }
 
 /**
- * A single cash transfer settling a debt between two travelers. `fromUserId`
- * pays `toUserId`; the debt stays `pending` until the transfer is marked
- * `settled` (with the timestamp recorded in `settledAt`).
+ * An immutable cash transfer on the trip ledger. `fromUserId` (payer) paid
+ * `toUserId` (receiver). Creating this row is the repayment; past expenses
+ * are never mutated to mark a split settled.
  */
 export interface ExpenseSettlement {
   id: string;
   tripId: string;
-  /** The traveler who owes money (the debtor). */
+  /** Payer: the traveler who handed over money. */
   fromUserId: string;
-  /** The traveler being repaid (the creditor). */
+  /** Receiver: the traveler who received the money. */
   toUserId: string;
   amountMinor: MinorUnits;
   currency: CurrencyCode;
-  /** Whether this debt is still outstanding (`pending`) or has been paid back (`settled`). */
+  /** ISO date (yyyy-mm-dd) the repayment occurred. */
+  date: string;
+  /** Legacy local flag. New rows are written as `settled` because the insert is the repayment. */
   status: SettlementStatus;
-  /** ISO datetime the debt was settled, or `null` while it is still pending. */
+  /** ISO datetime recorded when the row was created, or `null` on legacy drafts. */
   settledAt: string | null;
   settledBy?: string | null;
   statusChangedAt?: string | null;

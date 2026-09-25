@@ -1,5 +1,7 @@
 "use client";
 
+import { localizeThrownError, localizeUserError } from "@/lib/i18n/localize-error";
+
 import { Check, LoaderCircle, QrCode, ScanLine, Send, ShieldCheck, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -68,7 +70,7 @@ export function AddContactCommandBar({
         if (value !== queryRef.current) return; // stale response
         setProfile(null);
         setStatus("not_found");
-        setError(err instanceof Error ? err.message : t("common.lookupFailed"));
+        setError(localizeThrownError(err, t, "common.lookupFailed"));
       });
     }, 350);
   }
@@ -79,7 +81,7 @@ export function AddContactCommandBar({
       if (value !== queryRef.current) return;
       setProfile(null);
       setStatus("not_found");
-      setError(err instanceof Error ? err.message : t("common.lookupFailed"));
+      setError(localizeThrownError(err, t, "common.lookupFailed"));
     });
   }
 
@@ -94,7 +96,7 @@ export function AddContactCommandBar({
     if (!result.success) {
       setProfile(null);
       setStatus("not_found");
-      setError(result.error);
+      setError(localizeUserError(result.error, t, "errors.lookupFailed"));
       return;
     }
     setProfile(result.profile);
@@ -109,7 +111,7 @@ export function AddContactCommandBar({
       await contactRepository.sendConnectionRequest(userId, profile, ownSnapshot);
       setStatus("sent");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t("common.requestFailed"));
+      setError(localizeThrownError(cause, t, "common.requestFailed"));
       setStatus("matched");
     } finally {
       setSending(false);

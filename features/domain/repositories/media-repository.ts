@@ -14,6 +14,7 @@ export interface NewTripMedia {
 export interface MediaRepository {
   listByTrip(tripId: string, activityId?: string | null): Promise<TripMedia[]>;
   watchByTrip(tripId: string, activityId: string | null, onChange: (media: TripMedia[]) => void): () => void;
+  watchByIds(ids: string[], onChange: (media: TripMedia[]) => void): () => void;
   create(input: NewTripMedia): Promise<TripMedia>;
   updateCaption(id: string, caption: string | null): Promise<void>;
   remove(id: string): Promise<void>;

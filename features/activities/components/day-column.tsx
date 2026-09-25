@@ -15,6 +15,7 @@ import { TransitCard } from "@/features/transit/components/transit-card";
 import { useTransitSegments } from "@/features/transit/components/use-transit";
 import { cn } from "@/lib/utils";
 import { useUiStore } from "@/lib/store/ui-store";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 interface DayColumnProps {
   tripId: string;
@@ -55,6 +56,8 @@ export function DayColumn({
   tripOwnerId,
   activeActivityId,
 }: DayColumnProps) {
+  const { t } = useI18n();
+
   const { setNodeRef, isOver } = useDroppable({ id: dayDate, data: { dayDate } });
   const setDragOverDay = useUiStore((s) => s.setDragOverDay);
   const [scoutOver, setScoutOver] = useState(false);
@@ -121,7 +124,7 @@ export function DayColumn({
         />
       </div>
       {transitForDay.length > 0 && (
-        <ul className="flex flex-col gap-2" aria-label="Transit">
+        <ul className="flex flex-col gap-2" aria-label={t("common.transit")}>
           {transitForDay.map((segment) => (
             <li key={segment.id}>
               <TransitCard segment={segment} onRefresh={(s) => void refresh(s)} />

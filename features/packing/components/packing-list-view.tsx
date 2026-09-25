@@ -1,5 +1,7 @@
 "use client";
 
+import { localizeThrownError } from "@/lib/i18n/localize-error";
+
 import { Check, ChevronDown, Luggage, Minus, Plus, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -90,9 +92,9 @@ export function PackingListView({ tripId, trip, activities, canEdit = true }: { 
     try {
       await tripRepository.update(tripId, { packingConfirmed: complete });
     } catch (cause) {
-      setActionError(cause instanceof Error ? cause.message : "Unable to update packing status.");
+      setActionError(localizeThrownError(cause, t, "Unable to update packing status."));
     }
-  }, [tripId]);
+  }, [t, tripId]);
 
   const toggleCategory = useCallback((category: PackingCategory) => {
     setCollapsedCategories((current) => {
@@ -132,11 +134,11 @@ export function PackingListView({ tripId, trip, activities, canEdit = true }: { 
     try {
       await packingRepository.applySuggested(tripId, buildDrafts());
     } catch (cause) {
-      setActionError(cause instanceof Error ? cause.message : "Unable to update the packing list.");
+      setActionError(localizeThrownError(cause, t, "Unable to update the packing list."));
     } finally {
       setRefreshing(false);
     }
-  }, [buildDrafts, tripId]);
+  }, [buildDrafts, t, tripId]);
 
   const resetList = useCallback(async () => {
     setRefreshing(true);
@@ -146,11 +148,11 @@ export function PackingListView({ tripId, trip, activities, canEdit = true }: { 
       await tripRepository.update(tripId, { packingConfirmed: false, personalCareConfirmed: false });
       setResetOpen(false);
     } catch (cause) {
-      setActionError(cause instanceof Error ? cause.message : "Unable to reset the packing list.");
+      setActionError(localizeThrownError(cause, t, "Unable to reset the packing list."));
     } finally {
       setRefreshing(false);
     }
-  }, [buildDrafts, tripId]);
+  }, [buildDrafts, t, tripId]);
 
   const grouped = useMemo(() => {
     const map = new Map<PackingCategory, PackingItem[]>();

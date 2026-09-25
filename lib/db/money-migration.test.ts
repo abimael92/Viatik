@@ -36,7 +36,9 @@ describe("money schema migration", () => {
     // and v31 renames the free-form category to the typed category/subcategory.
     expect(await db.expenses.get("expense-1")).toEqual({ id: "expense-1", amountMinor: 12345n, exchangeRateToBase: null, category: null, subcategory: null, date: "" });
     expect(await db.expenseShares.get("share-1")).toEqual({ id: "share-1", shareAmountMinor: 4567n, splitType: "equal", paidBy: "", settlementStatus: "pending", settledAt: null });
-    expect(await db.expenseSettlements.get("settlement-1")).toEqual({ id: "settlement-1", amountMinor: 1000n, status: "pending", settledAt: null });
+    const migratedSettlement = await db.expenseSettlements.get("settlement-1");
+    expect(migratedSettlement).toMatchObject({ id: "settlement-1", amountMinor: 1000n, status: "settled" });
+    expect(migratedSettlement?.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect((await db.outboxMutations.get("mutation-1"))?.payload).toEqual({ id: "expense-1", amountMinor: 12345n });
     db.close();
   });

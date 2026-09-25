@@ -1,6 +1,7 @@
 import { CalendarClock, CloudSun, ListChecks } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 type Severity = "low" | "medium" | "high";
 
@@ -45,6 +46,8 @@ export function TripHealthBar({
   activityCount: number;
   weatherWarnings?: Array<{ severity: Severity }>;
 }) {
+  const { t } = useI18n();
+
   const datesSet = Boolean(startDate && endDate);
   const maxSeverity = (weatherWarnings ?? []).reduce<Severity>(
     (worst, w) => (w.severity === "high" || (w.severity === "medium" && worst !== "high") ? w.severity : worst),
@@ -52,7 +55,7 @@ export function TripHealthBar({
   );
 
   return (
-    <div className="flex flex-wrap items-center gap-2" aria-label="Trip health summary">
+    <div className="flex flex-wrap items-center gap-2" aria-label={t("copy.tripHealthSummary")}>
       <HealthPill
         icon={CalendarClock}
         label="Dates"

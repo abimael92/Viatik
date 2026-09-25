@@ -1,4 +1,5 @@
-import type { Activity, ActivityChecklistItem, ActivityParticipant, Trip } from "@/features/domain/entities";
+import type { Activity, ActivityAttachment, ActivityChecklistItem, ActivityParticipant, Trip } from "@/features/domain/entities";
+import { normalizeActivityAttachments } from "@/features/activities/domain/activity-attachments";
 import { normalizeActivityChecklist } from "@/features/activities/domain/activity-checklist";
 import { resolveTripStatus } from "@/features/trips/lib/trip-status";
 import { isUserAttending } from "@/features/trips/lib/activity-category-colors";
@@ -108,6 +109,8 @@ export interface TimelineItem {
   endTime?: string | null;
   /** Trip ID for deep-linking. */
   tripId?: string;
+  /** Ordered Activity attachments for the execution detail modal. */
+  attachments?: ActivityAttachment[];
   /** Ordered activity checklist items for on-the-go progress tracking. */
   checklist: ActivityChecklistItem[];
   /** Participant snapshots retained for the activity detail attendees section. */
@@ -361,6 +364,7 @@ export function buildTimeline(
     startTime: activity.startTime,
     endTime: activity.endTime,
     tripId: activity.tripId,
+    attachments: normalizeActivityAttachments(activity.attachments),
     checklist: normalizeActivityChecklist(activity.checklist),
     participants: activity.participants ?? [],
   }));

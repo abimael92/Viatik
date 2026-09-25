@@ -1,5 +1,7 @@
 "use client";
 
+import { localizeThrownError } from "@/lib/i18n/localize-error";
+
 import { Check, Copy, Link2, Plus, Share2, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
@@ -16,6 +18,7 @@ import {
 import { Heading } from "@/components/ui/heading";
 import { shareLinkRepository } from "@/features/sharing/data/dexie-share-repository";
 import type { TripShareLink } from "@/features/sharing/domain/share-types";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 /**
@@ -35,6 +38,7 @@ export function ShareModal({
   tripId: string;
   userId: string;
 }) {
+  const { t } = useI18n();
   const [links, setLinks] = useState<TripShareLink[]>([]);
   const [creating, setCreating] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -51,11 +55,11 @@ export function ShareModal({
     try {
       await shareLinkRepository.create({ tripId, createdBy: userId });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to create a share link.");
+      setError(localizeThrownError(cause, t, "copy.unableCreateShare"));
     } finally {
       setCreating(false);
     }
-  }, [tripId, userId]);
+  }, [t, tripId, userId]);
 
   const handleToggle = useCallback(
     async (
@@ -66,20 +70,23 @@ export function ShareModal({
       try {
         await shareLinkRepository.update(link.id, patch);
       } catch (cause) {
-        setError(cause instanceof Error ? cause.message : "Unable to update the share link.");
+        setError(localizeThrownError(cause, t, "copy.unableUpdateShare"));
       }
     },
-    []
+    [t]
   );
 
-  const handleDelete = useCallback(async (id: string) => {
-    setError(null);
-    try {
-      await shareLinkRepository.remove(id);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to remove the share link.");
-    }
-  }, []);
+  const handleDelete = useCallback(
+    async (id: string) => {
+      setError(null);
+      try {
+        await shareLinkRepository.remove(id);
+      } catch (cause) {
+        setError(localizeThrownError(cause, t, "copy.unableRemoveShare"));
+      }
+    },
+    [t]
+  );
 
   const handleCopy = useCallback(
     async (slug: string) => {
@@ -91,21 +98,18 @@ export function ShareModal({
       } catch {
         // Clipboard may be unavailable; surface the URL as fallback text.
         setCopiedId(null);
-        setError(`Copy this link manually: ${url}`);
+        setError(t("copy.copyManually", { url }));
       }
     },
-    [shareUrl]
+    [shareUrl, t]
   );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Share trip</DialogTitle>
-          <DialogDescription>
-            Generate a read-only link so family and friends can follow along without a Viatik
-            account.
-          </DialogDescription>
+          <DialogTitle>{t("copy.shareTrip")}</DialogTitle>
+          <DialogDescription>{t("copy.shareTripDescription")}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -115,11 +119,9 @@ export function ShareModal({
             </span>
             <div>
               <Heading level={3} className="text-base font-semibold">
-                Guest links
+                {t("copy.guestLinks")}
               </Heading>
-              <p className="text-sm text-muted-foreground">
-                Each link is private and can be disabled anytime.
-              </p>
+              <p className="text-sm text-muted-foreground">{t("copy.guestLinksHelp")}</p>
             </div>
           </div>
 
@@ -131,7 +133,7 @@ export function ShareModal({
 
           {links.length === 0 && !creating && (
             <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-              No share links yet. Create one to let guests view this trip.
+              {t("copy.noShareLinks")}
             </p>
           )}
 
@@ -145,7 +147,7 @@ export function ShareModal({
                   <Link2 className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                   <span className="truncate font-mono text-sm font-semibold">{link.slug}</span>
                   <Badge variant={link.active ? "success" : "muted"}>
-                    {link.active ? "Active" : "Off"}
+                    {link.active ? t("copy.active") : t("copy.off")}
                   </Badge>
                 </div>
                 <div className="flex items-center gap-2">
@@ -154,14 +156,14 @@ export function ShareModal({
                     size="sm"
                     variant="outline"
                     onClick={() => void handleCopy(link.slug)}
-                    aria-label={`Copy link ${link.slug}`}
+                    aria-label={t("copy.copyLink", { slug: link.slug })}
                   >
                     {copiedId === link.slug ? (
                       <Check className="size-4" />
                     ) : (
                       <Copy className="size-4" />
                     )}
-                    {copiedId === link.slug ? "Copied" : "Copy"}
+                    {copiedId === link.slug ? t("common.copied") : t("common.copy")}
                   </Button>
                   <Button
                     type="button"
@@ -169,7 +171,7 @@ export function ShareModal({
                     variant="ghost"
                     onClick={() => void handleToggle(link, { active: !link.active })}
                   >
-                    {link.active ? "Disable" : "Enable"}
+                    {link.active ? t("copy.disable") : t("copy.enable")}
                   </Button>
                   <Button
                     type="button"
@@ -177,7 +179,7 @@ export function ShareModal({
                     variant="ghost"
                     onClick={() => void handleDelete(link.id)}
                     className="size-9 text-muted-foreground hover:text-destructive"
-                    aria-label={`Delete link ${link.slug}`}
+                    aria-label={t("copy.deleteLink", { slug: link.slug })}
                   >
                     <Trash2 className="size-4" />
                   </Button>
@@ -195,17 +197,17 @@ export function ShareModal({
 
               <div className="mt-3 flex flex-wrap gap-2 border-t pt-3">
                 <Toggle
-                  label="Itinerary"
+                  label={t("common.itinerary")}
                   on={link.allowItinerary}
                   onClick={() => void handleToggle(link, { allowItinerary: !link.allowItinerary })}
                 />
                 <Toggle
-                  label="Map"
+                  label={t("common.map")}
                   on={link.allowMap}
                   onClick={() => void handleToggle(link, { allowMap: !link.allowMap })}
                 />
                 <Toggle
-                  label="Photos"
+                  label={t("common.photos")}
                   on={link.allowGallery}
                   onClick={() => void handleToggle(link, { allowGallery: !link.allowGallery })}
                 />
@@ -216,7 +218,7 @@ export function ShareModal({
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            Close
+            {t("common.close")}
           </Button>
           <Button
             type="button"
@@ -225,7 +227,7 @@ export function ShareModal({
             disabled={creating}
           >
             {creating ? <span className="size-4 animate-pulse" /> : <Plus className="size-4" />}
-            New link
+            {t("copy.newLink")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -234,6 +236,7 @@ export function ShareModal({
 }
 
 function Toggle({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) {
+  const { t } = useI18n();
   return (
     <button
       type="button"
@@ -246,7 +249,7 @@ function Toggle({ label, on, onClick }: { label: string; on: boolean; onClick: (
           : "border-border text-muted-foreground hover:border-primary/40"
       )}
     >
-      {label} {on ? "on" : "off"}
+      {label} {on ? t("copy.on") : t("copy.off")}
     </button>
   );
 }

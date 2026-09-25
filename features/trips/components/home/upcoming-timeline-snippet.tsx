@@ -9,6 +9,7 @@ import type { TimelineItem } from "@/features/trips/lib/home-trips";
 import { getTripCoverGradient, isTripCoverImage } from "@/features/trips/lib/trip-cover";
 import { tripTabPath } from "@/features/trips/lib/home-trips";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 /**
  * Compact timeline feed. For an active trip it shows today's schedule; for an
@@ -24,6 +25,8 @@ export function UpcomingTimelineSnippet({
   items: TimelineItem[];
   active: boolean;
 }) {
+  const { t } = useI18n();
+
   const coverUrl = isTripCoverImage(trip.coverImageUrl) ? trip.coverImageUrl : null;
   const gradient = getTripCoverGradient(trip.coverImageUrl);
   const label = trip.destination ?? trip.name;
@@ -52,7 +55,7 @@ export function UpcomingTimelineSnippet({
           href={tripTabPath(trip.id, "itinerary")}
           className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
         >
-          Itinerary <ArrowRight className="size-4" aria-hidden />
+          {t("common.itinerary")} <ArrowRight className="size-4" aria-hidden />
         </Link>
       </div>
 

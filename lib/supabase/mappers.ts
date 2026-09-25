@@ -33,6 +33,7 @@ import type { VaultEntry, VaultKeyset } from "@/features/vault/domain/vault-type
 import type { TripWeatherForecast } from "@/features/weather/domain/weather-types";
 import type { TripShareLink } from "@/features/sharing/domain/share-types";
 import { normalizeActivityCategory } from "@/features/activities/domain/activity-category";
+import { normalizeActivityAttachments } from "@/features/activities/domain/activity-attachments";
 import { normalizeActivityChecklist } from "@/features/activities/domain/activity-checklist";
 
 function minorUnitsToRemote(value: MinorUnits, field: string): string {
@@ -275,6 +276,7 @@ export function activityToRow(activity: Activity): Record<string, unknown> {
     voting_ends_at: activity.votingEndsAt ?? null,
     poll_options: activity.pollOptions ?? [],
     poll_votes: activity.pollVotes ?? [],
+    attachments: normalizeActivityAttachments(activity.attachments),
     checklist: normalizeActivityChecklist(activity.checklist),
     position: activity.position,
     estimated_cost:
@@ -344,6 +346,7 @@ export function rowToActivity(row: Record<string, unknown>): Activity {
       ? (row.poll_options as Activity["pollOptions"])
       : [],
     pollVotes: Array.isArray(row.poll_votes) ? (row.poll_votes as Activity["pollVotes"]) : [],
+    attachments: normalizeActivityAttachments(row.attachments),
     checklist: normalizeActivityChecklist(row.checklist),
     position: typeof row.position === "number" ? row.position : Number(row.position),
     estimatedCostMinor:
@@ -702,6 +705,7 @@ export function settlementToRow(settlement: ExpenseSettlement): Record<string, u
     to_user_id: settlement.toUserId,
     amount: minorUnitsToRemote(settlement.amountMinor, "amount"),
     currency: settlement.currency,
+    date: settlement.date,
     created_by: settlement.createdBy,
     updated_by: settlement.updatedBy,
     deleted_by: settlement.deletedBy,
@@ -721,8 +725,12 @@ export function rowToSettlement(row: Record<string, unknown>): ExpenseSettlement
     toUserId: String(row.to_user_id),
     amountMinor: minorUnitsFromRemote(row.amount, "amount"),
     currency: String(row.currency),
-    status: "pending",
-    settledAt: row.settled_at == null ? null : String(row.settled_at),
+    date:
+      typeof row.date === "string" && row.date
+        ? String(row.date)
+        : String(row.created_at ?? new Date().toISOString()).slice(0, 10),
+    status: "settled",
+    settledAt: row.settled_at == null ? String(row.created_at ?? "") || null : String(row.settled_at),
     settledBy: row.settled_by == null ? null : String(row.settled_by),
     statusChangedAt: row.status_changed_at == null ? null : String(row.status_changed_at),
     statusChangedBy: row.status_changed_by == null ? null : String(row.status_changed_by),

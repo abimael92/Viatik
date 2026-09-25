@@ -134,6 +134,18 @@ describe("CAS mutation replay", () => {
     ).toEqual(["expense", "expenseShare"]);
   });
 
+  it("replays a pending activity parent before an expense that can reference it", () => {
+    const share = tripMutation({ entityType: "expenseShare", entityId: "share-1" });
+    const expense = tripMutation({ entityType: "expense", entityId: "expense-1" });
+    const activity = tripMutation({ entityType: "activity", entityId: "activity-1" });
+
+    expect(
+      __syncEngineInternals
+        .sortPendingMutations([share, expense, activity])
+        .map((mutation) => mutation.entityType)
+    ).toEqual(["activity", "expense", "expenseShare"]);
+  });
+
   it("rejects legacy expense payers that are not UUIDs before the RPC boundary", async () => {
     const mutation = tripMutation({
       entityType: "expense",

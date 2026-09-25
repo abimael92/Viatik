@@ -10,6 +10,7 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import { contactRepository } from "@/features/contacts/data/dexie-contact-repository";
 import { profileToConnectionSnapshot, type CurrentPublicProfile } from "@/features/contacts/lib/profile-directory";
 import type { ViatikProfileLookup } from "@/features/domain/entities";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 interface BarcodeDetectorLike {
@@ -43,6 +44,7 @@ export function QRScannerModal({
   ownProfile: CurrentPublicProfile;
   embedded?: boolean;
 }) {
+  const { t } = useI18n();
   const [view, setView] = useState<View>("scan");
   const [error, setError] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
@@ -72,7 +74,7 @@ export function QRScannerModal({
   async function startScanner() {
     const Detector = (window as ScannerWindow).BarcodeDetector;
     if (!Detector || !navigator.mediaDevices?.getUserMedia) {
-      setError("QR scanning isn't supported in this browser. Enter the Viatik ID instead.");
+      setError(t("copy.qrUnsupported"));
       return;
     }
     setError(null);
@@ -98,7 +100,7 @@ export function QRScannerModal({
             const value = codes.find((code) => code.rawValue)?.rawValue;
             if (value) void handleScan(value);
           })
-          .catch(() => setError("The QR code could not be read. Try again."))
+          .catch(() => setError(t("copy.qrUnreadable")))
           .finally(() => {
             detectingRef.current = false;
           });
@@ -183,7 +185,7 @@ export function QRScannerModal({
       )}
       role={embedded ? undefined : "dialog"}
       aria-modal={embedded ? undefined : "true"}
-      aria-label={embedded ? undefined : "Connect by QR code"}
+      aria-label={embedded ? undefined : t("copy.connectWithQr")}
       onClick={(event) => !embedded && event.target === event.currentTarget && dismiss()}
     >
       <section className={cn(
@@ -196,12 +198,12 @@ export function QRScannerModal({
           <header className="flex items-center justify-between px-5 pt-5">
             <div className="flex items-center gap-2">
               <QrCode className="size-5 text-primary" />
-              <h2 className="text-lg font-semibold">Connect with QR</h2>
+              <h2 className="text-lg font-semibold">{t("copy.connectWithQr")}</h2>
             </div>
             <button
               type="button"
               onClick={dismiss}
-              aria-label="Close"
+              aria-label={t("common.close")}
               className="grid size-11 place-items-center rounded-full border border-border/40 text-muted-foreground transition-colors hover:bg-accent"
             >
               <X className="size-5" />
@@ -222,7 +224,7 @@ export function QRScannerModal({
                 )}
               >
                 {v === "scan" ? <ScanLine className="size-5" /> : <QrCode className="size-5" />}
-                {v === "scan" ? "Scan their code" : "Show my code"}
+                {v === "scan" ? t("copy.scanTheirCode") : t("copy.showMyCode")}
               </button>
             ))}
           </div>
@@ -250,7 +252,7 @@ export function QRScannerModal({
                 )}
               >
                 <Camera className="size-8" />
-                <span className="text-sm font-semibold">Start camera</span>
+                <span className="text-sm font-semibold">{t("copy.startCamera")}</span>
               </button>
             )
           ) : (
@@ -267,10 +269,10 @@ export function QRScannerModal({
                     <QRCode value={qrValue} size={208} fgColor="#111827" />
                   </div>
                   <p className="text-center text-sm text-muted-foreground">
-                    They scan this to instantly connect — no request needed.
+                    {t("copy.scanToConnect")}
                   </p>
                   <p className="inline-flex items-center gap-1.5 text-xs text-success">
-                    <ShieldCheck className="size-5" /> Signed &amp; expires in 5 minutes
+                    <ShieldCheck className="size-5" /> {t("copy.qrSigned")}
                   </p>
                 </>
               ) : null}
@@ -281,7 +283,7 @@ export function QRScannerModal({
 
           {!embedded && (
             <Button type="button" variant="outline" className="mt-4 min-h-11 w-full" onClick={dismiss}>
-              Done
+              {t("copy.done")}
             </Button>
           )}
         </div>
@@ -293,6 +295,7 @@ export function QRScannerModal({
 type ScanConnectionSuccess = Extract<ScanConnectionResult, { success: true }>;
 
 function ConnectedState({ result }: { result: ScanConnectionSuccess }) {
+  const { t } = useI18n();
   return (
     <div className="flex min-h-72 flex-col items-center justify-center gap-4 rounded-3xl border border-success/30 bg-success/5 p-6 text-center">
       <span className="grid size-16 place-items-center rounded-full bg-success/15">
@@ -305,7 +308,7 @@ function ConnectedState({ result }: { result: ScanConnectionSuccess }) {
           <p className="text-xs text-muted-foreground">{result.viatikId}</p>
         </div>
       </div>
-      <p className="text-lg font-semibold text-success">🟢 Connected!</p>
+      <p className="text-lg font-semibold text-success">🟢 {t("copy.connected")}</p>
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import type { FeedEntityType, TripFeedItem } from "@/features/feed/domain/feed-types";
 import { formatRelativeTime } from "@/features/feed/lib/feed-time";
 import { useSharedTripFeed, type FeedActorProfile } from "@/features/feed/lib/use-shared-trip-feed";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 const ENTITY_STYLE: Record<
@@ -17,6 +18,7 @@ const ENTITY_STYLE: Record<
 > = {
   activity: { icon: ActivityIcon, className: "bg-primary/10 text-primary" },
   expense: { icon: CircleDollarSign, className: "bg-emerald-500/10 text-emerald-600" },
+  settlement: { icon: CircleDollarSign, className: "bg-emerald-500/10 text-emerald-600" },
   media: { icon: Camera, className: "bg-viatik-magenta/10 text-viatik-magenta" },
 };
 
@@ -41,8 +43,8 @@ export function SharedTripFeed({
   limit,
   className,
   collapsible = false,
-  heading = "Trip Feed",
-  emptyMessage = "No activity yet. Add a photo, expense, or activity to kick things off.",
+  heading,
+  emptyMessage,
 }: {
   tripId: string;
   userId: string;
@@ -52,6 +54,9 @@ export function SharedTripFeed({
   heading?: string;
   emptyMessage?: string;
 }) {
+  const { t } = useI18n();
+  const resolvedHeading = heading ?? "Trip Feed";
+  const resolvedEmpty = emptyMessage ?? "No activity yet. Add a photo, expense, or activity to kick things off.";
   const { loading, items, profiles } = useSharedTripFeed(tripId, userId);
   const [isExpanded, setIsExpanded] = useState(!collapsible);
   const contentId = useId();
@@ -66,10 +71,10 @@ export function SharedTripFeed({
           </span>
           <div>
             <Heading level={2} id="feed-heading" className="text-xl font-bold">
-              {heading}
+              {resolvedHeading}
             </Heading>
             <p className="text-sm text-muted-foreground">
-              What everyone’s been up to on this trip.
+              {t("copy.feedHeading")}
             </p>
           </div>
         </div>
@@ -107,9 +112,9 @@ export function SharedTripFeed({
             <Rss className="size-6" aria-hidden />
           </span>
           <Heading level={3} className="mt-4 text-base font-semibold">
-            No activity yet
+            {t("copy.noActivityYet")}
           </Heading>
-          <p className="mt-1 text-sm text-muted-foreground">{emptyMessage}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{resolvedEmpty}</p>
         </div>
       ) : (
         <ol className="relative space-y-1 border-l border-border pl-5">
@@ -130,9 +135,10 @@ export function SharedTripFeed({
 }
 
 export function FeedRow({ item, currentUserId, profile }: { item: TripFeedItem; currentUserId: string; profile?: FeedActorProfile }) {
+  const { t } = useI18n();
   const style = ENTITY_STYLE[item.entityType] ?? ENTITY_STYLE.activity;
   const Icon = style.icon;
-  const actorLabel = item.actorId === currentUserId ? "You" : profile?.name ?? resolveActorLabel(item.actorId, currentUserId);
+  const actorLabel = item.actorId === currentUserId ? t("common.you") : profile?.name ?? resolveActorLabel(item.actorId, currentUserId);
 
   return (
     <div className="flex items-start gap-3">

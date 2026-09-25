@@ -16,9 +16,10 @@ beforeEach(async () => {
   setCurrentDatabase(db);
   configureSyncUser(TEST_USER);
   await db.open();
-  await db.activities.clear();
-  await db.outboxMutations.clear();
-});
+    await db.activities.clear();
+    await db.tripMedia.clear();
+    await db.outboxMutations.clear();
+  });
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -157,5 +158,89 @@ describe("DexieActivityRepository", () => {
       verb: "deleted_checklist_item",
       summary: 'deleted “Sacar efectivo” from “compras”',
     });
+  });
+});
+
+describe("saveActivityPlanning", () => {
+  it("writes activity, pending media, and outbox atomically and skips cancel leftovers", async () => {
+    const { saveActivityPlanning } = await import("@/features/activities/data/save-activity-planning");
+    const blob = new Blob(["photo"], { type: "image/jpeg" });
+
+    const saved = await saveActivityPlanning({
+      activity: {
+        id: "activity-attach-1",
+        tripId: "trip-1",
+        dayDate: "2026-06-01",
+        title: "Museum day",
+        attachments: [{ id: "img-1", kind: "image", mediaId: "media-1", caption: "Tickets", altText: null }],
+        position: 1,
+        createdBy: TEST_USER,
+      },
+      pendingImages: [{ id: "media-1", blob, caption: "Tickets" }],
+    });
+
+    expect(saved.attachments).toEqual([
+      { id: "img-1", kind: "image", mediaId: "media-1", caption: "Tickets", altText: null },
+    ]);
+    const media = await db.tripMedia.get("media-1");
+    expect(media).toMatchObject({
+      id: "media-1",
+      activityId: "activity-attach-1",
+      uploadStatus: "pending",
+      blob,
+    });
+    expect(await db.outboxMutations.count()).toBe(1);
+    const outbox = JSON.stringify(await db.outboxMutations.toArray());
+    expect(outbox).toContain("media-1");
+    expect(outbox).not.toContain("data:image");
+    const { activityToRow } = await import("@/lib/supabase/mappers");
+    expect(activityToRow(saved).attachments).toEqual(saved.attachments);
+
+    db.close();
+    await db.open();
+    setCurrentDatabase(db);
+    expect((await db.tripMedia.get("media-1"))?.blob).toBeTruthy();
+    expect((await db.activities.get("activity-attach-1"))?.attachments).toHaveLength(1);
+  });
+
+  it("soft-deletes unreferenced attachment media on update", async () => {
+    const { saveActivityPlanning } = await import("@/features/activities/data/save-activity-planning");
+    const blob = new Blob(["photo"], { type: "image/jpeg" });
+    const existing = await saveActivityPlanning({
+      activity: {
+        id: "activity-attach-2",
+        tripId: "trip-1",
+        dayDate: "2026-06-01",
+        title: "Museum day",
+        attachments: [{ id: "img-1", kind: "image", mediaId: "media-2", caption: null, altText: null }],
+        position: 1,
+        createdBy: TEST_USER,
+      },
+      pendingImages: [{ id: "media-2", blob, caption: null }],
+    });
+
+    const updated = await saveActivityPlanning({
+      existing,
+      activity: {
+        id: existing.id,
+        tripId: existing.tripId,
+        dayDate: existing.dayDate,
+        title: existing.title,
+        attachments: [{
+          id: "link-1",
+          kind: "link",
+          url: "https://example.com",
+          title: "Menu",
+          description: null,
+          siteName: null,
+          previewImageMediaId: null,
+        }],
+        position: existing.position,
+        createdBy: TEST_USER,
+      },
+    });
+
+    expect(updated.attachments?.[0]?.kind).toBe("link");
+    expect((await db.tripMedia.get("media-2"))?.deletedAt).not.toBeNull();
   });
 });

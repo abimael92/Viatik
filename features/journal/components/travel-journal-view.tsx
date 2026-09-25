@@ -1,5 +1,7 @@
 "use client";
 
+import { localizeThrownError } from "@/lib/i18n/localize-error";
+
 import { Activity as ActivityIcon, BookOpen, Camera, ChevronDown, ChevronUp, CircleDollarSign, CalendarDays, Expand, Footprints, Pencil, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import imageCompression from "browser-image-compression";
@@ -18,6 +20,7 @@ import { journalRepository } from "@/features/journal/data/dexie-journal-reposit
 import type { JournalDayEntry } from "@/features/journal/domain/journal-types";
 import { useTravelJournal } from "@/features/journal/lib/use-travel-journal";
 import type { JournalDay } from "@/features/journal/lib/journal-aggregator";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 /**
  * Travel Journal & Trip Replay for a trip. Aggregates photos, activities, and
@@ -40,6 +43,7 @@ export function TravelJournalView({
   endDate: string | null;
   canEdit?: boolean;
 }) {
+  const { t } = useI18n();
   const { loading, days, summary } = useTravelJournal(tripId, baseCurrency, startDate, endDate);
   const [entries, setEntries] = useState<JournalDayEntry[]>([]);
   useEffect(() => journalRepository.watchByTrip(tripId, setEntries), [tripId]);
@@ -54,10 +58,10 @@ export function TravelJournalView({
         </span>
         <div>
           <Heading level={2} id="journal-heading" className="text-xl font-bold">
-            Travel Journal
+            {t("copy.travelJournal")}
           </Heading>
           <p className="text-sm text-muted-foreground">
-            Your trip, day by day — photos, activities, and spending.
+            {t("copy.journalDayByDay")}
           </p>
         </div>
       </div>
@@ -74,10 +78,10 @@ export function TravelJournalView({
         <div className="rounded-2xl border border-dashed p-10 text-center">
           <BookOpen className="mx-auto size-8 text-muted-foreground" />
           <Heading level={3} className="mt-3 text-base font-semibold">
-            No journal entries yet
+            {t("copy.noJournal")}
           </Heading>
           <p className="mt-1 text-sm text-muted-foreground">
-            Add photos, activities, or expenses to start telling your trip’s story.
+            {t("copy.journalEmpty")}
           </p>
         </div>
       ) : (
@@ -108,15 +112,16 @@ function TripReplayCard({
   baseCurrency: CurrencyCode;
   loading: boolean;
 }) {
+  const { t } = useI18n();
   if (loading) {
     return <div className="h-40 animate-pulse rounded-2xl border bg-card" />;
   }
 
   const stats = [
     { icon: CalendarDays, label: "Days", value: String(summary.totalDays) },
-    { icon: Camera, label: "Photos", value: String(summary.totalPhotos) },
-    { icon: Footprints, label: "Activities", value: String(summary.totalActivities) },
-    { icon: CircleDollarSign, label: "Spent", value: formatMinorUnits(summary.totalSpentMinor, baseCurrency) },
+    { icon: Camera, label: t("common.photos"), value: String(summary.totalPhotos) },
+    { icon: Footprints, label: t("common.activities"), value: String(summary.totalActivities) },
+    { icon: CircleDollarSign, label: t("common.spent"), value: formatMinorUnits(summary.totalSpentMinor, baseCurrency) },
   ];
 
   return (
@@ -129,7 +134,7 @@ function TripReplayCard({
         <div className="flex items-center gap-2">
           <Camera className="size-5 text-primary" aria-hidden />
           <Heading level={3} className="text-lg font-bold">
-            Trip Replay
+            {t("copy.tripReplay")}
           </Heading>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -152,6 +157,7 @@ function TripReplayCard({
 }
 
 function JournalDayCard({ day, tripId, userId, canEdit, baseCurrency, experience, onSaveExperience }: { day: JournalDay; tripId: string; userId: string; canEdit: boolean; baseCurrency: CurrencyCode; experience: string; onSaveExperience: (experience: string) => Promise<unknown> }) {
+  const { t } = useI18n();
   const [editing, setEditing] = useState(false);
   const title = formatJournalDate(day.date);
 
@@ -187,7 +193,7 @@ function JournalDayCard({ day, tripId, userId, canEdit, baseCurrency, experience
               className={!editing ? "border-yellow-300 bg-yellow-50 text-yellow-700 hover:bg-yellow-100" : undefined}
               onClick={() => setEditing((value) => !value)}
             >
-              <Pencil className="size-4" /> {editing ? "Done" : "Edit"}
+              <Pencil className="size-4" /> {editing ? t("copy.done") : t("common.edit")}
             </Button>
           )}
         </span>
@@ -224,27 +230,29 @@ function JournalDayCard({ day, tripId, userId, canEdit, baseCurrency, experience
 }
 
 function DayExperience({ value, dayDate, editing, onSave }: { value: string; dayDate: string; editing: boolean; onSave: (value: string) => Promise<unknown> }) {
+  const { t } = useI18n();
   const [text, setText] = useState(value);
   const [saved, setSaved] = useState(true);
   if (!editing) {
     return value.trim() ? (
       <p className="mt-4 whitespace-pre-wrap rounded-lg bg-muted/40 p-3 text-sm">{value}</p>
     ) : (
-      <p className="mt-4 text-sm text-muted-foreground">No notes for this day yet.</p>
+      <p className="mt-4 text-sm text-muted-foreground">{t("copy.noNotesDay")}</p>
     );
   }
   return (
     <div className="mt-4 space-y-1.5">
       <div className="flex items-center justify-between gap-3">
-        <label htmlFor={`journal-experience-${dayDate}`} className="text-sm font-semibold">How was your day?</label>
-        <span className="text-xs text-muted-foreground" aria-live="polite">{saved ? "Saved offline" : "Unsaved"}</span>
+        <label htmlFor={`journal-experience-${dayDate}`} className="text-sm font-semibold">{t("copy.journalPrompt")}</label>
+        <span className="text-xs text-muted-foreground" aria-live="polite">{saved ? t("common.offlineSaved") : "Unsaved"}</span>
       </div>
-      <textarea id={`journal-experience-${dayDate}`} value={text} onChange={(event) => { setText(event.target.value); setSaved(false); }} onBlur={() => { if (!saved) void onSave(text).then(() => setSaved(true)); }} rows={4} maxLength={4000} placeholder="Describe what you experienced, favorite moments, places, food, and anything you want to remember…" className="w-full resize-y rounded-lg border bg-background px-3 py-2 text-sm outline-none transition focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring" />
+      <textarea id={`journal-experience-${dayDate}`} value={text} onChange={(event) => { setText(event.target.value); setSaved(false); }} onBlur={() => { if (!saved) void onSave(text).then(() => setSaved(true)); }} rows={4} maxLength={4000} placeholder={t("copy.journalPlaceholder")} className="w-full resize-y rounded-lg border bg-background px-3 py-2 text-sm outline-none transition focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring" />
     </div>
   );
 }
 
 function AddExpenseControl({ tripId, userId, day, currency }: { tripId: string; userId: string; day: string; currency: CurrencyCode }) {
+  const { t } = useI18n();
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [saving, setSaving] = useState(false);
@@ -271,7 +279,7 @@ function AddExpenseControl({ tripId, userId, day, currency }: { tripId: string; 
       setDescription("");
       setAmount("");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to add expense.");
+      setError(localizeThrownError(cause, t, "Unable to add expense."));
     } finally {
       setSaving(false);
     }
@@ -279,20 +287,21 @@ function AddExpenseControl({ tripId, userId, day, currency }: { tripId: string; 
   return (
     <form onSubmit={submit} className="flex flex-wrap items-end gap-2 rounded-lg border bg-muted/40 p-2">
       <div className="space-y-1">
-        <Label htmlFor={`journal-expense-${day}`} className="text-xs">Expense</Label>
-        <Input id={`journal-expense-${day}`} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="e.g. Dinner" className="h-9 w-40" />
+        <Label htmlFor={`journal-expense-${day}`} className="text-xs">{t("copy.expense")}</Label>
+        <Input id={`journal-expense-${day}`} value={description} onChange={(event) => setDescription(event.target.value)} placeholder={t("copy.placeholderDinner")} className="h-9 w-40" />
       </div>
       <div className="space-y-1">
-        <Label htmlFor={`journal-amount-${day}`} className="text-xs">Amount</Label>
+        <Label htmlFor={`journal-amount-${day}`} className="text-xs">{t("common.amount")}</Label>
         <Input id={`journal-amount-${day}`} value={amount} onChange={(event) => setAmount(event.target.value)} placeholder={`0.00 ${currency}`} inputMode="decimal" className="h-9 w-28" />
       </div>
-      <Button type="submit" size="sm" disabled={saving || !description.trim() || !amount}>{saving ? "…" : <Plus className="size-4" />}Add</Button>
+      <Button type="submit" size="sm" disabled={saving || !description.trim() || !amount}>{saving ? "…" : <Plus className="size-4" />}{t("common.add")}</Button>
       {error && <p className="w-full text-xs text-destructive">{error}</p>}
     </form>
   );
 }
 
 function AddPhotoControl({ tripId, userId, day }: { tripId: string; userId: string; day: string }) {
+  const { t } = useI18n();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   async function handleFile(file: File | null) {
@@ -303,7 +312,7 @@ function AddPhotoControl({ tripId, userId, day }: { tripId: string; userId: stri
       const compressed = await imageCompression(file, { maxSizeMB: 2, maxWidthOrHeight: 2000, useWebWorker: true });
       await mediaRepository.create({ id: crypto.randomUUID(), tripId, takenAt: day, blob: compressed, createdBy: userId });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to add photo.");
+      setError(localizeThrownError(cause, t, "Unable to add photo."));
     } finally {
       setSaving(false);
     }
@@ -311,7 +320,7 @@ function AddPhotoControl({ tripId, userId, day }: { tripId: string; userId: stri
   return (
     <div>
       <label className="inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-md border border-border/60 px-3 text-sm font-semibold transition-colors hover:bg-muted">
-        <Camera className="size-4" /> {saving ? "Adding…" : "Add photo"}
+        <Camera className="size-4" /> {saving ? t("common.adding") : "Add photo"}
         <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={saving} onChange={(event) => { void handleFile(event.target.files?.[0] ?? null); event.target.value = ""; }} />
       </label>
       {error && <p className="text-xs text-destructive">{error}</p>}
@@ -359,6 +368,7 @@ function ExpenseRow({ expense }: { expense: Expense }) {
 }
 
 function DayPhotoGallery({ photos, dayDate }: { photos: TripMedia[]; dayDate: string }) {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   return (
@@ -369,20 +379,20 @@ function DayPhotoGallery({ photos, dayDate }: { photos: TripMedia[]; dayDate: st
           {expanded ? "Hide photos" : `Show photos (${photos.length})`}
         </Button>
         <Button type="button" variant="outline" size="sm" onClick={() => setModalOpen(true)}>
-          <Expand className="size-4" />View all
+          <Expand className="size-4" />{t("common.viewAll")}
         </Button>
       </div>
       {expanded && (
         <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
           {photos.slice(0, 8).map((photo) => <PhotoThumb key={photo.id} photo={photo} />)}
-          {photos.length > 8 && <button type="button" onClick={() => setModalOpen(true)} className="grid aspect-square place-items-center rounded-lg border bg-muted text-sm font-semibold text-muted-foreground hover:text-foreground">+{photos.length - 8} more</button>}
+          {photos.length > 8 && <button type="button" onClick={() => setModalOpen(true)} className="grid aspect-square place-items-center rounded-lg border bg-muted text-sm font-semibold text-muted-foreground hover:text-foreground">+{photos.length - 8} {t("common.more")}</button>}
         </div>
       )}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Photos from {formatJournalDate(dayDate)}</DialogTitle>
-            <DialogDescription>{photos.length} {photos.length === 1 ? "photo" : "photos"} uploaded for this day.</DialogDescription>
+            <DialogDescription>{photos.length} {photos.length === 1 ? t("common.photo") : "photos"} uploaded for this day.</DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {photos.map((photo) => <PhotoThumb key={photo.id} photo={photo} />)}

@@ -153,8 +153,8 @@ export class DexieExpenseRepository implements ExpenseRepository {
           shareAmountMinor: share.shareAmountMinor,
           sharePercentage: share.sharePercentage,
           splitType: share.splitType ?? expense.splitType,
-          settlementStatus: previous?.settlementStatus ?? "pending",
-          settledAt: previous?.settledAt ?? null,
+          settlementStatus: "pending" as const,
+          settledAt: null,
           createdAt: previous?.createdAt ?? now,
           updatedAt: now,
         };
@@ -169,21 +169,6 @@ export class DexieExpenseRepository implements ExpenseRepository {
           { tx: ctx, baseUpdatedAt: existingByUser.get(share.userId)?.updatedAt ?? null }
         );
       }
-    });
-  }
-
-  async settleShare(shareId: string): Promise<void> {
-    const db = getDb();
-    return TransactionContext.runInTransaction([db.expenseShares], async (ctx) => {
-      const share = await ctx.table<ExpenseShare>("expenseShares").get(shareId);
-      if (!share || share.settlementStatus === "settled") return;
-      const now = new Date().toISOString();
-      await ctx.table<ExpenseShare>("expenseShares").put({
-        ...share,
-        settlementStatus: "settled",
-        settledAt: now,
-        updatedAt: now,
-      });
     });
   }
 

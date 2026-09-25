@@ -1,5 +1,7 @@
 "use client";
 
+import { localizeThrownError, localizeUserError } from "@/lib/i18n/localize-error";
+
 import { Check, Copy, KeyRound, Pencil, ScanLine, Smartphone, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
@@ -65,7 +67,7 @@ export function SettingsClient({
         if (!data?.id) throw new Error("Passkey registration did not complete.");
         setMessage(t("common.passkeyAdded"));
       } catch (error) {
-        setMessage(error instanceof Error ? error.message : t("common.passkeyCancelled"));
+        setMessage(localizeThrownError(error, t, "common.passkeyCancelled"));
       }
     });
   }
@@ -181,9 +183,7 @@ export function SettingsClient({
                   ) : qrError ? (
                     <p role="alert" className="max-w-xs rounded-lg bg-destructive/10 p-3 text-center text-sm text-destructive">{qrError}</p>
                   ) : (
-                    <div className="grid size-60 place-items-center rounded-3xl border bg-muted/40 text-sm text-muted-foreground" role="status">
-                      Preparing secure QR code…
-                    </div>
+                    <div className="grid size-60 place-items-center rounded-3xl border bg-muted/40 text-sm text-muted-foreground" role="status">{t("copy.preparingQr")}</div>
                   )}
                 </div>
                 <div className="flex flex-col items-center text-center md:items-start md:text-left">
@@ -208,7 +208,7 @@ export function SettingsClient({
               <KeyRound className="size-5 text-primary" />
               <div>
                 <h2 id="security-heading" className="font-semibold">{t("common.signInSecurity")}</h2>
-                <p className="text-sm text-muted-foreground">Add a passkey to your verified Supabase account.</p>
+                <p className="text-sm text-muted-foreground">{t("copy.addPasskeyHelp")}</p>
               </div>
             </div>
             <div className="mt-5 divide-y rounded-xl border">
@@ -216,7 +216,7 @@ export function SettingsClient({
                 <Smartphone className="size-5 text-muted-foreground" />
                 <div className="flex-1">
                   <p className="font-semibold">{t("common.smsAuthentication")}</p>
-                  <p className="text-sm text-muted-foreground">{phone ?? "No phone number available"}</p>
+                  <p className="text-sm text-muted-foreground">{phone ?? t("common.noPhoneAvailable")}</p>
                 </div>
                 <span className="text-xs font-semibold text-success">{t("common.verifiedSession")}</span>
               </div>
@@ -224,7 +224,7 @@ export function SettingsClient({
                 <KeyRound className="size-5 text-muted-foreground" />
                 <div className="flex-1">
                   <p className="font-semibold">{t("common.passkeys")}</p>
-                  <p className="text-sm text-muted-foreground">Use your device biometrics for a faster sign-in.</p>
+                  <p className="text-sm text-muted-foreground">{t("copy.passkeyBiometrics")}</p>
                 </div>
                 <Button variant="outline" onClick={addPasskey} disabled={pending}>{t("common.addPasskey")}</Button>
               </div>
@@ -321,7 +321,7 @@ function ProfileEditForm({
         },
         avatarFile
       );
-      if (!result.success) return setMessage(result.error);
+      if (!result.success) return setMessage(localizeUserError(result.error, t, "errors.profileSaveFailed"));
       window.dispatchEvent(new Event(PROFILE_UPDATED_EVENT));
       onSaved(result.success ? "Profile saved." : "");
     });
@@ -339,63 +339,63 @@ function ProfileEditForm({
         />
       </div>
       <div className="space-y-2 sm:col-span-2">
-        <Label htmlFor="settings-fullName">Full name</Label>
+        <Label htmlFor="settings-fullName">{t("common.fullName")}</Label>
         <Input id="settings-fullName" value={values.fullName} onChange={(event) => setField("fullName", event.target.value)} autoComplete="name" required />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="settings-phone">Phone</Label>
+        <Label htmlFor="settings-phone">{t("common.phone")}</Label>
         <Input id="settings-phone" type="tel" inputMode="tel" autoComplete="tel" value={values.phone} onChange={(event) => setField("phone", event.target.value)} placeholder="+1 555 012 3456" required />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="settings-birthDate">Date of birth</Label>
+        <Label htmlFor="settings-birthDate">{t("common.dateOfBirth")}</Label>
         <Input id="settings-birthDate" type="date" value={values.birthDate} onChange={(event) => setField("birthDate", event.target.value)} max={new Date().toISOString().slice(0, 10)} required />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="settings-preferredCurrency">Preferred currency</Label>
+        <Label htmlFor="settings-preferredCurrency">{t("common.preferredCurrency")}</Label>
         <select id="settings-preferredCurrency" value={values.preferredCurrency} onChange={(event) => setField("preferredCurrency", event.target.value)} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
           <option value="">{t("common.notSpecified")}</option>
-          <option value="USD">USD — US Dollar</option>
-          <option value="EUR">EUR — Euro</option>
-          <option value="GBP">GBP — British Pound</option>
-          <option value="CAD">CAD — Canadian Dollar</option>
-          <option value="MXN">MXN — Mexican Peso</option>
-          <option value="JPY">JPY — Japanese Yen</option>
+          <option value="USD">{t("copy.usd")}</option>
+          <option value="EUR">{t("copy.eur")}</option>
+          <option value="GBP">{t("copy.gbp")}</option>
+          <option value="CAD">{t("copy.cad")}</option>
+          <option value="MXN">{t("copy.mxn")}</option>
+          <option value="JPY">{t("copy.jpy")}</option>
         </select>
       </div>
       <div className="space-y-2">
-        <Label htmlFor="settings-preferredLanguage">Preferred language</Label>
-        <Input id="settings-preferredLanguage" value={values.preferredLanguage} onChange={(event) => setField("preferredLanguage", event.target.value)} placeholder="English" maxLength={35} />
+        <Label htmlFor="settings-preferredLanguage">{t("common.preferredLanguage")}</Label>
+        <Input id="settings-preferredLanguage" value={values.preferredLanguage} onChange={(event) => setField("preferredLanguage", event.target.value)} placeholder={t("common.english")} maxLength={35} />
       </div>
       <label className="flex items-center gap-3 rounded-xl border p-3 text-sm sm:col-span-2">
         <input type="checkbox" checked={values.muteTripNotifications} onChange={(event) => setValues((current) => ({ ...current, muteTripNotifications: event.target.checked }))} />
-        <span><span className="block font-semibold">Mute trip notifications</span><span className="text-xs text-muted-foreground">10 PM – 8 AM</span></span>
+        <span><span className="block font-semibold">{t("copy.muteTripNotifications")}</span><span className="text-xs text-muted-foreground">10 PM – 8 AM</span></span>
       </label>
       <div className="space-y-2">
-        <Label htmlFor="settings-dietaryRestrictions">Dietary restrictions</Label>
-        <Input id="settings-dietaryRestrictions" value={values.dietaryRestrictions} onChange={(event) => setField("dietaryRestrictions", event.target.value)} placeholder="vegetarian, gluten-free" />
+        <Label htmlFor="settings-dietaryRestrictions">{t("common.dietaryRestrictions")}</Label>
+        <Input id="settings-dietaryRestrictions" value={values.dietaryRestrictions} onChange={(event) => setField("dietaryRestrictions", event.target.value)} placeholder={t("copy.placeholderDiet")} />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="settings-allergies">Allergies</Label>
-        <Input id="settings-allergies" value={values.allergies} onChange={(event) => setField("allergies", event.target.value)} placeholder="nuts, shellfish" />
+        <Label htmlFor="settings-allergies">{t("common.allergies")}</Label>
+        <Input id="settings-allergies" value={values.allergies} onChange={(event) => setField("allergies", event.target.value)} placeholder={t("copy.placeholderAllergies")} />
       </div>
       <div className="space-y-2">
         <Label htmlFor="settings-emergencyContactName">{t("common.emergencyContactName")}</Label>
-        <Input id="settings-emergencyContactName" value={values.emergencyContactName} onChange={(event) => setField("emergencyContactName", event.target.value)} placeholder="Jane Doe" />
+        <Input id="settings-emergencyContactName" value={values.emergencyContactName} onChange={(event) => setField("emergencyContactName", event.target.value)} placeholder={t("copy.placeholderJane")} />
       </div>
       <div className="space-y-2">
         <Label htmlFor="settings-emergencyContactRelationship">{t("common.emergencyRelationship")}</Label>
-        <Input id="settings-emergencyContactRelationship" value={values.emergencyContactRelationship} onChange={(event) => setField("emergencyContactRelationship", event.target.value)} placeholder="Parent, partner, friend…" />
+        <Input id="settings-emergencyContactRelationship" value={values.emergencyContactRelationship} onChange={(event) => setField("emergencyContactRelationship", event.target.value)} placeholder={t("copy.placeholderRelationship")} />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="settings-emergencyContactPhone">Emergency phone</Label>
+        <Label htmlFor="settings-emergencyContactPhone">{t("common.emergencyPhone")}</Label>
         <Input id="settings-emergencyContactPhone" type="tel" inputMode="tel" value={values.emergencyContactPhone} onChange={(event) => setField("emergencyContactPhone", event.target.value)} placeholder="+1 555 012 3456" />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="settings-passportIssuingCountry">Passport country</Label>
+        <Label htmlFor="settings-passportIssuingCountry">{t("common.passportCountry")}</Label>
         <Input id="settings-passportIssuingCountry" value={values.passportIssuingCountry} onChange={(event) => setField("passportIssuingCountry", event.target.value)} placeholder="US" minLength={2} maxLength={2} />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="settings-passportExpiresOn">Passport expiration</Label>
+        <Label htmlFor="settings-passportExpiresOn">{t("common.passportExpiration")}</Label>
         <Input id="settings-passportExpiresOn" type="date" value={values.passportExpiresOn} onChange={(event) => setField("passportExpiresOn", event.target.value)} />
       </div>
       {message && <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive sm:col-span-2">{message}</p>}

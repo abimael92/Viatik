@@ -1,5 +1,7 @@
 "use client";
 
+import { localizeThrownError } from "@/lib/i18n/localize-error";
+
 import { BarChart3, CalendarCheck, Check, Loader2, Plus, Trophy, Vote, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -86,29 +88,29 @@ export function PollsView({
     try {
       await pollRepository.castVote(poll.id, optionId, userId);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to cast vote.");
+      setError(localizeThrownError(cause, t, "Unable to cast vote."));
     }
-  }, [userId]);
+  }, [t, userId]);
 
   const handleClose = useCallback(async (poll: Poll) => {
     setError(null);
     try {
       await pollRepository.close(poll.id);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to close poll.");
+      setError(localizeThrownError(cause, t, "Unable to close poll."));
     }
-  }, []);
+  }, [t]);
 
   const handleSchedule = useCallback(async (poll: Poll) => {
     const tally = calculateTally(poll, votesByPoll[poll.id] ?? []);
     const winner = tally.winner;
     if (!winner) {
-      setError("There’s no winner to schedule yet — a tie needs a runoff.");
+      setError(t("copy.noWinnerSchedule"));
       return;
     }
     const day = pickWinnerDay(poll, tripDays);
     if (!day) {
-      setError("Set trip dates (or pick a day on the poll) before auto-scheduling.");
+      setError(t("copy.setDatesBeforeSchedule"));
       return;
     }
     setBusyPollId(poll.id);
@@ -121,11 +123,11 @@ export function PollsView({
       const created = await activityRepository.create(newActivity);
       await pollRepository.markScheduled(poll.id, created.id);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to schedule the winner.");
+      setError(localizeThrownError(cause, t, "Unable to schedule the winner."));
     } finally {
       setBusyPollId(null);
     }
-  }, [activities, tripDays, userId, votesByPoll]);
+  }, [activities, t, tripDays, userId, votesByPoll]);
 
   return (
     <section aria-labelledby="polls-heading" className="space-y-5">
@@ -325,7 +327,7 @@ function PollCard({
           )}
           {active && (
             <Button size="sm" variant="outline" onClick={() => onClose(poll)} disabled={busy}>
-              Close poll
+              {t("copy.closePoll")}
             </Button>
           )}
         </div>
@@ -349,6 +351,7 @@ function CreatePollModal({
   tripDays: string[];
   onError: (message: string) => void;
 }) {
+  const { t } = useI18n();
   const [question, setQuestion] = useState("");
   const [options, setOptions] = useState<string[]>(["", ""]);
   const [dayDate, setDayDate] = useState("");
@@ -387,7 +390,7 @@ function CreatePollModal({
       reset();
       onOpenChange(false);
     } catch (cause) {
-      onError(cause instanceof Error ? cause.message : "Unable to create poll.");
+      onError(localizeThrownError(cause, t, "Unable to create poll."));
     } finally {
       setSaving(false);
     }
@@ -399,25 +402,25 @@ function CreatePollModal({
     <Dialog open={open} onOpenChange={(value) => !value && !saving && onOpenChange(false)}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>New poll</DialogTitle>
+          <DialogTitle>{t("common.newPoll")}</DialogTitle>
           <DialogDescription>
-            Ask the group a question and let everyone vote. The winner can be added to your itinerary.
+            {t("copy.pollHelp")}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="poll-question">Question</Label>
+            <Label htmlFor="poll-question">{t("copy.question")}</Label>
             <Input
               id="poll-question"
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
-              placeholder="e.g. Where should we have dinner?"
+              placeholder={t("copy.placeholderDinnerQuestion")}
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Options</Label>
+            <Label>{t("copy.options")}</Label>
             <div className="space-y-2">
               {options.map((option, index) => (
                 <div key={index} className="flex items-center gap-2">
@@ -441,20 +444,20 @@ function CreatePollModal({
               ))}
             </div>
             <Button type="button" size="sm" variant="ghost" onClick={addOption}>
-              <Plus className="size-4" /> Add option
+              <Plus className="size-4" /> {t("copy.addOption")}
             </Button>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="poll-day">Day hint (optional)</Label>
+              <Label htmlFor="poll-day">{t("copy.dayHintOptional")}</Label>
               <select
                 id="poll-day"
                 value={dayDate}
                 onChange={(event) => setDayDate(event.target.value)}
                 className="h-10 w-full rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <option value="">No specific day</option>
+                <option value="">{t("copy.noSpecificDay")}</option>
                 {tripDays.map((day) => (
                   <option key={day} value={day}>
                     {new Date(`${day}T12:00:00`).toLocaleDateString(undefined, {
@@ -466,29 +469,29 @@ function CreatePollModal({
               </select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="poll-category">Category (optional)</Label>
+              <Label htmlFor="poll-category">{t("copy.categoryOptional")}</Label>
               <Input
                 id="poll-category"
                 value={category}
                 onChange={(event) => setCategory(event.target.value)}
-                placeholder="e.g. dining"
+                placeholder={t("copy.placeholderDining")}
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="poll-location">Location (optional)</Label>
+            <Label htmlFor="poll-location">{t("copy.locationOptional")}</Label>
             <Input
               id="poll-location"
               value={location}
               onChange={(event) => setLocation(event.target.value)}
-              placeholder="e.g. Old Town"
+              placeholder={t("copy.placeholderOldTown")}
             />
           </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button type="submit" variant="primary" disabled={saving || !canSubmit}>
               {saving ? <Loader2 className="size-4 animate-spin" /> : <Vote className="size-4" />}
