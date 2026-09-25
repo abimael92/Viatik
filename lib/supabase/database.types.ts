@@ -2884,6 +2884,10 @@ export type Database = {
         Args: { p_base_updated_at?: string; p_payload: Json }
         Returns: Json
       }
+      sync_trip_added_notification: {
+        Args: { p_payload: Json }
+        Returns: Json
+      }
       sync_trip_share_link_cas_delete: {
         Args: { p_base_updated_at: string; p_id: string }
         Returns: Json
@@ -2929,6 +2933,7 @@ export type Database = {
         | "settlement_pending"
         | "trip_alert"
         | "trip_invitation"
+        | "trip_added"
       traveler_type: "adult" | "child"
       trip_member_role: "owner" | "editor" | "viewer"
     }
@@ -3077,6 +3082,7 @@ export const Constants = {
         "settlement_pending",
         "trip_alert",
         "trip_invitation",
+        "trip_added",
       ],
       traveler_type: ["adult", "child"],
       trip_member_role: ["owner", "editor", "viewer"],

@@ -5,6 +5,9 @@ import type {
   ActivityPersonalBudget,
   Connection,
   Contact,
+  Decision,
+  DecisionOption,
+  DecisionVote,
   Expense,
   ExpenseSettlement,
   ExpenseShare,
@@ -55,6 +58,9 @@ import {
   tripWeatherForecastToRow,
   shareLinkToRow,
   notificationToRow,
+  decisionToRow,
+  decisionOptionToRow,
+  decisionVoteToRow,
 } from "@/lib/supabase/mappers";
 import { logger } from "@/lib/observability/logger";
 import {
@@ -213,6 +219,12 @@ function mutationPayloadToRow(mutation: OutboxMutation): Record<string, unknown>
       return shareLinkToRow(mutation.payload as unknown as TripShareLink);
     case "notification":
       return notificationToRow(mutation.payload as unknown as Notification);
+    case "decision":
+      return decisionToRow(mutation.payload as unknown as Decision);
+    case "decisionOption":
+      return decisionOptionToRow(mutation.payload as unknown as DecisionOption);
+    case "decisionVote":
+      return decisionVoteToRow(mutation.payload as unknown as DecisionVote);
   }
 }
 
@@ -396,6 +408,13 @@ function resolveDeleteRequest(
       p_base_updated_at: mutation.baseUpdatedAt,
     });
   }
+  if (mutation.entityType === "decision" || mutation.entityType === "decisionOption" || mutation.entityType === "decisionVote") {
+    return client.rpc("sync_decision_cas_delete", {
+      p_entity: mutation.entityType,
+      p_id: mutation.entityId,
+      p_base_updated_at: mutation.baseUpdatedAt,
+    });
+  }
   return client.rpc("sync_cas_delete", {
     p_entity: mutation.entityType,
     p_id: mutation.entityId,
@@ -457,7 +476,19 @@ async function replayCasMutation(mutation: OutboxMutation, signal?: AbortSignal)
                           p_payload: mutationPayloadToRow(mutation),
                           p_base_updated_at: mutation.baseUpdatedAt,
                         })
-                      : client.rpc("sync_cas_upsert", {
+                      : mutation.entityType === "decision" ||
+                          mutation.entityType === "decisionOption" ||
+                          mutation.entityType === "decisionVote"
+                        ? client.rpc("sync_decision_cas_upsert", {
+                            p_entity: mutation.entityType,
+                            p_payload: mutationPayloadToRow(mutation),
+                            p_base_updated_at: mutation.baseUpdatedAt,
+                          })
+                        : mutation.entityType === "notification"
+                          ? client.rpc("sync_trip_added_notification", {
+                              p_payload: mutationPayloadToRow(mutation),
+                            })
+                          : client.rpc("sync_cas_upsert", {
                           p_entity: mutation.entityType,
                           p_payload: mutationPayloadToRow(mutation),
                           p_base_updated_at: mutation.baseUpdatedAt,
@@ -596,7 +627,7 @@ async function runCoordinatedSync(): Promise<void> {
   } catch (error) {
     if (!(error instanceof SyncCoordinationInterruptedError)) throw error;
     await refreshPending();
-    setStatus(typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "idle");
+    setStatus("idle");
   }
 }
 
@@ -623,12 +654,9 @@ async function syncOnce(context?: SyncExecutionContext): Promise<void> {
 
   logger.debug("Sync started", { pending: countPending });
 
-  if (typeof navigator !== "undefined" && !navigator.onLine) {
-    logger.info("Sync skipped - offline");
-    setStatus("offline");
-    return;
-  }
-
+  // navigator.onLine is often false while the server is still reachable. Skipping
+  // here left IndexedDB empty, so Home showed "create your first trip" and the
+  // offline banner even though the account still had trips.
   setStatus("syncing");
   const syncUser = getSyncUser();
   if (!syncUser) {
@@ -748,12 +776,7 @@ async function syncOnce(context?: SyncExecutionContext): Promise<void> {
 
   await refreshPending();
 
-  const newStatus =
-    typeof navigator === "undefined" || navigator.onLine
-      ? countPending > 0
-        ? "error"
-        : "idle"
-      : "offline";
+  const newStatus = countPending > 0 ? "error" : "idle";
   setStatus(newStatus);
   lastSyncAt = new Date().toISOString();
 
@@ -788,7 +811,7 @@ function runSync(): Promise<void> {
       const cause = error instanceof Error ? error : new Error(String(error));
       syncDiagnostics.lastSyncError = cause.message;
       logger.error("Sync run failed", cause);
-      setStatus("error");
+      setStatus(isOfflineFailure(cause) ? "offline" : "error");
       throw cause;
     })
     .finally(() => {
@@ -812,7 +835,10 @@ function requestPeerSync(): void {
 function schedule() {
   if (typeof window === "undefined") return;
   requestPeerSync();
-  runSync().catch(() => setStatus("error"));
+  runSync().catch((error) => {
+    const cause = error instanceof Error ? error : new Error(String(error));
+    setStatus(isOfflineFailure(cause) ? "offline" : "error");
+  });
 }
 
 function handleOnline() {
@@ -821,7 +847,13 @@ function handleOnline() {
 }
 
 function handleOffline() {
-  setStatus("offline");
+  schedule();
+}
+
+function isOfflineFailure(error: Error): boolean {
+  return /failed to fetch|networkerror|load failed|internet connection appears to be offline|network request failed/i.test(
+    `${error.name} ${error.message}`,
+  );
 }
 
 /**
