@@ -1,0 +1,12 @@
+[auth]
+site_url = "https://viatik-six.vercel.app"
+additional_redirect_urls = [
+  "https://viatik-six.vercel.app/**",
+  "https://viatik-six.vercel.app/reset-password",
+  "https://viatik-six.vercel.app/auth/confirm",
+  "http://localhost:3000/**",
+]
+
+[auth.email.template.recovery]
+subject = "Reset your password"
+content_path = "./supabase/templates/recovery.html"
