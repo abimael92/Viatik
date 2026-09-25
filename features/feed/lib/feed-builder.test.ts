@@ -8,6 +8,7 @@ import {
   buildChecklistItemFeedChanges,
   buildExpenseFeed,
   buildMediaFeed,
+  buildSettlementFeed,
   isValidFeedDraft,
   materializeFeedItem,
 } from "@/features/feed/lib/feed-builder";
@@ -188,6 +189,33 @@ describe("buildMediaFeed", () => {
       "removed a photo from the gallery"
     );
     expect(buildMediaFeed("uploaded_photo", baseMedia, "user-b").entityType).toBe("media");
+  });
+});
+
+describe("buildSettlementFeed", () => {
+  it("writes a self-contained repayment sentence", () => {
+    const draft = buildSettlementFeed(
+      {
+        id: "settlement-1",
+        tripId: "trip-1",
+        fromUserId: "user-a",
+        toUserId: "user-b",
+        amountMinor: 4000n,
+        currency: "USD",
+        date: "2026-09-24",
+        status: "settled",
+        settledAt: "2026-09-24T00:00:00.000Z",
+        createdBy: "user-a",
+        createdAt: "2026-09-24T00:00:00.000Z",
+        updatedAt: "2026-09-24T00:00:00.000Z",
+        deletedAt: null,
+      },
+      "user-a",
+      "Traveler B",
+    );
+    expect(draft.summary).toBe("paid $40.00 USD to Traveler B");
+    expect(draft.entityType).toBe("settlement");
+    expect(draft.verb).toBe("logged_settlement");
   });
 });
 

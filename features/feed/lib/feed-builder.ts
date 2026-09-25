@@ -3,7 +3,7 @@
  * contained human-readable summaries). Keeping these pure and side-effect
  * free makes the emission logic easy to unit test.
  */
-import type { Activity, Expense } from "@/features/domain/entities";
+import type { Activity, Expense, ExpenseSettlement } from "@/features/domain/entities";
 import type { TripMedia } from "@/features/domain/entities-media";
 import { formatMinorUnits } from "@/features/domain/money";
 import { FEED_VERBS_BY_ENTITY } from "@/features/feed/domain/feed-types";
@@ -30,6 +30,7 @@ const EMPTY_ACTIVITY_VERBS: Record<FeedVerb, string> = {
   uploaded_photo: "",
   updated_photo: "",
   deleted_photo: "",
+  logged_settlement: "",
 };
 
 /**
@@ -147,6 +148,32 @@ export function buildExpenseFeed(verb: FeedVerb, expense: Expense, actorId: stri
       currency: expense.currency,
       paidBy: expense.paidBy,
       date: expense.date,
+    },
+  };
+}
+
+/** Settlement feed: actor is the payer so the row reads “Aby paid $40 to Traveler B.” */
+export function buildSettlementFeed(
+  settlement: ExpenseSettlement,
+  actorId: string,
+  receiverName: string,
+): FeedItemDraft {
+  const amount = formatMinorUnits(settlement.amountMinor, settlement.currency);
+  const receiver = receiverName.trim() || "a traveler";
+  return {
+    tripId: settlement.tripId,
+    actorId,
+    verb: "logged_settlement",
+    entityType: "settlement",
+    entityId: settlement.id,
+    summary: `paid ${amount} ${settlement.currency} to ${receiver}`,
+    metadata: {
+      fromUserId: settlement.fromUserId,
+      toUserId: settlement.toUserId,
+      amountMinor: settlement.amountMinor.toString(),
+      currency: settlement.currency,
+      date: settlement.date,
+      createdBy: settlement.createdBy,
     },
   };
 }

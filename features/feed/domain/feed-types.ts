@@ -24,14 +24,16 @@ export type FeedVerb =
   | "reopened_checklist_item"
   | "skipped_checklist_item"
   | "restored_checklist_item"
-  | "deleted_checklist_item";
+  | "deleted_checklist_item"
+  | "logged_settlement";
 
 /** Which kind of entity the feed entry refers to. */
-export type FeedEntityType = "expense" | "media" | "activity";
+export type FeedEntityType = "expense" | "media" | "activity" | "settlement";
 
 /** The set of verbs that are legal for each entity type. */
 export const FEED_VERBS_BY_ENTITY: Record<FeedEntityType, ReadonlyArray<FeedVerb>> = {
   expense: ["added_expense", "updated_expense", "deleted_expense"],
+  settlement: ["logged_settlement"],
   media: ["uploaded_photo", "updated_photo", "deleted_photo"],
   activity: [
     "added_activity",
