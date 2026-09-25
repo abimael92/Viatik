@@ -1,7 +1,13 @@
 "use server";
 
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 
+import {
+  PASSWORD_RECOVERY_COOKIE,
+  passwordRecoveryCookieOptions,
+  passwordRecoveryRedirect,
+  passwordRejection,
+} from "@/lib/auth/password-recovery";
 import { createClient } from "@/lib/supabase/server-client";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { logger } from "@/lib/observability/logger";
@@ -200,6 +206,129 @@ export async function loginWithPassword(
   } catch (error) {
     logger.error("Unexpected password login error", error instanceof Error ? error : new Error(String(error)));
     return { success: false, error: "We couldn't sign you in right now. Please try again." };
+  }
+}
+
+function resetRequestMessage(error: { code?: string; message?: string }) {
+  const message = (error.message ?? "").toLowerCase();
+  const hourlyEmailLimit =
+    error.code === "over_email_send_rate_limit" ||
+    message.includes("email rate limit") ||
+    message.includes("hourly email");
+  if (hourlyEmailLimit) {
+    return "Supabase's hourly email limit has been reached. Wait for the quota to reset or configure custom SMTP in Supabase.";
+  }
+  if (message.includes("redirect")) {
+    return "This site isn't allowed to send reset links yet. Add it to the Supabase Auth redirect URLs, then try again.";
+  }
+  if (error.code === "over_request_rate_limit" || message.includes("rate") || message.includes("too many")) {
+    return "Too many requests. Wait for the countdown, then try again.";
+  }
+  return "We couldn't send a reset link right now. Please try again shortly.";
+}
+
+function hidesMissingAccount(error: { code?: string; message?: string }) {
+  const message = (error.message ?? "").toLowerCase();
+  return error.code === "user_not_found" || message.includes("user not found");
+}
+
+/**
+ * Email a one-time password reset link. A missing account is reported as
+ * success so the response cannot be used to discover registered emails.
+ */
+export async function requestPasswordReset(email: string): Promise<ActionResult> {
+  const normalizedEmail = normalizeEmail(email);
+  if (!isValidEmail(normalizedEmail)) return { success: false, error: "Enter a valid email address." };
+
+  try {
+    const requestHeaders = await headers();
+    const origin = requestHeaders.get("origin");
+    if (!origin) return { success: false, error: "We couldn't send a reset link right now. Please try again shortly." };
+
+    const supabase = await createClient();
+    const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+      redirectTo: passwordRecoveryRedirect(origin),
+    });
+    if (error) {
+      if (hidesMissingAccount(error)) return { success: true, data: undefined };
+      logger.warn("Unable to send password reset", { code: error.code });
+      const message = error.message.toLowerCase();
+      const hourlyEmailLimit =
+        error.code === "over_email_send_rate_limit" ||
+        message.includes("email rate limit") ||
+        message.includes("hourly email");
+      const shortRateLimit =
+        !hourlyEmailLimit &&
+        (error.code === "over_request_rate_limit" || message.includes("rate") || message.includes("too many"));
+      return {
+        success: false,
+        error: resetRequestMessage(error),
+        retryAfter: hourlyEmailLimit ? 3600 : shortRateLimit ? 60 : undefined,
+      };
+    }
+    return { success: true, data: undefined };
+  } catch (error) {
+    logger.error("Unexpected password reset request error", error instanceof Error ? error : new Error(String(error)));
+    return { success: false, error: "We couldn't send a reset link right now. Please try again shortly." };
+  }
+}
+
+function passwordUpdateMessage(error: { message?: string }) {
+  const message = (error.message ?? "").toLowerCase();
+  if (message.includes("different from the old")) return "Choose a password you haven't used before.";
+  if (message.includes("password should") || message.includes("weak password")) {
+    return "Password must be at least 8 characters and include an uppercase letter, a lowercase letter, and a number.";
+  }
+  if (message.includes("session") || message.includes("jwt") || message.includes("expired")) {
+    return "This reset link is invalid or has expired. Request a new one.";
+  }
+  if (message.includes("rate") || message.includes("too many")) return "Too many attempts. Please wait a moment and try again.";
+  return "We couldn't update your password. Please try again.";
+}
+
+/** Mark the current browser as allowed to choose a new password after a recovery link. */
+export async function grantPasswordRecovery(): Promise<ActionResult> {
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) return { success: false, error: "This reset link is invalid or has expired. Request a new one." };
+    const cookieStore = await cookies();
+    cookieStore.set(PASSWORD_RECOVERY_COOKIE, "1", passwordRecoveryCookieOptions());
+    return { success: true, data: undefined };
+  } catch (error) {
+    logger.error("Unexpected password recovery grant error", error instanceof Error ? error : new Error(String(error)));
+    return { success: false, error: "This reset link is invalid or has expired. Request a new one." };
+  }
+}
+
+/** Replace the password for a browser that just opened a recovery link. */
+export async function updatePassword(password: string): Promise<ActionResult> {
+  const rejection = passwordRejection(password);
+  if (rejection) return { success: false, error: rejection };
+
+  try {
+    const cookieStore = await cookies();
+    const recoveryGranted = cookieStore.get(PASSWORD_RECOVERY_COOKIE)?.value === "1";
+    const supabase = await createClient();
+    const { data } = await supabase.auth.getUser();
+    if (!recoveryGranted || !data.user) {
+      return { success: false, error: "This reset link is invalid or has expired. Request a new one." };
+    }
+
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) {
+      logger.warn("Unable to update password", { code: error.code });
+      return { success: false, error: passwordUpdateMessage(error) };
+    }
+
+    const { error: signOutError } = await supabase.auth.signOut({ scope: "others" });
+    if (signOutError) logger.warn("Unable to sign out other sessions after password reset", { code: signOutError.code });
+
+    cookieStore.set(PASSWORD_RECOVERY_COOKIE, "", passwordRecoveryCookieOptions(0));
+    return { success: true, data: undefined };
+  } catch (error) {
+    logger.error("Unexpected password update error", error instanceof Error ? error : new Error(String(error)));
+    return { success: false, error: "We couldn't update your password. Please try again." };
   }
 }
 
