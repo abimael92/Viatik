@@ -122,6 +122,6 @@ All criteria must be objectively testable.
 ## Completion Notes
 
 - **Verification commands:** `pnpm exec vitest run` on mapping, Home HUD, expense sheet/panel, sync-engine, and i18n tests; `pnpm typecheck`; ESLint on changed files
-- **Verification results:** 57 targeted tests passed. `tsc --noEmit` passed. Changed files are lint-clean. Repo-wide `pnpm lint` still fails on a pre-existing `react-hooks/set-state-in-effect` error in `lib/i18n/i18n-provider.tsx`. Live Home browser verification was not run because no authenticated dev session was available.
+- **Verification results:** HUD now opens `ExpenseFormSheet` only after a successful Dexie checklist write, and only when `canManageExpenses` and `isPurchaseOrientedMustDo` are both true. Cancel clears `expenseIntent` only.
 - **Bug-ledger updates:** Not applicable
-- **Follow-up work:** None
+- **Follow-up work:** Live Home browser QA of the nested sheet after an authenticated session is available.
