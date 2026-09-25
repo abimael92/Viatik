@@ -97,6 +97,8 @@ const LIGHT_CHIP =
   "rounded-xl border border-border bg-background p-3 aria-pressed:border-primary aria-pressed:bg-primary/10";
 const ACTIVITY_TAB =
   "gap-1.5 border text-xs font-semibold opacity-75 transition-all hover:opacity-100 hover:brightness-105 sm:text-sm data-[state=active]:border-transparent data-[state=active]:text-white data-[state=active]:opacity-100 data-[state=active]:shadow-md data-[state=active]:hover:brightness-110";
+const TIME_CHOICE =
+  "h-9 rounded-lg border px-3 text-sm font-semibold opacity-75 transition-all hover:opacity-100 hover:brightness-105 data-[active=true]:border-transparent data-[active=true]:text-white data-[active=true]:opacity-100 data-[active=true]:shadow-sm";
 
 const FLEXIBLE_PERIODS = [
   { value: "morning", labelKey: "common.morning" as const satisfies TranslationKey },
@@ -446,12 +448,23 @@ export function ActivityForm({
             </div>
             <div className="space-y-2">
               <Label>{t("common.timeSpecificity")}</Label>
-              <div className="grid grid-cols-2 rounded-xl border border-border bg-muted/50 p-1 dark:bg-muted/30">
-                {(["exact", "flexible"] as const).map((specificity) => (
-                  <button key={specificity} type="button" data-active={timingSpecificity === specificity} className="h-9 rounded-lg px-3 text-sm font-medium text-muted-foreground transition-colors data-[active=true]:bg-background data-[active=true]:text-primary data-[active=true]:shadow-sm dark:data-[active=true]:text-foreground" onClick={() => setTimingSpecificity(specificity)}>
-                    {specificity === "exact" ? t("common.exactTime") : t("common.flexible")}
-                  </button>
-                ))}
+              <div className="grid grid-cols-2 gap-1 rounded-xl border border-border bg-muted p-1">
+                <button
+                  type="button"
+                  data-active={timingSpecificity === "exact"}
+                  className={`${TIME_CHOICE} border-teal-300 bg-teal-100 text-teal-950 data-[active=true]:bg-gradient-to-b data-[active=true]:from-teal-400 data-[active=true]:to-teal-700 dark:border-teal-700 dark:bg-teal-950 dark:text-teal-50`}
+                  onClick={() => setTimingSpecificity("exact")}
+                >
+                  {t("common.exactTime")}
+                </button>
+                <button
+                  type="button"
+                  data-active={timingSpecificity === "flexible"}
+                  className={`${TIME_CHOICE} border-violet-300 bg-violet-100 text-violet-950 data-[active=true]:bg-gradient-to-b data-[active=true]:from-violet-400 data-[active=true]:to-violet-700 dark:border-violet-700 dark:bg-violet-950 dark:text-violet-50`}
+                  onClick={() => setTimingSpecificity("flexible")}
+                >
+                  {t("common.flexible")}
+                </button>
               </div>
             </div>
             {timingSpecificity === "exact" ? (
