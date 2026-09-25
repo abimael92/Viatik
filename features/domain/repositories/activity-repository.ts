@@ -18,6 +18,8 @@ export interface ActivityRepository {
     checklist: ActivityChecklistItem[],
     event: { action: ChecklistFeedAction; itemTitle: string },
   ): Promise<Activity>;
+  /** Set only the current member's attendance and queue that activity update. */
+  setAttendance(id: string, userId: string, status: "attending" | "declined"): Promise<Activity>;
   /** Cancel an activity proposal; only its creator may perform this transition. */
   cancelProposal(id: string): Promise<Activity>;
   /**

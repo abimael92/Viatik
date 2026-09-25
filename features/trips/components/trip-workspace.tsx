@@ -39,6 +39,7 @@ import {
 import { Heading } from "@/components/ui/heading";
 import { SharedTripFeed } from "@/features/feed/components/shared-trip-feed";
 import { ItineraryBoard } from "@/features/activities/components/itinerary-board";
+import { matchesAttendanceFilter, type ActivityAttendanceFilter } from "@/features/trips/lib/activity-category-colors";
 import { WeekCalendar } from "@/features/activities/components/week-calendar";
 import {
   ActivityCloneHeaderButton,
@@ -54,6 +55,7 @@ import { ActivityLocationCard } from "@/features/activities/components/activity-
 import { ProposalsSection } from "@/features/activities/components/proposals-section";
 import { activityRepository } from "@/features/activities/data/dexie-activity-repository";
 import { saveActivityPlanning } from "@/features/activities/data/save-activity-planning";
+import { ActivityAttendanceToggle } from "@/features/activities/components/activity-attendance-toggle";
 import { activityPersonalBudgetRepository } from "@/features/activities/data/dexie-activity-personal-budget-repository";
 import { formatActivityTime } from "@/features/activities/lib/activity-time";
 import { PeoplePanel } from "@/features/collaboration/components/people-panel";
@@ -212,6 +214,7 @@ export function TripWorkspace({
   const [conflictModalOpen, setConflictModalOpen] = useState(false);
   const [editIntent, setEditIntent] = useState(0);
   const [category, setCategory] = useState("all");
+  const [attendance, setAttendance] = useState<ActivityAttendanceFilter>("all");
   const [itineraryView, setItineraryView] = useState<"calendar" | "board">("calendar");
   const [itineraryEditMode, setItineraryEditMode] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -721,6 +724,15 @@ export function TripWorkspace({
                     {t("common.board")}
                   </Button>
                 </div>
+                <select
+                  aria-label={t("common.going")}
+                  value={attendance}
+                  onChange={(event) => setAttendance(event.target.value as ActivityAttendanceFilter)}
+                  className="h-11 min-w-36 rounded-xl border border-border/70 bg-background px-3 text-sm shadow-xs"
+                >
+                  <option value="all">{t("common.all")}</option>
+                  <option value="going">{t("common.going")}</option>
+                </select>
                 {itineraryView === "board" && (
                   <select
                     aria-label="Filter by category"
@@ -809,7 +821,7 @@ export function TripWorkspace({
                   <WeekCalendar
                     tripId={tripId}
                     days={days}
-                    activities={activities}
+                    activities={activities.filter((activity) => activity.deletedAt === null && matchesAttendanceFilter(activity, userId, attendance))}
                     currentUserId={userId}
                     activeActivityId={activeActivityId}
                     onSelect={viewActivity}
@@ -829,6 +841,7 @@ export function TripWorkspace({
                     tripId={tripId}
                     dayDates={days}
                     category={category}
+                    attendance={attendance}
                     currentUserId={userId}
                     activeActivityId={activeActivityId}
                     eligibleViaticUsers={eligibleViaticUsers}
@@ -1627,6 +1640,9 @@ function ActivityDialog({
             />
           )}
           <ActivityAttachmentsSection attachments={activity.attachments ?? []} />
+          {activity.pollStatus !== "proposed" && activity.pollStatus !== "voting" && (
+            <ActivityAttendanceToggle activity={activity} userId={userId} />
+          )}
           <DialogFooter>
             {canEdit && (
               <Button type="button" variant="default" onClick={() => onEdit(activity)}>

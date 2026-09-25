@@ -72,6 +72,16 @@ export function isUserAttending(activity: Activity, userId: string): boolean {
   return participant ? participant.status === "attending" : true;
 }
 
+export type ActivityAttendanceFilter = "all" | "going";
+
+export function matchesAttendanceFilter(
+  activity: Activity,
+  userId: string,
+  filter: ActivityAttendanceFilter,
+): boolean {
+  return filter === "all" || isUserAttending(activity, userId);
+}
+
 export function isUserConfirmedAttending(activity: Activity, userId: string): boolean {
   return activity.participants?.some(
     (participant) => participant.userId === userId && participant.status === "attending"

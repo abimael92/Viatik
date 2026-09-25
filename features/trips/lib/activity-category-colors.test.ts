@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getActivityCategoryColors, isUserAttending, isUserConfirmedAttending } from "@/features/trips/lib/activity-category-colors";
+import { getActivityCategoryColors, isUserAttending, isUserConfirmedAttending, matchesAttendanceFilter } from "@/features/trips/lib/activity-category-colors";
 import type { Activity } from "@/features/domain/entities";
 
 describe("activity category presentation", () => {
@@ -21,6 +21,14 @@ describe("activity category presentation", () => {
       participants: [{ userId: "user-2", status: "attending" }],
     } as Activity;
     expect(isUserAttending(activity, "user-1")).toBe(true);
+  });
+
+  it("keeps every activity on All and hides an explicit decline on Going", () => {
+    const declined = { participants: [{ userId: "user-1", status: "declined" }] } as Activity;
+    const open = { participants: [] } as unknown as Activity;
+    expect(matchesAttendanceFilter(declined, "user-1", "all")).toBe(true);
+    expect(matchesAttendanceFilter(declined, "user-1", "going")).toBe(false);
+    expect(matchesAttendanceFilter(open, "user-1", "going")).toBe(true);
   });
 
   it("keeps legacy group activities colored while Home treats empty rosters as open", () => {
