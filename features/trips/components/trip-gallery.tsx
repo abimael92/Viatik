@@ -163,7 +163,7 @@ export function TripGallery({ tripId, userId, canEdit = true, activityId = null,
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Gallery</h3>
+        <h3 className="text-lg font-semibold">{t("common.gallery")}</h3>
         {canEdit && (
           <label className="cursor-pointer">
             <input

@@ -1,5 +1,7 @@
 "use client";
 
+import { localizeThrownError } from "@/lib/i18n/localize-error";
+
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -115,7 +117,7 @@ export function TripDashboard({ userId }: { userId: string }) {
     setError(null);
     void tripRepository
       .startTrip(id)
-      .catch((cause) => setError(cause instanceof Error ? cause.message : "Unable to start trip"));
+      .catch((cause) => setError(localizeThrownError(cause, t, "Unable to start trip")));
   }
 
   function endTrip(id: string) {
@@ -137,8 +139,8 @@ export function TripDashboard({ userId }: { userId: string }) {
       )
       .catch((cause) =>
         toast({
-          title: "Unable to end trip",
-          description: cause instanceof Error ? cause.message : "Please try again.",
+          title: t("copy.unableEndTrip"),
+          description: localizeThrownError(cause, t, "Please try again."),
           variant: "error",
         })
       );
@@ -201,7 +203,7 @@ export function TripDashboard({ userId }: { userId: string }) {
                         .acceptInvitation(invitation.id)
                         .catch((cause) =>
                           setError(
-                            cause instanceof Error ? cause.message : "Unable to accept invitation"
+                            localizeThrownError(cause, t, "Unable to accept invitation")
                           )
                         )
                     }
@@ -265,7 +267,7 @@ export function TripDashboard({ userId }: { userId: string }) {
             <>
               {active.length > 0 && (
                 <TripSection
-                  title="Active trips"
+                  title={t("copy.activeTrips")}
                   trips={active}
                   bento
                   onStart={startTrip}
@@ -273,14 +275,14 @@ export function TripDashboard({ userId }: { userId: string }) {
                 />
               )}
               <TripSection
-                title="Upcoming trips"
+                title={t("common.upcomingTrips")}
                 trips={upcoming}
                 onStart={startTrip}
                 onEnd={endTrip}
               />
             </>
           ) : past.length > 0 ? (
-            <TripSection title="Past trips" trips={past} ended />
+            <TripSection title={t("copy.pastTrips")} trips={past} ended />
           ) : (
             <EmptyPastTrips onViewUpcoming={() => setTab("upcoming")} />
           )}
@@ -293,15 +295,15 @@ export function TripDashboard({ userId }: { userId: string }) {
         onOpenChange={setCreating}
         userId={userId}
         onError={(message) =>
-          toast({ title: "Unable to save trip", description: message, variant: "error" })
+          toast({ title: t("copy.unableSaveTrip"), description: message, variant: "error" })
         }
       />
       <ConfirmDialog
         open={endTripId !== null}
         onOpenChange={(open) => !open && setEndTripId(null)}
-        title="End this trip?"
+        title={t("copy.endTripQuestion")}
         description="It will be moved to Past Trips."
-        confirmLabel="End trip"
+        confirmLabel={t("common.endTrip")}
         onConfirm={confirmEndTrip}
       />
     </div>
@@ -378,6 +380,7 @@ function TripCard({
   onStart?: (id: string) => void;
   onEnd?: (id: string) => void;
 }) {
+  const { t } = useI18n();
   const coverGradient = getTripCoverGradient(trip.coverImageUrl);
   const hasCoverImage = isTripCoverImage(trip.coverImageUrl);
   const status = resolveTripStatus(trip);
@@ -477,16 +480,12 @@ function TripCard({
           {status === "active" ? (
             onEnd ? (
               <Button variant="outline" size="sm" onClick={() => onEnd(trip.id)}>
-                <Flag className="size-4" aria-hidden />
-                End trip
-              </Button>
+                <Flag className="size-4" aria-hidden />{t("common.endTrip")}</Button>
             ) : null
           ) : readyToStart ? (
             onStart ? (
               <Button variant="primary" size="sm" onClick={() => onStart(trip.id)}>
-                <Play className="size-4" aria-hidden />
-                Start trip
-              </Button>
+                <Play className="size-4" aria-hidden />{t("copy.startTrip")}</Button>
             ) : null
           ) : null}
         </div>
@@ -563,12 +562,12 @@ function MetricsRow({
 }) {
   const { t } = useI18n();
   const days = nextTrip?.startDate ? daysUntil(nextTrip.startDate) : null;
-  const value = hasActiveTrip ? "Now" : days === null ? "—" : days === 0 ? "Today" : String(days);
+  const value = hasActiveTrip ? "Now" : days === null ? "—" : days === 0 ? t("common.today") : String(days);
   const subtitle = hasActiveTrip
-    ? "Trip in progress"
+    ? t("common.tripInProgress")
     : nextTrip
       ? `until ${nextTrip.destination ?? nextTrip.name}`
-      : "No upcoming trips";
+      : t("common.noUpcoming");
 
   return (
     <section aria-label={t("common.tripOverview")} className="grid gap-4">
@@ -851,7 +850,7 @@ export function TripFormDialog({
       }
       onOpenChange(false);
     } catch (cause) {
-      const message = cause instanceof Error ? cause.message : "Unable to save trip";
+      const message = localizeThrownError(cause, t, "Unable to save trip");
       const normalizedMessage = message.toLowerCase();
       setFormError(
         message.includes("Connect to the internet") || normalizedMessage.includes("session expired")
@@ -902,7 +901,7 @@ export function TripFormDialog({
                 name="name"
                 required
                 helper="Choose something your travel group will recognize."
-                placeholder="Summer in Japan"
+                placeholder={t("copy.summerJapan")}
                 maxLength={80}
                 value={name}
                 onChange={(event) => setName(event.target.value)}
@@ -918,7 +917,7 @@ export function TripFormDialog({
                 label="Description"
                 name="description"
                 helper="Add context for everyone joining the trip."
-                placeholder="What are you celebrating or looking forward to?"
+                placeholder={t("copy.whatCelebrating")}
                 maxLength={500}
                 rows={3}
                 value={description}
@@ -930,7 +929,7 @@ export function TripFormDialog({
 
           {step === 2 && (
             <fieldset className="space-y-5">
-              <legend className="sr-only">Travel dates</legend>
+              <legend className="sr-only">{t("common.travelDates")}</legend>
               <div className="grid gap-4 sm:grid-cols-2">
                 <InputField
                   label="Starts"
@@ -953,9 +952,7 @@ export function TripFormDialog({
                   error={fieldErrors.endDate}
                 />
               </div>
-              <p className="text-xs text-muted-foreground">
-                Your itinerary calendar will be created from these dates.
-              </p>
+              <p className="text-xs text-muted-foreground">{t("copy.itineraryFromDates")}</p>
             </fieldset>
           )}
 
@@ -988,9 +985,7 @@ export function TripFormDialog({
 
               <div className="space-y-2">
                 <Label htmlFor="baseCurrency">{t("common.tripCurrency")}</Label>
-                <p id="baseCurrency-help" className="text-xs text-muted-foreground">
-                  Used for the trip’s shared expenses and balances.
-                </p>
+                <p id="baseCurrency-help" className="text-xs text-muted-foreground">{t("copy.currencyForExpenses")}</p>
                 <select
                   id="baseCurrency"
                   name="baseCurrency"
@@ -998,12 +993,12 @@ export function TripFormDialog({
                   onChange={(event) => setBaseCurrency(event.target.value)}
                   className="flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <option value="USD">USD — US Dollar</option>
-                  <option value="EUR">EUR — Euro</option>
-                  <option value="GBP">GBP — British Pound</option>
-                  <option value="CAD">CAD — Canadian Dollar</option>
-                  <option value="MXN">MXN — Mexican Peso</option>
-                  <option value="JPY">JPY — Japanese Yen</option>
+                  <option value="USD">{t("copy.usd")}</option>
+                  <option value="EUR">{t("copy.eur")}</option>
+                  <option value="GBP">{t("copy.gbp")}</option>
+                  <option value="CAD">{t("copy.cad")}</option>
+                  <option value="MXN">{t("copy.mxn")}</option>
+                  <option value="JPY">{t("copy.jpy")}</option>
                 </select>
               </div>
 
@@ -1030,14 +1025,10 @@ export function TripFormDialog({
 
           <DialogFooter>
             {step > 1 && (
-              <Button type="button" variant="outline" onClick={() => setStep((s) => s - 1)}>
-                Back
-              </Button>
+              <Button type="button" variant="outline" onClick={() => setStep((s) => s - 1)}>{t("common.back")}</Button>
             )}
             {step < 3 ? (
-              <Button type="button" onClick={handleNext}>
-                Next
-              </Button>
+              <Button type="button" onClick={handleNext}>{t("common.next")}</Button>
             ) : (
               <Button type="submit" variant="primary" disabled={saving}>
                 {uploadingCover
@@ -1063,7 +1054,8 @@ function StepHeader({
   step: number;
   onStepClick: (target: number) => void;
 }) {
-  const steps = ["The Basics", "The Itinerary", "Group & Media"];
+  const { t } = useI18n();
+  const steps = [t("copy.theBasics"), t("copy.theItinerary"), t("copy.groupAndMedia")];
   const [open, setOpen] = useState(false);
   const activeTitle = steps[step - 1];
   const progressId = "trip-setup-progress";
@@ -1088,7 +1080,7 @@ function StepHeader({
       </button>
 
       {open && (
-        <nav id={progressId} aria-label="Trip setup progress" className="mt-2">
+        <nav id={progressId} aria-label={t("copy.tripSetupProgress")} className="mt-2">
           <ol className="flex gap-3 sm:gap-4">
             {steps.map((title, index) => {
               const number = index + 1;
@@ -1308,6 +1300,7 @@ function CoverImageField({
   setCoverFile: (file: File | null) => void;
   error?: string;
 }) {
+  const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const preview = useMemo(() => (coverFile ? URL.createObjectURL(coverFile) : null), [coverFile]);
@@ -1351,7 +1344,7 @@ function CoverImageField({
         onClick={() => inputRef.current?.click()}
         tabIndex={0}
         role="button"
-        aria-label="Browse cover image"
+        aria-label={t("copy.browseCover")}
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
@@ -1365,7 +1358,7 @@ function CoverImageField({
           type="file"
           accept="image/jpeg,image/png,image/webp"
           className="sr-only"
-          aria-label="Upload cover image"
+          aria-label={t("copy.uploadCover")}
           tabIndex={-1}
           onChange={(event) => handleFiles(event.target.files)}
         />
@@ -1374,7 +1367,7 @@ function CoverImageField({
             <div className="relative h-32 w-full">
               <Image
                 src={preview}
-                alt="Cover preview"
+                alt={t("copy.coverPreview")}
                 fill
                 sizes="(max-width: 768px) 100vw, 50vw"
                 unoptimized
@@ -1396,9 +1389,7 @@ function CoverImageField({
                 setCoverFile(null);
                 if (inputRef.current) inputRef.current.value = "";
               }}
-            >
-              Remove
-            </Button>
+            >{t("copy.remove")}</Button>
           </div>
         ) : (
           <>
@@ -1411,10 +1402,8 @@ function CoverImageField({
               <Upload className="size-6" />
             </div>
             <div>
-              <p className="text-sm font-semibold">
-                Drag and drop your cover image here, or click to browse.
-              </p>
-              <p className="text-xs text-muted-foreground">JPG, PNG, or WebP up to 5 MB</p>
+              <p className="text-sm font-semibold">{t("copy.dragCover")}</p>
+              <p className="text-xs text-muted-foreground">{t("copy.imageTypesShort")}</p>
             </div>
           </>
         )}
@@ -1452,12 +1441,14 @@ function NamedTravelersSection({
   setChildCount: Dispatch<React.SetStateAction<number>>;
   error?: string;
 }) {
+  const { t } = useI18n();
+
   return (
     <fieldset className="space-y-3 rounded-xl border p-4" id="travelers">
-      <legend className="px-1 text-sm font-semibold">Named travelers</legend>
+      <legend className="px-1 text-sm font-semibold">{t("copy.namedTravelers")}</legend>
       {existingTravelers.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-semibold text-muted-foreground">Already on this trip</p>
+          <p className="text-xs font-semibold text-muted-foreground">{t("copy.alreadyOnTrip")}</p>
           <div className="flex flex-wrap gap-2">
             {existingTravelers.map((traveler) => (
               <span
@@ -1483,16 +1474,16 @@ function NamedTravelersSection({
               : "Create reusable friends and family contacts, then select them when planning trips."}
           </p>
           <Button asChild type="button" variant="outline" size="sm" className="mt-3">
-            <Link href="/contacts">Open contacts</Link>
+            <Link href="/contacts">{t("copy.openContacts")}</Link>
           </Button>
         </div>
       )}
       {availableContacts.length > 0 && (
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-xs font-semibold text-muted-foreground">From your contacts</p>
+            <p className="text-xs font-semibold text-muted-foreground">{t("copy.fromContacts")}</p>
             <Button asChild type="button" variant="link" size="sm" className="h-auto px-0">
-              <Link href="/contacts">Manage contacts</Link>
+              <Link href="/contacts">{t("copy.manageContacts")}</Link>
             </Button>
           </div>
           {availableContacts.map((contact) => (
@@ -1546,7 +1537,7 @@ function NamedTravelersSection({
           <div className="grid gap-2 sm:grid-cols-2">
             <Input
               aria-label={`Traveler ${index + 1} full name`}
-              placeholder="Full name"
+              placeholder={t("common.fullName")}
               value={traveler.fullName}
               onChange={(event) =>
                 setManualTravelers((items) =>
@@ -1578,13 +1569,13 @@ function NamedTravelersSection({
               }}
               className="h-10 w-full rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-0"
             >
-              <option value="adult">Adult</option>
-              <option value="child">Child</option>
+              <option value="adult">{t("copy.adult")}</option>
+              <option value="child">{t("copy.child")}</option>
             </select>
             <Input
               aria-label={`Traveler ${index + 1} email`}
               type="email"
-              placeholder="Email (optional)"
+              placeholder={t("copy.placeholderEmailOptional")}
               value={traveler.email}
               onChange={(event) =>
                 setManualTravelers((items) =>
@@ -1597,7 +1588,7 @@ function NamedTravelersSection({
             <Input
               aria-label={`Traveler ${index + 1} phone`}
               type="tel"
-              placeholder="Phone (optional)"
+              placeholder={t("copy.placeholderPhoneOptional")}
               value={traveler.phone}
               onChange={(event) =>
                 setManualTravelers((items) =>
@@ -1627,31 +1618,26 @@ function NamedTravelersSection({
           setAdultCount((count) => Math.min(99, count + 1));
         }}
       >
-        <UserPlus />
-        Add traveler manually
-      </Button>
+        <UserPlus />{t("common.addTravelerManually")}</Button>
     </fieldset>
   );
 }
 
 function EmptyTrips({ onCreate, userId }: { onCreate: () => void; userId: string }) {
+  const { t } = useI18n();
   return (
     <>
       <div className="rounded-2xl border border-dashed bg-card px-6 py-16 pb-36 text-center">
         <div className="mx-auto grid size-14 place-items-center rounded-full bg-viatik-magenta/10 text-viatik-magenta">
           <Map className="size-7" />
         </div>
-        <Heading level={2} className="mt-5 text-xl font-semibold">
-          Your next trip starts here
-        </Heading>
+        <Heading level={2} className="mt-5 text-xl font-semibold">{t("copy.yourNextTrip")}</Heading>
         <p className="mx-auto mt-2 max-w-md text-muted-foreground">
           Create a shared space for your itinerary, expenses, and favorite moments — or pull
           inspiration from the community below.
         </p>
         <Button className="mt-6" onClick={onCreate}>
-          <Plus className="size-5" />
-          Create your first trip
-        </Button>
+          <Plus className="size-5" />{t("common.createFirstTrip")}</Button>
       </div>
       {/* Community inspiration when there are no trips yet. */}
       <SuggestionsDrawer userId={userId} />
@@ -1725,8 +1711,10 @@ function EmptyPastTrips({ onViewUpcoming }: { onViewUpcoming: () => void }) {
 }
 
 function TripSkeleton() {
+  const { t } = useI18n();
+
   return (
-    <div aria-label="Loading trips" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <div aria-label={t("copy.loadingTrips")} className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {[1, 2, 3].map((item) => (
         <div key={item} className="h-64 animate-pulse rounded-2xl bg-muted" />
       ))}

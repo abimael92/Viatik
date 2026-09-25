@@ -8,22 +8,25 @@ import { Heading } from "@/components/ui/heading";
 import type { Trip } from "@/features/domain/entities";
 import { formatCountdown, tripTabPath } from "@/features/trips/lib/home-trips";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 /**
  * Compact "Up Next" rail shown on Home only when the hero trip is planned.
  * Surfaces the other planned trips that start today or later.
  */
 export function UpNextRail({ trips, today }: { trips: Trip[]; today: Date }) {
+  const { t } = useI18n();
+
   if (trips.length === 0) return null;
 
   return (
     <section className="rounded-2xl border bg-card p-5 sm:p-6">
       <div className="flex items-center justify-between gap-3">
         <Heading level={2} className="text-base font-semibold">
-          Up next
+          {t("copy.upNext")}
         </Heading>
         <Button asChild variant="ghost" size="sm">
-          <Link href="/trips">View all trips</Link>
+          <Link href="/trips">{t("copy.viewAllTrips")}</Link>
         </Button>
       </div>
       <div className={cn("mt-4 grid gap-3", trips.length === 1 ? "grid-cols-1" : trips.length === 2 ? "sm:grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-3")}>

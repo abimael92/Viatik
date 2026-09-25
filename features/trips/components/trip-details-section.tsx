@@ -1,5 +1,7 @@
 "use client";
 
+import { localizeThrownError } from "@/lib/i18n/localize-error";
+
 import { CalendarDays, Camera, MapPin, Pencil, SwatchBook, Users, Wallet, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -22,6 +24,7 @@ import { getMaxEndDate, getTripDurationError } from "@/features/trips/lib/trip-d
 import type { Trip } from "@/features/domain/entities";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 const CURRENCIES = ["USD", "EUR", "GBP", "CAD", "MXN", "JPY"] as const;
 
@@ -46,6 +49,7 @@ export function TripDetailsSection({
   canEdit: boolean;
   initialEditing?: boolean;
 }) {
+  const { t } = useI18n();
   const [editing, setEditing] = useState(initialEditing);
   const [name, setName] = useState(trip.name);
   const [destination, setDestination] = useState(trip.destination ?? "");
@@ -98,11 +102,11 @@ export function TripDetailsSection({
     setError(null);
 
     if (name.trim().length < 2 || name.trim().length > 80) {
-      setError("Enter a trip name between 2 and 80 characters.");
+      setError(t("copy.tripNameLength"));
       return;
     }
     if (!startDate || !endDate) {
-      setError("Start and end dates are required.");
+      setError(t("copy.datesRequired"));
       return;
     }
     const dateError = getTripDurationError(startDate, endDate);
@@ -111,11 +115,11 @@ export function TripDetailsSection({
       return;
     }
     if (!Number.isInteger(adultCount) || adultCount < 1 || adultCount > 99) {
-      setError("Enter a whole number of adults from 1 to 99.");
+      setError(t("copy.adultsRange"));
       return;
     }
     if (!Number.isInteger(childCount) || childCount < 0 || childCount > 99) {
-      setError("Enter a whole number of children from 0 to 99.");
+      setError(t("copy.childrenRange"));
       return;
     }
 
@@ -154,7 +158,7 @@ export function TripDetailsSection({
       setEditing(false);
       setCoverFile(null);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to save trip.");
+      setError(localizeThrownError(cause, t, "Unable to save trip."));
     } finally {
       setSaving(false);
     }
@@ -167,14 +171,14 @@ export function TripDetailsSection({
     <div className="rounded-2xl border bg-card p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <Heading level={3} className="text-base font-semibold">Trip details</Heading>
+          <Heading level={3} className="text-base font-semibold">{t("copy.tripDetails")}</Heading>
           <p className="mt-1 text-sm text-muted-foreground">
             {editing ? "Update the essentials for everyone on this trip." : "Read-only summary. Changes are kept for everyone."}
           </p>
         </div>
         {canEdit && !editing && (
           <Button type="button" variant="outline" className="border-yellow-300 bg-yellow-50 text-yellow-700 hover:bg-yellow-100" onClick={() => setEditing(true)}>
-            <Pencil className="size-5" /> Edit
+            <Pencil className="size-5" /> {t("common.edit")}
           </Button>
         )}
       </div>
@@ -184,14 +188,14 @@ export function TripDetailsSection({
           {error && <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
 
           <div className="space-y-2">
-            <Label htmlFor="td-name">Trip name</Label>
+            <Label htmlFor="td-name">{t("common.tripName")}</Label>
             <Input id="td-name" value={name} maxLength={80} onChange={(event) => setName(event.target.value)} required />
           </div>
 
           <DestinationField value={destination} onChange={handleDestinationChange} onPlaceSelect={handlePlaceSelect} />
 
           <div className="space-y-2">
-            <Label htmlFor="td-description">Description</Label>
+            <Label htmlFor="td-description">{t("common.description")}</Label>
             <textarea
               id="td-description"
               value={description}
@@ -204,41 +208,45 @@ export function TripDetailsSection({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="td-start">Starts</Label>
+              <Label htmlFor="td-start">{t("copy.starts")}</Label>
               <Input id="td-start" type="date" value={startDate} onChange={(event) => handleStartDateChange(event.target.value)} required />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="td-end">Ends</Label>
+              <Label htmlFor="td-end">{t("common.ends")}</Label>
               <Input id="td-end" type="date" min={startDate || undefined} max={maxEndDate || undefined} value={endDate} onChange={(event) => setEndDate(event.target.value)} required />
             </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-2">
-              <Label htmlFor="td-currency">Currency</Label>
+              <Label htmlFor="td-currency">{t("common.currency")}</Label>
               <select
                 id="td-currency"
                 value={baseCurrency}
                 onChange={(event) => setBaseCurrency(event.target.value)}
                 className="h-10 w-full rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
               >
-                {CURRENCIES.map((code) => <option key={code} value={code}>{code}</option>)}
+                {CURRENCIES.map((code) => (
+                  <option key={code} value={code}>
+                    {t(`copy.${code.toLowerCase()}` as "copy.usd" | "copy.eur" | "copy.gbp" | "copy.cad" | "copy.mxn" | "copy.jpy")}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="td-adults">Adults</Label>
+              <Label htmlFor="td-adults">{t("copy.adults")}</Label>
               <Input id="td-adults" type="number" min={1} max={99} value={adultCount} onChange={(event) => setAdultCount(Number(event.target.value))} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="td-children">Children</Label>
+              <Label htmlFor="td-children">{t("copy.children")}</Label>
               <Input id="td-children" type="number" min={0} max={99} value={childCount} onChange={(event) => setChildCount(Number(event.target.value))} />
             </div>
           </div>
 
           <div className="space-y-3">
             <div>
-              <Label htmlFor="td-cover">Trip cover</Label>
-              <p className="mt-1 text-xs text-muted-foreground">Choose a color preset or upload a photo.</p>
+              <Label htmlFor="td-cover">{t("copy.tripCover")}</Label>
+              <p className="mt-1 text-xs text-muted-foreground">{t("copy.coverHelp")}</p>
             </div>
             <div className="relative h-40 overflow-hidden rounded-xl border bg-muted">
               {coverMode === "gradient" ? (
@@ -248,24 +256,24 @@ export function TripDetailsSection({
                   className="absolute inset-0 flex h-full w-full items-center justify-center"
                 >
                   <span className={cn("absolute inset-0", TRIP_COVER_GRADIENTS.find((g) => g.id === coverGradient)?.className)} />
-                  <span className="relative px-4 text-center text-2xl font-bold text-white drop-shadow">{name.trim() || "Trip name"}</span>
+                  <span className="relative px-4 text-center text-2xl font-bold text-white drop-shadow">{name.trim() || t("common.tripName")}</span>
                 </button>
               ) : coverFile && coverFilePreview ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={coverFilePreview} alt="Cover preview" className="h-full w-full object-cover" />
+                <img src={coverFilePreview} alt={t("copy.coverPreview")} className="h-full w-full object-cover" />
               ) : isTripCoverImage(trip.coverImageUrl) ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={trip.coverImageUrl} alt="" className="h-full w-full object-cover" />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">No cover selected</div>
+                <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">{t("copy.noCover")}</div>
               )}
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <Button type="button" variant="outline" onClick={() => setGradientPickerOpen(true)}>
-                <SwatchBook className="size-4" /> Choose gradient
+                <SwatchBook className="size-4" /> {t("copy.chooseGradient")}
               </Button>
               <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border border-border/60 px-4 text-sm font-semibold transition-colors hover:bg-muted">
-                <Camera className="size-5" /> {coverFile ? "Change photo" : "Upload photo"}
+                <Camera className="size-5" /> {coverFile ? "Change photo" : t("copy.uploadPhoto")}
                 <input
                   id="td-cover"
                   type="file"
@@ -288,7 +296,7 @@ export function TripDetailsSection({
                     setCoverMode("gradient");
                   }}
                 >
-                  <X className="size-5" /> Use color instead
+                  <X className="size-5" /> {t("copy.useColorInstead")}
                 </Button>
               )}
             </div>
@@ -296,10 +304,10 @@ export function TripDetailsSection({
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" disabled={saving} onClick={() => { setEditing(false); setError(null); setCoverFile(null); }}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button type="submit" variant="primary" disabled={saving}>
-              {saving ? "Saving…" : "Save changes"}
+              {saving ? "Saving…" : t("common.saveChanges")}
             </Button>
           </div>
         </form>
@@ -315,16 +323,16 @@ export function TripDetailsSection({
             </div>
           )}
           <dl className="mt-5 grid gap-x-8 gap-y-4 sm:grid-cols-2">
-            <DetailRow icon={<MapPin className="size-5" />} label="Destination" value={trip.destination ?? "—"} />
-            <DetailRow icon={<CalendarDays className="size-5" />} label="Dates" value={dateLabel} />
-            <DetailRow icon={<Wallet className="size-5" />} label="Currency" value={trip.baseCurrency} />
+            <DetailRow icon={<MapPin className="size-5" />} label={t("copy.destination")} value={trip.destination ?? "—"} />
+            <DetailRow icon={<CalendarDays className="size-5" />} label={t("copy.dates")} value={dateLabel} />
+            <DetailRow icon={<Wallet className="size-5" />} label={t("common.currency")} value={trip.baseCurrency} />
             <DetailRow
               icon={<Users className="size-5" />}
-              label="Travelers"
+              label={t("common.travelers")}
               value={`${trip.adultCount} adult${trip.adultCount === 1 ? "" : "s"} · ${trip.childCount} child${trip.childCount === 1 ? "" : "ren"}`}
             />
-            <DetailRow icon={<CalendarDays className="size-5" />} label="Trip name" value={trip.name} full />
-            <DetailRow icon={<MapPin className="size-5" />} label="Description" value={trip.description ?? "—"} full />
+            <DetailRow icon={<CalendarDays className="size-5" />} label={t("common.tripName")} value={trip.name} full />
+            <DetailRow icon={<MapPin className="size-5" />} label={t("common.description")} value={trip.description ?? "—"} full />
           </dl>
         </>
       )}
@@ -356,16 +364,17 @@ function GradientPickerModal({
   tripName: string;
   onSelect: (id: TripCoverGradientId) => void;
 }) {
+  const { t } = useI18n();
   const selectedGradient = TRIP_COVER_GRADIENTS.find((g) => g.id === selected) ?? TRIP_COVER_GRADIENTS[0];
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Choose a cover gradient</DialogTitle>
-          <DialogDescription>Pick a color style for your trip cover.</DialogDescription>
+          <DialogTitle>{t("copy.chooseCoverGradient")}</DialogTitle>
+          <DialogDescription>{t("copy.pickCoverStyle")}</DialogDescription>
         </DialogHeader>
         <div className={cn("relative flex h-40 items-center justify-center overflow-hidden rounded-xl", selectedGradient.className)}>
-          <span className="px-4 text-center text-2xl font-bold text-white drop-shadow">{tripName.trim() || "Trip name"}</span>
+          <span className="px-4 text-center text-2xl font-bold text-white drop-shadow">{tripName.trim() || t("common.tripName")}</span>
         </div>
         <div className="grid grid-cols-3 gap-3">
           {TRIP_COVER_GRADIENTS.map((gradient) => (
@@ -389,8 +398,8 @@ function GradientPickerModal({
           ))}
         </div>
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button type="button" variant="primary" onClick={() => onOpenChange(false)}>Done</Button>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
+          <Button type="button" variant="primary" onClick={() => onOpenChange(false)}>{t("copy.done")}</Button>
         </div>
       </DialogContent>
     </Dialog>
