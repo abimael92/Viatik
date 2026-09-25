@@ -13,6 +13,7 @@ import { append } from "@/lib/sync/outbox-transactional";
 import { getSyncUser } from "@/lib/sync/sync-context";
 import { logger } from "@/lib/observability/logger";
 import { normalizeActivityCategory } from "@/features/activities/domain/activity-category";
+import { normalizeActivityAttachments } from "@/features/activities/domain/activity-attachments";
 import { normalizeActivityChecklist } from "@/features/activities/domain/activity-checklist";
 
 function getDb(): ViatikDatabase {
@@ -68,6 +69,7 @@ export class DexieActivityRepository implements ActivityRepository {
         votingEndsAt: input.votingEndsAt ?? null,
         pollOptions: input.pollOptions ?? [],
         pollVotes: input.pollVotes ?? [],
+        attachments: normalizeActivityAttachments(input.attachments),
         checklist: normalizeActivityChecklist(input.checklist),
         position: input.position,
         estimatedCostMinor: input.estimatedCostMinor ?? null,
@@ -100,6 +102,9 @@ export class DexieActivityRepository implements ActivityRepository {
       const nextPatch = {
         ...patch,
         category: patch.category ? normalizeActivityCategory(patch.category) : previous.category,
+        ...(patch.attachments !== undefined
+          ? { attachments: normalizeActivityAttachments(patch.attachments) }
+          : {}),
         ...(patch.checklist !== undefined
           ? { checklist: normalizeActivityChecklist(patch.checklist) }
           : {}),

@@ -1,4 +1,4 @@
-import type { Activity, ActivityChecklistItem, ActivityParticipant, ActivityPollOption, ActivityPollStatus, ActivityPollVote } from "@/features/domain/entities";
+import type { Activity, ActivityAttachment, ActivityChecklistItem, ActivityParticipant, ActivityPollOption, ActivityPollStatus, ActivityPollVote } from "@/features/domain/entities";
 import type { MinorUnits } from "@/features/domain/money";
 import type { ChecklistFeedAction } from "@/features/feed/lib/feed-builder";
 
@@ -58,6 +58,7 @@ export interface NewActivity {
   votingEndsAt?: string | null;
   pollOptions?: ActivityPollOption[];
   pollVotes?: ActivityPollVote[];
+  attachments?: ActivityAttachment[];
   checklist?: ActivityChecklistItem[];
   position: number;
   estimatedCostMinor?: MinorUnits | null;

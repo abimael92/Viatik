@@ -26,6 +26,16 @@ export class DexieMediaRepository implements MediaRepository {
     return () => subscription.unsubscribe();
   }
 
+  watchByIds(ids: string[], onChange: (media: TripMedia[]) => void): () => void {
+    const unique = [...new Set(ids.filter(Boolean))];
+    const subscription = liveQuery(async () => {
+      if (unique.length === 0) return [];
+      const rows = await getDb().tripMedia.bulkGet(unique);
+      return rows.filter((item): item is TripMedia => Boolean(item && item.deletedAt === null));
+    }).subscribe({ next: onChange });
+    return () => subscription.unsubscribe();
+  }
+
   async create(input: NewTripMedia): Promise<TripMedia> {
     const db = getDb();
     return TransactionContext.runInTransaction([db.tripMedia, db.feedItems], async (ctx) => {
