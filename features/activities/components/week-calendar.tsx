@@ -107,7 +107,7 @@ export function WeekCalendar({
   return (
     <>
     <section className="overflow-hidden rounded-2xl border bg-card">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b p-3 sm:p-4"><div><h3 className="font-semibold">{title}</h3><p className="text-xs text-muted-foreground">{t("common.clickOpenTime")}</p></div><div className="flex flex-wrap items-center gap-2"><div className="flex rounded-md border p-0.5"><Button type="button" size="sm" variant={view === "today" ? "default" : "ghost"} onClick={() => setView("today")}>Today</Button><Button type="button" size="sm" variant={view === "range" ? "default" : "ghost"} onClick={() => setView("range")}>{t("common.range")}</Button><Button type="button" size="sm" variant={view === "all" ? "default" : "ghost"} onClick={() => setView("all")}>All</Button></div>{view === "range" && (<div className="flex flex-wrap items-center gap-1"><div className="flex items-center gap-1"><Button type="button" size="icon" variant="ghost" aria-label={t("common.shiftEarlier")} disabled={!rangeStart || rangeStart === days[0]} onClick={() => shiftRange(-1)}><ChevronLeft /></Button><input type="date" value={rangeStart} min={days[0]} max={rangeEnd} onChange={(event) => setRangeStart(event.target.value)} className="h-8 rounded-md border bg-background px-2 text-sm" aria-label={t("common.rangeStart")} /><span className="text-xs text-muted-foreground">to</span><input type="date" value={rangeEnd} min={rangeStart} max={days.at(-1)} onChange={(event) => setRangeEnd(event.target.value)} className="h-8 rounded-md border bg-background px-2 text-sm" aria-label={t("common.rangeEnd")} /><Button type="button" size="icon" variant="ghost" aria-label={t("common.shiftLater")} disabled={!rangeEnd || rangeEnd === days.at(-1)} onClick={() => shiftRange(1)}><ChevronRight /></Button></div></div>)}</div></header>
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b p-3 sm:p-4"><div><h3 className="font-semibold">{title}</h3><p className="text-xs text-muted-foreground">{t("common.clickOpenTime")}</p></div><div className="flex flex-wrap items-center gap-2"><div className="flex rounded-md border p-0.5"><Button type="button" size="sm" variant={view === "today" ? "default" : "ghost"} onClick={() => setView("today")}>{t("common.today")}</Button><Button type="button" size="sm" variant={view === "range" ? "default" : "ghost"} onClick={() => setView("range")}>{t("common.range")}</Button><Button type="button" size="sm" variant={view === "all" ? "default" : "ghost"} onClick={() => setView("all")}>{t("common.all")}</Button></div>{view === "range" && (<div className="flex flex-wrap items-center gap-1"><div className="flex items-center gap-1"><Button type="button" size="icon" variant="ghost" aria-label={t("common.shiftEarlier")} disabled={!rangeStart || rangeStart === days[0]} onClick={() => shiftRange(-1)}><ChevronLeft /></Button><input type="date" value={rangeStart} min={days[0]} max={rangeEnd} onChange={(event) => setRangeStart(event.target.value)} className="h-8 rounded-md border bg-background px-2 text-sm" aria-label={t("common.rangeStart")} /><span className="text-xs text-muted-foreground">to</span><input type="date" value={rangeEnd} min={rangeStart} max={days.at(-1)} onChange={(event) => setRangeEnd(event.target.value)} className="h-8 rounded-md border bg-background px-2 text-sm" aria-label={t("common.rangeEnd")} /><Button type="button" size="icon" variant="ghost" aria-label={t("common.shiftLater")} disabled={!rangeEnd || rangeEnd === days.at(-1)} onClick={() => shiftRange(1)}><ChevronRight /></Button></div></div>)}</div></header>
       <div className="overflow-x-auto overscroll-x-contain">
         <div className="min-w-215">
           <div className="isolate grid" style={{ gridTemplateColumns: `5rem repeat(${visibleDays.length}, minmax(7rem, 1fr))` }}>
@@ -206,7 +206,7 @@ export function WeekCalendar({
                           muted && "opacity-50 [&>*]:grayscale"
                         )}
                         style={{ top, height }}
-                        aria-label={`${activeActivityId === activity.id ? "Edit" : "View"} ${activity.title}${conflict ? ` (weather warning)` : ""}`}
+                        aria-label={`${activeActivityId === activity.id ? t("common.edit") : "View"} ${activity.title}${conflict ? ` (weather warning)` : ""}`}
                         data-activity-id={activity.id}
                       >
                         <strong className="flex items-center justify-between gap-1 truncate">
@@ -220,9 +220,7 @@ export function WeekCalendar({
                         </span>
                         {voting && (
                           <span className="mt-0.5 flex items-center gap-1 font-medium">
-                            <Vote className="size-3" aria-hidden />
-                            Voting
-                          </span>
+                            <Vote className="size-3" aria-hidden />{t("common.polls")}</span>
                         )}
                         {conflict && (
                           <span
@@ -231,9 +229,7 @@ export function WeekCalendar({
                             aria-label={conflict.reason}
                             title={conflict.reason}
                           >
-                            <CloudRain className="size-3" />
-                            Weather
-                          </span>
+                            <CloudRain className="size-3" />{t("copy.weather")}</span>
                         )}
                       </button>
                     );
@@ -324,6 +320,7 @@ function CurrentTimeLine({ minute }: { minute: number }) {
 }
 
 function TransitDetailsDialog({ segment, canEdit, onClose, onEdit, onDelete }: { segment: TransitSegment | null; canEdit: boolean; onClose: () => void; onEdit: (segment: TransitSegment) => void; onDelete: (segment: TransitSegment) => Promise<void> }) {
+  const { t } = useI18n();
   const [deleteOpen, setDeleteOpen] = useState(false);
   if (!segment) return null;
   const Icon = segment.mode === "flight" ? Plane : TrainFront;
@@ -340,26 +337,26 @@ function TransitDetailsDialog({ segment, canEdit, onClose, onEdit, onDelete }: {
         </DialogHeader>
         {segment.ticketImage && <TicketImage image={segment.ticketImage} name={segment.ticketImageName ?? "Ticket"} />}
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 text-sm">
-          <dt className="text-muted-foreground">Route</dt><dd className="font-medium">{segment.origin ?? "—"} → {segment.destination ?? "—"}</dd>
-          <dt className="text-muted-foreground">Departure</dt><dd>{departure.toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</dd>
-          <dt className="text-muted-foreground">Arrival</dt><dd>{arrival ? arrival.toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "Not set"}</dd>
-          {segment.bookingReference && <><dt className="text-muted-foreground">Booking reference</dt><dd className="font-mono">{segment.bookingReference}</dd></>}
+          <dt className="text-muted-foreground">{t("copy.route")}</dt><dd className="font-medium">{segment.origin ?? "—"} → {segment.destination ?? "—"}</dd>
+          <dt className="text-muted-foreground">{t("copy.departure")}</dt><dd>{departure.toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</dd>
+          <dt className="text-muted-foreground">{t("copy.arrival")}</dt><dd>{arrival ? arrival.toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : t("common.notSet")}</dd>
+          {segment.bookingReference && <><dt className="text-muted-foreground">{t("copy.bookingReference")}</dt><dd className="font-mono">{segment.bookingReference}</dd></>}
           <dt className="text-muted-foreground">{segment.mode === "flight" ? "Gate" : "Platform"}</dt><dd>{segment.mode === "flight" ? segment.gate ?? "—" : segment.platform ?? "—"}</dd>
-          {segment.statusMessage && <><dt className="text-muted-foreground">Status</dt><dd>{segment.statusMessage}</dd></>}
+          {segment.statusMessage && <><dt className="text-muted-foreground">{t("copy.status")}</dt><dd>{segment.statusMessage}</dd></>}
         </dl>
         <DialogFooter>
-          {canEdit && <Button type="button" variant="destructive" onClick={() => setDeleteOpen(true)}><Trash2 className="size-4" />Delete</Button>}
-          {canEdit && <Button type="button" variant="outline" className="border-yellow-300 bg-yellow-50 text-yellow-700 hover:bg-yellow-100" onClick={() => onEdit(segment)}><Pencil className="size-4" />Edit</Button>}
-          <Button type="button" onClick={onClose}>Close</Button>
+          {canEdit && <Button type="button" variant="destructive" onClick={() => setDeleteOpen(true)}><Trash2 className="size-4" />{t("copy.delete")}</Button>}
+          {canEdit && <Button type="button" variant="outline" className="border-yellow-300 bg-yellow-50 text-yellow-700 hover:bg-yellow-100" onClick={() => onEdit(segment)}><Pencil className="size-4" />{t("common.edit")}</Button>}
+          <Button type="button" onClick={onClose}>{t("common.close")}</Button>
         </DialogFooter>
       </DialogContent>
       </Dialog>
       <ConfirmDialog
       open={deleteOpen}
       onOpenChange={setDeleteOpen}
-      title="Delete transit?"
+      title={t("copy.deleteTransit")}
       description={`Delete ${label}? This cannot be undone.`}
-      confirmLabel="Delete"
+      confirmLabel={t("copy.delete")}
       onConfirm={() => { setDeleteOpen(false); void onDelete(segment); }}
       />
     </>

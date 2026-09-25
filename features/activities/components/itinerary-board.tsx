@@ -27,6 +27,7 @@ import { logger } from "@/lib/observability/logger";
 import type { ScoutDndPayload } from "@/features/ai/lib/ai-scout-dnd";
 import { DayColumn } from "@/features/activities/components/day-column";
 import { ActivityCard } from "@/features/activities/components/activity-card";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 interface ItineraryBoardProps {
   tripId: string;
@@ -233,11 +234,13 @@ export function ItineraryBoard({
 }
 
 function ItineraryBoardSkeleton({ dayDates }: { dayDates: string[] }) {
+  const { t } = useI18n();
+
   const columns = dayDates.length ? dayDates : [1, 2, 3];
   return (
     <div
       className="grid w-full grid-cols-1 gap-4 p-4 @md:grid-cols-2 @xl:grid-cols-3"
-      aria-label="Loading itinerary"
+      aria-label={t("copy.loadingItinerary")}
     >
       {columns.map((_, index) => (
         <div

@@ -16,6 +16,7 @@ import { useLocalProfile } from "@/features/profile/lib/use-local-profile";
 import type { WeatherConflict } from "@/features/weather/domain/weather-conflict-types";
 import { getActivityCategoryColors, isUserAttending } from "@/features/trips/lib/activity-category-colors";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 interface ActivityCardProps {
   activity: Activity;
@@ -31,6 +32,7 @@ interface ActivityCardProps {
 }
 
 export function ActivityCard({ activity, onSelect, onEdit, draggable = true, conflict, currentUserId, eligibleViaticUsers, tripOwnerId, active = false }: ActivityCardProps) {
+  const { t } = useI18n();
   const [creatorProfile, setCreatorProfile] = useState<ProfileSummary | null>(null);
   const localProfile = useLocalProfile(currentUserId ?? "");
   useEffect(() => {
@@ -105,7 +107,7 @@ export function ActivityCard({ activity, onSelect, onEdit, draggable = true, con
                   ? "bg-primary/15 text-primary opacity-100 ring-1 ring-primary/25 hover:bg-primary/25 focus-visible:ring-primary"
                   : "bg-primary/10 text-primary opacity-100 ring-1 ring-primary/20 hover:bg-primary/15 hover:ring-primary/30"
               )}
-              aria-label={`${active ? "Edit" : "View"} ${activity.title}`}
+              aria-label={`${active ? t("common.edit") : "View"} ${activity.title}`}
             >
               {active ? <Pencil className="size-4" strokeWidth={2.5} aria-hidden /> : <Eye className="size-4" strokeWidth={2.5} aria-hidden />}
             </button>
@@ -143,7 +145,7 @@ export function ActivityCard({ activity, onSelect, onEdit, draggable = true, con
                 title={conflict.reason}
               >
                 <CloudRain className="size-3.5" />
-                Weather
+                {t("copy.weather")}
               </span>
             )}
             <ActivityChecklistProgressPill checklist={activity.checklist} />

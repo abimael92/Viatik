@@ -1,6 +1,7 @@
 import { Map } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 export function ActivityLocationCard({
   name,
@@ -11,6 +12,8 @@ export function ActivityLocationCard({
   formattedAddress: string;
   placeId: string;
 }) {
+  const { t } = useI18n();
+
   const params = new URLSearchParams({
     api: "1",
     query: name,
@@ -30,7 +33,7 @@ export function ActivityLocationCard({
           rel="noreferrer"
         >
           <Map aria-hidden />
-          Open in Maps
+          {t("copy.openInMaps")}
         </a>
       </Button>
     </div>
