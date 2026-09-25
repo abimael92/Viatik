@@ -1,5 +1,7 @@
 "use client";
 
+import { localizeThrownError } from "@/lib/i18n/localize-error";
+
 import Link from "next/link";
 import { useState } from "react";
 import { ArrowRight, Luggage, Plane, Sparkles } from "lucide-react";
@@ -38,7 +40,7 @@ import { useI18n } from "@/lib/i18n/i18n-provider";
  */
 export function HomePage({ userId }: { userId: string }) {
   const { t } = useI18n();
-  const { loading, primaryTrip, activeTrip, readiness, timeline } = useHomeData(userId);
+  const { loading, primaryTrip, activeTrip, readiness, timeline, canManageExpenses } = useHomeData(userId);
   const [pending, setPending] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -74,7 +76,7 @@ export function HomePage({ userId }: { userId: string }) {
     setPending(true);
     void tripRepository.endTrip(primaryTrip.id)
       .then(() => toast({ title: "Trip ended", description: "It has been moved to Past Trips.", variant: "success" }))
-      .catch((cause) => toast({ title: "Unable to end trip", description: cause instanceof Error ? cause.message : "Please try again.", variant: "error" }))
+      .catch((cause) => toast({ title: t("copy.unableEndTrip"), description: localizeThrownError(cause, t, "Please try again."), variant: "error" }))
       .finally(() => setPending(false));
   }
 
@@ -119,7 +121,13 @@ export function HomePage({ userId }: { userId: string }) {
               <>
                 <DocumentRiskBanner userId={userId} destination={primaryTrip.destination} travelDate={primaryTrip.startDate} />
 
-                <LiveTimelineHud trip={primaryTrip} items={timeline} active userId={userId} />
+                <LiveTimelineHud
+                  trip={primaryTrip}
+                  items={timeline}
+                  active
+                  userId={userId}
+                  canManageExpenses={canManageExpenses}
+                />
 
                 <ActiveTripActions activeTrip={activeTrip} />
 
@@ -192,9 +200,9 @@ export function HomePage({ userId }: { userId: string }) {
         <ConfirmDialog
           open={confirmEnd}
           onOpenChange={setConfirmEnd}
-          title="End this trip?"
+          title={t("copy.endTripQuestion")}
           description="It will be moved to Past Trips."
-          confirmLabel="End trip"
+          confirmLabel={t("common.endTrip")}
           onConfirm={confirmEndTrip}
         />
 
