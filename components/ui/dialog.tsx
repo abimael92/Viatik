@@ -5,8 +5,13 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { motion } from "motion/react";
 
+import { isDialogDismissExempt } from "@/components/ui/dialog-dismiss";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
+
+function keepPortaledOverlays(event: { target: EventTarget | null; preventDefault: () => void }) {
+  if (isDialogDismissExempt(event.target)) event.preventDefault();
+}
 
 const Dialog = DialogPrimitive.Root;
 const DialogTrigger = DialogPrimitive.Trigger;
@@ -31,6 +36,9 @@ function DialogContent({
   className,
   children,
   headerActions,
+  onInteractOutside,
+  onPointerDownOutside,
+  onFocusOutside,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   headerActions?: React.ReactNode;
@@ -39,7 +47,22 @@ function DialogContent({
   return (
     <DialogPortal>
         <DialogOverlay />
-        <DialogPrimitive.Content asChild {...props}>
+        <DialogPrimitive.Content
+          asChild
+          onInteractOutside={(event) => {
+            keepPortaledOverlays(event);
+            onInteractOutside?.(event);
+          }}
+          onPointerDownOutside={(event) => {
+            keepPortaledOverlays(event);
+            onPointerDownOutside?.(event);
+          }}
+          onFocusOutside={(event) => {
+            keepPortaledOverlays(event);
+            onFocusOutside?.(event);
+          }}
+          {...props}
+        >
           <motion.div
             className={cn(
               "fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2",

@@ -101,13 +101,14 @@ export function DestinationField({
         />
       </div>
       {suggestions.length > 0 && (
-        <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border bg-popover shadow-lg">
+        <div data-places-suggestions className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border bg-popover shadow-lg">
           {suggestions.map((suggestion) => (
             <button
               key={suggestion.placeId}
               type="button"
               disabled={pendingPlaceId === suggestion.placeId}
               className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-muted disabled:opacity-60"
+              onMouseDown={(event) => event.preventDefault()}
               onClick={() => handleSelect(suggestion)}
             >
               <MapPin className="size-5 text-primary" />
