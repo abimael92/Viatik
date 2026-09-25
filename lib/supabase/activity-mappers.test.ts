@@ -30,6 +30,15 @@ describe("activity mappers", () => {
       votingEndsAt: "2026-09-16T18:00:00.000Z",
       pollOptions: [{ id: "option-1", label: "Visit the Prado", proposedBy: "user-1", createdAt: timestamp }],
       pollVotes: [{ userId: "user-1", choice: "approve", optionId: "option-1", createdAt: timestamp, updatedAt: timestamp }],
+      attachments: [{
+        id: "link-1",
+        kind: "link",
+        url: "https://example.com/menu",
+        title: "Dinner menu",
+        description: null,
+        siteName: "Example",
+        previewImageMediaId: null,
+      }],
       checklist: [{ id: "check-1", title: "Buy tickets", completed: true, archived: false }],
       position: 1,
       estimatedCostMinor: null,
@@ -55,6 +64,15 @@ describe("activity mappers", () => {
       voting_ends_at: "2026-09-16T18:00:00.000Z",
       poll_options: [{ id: "option-1", label: "Visit the Prado", proposedBy: "user-1", createdAt: timestamp }],
       poll_votes: [{ userId: "user-1", choice: "approve", optionId: "option-1", createdAt: timestamp, updatedAt: timestamp }],
+      attachments: [{
+        id: "link-1",
+        kind: "link",
+        url: "https://example.com/menu",
+        title: "Dinner menu",
+        description: null,
+        siteName: "Example",
+        previewImageMediaId: null,
+      }],
       checklist: [{ id: "check-1", title: "Buy tickets", completed: true, archived: false }],
       updated_by: "user-1",
       version: 1,
@@ -139,5 +157,6 @@ describe("activity mappers", () => {
     });
 
     expect(activity.checklist).toEqual([]);
+    expect(activity.attachments).toEqual([]);
   });
 });
