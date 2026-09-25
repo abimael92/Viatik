@@ -78,5 +78,12 @@ describe("I18nProvider", () => {
     expect(translate("es", "common.startTime")).toBe("Hora de inicio");
     expect(translate("es", "common.endTime")).toBe("Hora de fin");
     expect(translate("es", "common.participants")).toBe("Participantes");
+    expect(translate("es", "common.activityStopCosts")).toBe("Costos de esta parada");
+    expect(translate("es", "copy.emergencyCenter")).toBe("Centro de emergencias");
+    expect(translate("es", "copy.shareTrip")).toBe("Compartir viaje");
+    expect(translate("es", "copy.notificationsTitle")).toBe("Notificaciones");
+    expect(translate("es", "copy.vault")).toBe("Bóveda");
+    expect(translate("es", "copy.travelJournal")).toBe("Diario de viaje");
+    expect(translate("en", "copy.emergencyCenter")).toBe("Emergency Center");
   });
 });

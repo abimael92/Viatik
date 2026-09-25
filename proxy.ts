@@ -1,8 +1,11 @@
-import { type NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
+import { recoveryRequestRedirect } from "@/lib/auth/password-recovery";
 import { updateSession } from "@/lib/supabase/middleware";
 
 export async function proxy(request: NextRequest) {
+  const handoff = recoveryRequestRedirect(request.nextUrl);
+  if (handoff) return NextResponse.redirect(new URL(handoff, request.nextUrl.origin));
   return updateSession(request);
 }
 

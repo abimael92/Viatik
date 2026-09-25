@@ -17,7 +17,10 @@ export type OutboxEntityType =
   | "connectionResponse"
   | "userWallet"
   | "tripShareLink"
-  | "notification";
+  | "notification"
+  | "decision"
+  | "decisionOption"
+  | "decisionVote";
 export type OutboxOperation = "insert" | "update" | "delete";
 export type OutboxMutationStatus = "pending" | "processing" | "blocked";
 

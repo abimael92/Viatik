@@ -130,14 +130,14 @@ describe("cloud synchronization", () => {
 
   it("bootstraps every collaborative table and stores a pull cursor", async () => {
     await pullRemoteChanges(true);
-    expect(mocks.from).toHaveBeenCalledTimes(18);
+    expect(mocks.from).toHaveBeenCalledTimes(21);
     expect(mocks.metadataPut).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ key: "cloud:last-pull:user-1" })]));
   });
 
   it("uses the stored cursor for incremental pulls", async () => {
     mocks.metadataGet.mockImplementation(async (key: string) => key === "cloud:active-user" ? { key, value: "user-1" } : { key, value: "2026-01-01T00:00:00.000Z" });
     await pullRemoteChanges();
-    expect(mocks.query.gt).toHaveBeenCalledTimes(18);
+    expect(mocks.query.gt).toHaveBeenCalledTimes(21);
     expect(mocks.query.gt).toHaveBeenCalledWith("updated_at", "2026-01-01T00:00:00.000Z");
   });
 
@@ -169,7 +169,7 @@ describe("cloud synchronization", () => {
 
     await pullRemoteChanges(false, controller.signal);
 
-    expect(mocks.query.abortSignal).toHaveBeenCalledTimes(18);
+    expect(mocks.query.abortSignal).toHaveBeenCalledTimes(21);
     expect(mocks.query.abortSignal).toHaveBeenCalledWith(controller.signal);
   });
 
@@ -214,6 +214,33 @@ describe("cloud synchronization", () => {
     expect(mocks.metadataPut).not.toHaveBeenCalled();
   });
 
+  it("downloads trips when the browser reports itself offline", async () => {
+    vi.stubGlobal("navigator", { onLine: false });
+    mocks.queryResponses.push({
+      data: [{ id: "trip-1", owner_id: "user-1", name: "Phoenix Family", updated_at: "2026-01-01T00:00:00.000Z" }],
+      error: null,
+    });
+
+    try {
+      await pullRemoteChanges(true);
+      expect(mocks.put).toHaveBeenCalledWith(expect.objectContaining({ id: "trip-1", name: "Phoenix Family" }));
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("keeps trips that were already downloaded when a later table fails", async () => {
+    mocks.queryResponses.push(
+      { data: [{ id: "trip-1", owner_id: "user-1", name: "Phoenix Family", updated_at: "2026-01-01T00:00:00.000Z" }], error: null },
+      { data: null, error: { message: "page failed" } },
+    );
+
+    await expect(pullRemoteChanges(true)).rejects.toThrow("Pull trip_members: page failed");
+    expect(mocks.put).toHaveBeenCalledWith(expect.objectContaining({ id: "trip-1", name: "Phoenix Family" }));
+    expect(mocks.metadataPut).not.toHaveBeenCalled();
+    expect(mocks.db.transaction).not.toHaveBeenCalled();
+  });
+
   it("converges on a newer remote value and records the conflict", async () => {
     mocks.outboxLast.mockResolvedValue({ id: "mutation-1", entityType: "activity", entityId: "activity-1", tripId: "trip-1", mutatedAt: "2026-01-01T00:00:00.000Z" });
     const activity = { id: "activity-1", tripId: "trip-1", dayDate: "2026-01-02", title: "Remote winner", description: null, location: null, category: "general", startTime: null, endTime: null, position: 1, estimatedCostMinor: null, createdBy: "user-1", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-02T00:00:00.000Z", deletedAt: null };
@@ -251,8 +278,31 @@ describe("cloud synchronization", () => {
 
   it("subscribes to realtime changes for every table", () => {
     const stop = startRealtimeSync();
-    expect(mocks.channel.on).toHaveBeenCalledTimes(18);
-    expect(mocks.channel.subscribe).toHaveBeenCalledOnce();
+    expect(mocks.channel.on).toHaveBeenCalledTimes(21);
+    expect(mocks.channel.subscribe).toHaveBeenCalledTimes(2);
+    stop();
+  });
+
+  it("keeps a private contact relationship when a connection refresh arrives", async () => {
+    configureSyncUser("user-bob");
+    mocks.tableGet.mockResolvedValue({ id: "conn-1", relationship: "family", updatedAt: "2026-01-01T00:00:00.000Z" });
+    const stop = startRealtimeSync();
+    const registration = mocks.channel.on.mock.calls.find((call) => call[1].table === "connections");
+    registration?.[2]({
+      eventType: "UPDATE",
+      old: {},
+      new: {
+        id: "conn-1",
+        requester_id: "user-alice",
+        recipient_id: "user-bob",
+        status: "accepted",
+        requester_snapshot: { profile_id: "user-alice", display_name: "Alice", viatik_id: "VTK-AAAA", avatar_url: null, avatar_seed: null, public_handle: "alice" },
+        recipient_snapshot: { profile_id: "user-bob", display_name: "Bob", viatik_id: "VTK-BBBB", avatar_url: null, avatar_seed: null, public_handle: "bob" },
+        created_at: "2026-01-01T00:00:00.000Z",
+        updated_at: "2026-01-02T00:00:00.000Z",
+      },
+    });
+    await vi.waitFor(() => expect(mocks.put).toHaveBeenCalledWith(expect.objectContaining({ id: "conn-1", relationship: "family", fullName: "Alice" })));
     stop();
   });
 

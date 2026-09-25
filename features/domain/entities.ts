@@ -524,6 +524,8 @@ export interface Contact {
   email: string | null;
   phone: string | null;
   relationship: ContactRelationship;
+  /** Private family role, such as sister or mother. Used only to filter contacts. */
+  relationshipDetail?: string | null;
   travelerType: TravelerType;
   birthDate: string | null;
   notes: string | null;

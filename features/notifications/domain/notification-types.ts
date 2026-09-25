@@ -4,6 +4,7 @@ export const notificationTypes = [
   "settlement_pending",
   "trip_alert",
   "trip_invitation",
+  "trip_added",
 ] as const;
 export type NotificationType = (typeof notificationTypes)[number];
 

@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ActivityCard } from "@/features/activities/components/activity-card";
+import { activityRepository } from "@/features/activities/data/dexie-activity-repository";
 import { useLocalProfile } from "@/features/profile/lib/use-local-profile";
 
 if (typeof window !== "undefined") {
@@ -48,6 +49,9 @@ vi.mock("@dnd-kit/utilities", () => ({
 vi.mock("@/features/profile/lib/use-local-profile", () => ({ useLocalProfile: vi.fn(() => null) }));
 vi.mock("@/features/collaboration/data/dexie-collaboration-repository", () => ({
   collaborationRepository: { listProfiles: vi.fn().mockResolvedValue([]) },
+}));
+vi.mock("@/features/activities/data/dexie-activity-repository", () => ({
+  activityRepository: { setAttendance: vi.fn().mockResolvedValue({}) },
 }));
 
 describe("ActivityCard", () => {
@@ -97,7 +101,7 @@ describe("ActivityCard", () => {
   it("colors by category and mutes activities the current user is not attending", () => {
     const { container } = render(
       <ActivityCard
-        activity={{ ...mockActivity, participants: [{ userId: "user-2", status: "attending" as const }] }}
+        activity={{ ...mockActivity, participants: [{ userId: "user-1", status: "declined" as const }] }}
         currentUserId="user-1"
       />
     );
@@ -125,5 +129,16 @@ describe("ActivityCard", () => {
     render(<ActivityCard activity={mockActivity} currentUserId="user-1" />);
 
     await waitFor(() => expect(document.querySelector('img[src="https://example.com/configured.png"]')).toBeTruthy());
+  });
+
+  it("lets the current traveler mark themselves not going without opening the editor", async () => {
+    const onSelect = vi.fn();
+    render(<ActivityCard activity={mockActivity} currentUserId="user-1" onSelect={onSelect} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Not going" }));
+
+    await waitFor(() => expect(activityRepository.setAttendance).toHaveBeenCalledWith("act-1", "user-1", "declined"));
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: /Edit/ })).toBeNull();
   });
 });

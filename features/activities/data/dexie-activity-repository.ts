@@ -15,6 +15,7 @@ import { logger } from "@/lib/observability/logger";
 import { normalizeActivityCategory } from "@/features/activities/domain/activity-category";
 import { normalizeActivityAttachments } from "@/features/activities/domain/activity-attachments";
 import { normalizeActivityChecklist } from "@/features/activities/domain/activity-checklist";
+import { withOwnAttendance, type OwnAttendanceStatus } from "@/features/activities/lib/own-attendance";
 
 function getDb(): ViatikDatabase {
   const db = getCurrentDatabase();
@@ -149,6 +150,30 @@ export class DexieActivityRepository implements ActivityRepository {
       );
       logger.debug("Activity checklist updated locally", { activityId: activity.id, action: event.action });
       return activity;
+    });
+  }
+
+  async setAttendance(id: string, userId: string, status: OwnAttendanceStatus): Promise<Activity> {
+    const actorId = getSyncUser();
+    if (actorId && actorId !== userId) throw new Error("You can only change your own attendance");
+    const db = getDb();
+    return TransactionContext.runInTransaction([db.activities], async (ctx) => {
+      const previous = await ctx.table<Activity>("activities").get(id);
+      if (!previous) throw new Error(`Activity ${id} not found before update`);
+      const participants = withOwnAttendance(previous.participants, userId, status);
+      if (participants === previous.participants) return previous;
+      const updatedAt = new Date().toISOString();
+      const next = {
+        ...previous,
+        participants,
+        updatedBy: actorId ?? userId,
+        version: (previous.version ?? 1) + 1,
+        updatedAt,
+      };
+      await ctx.table<Activity>("activities").put(next);
+      await append("activity", "update", next, { tx: ctx, baseUpdatedAt: previous.updatedAt });
+      logger.debug("Activity attendance updated locally", { activityId: id, userId, status });
+      return next;
     });
   }
 

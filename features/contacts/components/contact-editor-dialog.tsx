@@ -27,6 +27,7 @@ import type { CurrentPublicProfile } from "@/features/contacts/lib/profile-direc
 import type { Contact, TravelerType, Trip } from "@/features/domain/entities";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import type { TranslationKey } from "@/lib/i18n/translations";
+import { FAMILY_ROLES, FAMILY_ROLE_LABELS } from "@/features/contacts/lib/family-roles";
 import { cn } from "@/lib/utils";
 
 const STEP_KEYS: TranslationKey[] = ["common.identity", "common.contactDetails", "common.travelDetails"];
@@ -40,6 +41,7 @@ type ContactFormValues = {
   avatarUrl: string | null;
   avatarSeed: string | null;
   relationship: Contact["relationship"];
+  relationshipDetail: string;
   travelerType: TravelerType;
   email: string;
   phone: string;
@@ -62,6 +64,7 @@ function contactToValues(contact?: Contact | null): ContactFormValues {
     avatarUrl: contact?.avatarUrl ?? null,
     avatarSeed: contact?.avatarSeed ?? null,
     relationship: contact?.relationship ?? "other",
+    relationshipDetail: contact?.relationshipDetail ?? "",
     travelerType: contact?.travelerType ?? "adult",
     email: contact?.email ?? "",
     phone: contact?.phone ?? "",
@@ -117,6 +120,18 @@ export function ContactEditorDialog({
         />
       )}
     </Dialog>
+  );
+}
+
+function FamilyRoleField({ value, onChange }: { value: string; onChange: (role: string) => void }) {
+  const { t } = useI18n();
+  return (
+    <SelectField label={t("copy.familyRole")} name="relationshipDetail" value={value} onChange={(event) => onChange(event.target.value)}>
+      <option value="">{t("copy.family")}</option>
+      {FAMILY_ROLES.map((role) => (
+        <option key={role} value={role}>{t(FAMILY_ROLE_LABELS[role])}</option>
+      ))}
+    </SelectField>
   );
 }
 
@@ -260,6 +275,7 @@ function ContactForm({
       email: values.email,
       phone: values.phone,
       relationship: values.relationship,
+      relationshipDetail: values.relationship === "family" && values.relationshipDetail ? values.relationshipDetail : null,
       travelerType: values.travelerType,
       birthDate: values.birthDate || null,
       notes: values.notes,
@@ -385,9 +401,14 @@ function ContactForm({
                   label={t("common.relationship")}
                   name="relationship"
                   value={values.relationship}
-                  onChange={(event) =>
-                    setField("relationship", event.target.value as Contact["relationship"])
-                  }
+                  onChange={(event) => {
+                    const relationship = event.target.value as Contact["relationship"];
+                    setValues((current) => ({
+                      ...current,
+                      relationship,
+                      relationshipDetail: relationship === "family" ? current.relationshipDetail : "",
+                    }));
+                  }}
                   helper={t("copy.relationshipHelper")}
                 >
                   <option value="family">{t("copy.family")}</option>
@@ -396,6 +417,12 @@ function ContactForm({
                   <option value="roommate">{t("copy.roommate")}</option>
                   <option value="other">{t("common.other")}</option>
                 </SelectField>
+                {values.relationship === "family" && (
+                  <FamilyRoleField
+                    value={values.relationshipDetail}
+                    onChange={(role) => setField("relationshipDetail", role)}
+                  />
+                )}
                 <SelectField
                   label={t("common.travelerType")}
                   name="travelerType"
@@ -675,7 +702,14 @@ function ContactForm({
           id="contact-relationship-only"
           aria-label={t("common.relationship")}
           value={values.relationship}
-          onChange={(event) => setField("relationship", event.target.value as Contact["relationship"])}
+          onChange={(event) => {
+            const relationship = event.target.value as Contact["relationship"];
+            setValues((current) => ({
+              ...current,
+              relationship,
+              relationshipDetail: relationship === "family" ? current.relationshipDetail : "",
+            }));
+          }}
           className="h-10 w-full rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
         >
           <option value="family">{t("copy.family")}</option>
@@ -684,8 +718,11 @@ function ContactForm({
           <option value="roommate">{t("copy.roommate")}</option>
           <option value="other">{t("common.other")}</option>
         </select>
-        <p className="text-xs text-muted-foreground">{t("copy.linkedProfileLocked")}</p>
+        <p className="text-xs text-muted-foreground">{t("copy.relationshipHelper")}</p>
       </div>
+      {values.relationship === "family" && (
+        <FamilyRoleField value={values.relationshipDetail} onChange={(role) => setField("relationshipDetail", role)} />
+      )}
       {error && <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
       <DialogFooter>
         <Button type="submit" variant="primary" disabled={pending}>{pending ? t("settings.saving") : "Save relationship"}</Button>

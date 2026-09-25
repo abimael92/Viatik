@@ -7,6 +7,7 @@ import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { ActivityAttendanceToggle } from "@/features/activities/components/activity-attendance-toggle";
 import { ActivityVoteCard } from "@/features/activities/components/activity-vote-card";
 import { ActivityChecklistProgressPill } from "@/features/activities/components/activity-checklist";
 import { collaborationRepository } from "@/features/collaboration/data/dexie-collaboration-repository";
@@ -152,6 +153,9 @@ export function ActivityCard({ activity, onSelect, onEdit, draggable = true, con
           </div>
         </div>
       </article>
+      {currentUserId && activity.pollStatus !== "proposed" && activity.pollStatus !== "voting" && (
+        <ActivityAttendanceToggle activity={activity} userId={currentUserId} />
+      )}
       {currentUserId && (activity.pollStatus === "proposed" || activity.pollStatus === "voting") && (
         <ActivityVoteCard activity={activity} currentUserId={currentUserId} eligibleViaticUsers={eligibleViaticUsers} tripOwnerId={tripOwnerId} />
       )}

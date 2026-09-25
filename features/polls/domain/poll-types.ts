@@ -2,9 +2,8 @@
  * Group Polls & Real-Time Voting domain entities. These are plain TypeScript
  * shapes with no dependency on Dexie or Supabase row types.
  *
- * Polls are local-only (like `packingItems`/`feedItems`): they live in the
- * device database so voting stays available offline, and are never pushed
- * through the sync outbox.
+ * Crew polls are shared decisions. They are saved on the device first, then
+ * queued so every traveler on the trip can see and vote.
  */
 
 export type PollStatus = "active" | "closed";

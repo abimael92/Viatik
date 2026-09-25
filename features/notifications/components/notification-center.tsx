@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
 import { notificationRepository } from "@/features/notifications/data/dexie-notification-repository";
+import { notificationMessage } from "@/features/notifications/lib/notification-message";
 import type { Notification } from "@/features/notifications/domain/notification-types";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 
@@ -18,6 +19,7 @@ const icons = {
   settlement_pending: CreditCard,
   trip_alert: Map,
   trip_invitation: CalendarDays,
+  trip_added: CalendarDays,
 } as const;
 
 export function NotificationBell({ userId }: { userId: string }) {
@@ -148,7 +150,7 @@ function NotificationRow({ item, onRead }: { item: Notification; onRead: () => v
           <Icon className="size-5" aria-hidden />
         </span>
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium">{item.message}</p>
+          <p className="truncate text-sm font-medium">{notificationMessage(item, t)}</p>
           <p className="mt-1 text-xs text-muted-foreground">
             {new Date(item.createdAt).toLocaleString()}
           </p>

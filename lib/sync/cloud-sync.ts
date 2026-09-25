@@ -1,6 +1,6 @@
 import type { RealtimeChannel, RealtimePostgresChangesPayload, SupabaseClient } from "@supabase/supabase-js";
 
-import type { Activity, ActivityPersonalBudget, Contact, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler, UserWallet } from "@/features/domain/entities";
+import type { Activity, ActivityPersonalBudget, Contact, Decision, DecisionOption, DecisionVote, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler, UserWallet } from "@/features/domain/entities";
 import type { TripMedia } from "@/features/domain/entities-media";
 import type { TripFeedItem } from "@/features/feed/domain/feed-types";
 import type { TripShareLink } from "@/features/sharing/domain/share-types";
@@ -38,6 +38,9 @@ import {
   rowToTripWeatherForecast,
   rowToShareLink,
   rowToNotification,
+  rowToDecision,
+  rowToDecisionOption,
+  rowToDecisionVote,
 } from "@/lib/supabase/mappers";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import type { OutboxEntityType } from "@/lib/sync/types";
@@ -53,8 +56,10 @@ function getDb(): ViatikDatabase {
 const LAST_PULL_KEY = "cloud:last-pull";
 const ACTIVE_USER_KEY = "cloud:active-user";
 const PULL_PAGE_SIZE = 500;
-const OPTIONAL_REMOTE_TABLES = new Set(["activity_personal_budgets"]);
+const OPTIONAL_REMOTE_TABLES = new Set(["activity_personal_budgets", "decisions", "decision_options", "decision_votes"]);
+const CREW_POLL_TABLES = new Set(["decisions", "decision_options", "decision_votes"]);
 let realtimeChannel: RealtimeChannel | null = null;
+let pollRealtimeChannel: RealtimeChannel | null = null;
 
 const tableDefinitions = [
   { table: "trips", entityType: "trip" as const, map: rowToTrip, store: "trips" as const },
@@ -75,9 +80,12 @@ const tableDefinitions = [
   { table: "user_wallets", entityType: "userWallet" as const, map: rowToUserWallet, store: "userWallets" as const },
   { table: "trip_share_links", entityType: "tripShareLink" as const, map: rowToShareLink, store: "shareLinks" as const },
   { table: "notifications", entityType: "notification" as const, map: rowToNotification, store: "notifications" as const },
+  { table: "decisions", entityType: "decision" as const, map: rowToDecision, store: "decisions" as const },
+  { table: "decision_options", entityType: "decisionOption" as const, map: rowToDecisionOption, store: "decisionOptions" as const },
+  { table: "decision_votes", entityType: "decisionVote" as const, map: rowToDecisionVote, store: "decisionVotes" as const },
 ];
 
-type RemoteEntity = Trip | TripMember | TripInvitation | Activity | ActivityPersonalBudget | Expense | ExpenseShare | TripMedia | ExpenseSettlement | Contact | TripTraveler | VaultEntry | VaultKeyset | TripWeatherForecast | UserWallet | TripShareLink | Notification;
+type RemoteEntity = Trip | TripMember | TripInvitation | Activity | ActivityPersonalBudget | Expense | ExpenseShare | TripMedia | ExpenseSettlement | Contact | TripTraveler | VaultEntry | VaultKeyset | TripWeatherForecast | UserWallet | TripShareLink | Notification | Decision | DecisionOption | DecisionVote;
 
 async function signedMediaUrl(client: SupabaseClient, entity: RemoteEntity, signal?: AbortSignal): Promise<RemoteEntity> {
   signal?.throwIfAborted();
@@ -104,6 +112,22 @@ async function applyRemote(entityType: OutboxEntityType, store: typeof tableDefi
     if ("personalCareConfirmed" in previous && !("personalCareConfirmed" in entity)) localTripFields.personalCareConfirmed = previous.personalCareConfirmed;
     if ("vaultNotNeeded" in previous && !("vaultNotNeeded" in entity)) localTripFields.vaultNotNeeded = previous.vaultNotNeeded;
     if (Object.keys(localTripFields).length > 0) entity = { ...entity, ...localTripFields } as RemoteEntity;
+  }
+
+  // A connection edge has no relationship. The label is private to this pair
+  // and is only used to filter the contacts page, so a remote refresh keeps it.
+  if (entityType === "connectionRequest" && previous && "relationship" in previous) {
+    entity = {
+      ...entity,
+      relationship: previous.relationship,
+      relationshipDetail: "relationshipDetail" in previous ? previous.relationshipDetail ?? null : null,
+    } as RemoteEntity;
+  }
+  if (entityType === "contact" && previous && "relationshipDetail" in previous) {
+    const incomingDetail = "relationshipDetail" in entity ? entity.relationshipDetail : null;
+    if (!incomingDetail) {
+      entity = { ...entity, relationshipDetail: previous.relationshipDetail ?? null } as RemoteEntity;
+    }
   }
 
   // Protection: If local entity has a non-null startedAt (trip was started), 
@@ -257,7 +281,6 @@ async function fetchTablePages(client: SupabaseClient, table: string, since: str
 
 export async function pullRemoteChanges(full = false, signal?: AbortSignal): Promise<void> {
   signal?.throwIfAborted();
-  if (typeof navigator !== "undefined" && !navigator.onLine) return;
   const client = getSupabaseBrowserClient();
   const { data: auth } = await client.auth.getUser();
   if (!auth.user) return;
@@ -267,30 +290,35 @@ export async function pullRemoteChanges(full = false, signal?: AbortSignal): Pro
   const metadata = await getDb().syncMetadata.get(cursorKey);
   const since = full ? null : metadata?.value ?? null;
   const startedAt = new Date().toISOString();
-  const staged: Array<{ definition: typeof tableDefinitions[number]; rows: Record<string, unknown>[] }> = [];
+  const staged: Array<{ definition: typeof tableDefinitions[number]; rows: Record<string, unknown>[]; complete: boolean }> = [];
+  let pullError: unknown = null;
 
   for (const definition of tableDefinitions) {
     signal?.throwIfAborted();
     try {
-      staged.push({ definition, rows: await fetchTablePages(client, definition.table, since, startedAt, signal) });
+      staged.push({ definition, rows: await fetchTablePages(client, definition.table, since, startedAt, signal), complete: true });
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : String(cause);
-      if (!OPTIONAL_REMOTE_TABLES.has(definition.table) || !isTransientSchemaCacheError(message)) throw cause;
-      logger.warn("Skipping optional remote table until its migration is available", {
-        table: definition.table,
-      });
-      staged.push({ definition, rows: [] });
+      if (definition.table !== "trips" && (OPTIONAL_REMOTE_TABLES.has(definition.table) || isTransientSchemaCacheError(message))) {
+        logger.warn("Skipping remote table until its migration is available", { table: definition.table });
+        staged.push({ definition, rows: [], complete: false });
+        continue;
+      }
+      pullError = cause;
+      break;
     }
   }
 
-  const remoteTripIds = new Set(staged.find(({ definition }) => definition.table === "trips")?.rows.map((row) => String(row.id)) ?? []);
   for (const { definition, rows } of staged) {
     for (const row of rows) {
       signal?.throwIfAborted();
       await applyRemote(definition.entityType, definition.store, definition.map(row), client, signal);
     }
   }
-  if (full) {
+
+  const tripsStage = staged.find(({ definition }) => definition.table === "trips");
+  const remoteTripIds = new Set((tripsStage?.complete ? tripsStage.rows : []).map((row) => String(row.id)));
+  if (full && tripsStage?.complete && !pullError) {
     const localTrips = await getDb().trips.toArray();
     for (const trip of localTrips) {
       signal?.throwIfAborted();
@@ -309,9 +337,11 @@ export async function pullRemoteChanges(full = false, signal?: AbortSignal): Pro
     // hard-deleted while we were offline, drop the locally-materialized contact
     // for that edge. Edges with a not-yet-replayed outbox mutation are spared so
     // an in-flight request/response isn't wiped by an offline pull.
+    const connectionsStage = staged.find(({ definition }) => definition.table === "connections");
     const remoteConnectionIds = new Set(
-      staged.find(({ definition }) => definition.table === "connections")?.rows.map((row) => String(row.id)) ?? []
+      (connectionsStage?.complete ? connectionsStage.rows : []).map((row) => String(row.id))
     );
+    if (connectionsStage?.complete) {
     const localEdges = await getDb().contacts
       .where("connectionStatus").anyOf("pending", "accepted")
       .filter((contact) => contact.connectionId !== null && contact.deletedAt === null)
@@ -327,24 +357,33 @@ export async function pullRemoteChanges(full = false, signal?: AbortSignal): Pro
       if (pending > 0) continue;
       await getDb().contacts.delete(contact.id);
     }
+    }
   }
+  if (pullError) throw pullError instanceof Error ? pullError : new Error(String(pullError));
   signal?.throwIfAborted();
   await getDb().syncMetadata.bulkPut([{ key: cursorKey, value: startedAt }, { key: ACTIVE_USER_KEY, value: auth.user.id }]);
+}
+
+function bindRealtime(client: ReturnType<typeof getSupabaseBrowserClient>, name: string, definitions: typeof tableDefinitions): RealtimeChannel {
+  let channel = client.channel(name);
+  for (const definition of definitions) {
+    channel = channel.on("postgres_changes", { event: "*", schema: "public", table: definition.table }, (payload) => {
+      void handleRealtimePayload(definition, payload, client).catch((error) => logger.error("Realtime apply failed", error instanceof Error ? error : new Error(String(error)), { table: definition.table }));
+    });
+  }
+  return channel.subscribe();
 }
 
 export function startRealtimeSync(): () => void {
   if (realtimeChannel) return () => undefined;
   const client = getSupabaseBrowserClient();
-  let channel = client.channel("viatik-collaboration");
-  for (const definition of tableDefinitions) {
-    channel = channel.on("postgres_changes", { event: "*", schema: "public", table: definition.table }, (payload) => {
-      void handleRealtimePayload(definition, payload, client).catch((error) => logger.error("Realtime apply failed", error instanceof Error ? error : new Error(String(error)), { table: definition.table }));
-    });
-  }
-  realtimeChannel = channel.subscribe();
+  realtimeChannel = bindRealtime(client, "viatik-collaboration", tableDefinitions.filter((definition) => !CREW_POLL_TABLES.has(definition.table)));
+  pollRealtimeChannel = bindRealtime(client, "viatik-crew-polls", tableDefinitions.filter((definition) => CREW_POLL_TABLES.has(definition.table)));
   return () => {
     if (realtimeChannel) void client.removeChannel(realtimeChannel);
+    if (pollRealtimeChannel) void client.removeChannel(pollRealtimeChannel);
     realtimeChannel = null;
+    pollRealtimeChannel = null;
   };
 }
 

@@ -403,7 +403,12 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">{t("auth.password")}</Label>
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="password">{t("auth.password")}</Label>
+              <Link href="/forgot-password" className="text-sm font-semibold text-primary hover:underline">
+                {t("auth.forgotPassword")}
+              </Link>
+            </div>
             <div className="relative">
               <Lock className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input id="password" name="password" type={showPassword ? "text" : "password"} autoComplete="current-password" placeholder={t("auth.yourPassword")} required value={password} onChange={(event) => setPassword(event.target.value)} disabled={pending} className="pl-9 pr-10" />

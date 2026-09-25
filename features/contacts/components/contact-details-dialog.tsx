@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import type { Contact } from "@/features/domain/entities";
+import { FAMILY_ROLE_LABELS, isFamilyRole } from "@/features/contacts/lib/family-roles";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 
 export function ContactDetailsDialog({
@@ -92,7 +93,17 @@ export function ContactDetailsDialog({
                 label={t("common.accountType")}
                 value={isLinkedToViatik ? t("common.linkedProfile") : t("common.manualContact")}
               />
-              <DetailItem label={t("common.relationship")} value={contact.relationship} capitalize />
+              <DetailItem
+                label={t("common.relationship")}
+                value={
+                  contact.relationship === "family" && contact.relationshipDetail && isFamilyRole(contact.relationshipDetail)
+                    ? t(FAMILY_ROLE_LABELS[contact.relationshipDetail])
+                    : contact.relationship === "family"
+                      ? t("copy.family")
+                      : contact.relationship
+                }
+                capitalize
+              />
               <DetailItem label={t("common.travelerType")} value={contact.travelerType} capitalize />
             </div>
           </Section>
