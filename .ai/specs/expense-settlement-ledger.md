@@ -111,4 +111,4 @@ All criteria must be objectively testable.
 - **Verification commands:** Targeted Vitest (ledger math, settlement UI, feed, mappers, money migration), `pnpm typecheck`, ESLint on changed files
 - **Verification results:** Remote pulls now emit `logged_settlement` for collaborator inserts. `settleShare` is removed so share `settledAt` is no longer a repayment write path.
 - **Bug-ledger updates:** Settlement dual-source invariant recorded.
-- **Follow-up work:** Push migration 62 to the hosted project and regenerate types. Live Finance browser QA after an authenticated session is available.
+- **Follow-up work:** Live Finance and Home browser QA after an authenticated session is available. Hosted project `spcpdbxripukvqrnsuim` now has migration 62 (`expense_settlements.date`).
