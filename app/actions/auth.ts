@@ -8,6 +8,7 @@ import {
   passwordRecoveryRedirect,
   passwordRejection,
 } from "@/lib/auth/password-recovery";
+import { BIRTH_DATE_ERROR, isValidBirthDate } from "@/lib/auth/birth-date";
 import { createClient } from "@/lib/supabase/server-client";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { logger } from "@/lib/observability/logger";
@@ -113,14 +114,11 @@ function isValidPhone(phone: string) {
   return digits.length >= 7 && digits.length <= 15;
 }
 
-function isValidDob(dob: string) {
-  if (!dob) return false;
-  const date = new Date(dob);
-  return !Number.isNaN(date.getTime()) && date <= new Date();
-}
-
 function passwordMessage(error?: { code?: string; message?: string } | null) {
   const message = (error?.message ?? "").toLowerCase();
+  if (error?.code === "email_not_confirmed" || message.includes("email not confirmed")) {
+    return "Your email is still waiting to be confirmed. Open the confirmation link we sent, then sign in.";
+  }
   if (message.includes("invalid login credentials") || message.includes("invalid credentials")) {
     return "Incorrect email or password.";
   }
@@ -349,7 +347,7 @@ export async function registerWithPassword(
   }
   if (!phone.trim()) return { success: false, error: "Enter a phone number." };
   if (!isValidPhone(phone)) return { success: false, error: "Enter a valid phone number." };
-  if (!isValidDob(birthDate)) return { success: false, error: "Enter a valid date of birth." };
+  if (!isValidBirthDate(birthDate)) return { success: false, error: BIRTH_DATE_ERROR };
   if (!password || password.length < 8 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/\d/.test(password)) {
     return { success: false, error: "Password must be at least 8 characters and include an uppercase letter, a lowercase letter, and a number." };
   }
@@ -494,61 +492,25 @@ async function createDevRegistration(
   }
 }
 
-export async function sendPhoneOtp(phone: string): Promise<ActionResult> {
-  try {
-    logger.info("Sending phone OTP", { phone: phone.replace(/(\d{3})\d{6}(\d{4})/, "$1******$2") });
-    const supabase = await createClient();
-    const { error } = await supabase.auth.signInWithOtp({
-      phone,
-      options: { channel: "sms" },
-    });
-    if (error) {
-      logger.error("Failed to send phone OTP", new Error(error.message), { phone: phone.replace(/(\d{3})\d{6}(\d{4})/, "$1******$2") });
-      return { success: false, error: error.message };
-    }
-    logger.info("Phone OTP sent successfully");
-    return { success: true, data: undefined };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    logger.error("Unexpected error sending phone OTP", error instanceof Error ? error : new Error(String(error)), {
-      phone: phone.replace(/(\d{3})\d{6}(\d{4})/, "$1******$2"),
-    });
-    return { success: false, error: message };
-  }
+// TODO: SMS verification is disabled. It cannot work end-to-end without Supabase
+// Phone Auth, a production SMS provider, an OTP screen, and verified-phone state.
+// Do not call Supabase with channel "sms" until .ai/specs/sms-verification.md is done.
+// Preserved implementation:
+//   const supabase = await createClient();
+//   await supabase.auth.signInWithOtp({ phone, options: { channel: "sms" } });
+export async function sendPhoneOtp(phone: string): Promise<ActionResult>;
+export async function sendPhoneOtp(): Promise<ActionResult> {
+  return { success: false, error: "SMS verification is not available." };
 }
 
-export async function verifyPhoneOtp(
-  phone: string,
-  token: string
-): Promise<ActionResult<{ userId: string }>> {
-  try {
-    logger.info("Verifying phone OTP", { phone: phone.replace(/(\d{3})\d{6}(\d{4})/, "$1******$2") });
-    const supabase = await createClient();
-    const { data, error } = await supabase.auth.verifyOtp({
-      phone,
-      token,
-      type: "sms",
-    });
-    if (error) {
-      logger.error("Failed to verify phone OTP", new Error(error.message), {
-        phone: phone.replace(/(\d{3})\d{6}(\d{4})/, "$1******$2"),
-      });
-      return { success: false, error: error.message };
-    }
-    const userId = data.user?.id;
-    if (!userId) {
-      logger.error("No user returned from OTP verification");
-      return { success: false, error: "No user returned" };
-    }
-    logger.info("Phone OTP verified successfully", { userId });
-    return { success: true, data: { userId } };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    logger.error("Unexpected error verifying phone OTP", error instanceof Error ? error : new Error(String(error)), {
-      phone: phone.replace(/(\d{3})\d{6}(\d{4})/, "$1******$2"),
-    });
-    return { success: false, error: message };
-  }
+// TODO: SMS verification is disabled. See sendPhoneOtp and .ai/specs/sms-verification.md.
+// Preserved implementation:
+//   const supabase = await createClient();
+//   const { data, error } = await supabase.auth.verifyOtp({ phone, token, type: "sms" });
+//   return { success: true, data: { userId: data.user.id } };
+export async function verifyPhoneOtp(phone: string, token: string): Promise<ActionResult<{ userId: string }>>;
+export async function verifyPhoneOtp(): Promise<ActionResult<{ userId: string }>> {
+  return { success: false, error: "SMS verification is not available." };
 }
 
 export async function updateProfile(fullName: string): Promise<ActionResult> {
@@ -602,7 +564,7 @@ export async function updateProfileDetails(
   if (name.length < 2 || name.length > 60) return { success: false, error: "Enter a name between 2 and 60 characters." };
   if (!details.phone?.trim()) return { success: false, error: "Enter a phone number." };
   if (!isValidPhone(details.phone)) return { success: false, error: "Enter a valid phone number." };
-  if (!details.birthDate || !isValidDob(details.birthDate)) return { success: false, error: "Enter a valid date of birth." };
+  if (!details.birthDate || !isValidBirthDate(details.birthDate)) return { success: false, error: BIRTH_DATE_ERROR };
   if (avatar && avatar.size > 2 * 1024 * 1024) return { success: false, error: "Choose an image smaller than 2 MB." };
   if (avatar && !["image/jpeg", "image/png", "image/webp"].includes(avatar.type)) return { success: false, error: "Choose a JPG, PNG, or WebP image." };
   try {
@@ -669,7 +631,7 @@ export async function completeOnboarding(
   if (name.length < 2 || name.length > 60) return { success: false, error: "Enter a name between 2 and 60 characters." };
   if (!details?.phone?.trim()) return { success: false, error: "Enter a phone number." };
   if (!isValidPhone(details.phone)) return { success: false, error: "Enter a valid phone number." };
-  if (!details?.birthDate || !isValidDob(details.birthDate)) return { success: false, error: "Enter a valid date of birth." };
+  if (!details?.birthDate || !isValidBirthDate(details.birthDate)) return { success: false, error: BIRTH_DATE_ERROR };
   if (avatar && avatar.size > 2 * 1024 * 1024) return { success: false, error: "Choose an image smaller than 2 MB." };
   if (avatar && !["image/jpeg", "image/png", "image/webp"].includes(avatar.type)) return { success: false, error: "Choose a JPG, PNG, or WebP image." };
 

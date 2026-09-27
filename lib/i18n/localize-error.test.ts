@@ -28,6 +28,9 @@ describe("localizeUserError", () => {
     expect(localizeUserError("Passkey sign-in did not create a session.", t, "errors.unexpected")).toBe(
       "La clave de acceso no creó una sesión.",
     );
+    expect(localizeUserError("Email not confirmed", t, "errors.unexpected")).toBe(
+      "Tu correo aún está pendiente de confirmación. Abre el enlace que te enviamos y luego inicia sesión.",
+    );
     expect(localizeThrownError(new Error(""), t, "Please try again.")).toBe("Inténtalo de nuevo.");
   });
 });

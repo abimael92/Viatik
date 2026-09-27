@@ -14,6 +14,7 @@ for (const [key, value] of Object.entries(frontendCopy.en)) {
 }
 
 const patterns: Array<{ test: RegExp; key: TranslationKey }> = [
+  { test: /email not confirmed/i, key: "errors.emailNotConfirmed" },
   { test: /invalid login credentials|invalid credentials/i, key: "errors.incorrectPassword" },
   { test: /already registered/i, key: "errors.accountExists" },
   { test: /password should be at least/i, key: "errors.passwordMin" },

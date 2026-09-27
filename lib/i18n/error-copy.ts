@@ -18,7 +18,7 @@ export const errorCopy = {
     nameRange: "Enter a name between 2 and 60 characters.",
     enterPhone: "Enter a phone number.",
     validPhone: "Enter a valid phone number.",
-    validDob: "Enter a valid date of birth.",
+    validDob: "Date of birth must be before today.",
     enterPassword: "Enter your password.",
     sendCodeFailed: "We couldn't send your code right now. Please try again shortly.",
     noAccountEmail: "No account was found for that email. Create an account to get started.",
@@ -81,6 +81,7 @@ export const errorCopy = {
     passwordUnchanged: "Choose a password you haven't used before.",
     passwordUpdateFailed: "We couldn't update your password. Please try again.",
     passwordTooLong: "Password must be 72 characters or fewer.",
+    emailNotConfirmed: "Your email is still waiting to be confirmed. Open the confirmation link we sent, then sign in.",
   },
   es: {
     unexpected: "Algo salió mal. Inténtalo de nuevo.",
@@ -100,7 +101,7 @@ export const errorCopy = {
     nameRange: "Introduce un nombre de entre 2 y 60 caracteres.",
     enterPhone: "Introduce un número de teléfono.",
     validPhone: "Introduce un número de teléfono válido.",
-    validDob: "Introduce una fecha de nacimiento válida.",
+    validDob: "La fecha de nacimiento debe ser anterior a hoy.",
     enterPassword: "Introduce tu contraseña.",
     sendCodeFailed: "No pudimos enviar el código ahora. Inténtalo de nuevo en un momento.",
     noAccountEmail: "No hay una cuenta con ese correo. Crea una cuenta para empezar.",
@@ -163,5 +164,6 @@ export const errorCopy = {
     passwordUnchanged: "Elige una contraseña que no hayas usado antes.",
     passwordUpdateFailed: "No pudimos actualizar tu contraseña. Inténtalo de nuevo.",
     passwordTooLong: "La contraseña debe tener 72 caracteres o menos.",
+    emailNotConfirmed: "Tu correo aún está pendiente de confirmación. Abre el enlace que te enviamos y luego inicia sesión.",
   },
 } as const;
