@@ -134,7 +134,7 @@ describe("TripDashboard", () => {
     expect(tripRepository.create).not.toHaveBeenCalled();
     expect(screen.getByLabelText("Trip banner")).toBeTruthy();
     fireEvent.click(
-      within(screen.getByRole("dialog")).getByRole("button", { name: "Create trip" })
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Submit" })
     );
     await waitFor(() =>
       expect(tripRepository.create).toHaveBeenCalledWith(
@@ -215,5 +215,26 @@ describe("TripDashboard", () => {
       "Trips can be up to 60 days long."
     );
     expect(tripRepository.create).not.toHaveBeenCalled();
+  });
+
+  it("keeps Next from opening the final screen or creating a trip", async () => {
+    vi.mocked(tripRepository.watchAll).mockImplementation((callback) => {
+      callback([]);
+      return () => undefined;
+    });
+    render(<TripDashboard userId="user-1" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Create trip" }));
+    fireEvent.change(screen.getByLabelText("Trip name"), { target: { value: "Lisbon" } });
+    const dialog = screen.getByRole("dialog");
+
+    fireEvent.submit(dialog.querySelector("form")!);
+    expect(tripRepository.create).not.toHaveBeenCalled();
+    expect(within(dialog).getByLabelText("Starts")).toBeTruthy();
+    expect(within(dialog).queryByRole("button", { name: "Submit" })).toBeNull();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Expand trip setup progress" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Group & Media" }));
+    expect(within(dialog).queryByLabelText("Trip banner")).toBeNull();
+    expect(within(dialog).getByRole("button", { name: "Next" })).toBeTruthy();
   });
 });

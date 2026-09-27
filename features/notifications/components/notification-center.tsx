@@ -8,10 +8,14 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
+import { contactRepository } from "@/features/contacts/data/dexie-contact-repository";
 import { notificationRepository } from "@/features/notifications/data/dexie-notification-repository";
+import { notificationBadgeCount } from "@/features/notifications/lib/notification-badge";
+import { tripIdFromNotificationReference } from "@/features/trips/lib/return-pack-reminder";
 import { notificationMessage } from "@/features/notifications/lib/notification-message";
-import type { Notification } from "@/features/notifications/domain/notification-types";
+import type { Notification, NotificationType } from "@/features/notifications/domain/notification-types";
 import { useI18n } from "@/lib/i18n/i18n-provider";
+import { cn } from "@/lib/utils";
 
 const icons = {
   friend_request: UserRound,
@@ -22,23 +26,54 @@ const icons = {
   trip_added: CalendarDays,
 } as const;
 
+const tones: Record<NotificationType, string> = {
+  friend_request: "bg-viatik-magenta/15 text-viatik-magenta",
+  vote_pending: "bg-viatik-blue/15 text-viatik-blue",
+  settlement_pending: "bg-success/15 text-success",
+  trip_alert: "bg-viatik-red/15 text-viatik-red",
+  trip_invitation: "bg-primary/10 text-primary",
+  trip_added: "bg-primary/10 text-primary",
+};
+
 export function NotificationBell({ userId }: { userId: string }) {
   const { t } = useI18n();
   const [count, setCount] = useState(0);
-  useEffect(() => notificationRepository.watchUnreadCount(userId, setCount), [userId]);
+  useEffect(() => {
+    let notifications: Notification[] = [];
+    let inboundRequests: Array<{ connectionId: string | null }> = [];
+    const publish = () => setCount(notificationBadgeCount(notifications, inboundRequests));
+    const stopNotifications = notificationRepository.watch(userId, (items) => {
+      notifications = items;
+      publish();
+    });
+    const stopContacts = contactRepository.watch(userId, (contacts) => {
+      inboundRequests = contacts.filter(
+        (contact) => contact.connectionStatus === "pending" && contact.connectionDirection === "inbound",
+      );
+      publish();
+    });
+    return () => {
+      stopNotifications();
+      stopContacts();
+    };
+  }, [userId]);
+  const label = count > 99 ? "99+" : String(count);
   return (
     <Link
       href="/notifications"
       aria-label={count ? t("copy.unreadNotifications", { count }) : t("copy.notificationsTitle")}
-      className="relative grid size-11 place-items-center rounded-lg text-side-muted transition hover:bg-side-hover hover:text-side-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-viatik-magenta"
+      className={cn(
+        "relative grid size-11 place-items-center rounded-lg text-viatik-magenta transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-viatik-magenta",
+        count > 0 ? "bg-viatik-magenta/20 hover:bg-viatik-magenta/30" : "hover:bg-side-hover",
+      )}
     >
       <Bell className="size-5" aria-hidden />
       {count > 0 && (
         <span
           aria-hidden
-          className="absolute right-1 top-1 min-w-4 rounded-full bg-viatik-red px-1 text-center text-[10px] font-bold leading-4 text-white"
+          className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-viatik-red px-1 text-[10px] font-bold leading-none text-white ring-2 ring-side"
         >
-          {count > 99 ? "99+" : count}
+          {label}
         </span>
       )}
     </Link>
@@ -136,7 +171,7 @@ function NotificationRow({ item, onRead }: { item: Notification; onRead: () => v
       </Button>
     ) : (
       <Button size="sm" variant="outline" asChild>
-        <Link href={`/trips/${item.referenceId}`} onClick={onRead}>
+        <Link href={`/trips/${tripIdFromNotificationReference(item.referenceId)}`} onClick={onRead}>
           {t("copy.viewItineraryTitle")}
         </Link>
       </Button>
@@ -146,7 +181,7 @@ function NotificationRow({ item, onRead }: { item: Notification; onRead: () => v
       className={`flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between ${!item.isRead ? "bg-primary/5" : ""}`}
     >
       <div className="flex min-w-0 items-center gap-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+        <span className={cn("grid size-10 shrink-0 place-items-center rounded-full", tones[item.type])}>
           <Icon className="size-5" aria-hidden />
         </span>
         <div className="min-w-0">

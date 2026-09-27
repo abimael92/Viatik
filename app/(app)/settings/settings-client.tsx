@@ -2,12 +2,13 @@
 
 import { localizeThrownError, localizeUserError } from "@/lib/i18n/localize-error";
 
-import { Check, Copy, KeyRound, Pencil, ScanLine, Smartphone, UserRound } from "lucide-react";
+import { Check, Copy, KeyRound, Pencil, ScanLine, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import QRCode from "react-qr-code";
 import { getConnectionQrPayload } from "@/app/actions/connections";
 import { updateProfileDetails, type ProfileDetails } from "@/app/actions/auth";
+import { isValidBirthDate, latestBirthDate } from "@/lib/auth/birth-date";
 import { PROFILE_UPDATED_EVENT } from "@/features/profile/lib/use-local-profile";
 import { AvatarPicker, type AvatarChange } from "@/components/ui/avatar-picker";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -20,12 +21,10 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 
 export function SettingsClient({
-  phone,
   fullName,
   viatikId,
   profile = null,
 }: {
-  phone: string | null;
   fullName: string;
   viatikId?: string | null;
   profile?: ProfileDetails | null;
@@ -212,14 +211,9 @@ export function SettingsClient({
               </div>
             </div>
             <div className="mt-5 divide-y rounded-xl border">
-              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
-                <Smartphone className="size-5 text-muted-foreground" />
-                <div className="flex-1">
-                  <p className="font-semibold">{t("common.smsAuthentication")}</p>
-                  <p className="text-sm text-muted-foreground">{phone ?? t("common.noPhoneAvailable")}</p>
-                </div>
-                <span className="text-xs font-semibold text-success">{t("common.verifiedSession")}</span>
-              </div>
+              {/* TODO: SMS verification is disabled. Do not show a phone row or a
+                  "Verified session" label until Phone Auth, an SMS provider, and an
+                  OTP flow exist. See .ai/specs/sms-verification.md. */}
               <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
                 <KeyRound className="size-5 text-muted-foreground" />
                 <div className="flex-1">
@@ -300,6 +294,10 @@ function ProfileEditForm({
   function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage(null);
+    if (!isValidBirthDate(values.birthDate)) {
+      setMessage(t("errors.validDob"));
+      return;
+    }
     startTransition(async () => {
       const result = await updateProfileDetails(
         {
@@ -348,7 +346,7 @@ function ProfileEditForm({
       </div>
       <div className="space-y-2">
         <Label htmlFor="settings-birthDate">{t("common.dateOfBirth")}</Label>
-        <Input id="settings-birthDate" type="date" value={values.birthDate} onChange={(event) => setField("birthDate", event.target.value)} max={new Date().toISOString().slice(0, 10)} required />
+        <Input id="settings-birthDate" type="date" value={values.birthDate} onChange={(event) => setField("birthDate", event.target.value)} max={latestBirthDate()} required />
       </div>
       <div className="space-y-2">
         <Label htmlFor="settings-preferredCurrency">{t("common.preferredCurrency")}</Label>

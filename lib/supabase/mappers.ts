@@ -27,6 +27,8 @@ import {
 } from "@/features/domain/categories";
 import type { TripMedia } from "@/features/domain/entities-media";
 import type { Notification } from "@/features/notifications/domain/notification-types";
+import type { TripNote } from "@/features/trips/domain/trip-note";
+import type { TripTask, TripTaskStatus } from "@/features/trips/domain/trip-task";
 import { MAX_MINOR_UNITS, type MinorUnits } from "@/features/domain/money";
 import { getSyncUser } from "@/lib/sync/sync-context";
 import type { VaultEntry, VaultKeyset } from "@/features/vault/domain/vault-types";
@@ -705,6 +707,7 @@ export function settlementToRow(settlement: ExpenseSettlement): Record<string, u
     to_user_id: settlement.toUserId,
     amount: minorUnitsToRemote(settlement.amountMinor, "amount"),
     currency: settlement.currency,
+    exchange_rate_to_base: settlement.exchangeRateToBase ?? null,
     date: settlement.date,
     created_by: settlement.createdBy,
     updated_by: settlement.updatedBy,
@@ -725,6 +728,8 @@ export function rowToSettlement(row: Record<string, unknown>): ExpenseSettlement
     toUserId: String(row.to_user_id),
     amountMinor: minorUnitsFromRemote(row.amount, "amount"),
     currency: String(row.currency),
+    exchangeRateToBase:
+      row.exchange_rate_to_base == null ? null : Number(row.exchange_rate_to_base),
     date:
       typeof row.date === "string" && row.date
         ? String(row.date)
@@ -1121,6 +1126,88 @@ export function rowToTripWeatherForecast(row: Record<string, unknown>): TripWeat
         : [],
     },
     createdBy: String(row.created_by),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+    deletedAt: row.deleted_at == null ? null : String(row.deleted_at),
+  };
+}
+
+export function noteToRow(note: TripNote): Record<string, unknown> {
+  return {
+    id: note.id,
+    trip_id: note.tripId,
+    user_id: note.userId,
+    content: note.content,
+    created_by: note.createdBy,
+    updated_by: note.updatedBy,
+    deleted_by: note.deletedBy,
+    version: note.version,
+    created_at: note.createdAt,
+    updated_at: note.updatedAt,
+    deleted_at: note.deletedAt,
+  };
+}
+
+export function rowToNote(row: Record<string, unknown>): TripNote {
+  return {
+    id: String(row.id),
+    tripId: String(row.trip_id),
+    userId: String(row.user_id),
+    content: String(row.content ?? ""),
+    createdBy: String(row.created_by ?? row.user_id),
+    updatedBy: String(row.updated_by ?? row.user_id),
+    deletedBy: row.deleted_by == null ? null : String(row.deleted_by),
+    version: Number(row.version ?? 1),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+    deletedAt: row.deleted_at == null ? null : String(row.deleted_at),
+  };
+}
+
+function taskStatus(value: unknown): TripTaskStatus {
+  return value === "resolved" ? "resolved" : "open";
+}
+
+function taskAttachments(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+export function taskToRow(task: TripTask): Record<string, unknown> {
+  return {
+    id: task.id,
+    trip_id: task.tripId,
+    creator_id: task.creatorId,
+    assignee_id: task.assigneeId,
+    title: task.title,
+    description: task.description,
+    resolution_text: task.resolutionText,
+    status: task.status,
+    attachments: task.attachments,
+    created_by: task.createdBy,
+    updated_by: task.updatedBy,
+    deleted_by: task.deletedBy,
+    version: task.version,
+    created_at: task.createdAt,
+    updated_at: task.updatedAt,
+    deleted_at: task.deletedAt,
+  };
+}
+
+export function rowToTask(row: Record<string, unknown>): TripTask {
+  return {
+    id: String(row.id),
+    tripId: String(row.trip_id),
+    creatorId: String(row.creator_id ?? row.created_by),
+    assigneeId: row.assignee_id == null || row.assignee_id === "" ? null : String(row.assignee_id),
+    title: String(row.title ?? ""),
+    description: row.description == null || row.description === "" ? null : String(row.description),
+    resolutionText: row.resolution_text == null || row.resolution_text === "" ? null : String(row.resolution_text),
+    status: taskStatus(row.status),
+    attachments: taskAttachments(row.attachments),
+    createdBy: String(row.created_by ?? row.creator_id),
+    updatedBy: String(row.updated_by ?? row.creator_id),
+    deletedBy: row.deleted_by == null ? null : String(row.deleted_by),
+    version: Number(row.version ?? 1),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
     deletedAt: row.deleted_at == null ? null : String(row.deleted_at),

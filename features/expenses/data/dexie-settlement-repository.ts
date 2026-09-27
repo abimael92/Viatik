@@ -54,6 +54,7 @@ export class DexieSettlementRepository implements SettlementRepository {
         toUserId: input.toUserId,
         amountMinor: input.amountMinor,
         currency: input.currency,
+        exchangeRateToBase: input.exchangeRateToBase ?? null,
         date: input.date,
         status: "settled",
         settledAt: now,

@@ -111,6 +111,7 @@ import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 import { downloadActivitiesIcs } from "@/features/itinerary/lib/export-ics";
 import { TripStepsWidget } from "@/features/steps/components/trip-steps-widget";
+import { TripTasksBoard } from "@/features/trips/components/trip-tasks-board";
 
 const SECONDARY_TOOLS = ["packing", "health", "polls", "vault"] as const;
 type SecondaryTool = (typeof SECONDARY_TOOLS)[number];
@@ -118,6 +119,7 @@ type SecondaryTool = (typeof SECONDARY_TOOLS)[number];
 const tabs = [
   "overview",
   "itinerary",
+  "tasks",
   "map",
   "money",
   "photos",
@@ -141,6 +143,8 @@ function initWorkspace(initialTab?: string): {
       return { ...base, tab: "overview" };
     case "itinerary":
       return { ...base, tab: "itinerary" };
+    case "tasks":
+      return { ...base, tab: "tasks" };
     case "map":
       return { ...base, tab: "map" };
     case "settings":
@@ -232,6 +236,7 @@ export function TripWorkspace({
   const tabLabels: Record<Tab, string> = {
     overview: t("common.overview"),
     itinerary: t("common.itinerary"),
+    tasks: t("common.tasks"),
     map: t("common.map"),
     money: "Money & spending",
     photos: t("common.photos"),
@@ -685,6 +690,7 @@ export function TripWorkspace({
           onError={setError}
         />
       )}
+      {tab === "tasks" && <TripTasksBoard tripId={tripId} userId={userId} />}
       {tab === "itinerary" && (
         <section className="space-y-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

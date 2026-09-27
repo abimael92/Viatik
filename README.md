@@ -404,7 +404,7 @@ The checked-in [`.env.example`](./.env.example) documents the available variable
 | `NEXT_PUBLIC_WEBAUTHN_RP_NAME` | Yes for passkeys | Browser/server | WebAuthn display name |
 | `NEXT_PUBLIC_WEBAUTHN_ORIGIN` | Yes for passkeys | Browser/server | Allowed WebAuthn origin |
 | `AUTH_SESSION_SECRET` | Yes where configured | Server only | Session signing secret; use a strong local value |
-| `SMS_PROVIDER_API_KEY` | Provider-dependent | Server only | Optional direct SMS provider integration |
+| `SMS_PROVIDER_API_KEY` | No | Server only | Reserved and unused. SMS verification is disabled; see `.ai/specs/sms-verification.md` |
 | `GOOGLE_MAPS_API_KEY` | Optional | Server only | Destination autocomplete through Places API |
 
 Environment validation is centralized in `env.mjs`. Public variables are explicitly prefixed with `NEXT_PUBLIC_`; private variables must remain server-only.

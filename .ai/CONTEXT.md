@@ -41,13 +41,15 @@ repository/application boundaries and an optimistic outbox sync engine.
   SMTP described in `.ai/specs/password-reset.md`.
 - **Production email requires custom SMTP** in Supabase (built-in sender is limited
   to ~2/hr). Auth actions live in `app/actions/auth.ts`.
+- **SMS verification is disabled.** Profile phone numbers stay. Phone login codes
+  are not sent. See `.ai/specs/sms-verification.md`.
 
 ## Features (`features/`)
 
 activities (optional photos, rich links, and location pins on the Activity Extras tab; edit modal uses Details / Group & money / Extras tabs), ai (Scout — itinerary ideas, works offline), collaboration, community/feed,
-contacts, emergency, expenses (multi-currency splits + immutable settlement ledger), finance (budgets), health
+contacts, emergency, expenses (multi-currency splits + immutable settlement ledger; foreign expenses lock a live, cached, or built-in rate in the form before the Dexie write), finance (budgets, local `currencyRates` cache), health
 (passport/visa tracking), journal, maps, media, packing, polls, profile, sharing,
-transit, trips (activity Must-dos on itinerary + home timeline actions),
+transit, trips (activity Must-dos on itinerary + home timeline actions; End trip opens a wrap-up sheet for return packing, open debts, and departure stops),
 vault (offline documents), weather (per-day forecasts + conflict warnings).
 
 ## Brand

@@ -19,6 +19,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { LanguageSwitcher } from "@/components/app-shell/language-switcher";
+import { ThemeToggle } from "@/components/app-shell/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { IconTile } from "@/components/ui/icon-tile";
 import { useI18n } from "@/lib/i18n/i18n-provider";
@@ -28,31 +29,43 @@ const features = [
     icon: Users,
     titleKey: "common.featurePlanTitle",
     textKey: "common.featurePlanText",
+    iconClass: "border-viatik-magenta/25 bg-viatik-magenta/10 text-viatik-magenta",
+    cardClass: "hover:border-viatik-magenta/40",
   },
   {
     icon: CloudOff,
     titleKey: "common.featureOfflineTitle",
     textKey: "common.featureOfflineText",
+    iconClass: "border-viatik-blue/25 bg-viatik-blue/10 text-viatik-blue",
+    cardClass: "hover:border-viatik-blue/40",
   },
   {
     icon: Receipt,
     titleKey: "common.featureExpensesTitle",
     textKey: "common.featureExpensesText",
+    iconClass: "border-viatik-magenta/25 bg-viatik-magenta/10 text-viatik-magenta",
+    cardClass: "hover:border-viatik-magenta/40",
   },
   {
     icon: Camera,
     titleKey: "common.featureMemoriesTitle",
     textKey: "common.featureMemoriesText",
+    iconClass: "border-viatik-blue/25 bg-viatik-blue/10 text-viatik-blue",
+    cardClass: "hover:border-viatik-blue/40",
   },
   {
     icon: Sparkles,
     titleKey: "common.featureScoutTitle",
     textKey: "common.featureScoutText",
+    iconClass: "border-viatik-magenta/25 bg-viatik-magenta/10 text-viatik-magenta",
+    cardClass: "hover:border-viatik-magenta/40",
   },
   {
     icon: ShieldCheck,
     titleKey: "common.featureDocumentsTitle",
     textKey: "common.featureDocumentsText",
+    iconClass: "border-viatik-blue/25 bg-viatik-blue/10 text-viatik-blue",
+    cardClass: "hover:border-viatik-blue/40",
   },
 ];
 
@@ -63,8 +76,9 @@ export default function Home() {
       <LandingHeader />
       <HeroSection />
 
-      <section id="features" className="border-y bg-muted/40 py-24">
-        <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
+      <section id="features" className="relative overflow-hidden border-y bg-muted/40 py-24">
+        <div className="pointer-events-none absolute inset-0 glow-viatik opacity-70" />
+        <div className="relative mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
           <div className="max-w-2xl">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-viatik-magenta">
               {t("common.landingEverything")}
@@ -74,20 +88,24 @@ export default function Home() {
             </h2>
           </div>
           <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {features.map(({ icon: Icon, titleKey, textKey }) => (
-              <article key={titleKey} className="rounded-2xl border bg-card p-6">
-                <IconTile className="size-11 rounded-xl">
-                  <Icon className="size-5" />
-                </IconTile>
-                <h3 className="mt-5 text-lg font-semibold">{t(titleKey as "common.featurePlanTitle")}</h3>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">{t(textKey as "common.featurePlanText")}</p>
+            {features.map(({ icon: Icon, titleKey, textKey, iconClass, cardClass }) => (
+              <article key={titleKey} className={`rounded-2xl border bg-card p-6 shadow-sm transition-colors ${cardClass}`}>
+                <div className="flex items-center gap-3">
+                  <IconTile className={`size-11 rounded-xl ${iconClass}`}>
+                    <Icon className="size-5" />
+                  </IconTile>
+                  <h3 className="text-lg font-semibold leading-snug">{t(titleKey as "common.featurePlanTitle")}</h3>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">{t(textKey as "common.featurePlanText")}</p>
               </article>
             ))}
           </div>
         </div>
       </section>
 
-      <section id="how-it-works" className="mx-auto max-w-7xl px-5 py-24 sm:px-8 lg:px-12">
+      <section id="how-it-works" className="relative mx-auto max-w-7xl overflow-hidden px-5 py-24 sm:px-8 lg:px-12">
+        <div className="pointer-events-none absolute -left-24 top-8 size-72 rounded-full bg-viatik-blue/10 blur-3xl" />
+        <div className="pointer-events-none absolute -right-16 bottom-0 size-72 rounded-full bg-viatik-magenta/10 blur-3xl" />
         <div className="grid gap-10 lg:grid-cols-[.7fr_1fr]">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-viatik-magenta">
@@ -97,14 +115,19 @@ export default function Home() {
               {t("common.howItWorksTitle")}
             </h2>
           </div>
-          <ol className="grid gap-5 sm:grid-cols-2">
+          <ol className="relative flex max-w-md flex-col rounded-2xl border border-viatik-magenta/20 bg-card/80 p-6 shadow-sm">
             {["common.createTrip", "common.inviteTravelers", "common.buildPlan", "common.takeAnywhere"].map(
-              (item, index) => (
-                <li key={item} className="flex gap-4 rounded-2xl border p-5">
-                  <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary font-semibold text-primary-foreground">
-                    {index + 1}
-                  </span>
-                  <span className="pt-1.5 font-semibold">{t(item as "common.createTrip")}</span>
+              (item, index, steps) => (
+                <li key={item} className="flex gap-4">
+                  <div className="flex w-6 flex-col items-center">
+                    <span className="text-sm font-semibold leading-6 text-viatik-magenta tabular-nums">
+                      {index + 1}
+                    </span>
+                    {index < steps.length - 1 ? <span aria-hidden className="my-1.5 w-px flex-1 bg-border" /> : null}
+                  </div>
+                  <p className={index < steps.length - 1 ? "pb-7 text-base font-medium leading-6" : "text-base font-medium leading-6"}>
+                    {t(item as "common.createTrip")}
+                  </p>
                 </li>
               )
             )}
@@ -112,7 +135,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="glow-magenta mx-5 mb-8 rounded-[2rem] bg-surface-dark px-6 py-16 text-center text-white sm:mx-8 lg:mx-auto lg:max-w-7xl">
+      <section className="glow-viatik mx-5 mb-8 overflow-hidden rounded-[2rem] border border-viatik-magenta/35 bg-surface-dark px-6 py-16 text-center text-white shadow-[0_24px_80px_-36px_rgb(168_85_247_/_0.65)] sm:mx-8 lg:mx-auto lg:max-w-7xl">
         <h2 className="text-3xl font-bold sm:text-4xl">
           {t("common.ctaTitle")}
         </h2>
@@ -159,6 +182,7 @@ function LandingHeader() {
         </Link>
         <nav className="flex items-center gap-2.5 sm:gap-3" aria-label={t("common.primaryNavigation")}>
           <LanguageSwitcher />
+          <ThemeToggle className="text-muted-foreground hover:bg-muted hover:text-foreground" />
           <Button
             asChild
             size="sm"
@@ -186,7 +210,7 @@ function HeroSection() {
   const { t } = useI18n();
   return (
     <section className="relative overflow-hidden">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_24%,color-mix(in_oklch,var(--primary)_12%,transparent),transparent_34%),radial-gradient(circle_at_88%_52%,color-mix(in_oklch,var(--secondary)_10%,transparent),transparent_32%)]" />
+      <div className="pointer-events-none absolute inset-0 glow-viatik" />
       <div className="relative mx-auto grid max-w-7xl items-center gap-16 px-5 py-20 sm:px-8 sm:py-24 lg:grid-cols-[.92fr_1.08fr] lg:px-12 lg:py-32">
         <div className="max-w-2xl">
           <p className="mb-5 text-sm font-semibold uppercase tracking-[0.2em] text-viatik-magenta">

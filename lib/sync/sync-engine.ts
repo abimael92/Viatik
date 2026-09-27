@@ -17,6 +17,8 @@ import type {
   TripTraveler,
   UserWallet,
 } from "@/features/domain/entities";
+import type { TripNote } from "@/features/trips/domain/trip-note";
+import type { TripTask } from "@/features/trips/domain/trip-task";
 import type { TripMedia } from "@/features/domain/entities-media";
 import type { VaultEntry, VaultKeyset } from "@/features/vault/domain/vault-types";
 import type { TripWeatherForecast } from "@/features/weather/domain/weather-types";
@@ -61,6 +63,8 @@ import {
   decisionToRow,
   decisionOptionToRow,
   decisionVoteToRow,
+  noteToRow,
+  taskToRow,
 } from "@/lib/supabase/mappers";
 import { logger } from "@/lib/observability/logger";
 import {
@@ -225,6 +229,10 @@ function mutationPayloadToRow(mutation: OutboxMutation): Record<string, unknown>
       return decisionOptionToRow(mutation.payload as unknown as DecisionOption);
     case "decisionVote":
       return decisionVoteToRow(mutation.payload as unknown as DecisionVote);
+    case "tripNote":
+      return noteToRow(mutation.payload as unknown as TripNote);
+    case "tripTask":
+      return taskToRow(mutation.payload as unknown as TripTask);
   }
 }
 
@@ -484,6 +492,16 @@ async function replayCasMutation(mutation: OutboxMutation, signal?: AbortSignal)
                             p_payload: mutationPayloadToRow(mutation),
                             p_base_updated_at: mutation.baseUpdatedAt,
                           })
+                        : mutation.entityType === "tripNote"
+                        ? client.rpc("sync_trip_note_cas_upsert", {
+                            p_payload: mutationPayloadToRow(mutation),
+                            p_base_updated_at: mutation.baseUpdatedAt,
+                          })
+                        : mutation.entityType === "tripTask"
+                          ? client.rpc("sync_trip_task_cas_upsert", {
+                              p_payload: mutationPayloadToRow(mutation),
+                              p_base_updated_at: mutation.baseUpdatedAt,
+                            })
                         : mutation.entityType === "notification"
                           ? client.rpc("sync_trip_added_notification", {
                               p_payload: mutationPayloadToRow(mutation),

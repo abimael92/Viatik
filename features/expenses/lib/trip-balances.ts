@@ -12,6 +12,8 @@ export type LedgerSettlement = {
   toUserId: string;
   amountMinor: MinorUnits;
   currency: CurrencyCode;
+  /** Frozen at create time. Missing or null keeps same-currency settlements unchanged. */
+  exchangeRateToBase?: number | null;
   deletedAt?: string | null;
 };
 
@@ -58,7 +60,12 @@ export function applySettlementsToBalances(
   const next = { ...balances };
   for (const settlement of settlements) {
     if (settlement.deletedAt) continue;
-    const amount = toBase(settlement.amountMinor, settlement.currency, null, baseCurrency);
+    const amount = toBase(
+      settlement.amountMinor,
+      settlement.currency,
+      settlement.exchangeRateToBase ?? null,
+      baseCurrency,
+    );
     if (amount == null || amount <= 0n) continue;
     next[settlement.fromUserId] = (next[settlement.fromUserId] ?? 0n) + amount;
     next[settlement.toUserId] = (next[settlement.toUserId] ?? 0n) - amount;
@@ -94,7 +101,12 @@ export function calculatePairwiseDebts(
 
   for (const settlement of settlements) {
     if (settlement.deletedAt) continue;
-    const amount = toBase(settlement.amountMinor, settlement.currency, null, baseCurrency);
+    const amount = toBase(
+      settlement.amountMinor,
+      settlement.currency,
+      settlement.exchangeRateToBase ?? null,
+      baseCurrency,
+    );
     if (amount == null || amount <= 0n) continue;
     addDirected(paid, settlement.fromUserId, settlement.toUserId, amount);
   }

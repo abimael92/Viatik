@@ -951,6 +951,7 @@ export type Database = {
           date: string
           deleted_at: string | null
           deleted_by: string | null
+          exchange_rate_to_base: number | null
           from_user_id: string
           id: string
           restored_at: string | null
@@ -969,6 +970,7 @@ export type Database = {
           date?: string
           deleted_at?: string | null
           deleted_by?: string | null
+          exchange_rate_to_base?: number | null
           from_user_id: string
           id?: string
           restored_at?: string | null
@@ -987,6 +989,7 @@ export type Database = {
           date?: string
           deleted_at?: string | null
           deleted_by?: string | null
+          exchange_rate_to_base?: number | null
           from_user_id?: string
           id?: string
           restored_at?: string | null

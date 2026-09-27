@@ -389,6 +389,11 @@ export interface ExpenseSettlement {
   toUserId: string;
   amountMinor: MinorUnits;
   currency: CurrencyCode;
+  /**
+   * Frozen "1 settlement currency = rate trip-base" quote. Null when the
+   * settlement is already in the trip base currency. Never refreshed later.
+   */
+  exchangeRateToBase?: number | null;
   /** ISO date (yyyy-mm-dd) the repayment occurred. */
   date: string;
   /** Legacy local flag. New rows are written as `settled` because the insert is the repayment. */

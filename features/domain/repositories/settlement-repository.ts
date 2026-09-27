@@ -10,6 +10,8 @@ export interface NewSettlement {
   toUserId: string;
   amountMinor: MinorUnits;
   currency: CurrencyCode;
+  /** Frozen quote into the trip base currency. Null when currencies already match. */
+  exchangeRateToBase?: number | null;
   date: string;
   createdBy: string;
   receiverName?: string;

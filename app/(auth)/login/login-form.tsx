@@ -12,6 +12,7 @@ import {
   sendEmailOtp,
   verifyEmailOtp,
 } from "@/app/actions/auth";
+import { isValidBirthDate, latestBirthDate } from "@/lib/auth/birth-date";
 import { localizeThrownError, localizeUserError } from "@/lib/i18n/localize-error";
 import { AvatarPicker, type AvatarChange } from "@/components/ui/avatar-picker";
 import { Button } from "@/components/ui/button";
@@ -119,6 +120,10 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
     event.preventDefault();
     setMessage(null);
     setSuccess(null);
+    if (mode === "register" && !isValidBirthDate(birthDate)) {
+      setMessage(t("errors.validDob"));
+      return;
+    }
     startTransition(async () => {
       if (mode === "register") {
         const result = await registerWithPassword(email, password, fullName, phone, birthDate, avatarFile, avatarSeed);
@@ -258,7 +263,7 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
     return (
       <div className="space-y-6">
         <div>
-          <p className="mb-2 text-sm font-semibold text-primary">{mode === "register" ? t("auth.createAccount") : t("auth.existingAccount")}</p>
+          {mode === "register" && <p className="mb-2 text-sm font-semibold text-primary">{t("auth.createAccount")}</p>}
           <h1 className="text-3xl font-bold tracking-tight">{t("auth.checkEmail")}</h1>
           <p className="mt-2 text-muted-foreground">{t("auth.verificationCodeSent", { count: OTP_LENGTH, email: maskEmail(email) })}</p>
         </div>
@@ -301,7 +306,7 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
   return (
     <form className="space-y-6" onSubmit={submitWithPassword}>
       <div>
-        <p className="mb-2 text-sm font-semibold text-primary">{mode === "register" ? t("auth.newToViatik") : t("auth.existingAccount")}</p>
+        {mode === "register" && <p className="mb-2 text-sm font-semibold text-primary">{t("auth.newToViatik")}</p>}
         <h1 className="text-3xl font-bold tracking-tight">{mode === "register" ? t("auth.createAccount") : t("auth.signInWelcome")}</h1>
         <p className="mt-2 text-muted-foreground">
           {mode === "register" ? t("auth.registerDescription") : t("auth.loginDescription")}
@@ -348,7 +353,7 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
             <Label htmlFor="birthDate">{t("common.dateOfBirth")}<span className="text-destructive" aria-hidden="true">*</span></Label>
             <div className="relative">
               <CalendarDays className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input id="birthDate" name="birthDate" type="date" required max={new Date().toISOString().slice(0, 10)} value={birthDate} onChange={(event) => setBirthDate(event.target.value)} disabled={pending} className="pl-9" />
+              <Input id="birthDate" name="birthDate" type="date" required max={latestBirthDate()} value={birthDate} onChange={(event) => setBirthDate(event.target.value)} disabled={pending} className="pl-9" />
             </div>
           </div>
           <div className="space-y-2 sm:col-span-2">
@@ -396,22 +401,24 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
       {mode === "login" && (
         <div className="grid gap-y-5">
           <div className="space-y-2">
-            <Label htmlFor="email">{t("auth.email")}</Label>
-            <div className="relative">
-              <Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input id="email" name="email" type="email" autoComplete="email" placeholder={t("copy.placeholderEmail")} required autoFocus value={email} onChange={(event) => setEmail(event.target.value)} disabled={pending} className="pl-9" />
-            </div>
+            <Label htmlFor="email" className="inline-flex items-center gap-1.5">
+              <Mail className="size-4 text-muted-foreground" aria-hidden />
+              {t("auth.email")}
+            </Label>
+            <Input id="email" name="email" type="email" autoComplete="email" placeholder={t("copy.placeholderEmail")} required autoFocus value={email} onChange={(event) => setEmail(event.target.value)} disabled={pending} />
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-3">
-              <Label htmlFor="password">{t("auth.password")}</Label>
+              <Label htmlFor="password" className="inline-flex items-center gap-1.5">
+                <Lock className="size-4 text-muted-foreground" aria-hidden />
+                {t("auth.password")}
+              </Label>
               <Link href="/forgot-password" className="text-sm font-semibold text-primary hover:underline">
                 {t("auth.forgotPassword")}
               </Link>
             </div>
             <div className="relative">
-              <Lock className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input id="password" name="password" type={showPassword ? "text" : "password"} autoComplete="current-password" placeholder={t("auth.yourPassword")} required value={password} onChange={(event) => setPassword(event.target.value)} disabled={pending} className="pl-9 pr-10" />
+              <Input id="password" name="password" type={showPassword ? "text" : "password"} autoComplete="current-password" placeholder={t("auth.yourPassword")} required value={password} onChange={(event) => setPassword(event.target.value)} disabled={pending} className="pr-10" />
               <button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                 {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
               </button>

@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   updateUser: vi.fn(),
   getUser: vi.fn(),
   signOut: vi.fn(),
+  signInWithPassword: vi.fn(),
   cookieGet: vi.fn(),
   cookieSet: vi.fn(),
 }));
@@ -44,6 +45,7 @@ vi.mock("@/lib/supabase/server-client", () => ({
       updateUser: mocks.updateUser,
       getUser: mocks.getUser,
       signOut: mocks.signOut,
+      signInWithPassword: mocks.signInWithPassword,
     },
     from: vi.fn(() => ({
       select: vi.fn(() => ({ eq: vi.fn(() => ({ maybeSingle: mocks.maybeSingle })) })),
@@ -51,7 +53,8 @@ vi.mock("@/lib/supabase/server-client", () => ({
   }),
 }));
 
-import { grantPasswordRecovery, registerWithPassword, requestPasswordReset, sendEmailOtp, updatePassword, verifyEmailOtp } from "@/app/actions/auth";
+import { BIRTH_DATE_ERROR } from "@/lib/auth/birth-date";
+import { grantPasswordRecovery, loginWithPassword, registerWithPassword, requestPasswordReset, sendEmailOtp, sendPhoneOtp, updatePassword, verifyEmailOtp, verifyPhoneOtp } from "@/app/actions/auth";
 
 const OTP_RESULT = {
   data: { user: { id: "user-1" }, session: { access_token: "token" } },
@@ -150,6 +153,51 @@ describe("registerWithPassword", () => {
         },
       },
     });
+  });
+});
+
+describe("loginWithPassword", () => {
+  it("asks the user to confirm their email instead of reporting a generic failure", async () => {
+    mocks.signInWithPassword.mockResolvedValue({
+      data: { user: null, session: null },
+      error: { message: "Email not confirmed", code: "email_not_confirmed" },
+    });
+
+    const result = await loginWithPassword("A@B.com", "Str0ngPass!9");
+
+    expect(result).toEqual({
+      success: false,
+      error: "Your email is still waiting to be confirmed. Open the confirmation link we sent, then sign in.",
+    });
+  });
+});
+
+describe("registerWithPassword", () => {
+  it("rejects today and does not create an account", async () => {
+    const now = new Date();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const today = `${now.getFullYear()}-${month}-${day}`;
+
+    const result = await registerWithPassword("a@b.com", "Str0ngPass!9", "Alice", "1234567", today);
+
+    expect(result).toEqual({ success: false, error: BIRTH_DATE_ERROR });
+    expect(mocks.signUp).not.toHaveBeenCalled();
+  });
+});
+
+describe("phone OTP", () => {
+  it("does not send or verify an SMS code", async () => {
+    expect(await sendPhoneOtp("+15551234567")).toEqual({
+      success: false,
+      error: "SMS verification is not available.",
+    });
+    expect(await verifyPhoneOtp("+15551234567", "123456")).toEqual({
+      success: false,
+      error: "SMS verification is not available.",
+    });
+    expect(mocks.signInWithOtp).not.toHaveBeenCalled();
+    expect(mocks.verifyOtp).not.toHaveBeenCalled();
   });
 });
 

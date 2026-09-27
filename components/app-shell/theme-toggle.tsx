@@ -4,6 +4,8 @@ import { Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/lib/i18n/i18n-provider";
+import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "viatik-theme";
 
@@ -19,7 +21,8 @@ function getInitialDark(): boolean {
 }
 
 /** Sun/Moon theme switch. Persists the choice and toggles <html data-theme>. */
-export function ThemeToggle() {
+export function ThemeToggle({ className }: { className?: string }) {
+  const { t } = useI18n();
   const [dark, setDark] = useState(getInitialDark);
 
   useEffect(() => {
@@ -37,9 +40,9 @@ export function ThemeToggle() {
       variant="ghost"
       size="icon"
       suppressHydrationWarning
-      className="text-side-muted hover:bg-side-hover hover:text-side-fg"
-      aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
-      title={dark ? "Switch to light mode" : "Switch to dark mode"}
+      className={cn("text-side-muted hover:bg-side-hover hover:text-side-fg", className)}
+      aria-label={t("common.toggleTheme")}
+      title={t("common.toggleTheme")}
       onClick={() => setDark((value) => !value)}
     >
       {dark ? <Sun className="size-5" aria-hidden /> : <Moon className="size-5" aria-hidden />}

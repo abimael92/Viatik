@@ -39,13 +39,37 @@ export class DexieCurrencyRateRepository implements CurrencyRateRepository {
       baseCurrency: baseCurrency.trim().toUpperCase(),
       quoteCurrency: quoteCurrency.trim().toUpperCase(),
       rate,
-      fetchedAt: existing?.fetchedAt ?? now,
-      expiresAt: existing?.expiresAt ?? null,
+      source: "manual",
+      fetchedAt: now,
+      expiresAt: null,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };
     await db.currencyRates.put(record);
-    logger.debug("Exchange rate saved locally", { id, rate });
+    logger.debug("Exchange rate saved locally", { id, source: record.source });
+    return record;
+  }
+
+  async saveLiveRate(baseCurrency: CurrencyCode, quoteCurrency: CurrencyCode, rate: number): Promise<CurrencyRate> {
+    const db = getDb();
+    if (!Number.isFinite(rate) || rate <= 0) throw new Error("Rate must be a positive number");
+    const id = rateId(baseCurrency, quoteCurrency);
+    const existing = await db.currencyRates.get(id);
+    if (existing?.source === "manual") return existing;
+    const now = new Date().toISOString();
+    const record: CurrencyRate = {
+      id,
+      baseCurrency: baseCurrency.trim().toUpperCase(),
+      quoteCurrency: quoteCurrency.trim().toUpperCase(),
+      rate,
+      source: "live",
+      fetchedAt: now,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+    };
+    await db.currencyRates.put(record);
+    logger.debug("Exchange rate saved locally", { id, source: record.source });
     return record;
   }
 
@@ -67,6 +91,7 @@ export class DexieCurrencyRateRepository implements CurrencyRateRepository {
           baseCurrency: base,
           quoteCurrency: quote,
           rate: lookupRate(base, quote),
+          source: "default",
           fetchedAt: now,
           expiresAt: null,
           createdAt: now,

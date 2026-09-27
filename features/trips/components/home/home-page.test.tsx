@@ -9,6 +9,7 @@ const state = vi.hoisted(() => ({
   trips: null as ((trips: Trip[]) => void) | null,
   activities: null as ((activities: Activity[]) => void) | null,
   members: null as ((members: TripMember[]) => void) | null,
+  memberListeners: new Set<(members: TripMember[]) => void>(),
   vault: null as ((entries: VaultEntry[]) => void) | null,
   contacts: null as ((contacts: Contact[]) => void) | null,
   packing: null as ((items: unknown[]) => void) | null,
@@ -33,7 +34,16 @@ vi.mock("@/features/activities/data/dexie-activity-repository", () => ({
   activityRepository: { watchByTrip: vi.fn((_tripId, cb) => { state.activities = cb; return () => {}; }) },
 }));
 vi.mock("@/features/collaboration/data/dexie-collaboration-repository", () => ({
-  collaborationRepository: { watchMembers: vi.fn((_tripId, cb) => { state.members = cb; return () => {}; }) },
+  collaborationRepository: {
+    watchMembers: vi.fn((_tripId, cb: (members: TripMember[]) => void) => {
+      state.memberListeners.add(cb);
+      state.members = (members) => {
+        for (const listener of state.memberListeners) listener(members);
+      };
+      return () => state.memberListeners.delete(cb);
+    }),
+    listProfiles: vi.fn(async () => []),
+  },
 }));
 vi.mock("@/features/contacts/data/dexie-contact-repository", () => ({
   contactRepository: { watch: vi.fn((_ownerId, cb) => { state.contacts = cb; return () => {}; }) },
@@ -43,6 +53,21 @@ vi.mock("@/features/vault/data/dexie-vault-repository", () => ({
 }));
 vi.mock("@/features/packing/data/dexie-packing-repository", () => ({
   packingRepository: { watchByTrip: vi.fn((_tripId, cb) => { state.packing = cb; return () => {}; }) },
+}));
+vi.mock("@/features/trips/data/dexie-trip-task-repository", () => ({
+  tripTaskRepository: {
+    watchByTrip: vi.fn((_tripId, cb) => { cb([]); return () => {}; }),
+    create: vi.fn(),
+    resolve: vi.fn(),
+  },
+}));
+vi.mock("@/features/trips/data/dexie-trip-note-repository", () => ({
+  tripNoteRepository: {
+    watchByTrip: vi.fn((_tripId, cb) => { cb([]); return () => {}; }),
+    create: vi.fn(),
+    update: vi.fn(),
+    remove: vi.fn(),
+  },
 }));
 vi.mock("@/features/profile/data/dexie-profile-repository", () => ({
   profileRepository: {
@@ -124,6 +149,7 @@ afterEach(() => {
   state.trips = null;
   state.activities = null;
   state.members = null;
+  state.memberListeners.clear();
   state.vault = null;
   state.contacts = null;
   state.packing = null;

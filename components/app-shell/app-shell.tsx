@@ -147,9 +147,9 @@ export function AppShell({
         </span>
         <NotificationBell userId={userId} />
       </div>
-      <div className="mt-3 flex items-center justify-start gap-0 border-t border-side-border pt-2.5">
+      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-side-border pt-2.5">
         <LanguageSwitcher dark />
-        <SyncStatusPill compact />
+        <SyncStatusPill />
       </div>
     </div>
   );

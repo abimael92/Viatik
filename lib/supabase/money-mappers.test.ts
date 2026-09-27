@@ -98,6 +98,7 @@ describe("money mappers", () => {
       toUserId: "user-2",
       amountMinor: 5001n,
       currency: "USD",
+      exchangeRateToBase: null,
       date: "2026-01-01",
       status: "settled",
       settledAt: timestamps.createdAt,

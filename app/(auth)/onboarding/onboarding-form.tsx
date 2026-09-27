@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { completeOnboarding, type OnboardingDetails } from "@/app/actions/auth";
+import { isValidBirthDate, latestBirthDate } from "@/lib/auth/birth-date";
 import { AvatarPicker, type AvatarChange } from "@/components/ui/avatar-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -97,7 +98,7 @@ export function OnboardingForm({ email, next, initialName = "" }: { email: strin
     }
     if (targetStep === 3) {
       if (!values.birthDate) errors.birthDate = "Enter your date of birth.";
-      else if (new Date(values.birthDate) > new Date()) errors.birthDate = "Date of birth can't be in the future.";
+      else if (!isValidBirthDate(values.birthDate)) errors.birthDate = t("errors.validDob");
     }
     return errors;
   }
@@ -141,6 +142,11 @@ export function OnboardingForm({ email, next, initialName = "" }: { email: strin
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (step < STEPS.length) {
+      handleNext();
+      return;
+    }
+    if (!allVisited) return;
     const errors = { ...validateStep(1), ...validateStep(3) };
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
@@ -247,7 +253,7 @@ export function OnboardingForm({ email, next, initialName = "" }: { email: strin
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label={t("common.dateOfBirth")} name="birthDate" type="date" value={values.birthDate} onChange={(event) => setField("birthDate", event.target.value)} max={new Date().toISOString().slice(0, 10)} required error={fieldErrors.birthDate} />
+            <Field label={t("common.dateOfBirth")} name="birthDate" type="date" value={values.birthDate} onChange={(event) => setField("birthDate", event.target.value)} max={latestBirthDate()} required error={fieldErrors.birthDate} />
             <Field label={t("settings.preferredLanguage")} name="preferredLanguage" value={values.preferredLanguage} onChange={(event) => setField("preferredLanguage", event.target.value)} placeholder={t("common.english")} maxLength={35} />
             <SelectField label={t("common.preferredCurrency")} name="preferredCurrency" value={values.preferredCurrency} onChange={(event) => setField("preferredCurrency", event.target.value)}>
               <option value="">{t("common.notSpecified")}</option>
@@ -281,7 +287,7 @@ export function OnboardingForm({ email, next, initialName = "" }: { email: strin
             <Button type="button" variant="primary" onClick={handleNext}>{t("common.next")}</Button>
           ) : (
             <Button type="submit" variant="primary" disabled={pending || !allVisited}>
-              {pending ? t("settings.saving") : t("common.continue")}
+              {pending ? t("settings.saving") : t("common.submit")}
             </Button>
           )}
         </div>

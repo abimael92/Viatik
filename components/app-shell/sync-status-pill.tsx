@@ -21,7 +21,9 @@ import { cn } from "@/lib/utils";
  * an error, or unresolved conflicts — opens a dropdown exposing the outbox
  * with a manual retry so the user can push pending mutations on demand.
  */
-export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
+const pillSize = "min-h-10 max-w-full gap-2 px-4 py-2 text-base font-semibold normal-case tracking-normal lg:min-h-9 lg:px-3.5 lg:py-1.5 lg:text-sm xl:min-h-10 xl:px-4 xl:py-2 xl:text-base";
+
+export function SyncStatusPill() {
   const sync = useSyncStatus();
   const { t } = useI18n();
   const db = useDatabase();
@@ -50,71 +52,67 @@ export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
   const interactive =
     offline || sync.status === "error" || sync.conflicts > 0 || sync.pending > 0 || queue.length > 0;
 
-  function compactLabel(value: string) {
-    return <span className={compact ? "w-14 min-w-0 max-w-14 truncate text-[8px] font-semibold" : undefined} title={compact ? value : undefined}>{value}</span>;
-  }
-
   function renderPill() {
     if (offline) {
       return (
-        <Badge variant="success">
+        <Badge variant="success" className={pillSize}>
           <StatusDot tone="success" pulse />
-          {compactLabel(t("common.offlineSaved"))}
+          {t("common.offlineSaved")}
         </Badge>
       );
     }
     if (sync.status === "syncing") {
       return (
-        <Badge variant="muted">
-          <LoaderCircle className="size-3 animate-spin text-primary" />
-          {compactLabel(t("common.syncing"))}
+        <Badge variant="muted" className={pillSize}>
+          <LoaderCircle className="size-4 shrink-0 animate-spin text-primary" />
+          {t("common.syncing")}
         </Badge>
       );
     }
     if (sync.status === "error") {
       return (
-        <Badge variant="warning">
+        <Badge variant="warning" className={pillSize}>
           <StatusDot tone="warning" pulse />
-          {compactLabel(t("common.syncIssue"))}
-          <RefreshCw className="size-3" aria-hidden />
+          {t("common.syncIssue")}
+          <RefreshCw className="size-4 shrink-0" aria-hidden />
         </Badge>
       );
     }
     if (sync.pending > 0) {
       return (
-        <Badge variant="outline">
-          <span className="grid min-h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[11px] font-bold text-primary-foreground animate-pulse">
+        <Badge variant="outline" className={pillSize}>
+          <span className="grid size-5 shrink-0 place-items-center rounded-full bg-primary px-1 text-xs font-bold text-primary-foreground animate-pulse">
             {sync.pending}
           </span>
-          {compactLabel(t("common.pendingChanges"))}
+          {t("common.pendingChanges")}
         </Badge>
       );
     }
     if (sync.conflicts > 0) {
       return (
-        <Badge variant="warning">
+        <Badge variant="warning" className={pillSize}>
           <StatusDot tone="warning" pulse />
-          {compactLabel(t("common.resolveConflicts"))}
+          {t("common.resolveConflicts")}
         </Badge>
       );
     }
     return (
       <StatusBadge>
-        <span className="mr-1.5 inline-block size-2 rounded-full bg-green-700" aria-hidden />
-        {compactLabel(t("common.synced"))}
+        <span className="inline-block size-2.5 shrink-0 rounded-full bg-green-700 sm:size-3" aria-hidden />
+        {t("common.synced")}
       </StatusBadge>
     );
   }
 
   return (
-    <div className={cn("relative", compact && "scale-90 origin-left")} ref={triggerRef}>
+    <div className="relative max-w-full" ref={triggerRef}>
       <button
         type="button"
         onClick={() => interactive && setOpen((value) => !value)}
         aria-haspopup="menu"
         aria-expanded={open}
         className={cn(
-          "inline-flex min-w-0 max-w-40 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "inline-flex min-w-0 max-w-full rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           !interactive && "cursor-default"
         )}
       >
@@ -193,7 +191,7 @@ export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
 
 function StatusDot({ tone, pulse = false }: { tone: "success" | "warning"; pulse?: boolean }) {
   return (
-    <span className="relative flex size-2 shrink-0" aria-hidden>
+    <span className="relative flex size-2.5 shrink-0 sm:size-3" aria-hidden>
       {pulse && (
         <span
           className={cn(
@@ -203,7 +201,7 @@ function StatusDot({ tone, pulse = false }: { tone: "success" | "warning"; pulse
         />
       )}
       <span
-        className={cn("relative inline-flex size-2 rounded-full", tone === "success" ? "bg-success" : "bg-accent")}
+        className={cn("relative inline-flex size-2.5 rounded-full sm:size-3", tone === "success" ? "bg-success" : "bg-accent")}
       />
     </span>
   );
