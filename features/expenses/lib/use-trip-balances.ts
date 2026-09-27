@@ -64,7 +64,18 @@ export function useTripBalances(tripId: string, baseCurrency: CurrencyCode): Tri
           shareAmountMinor: share.shareAmountMinor,
         })),
       }));
-    return buildTripBalances(items, settlements ?? [], baseCurrency);
+    return buildTripBalances(
+      items,
+      (settlements ?? []).map((settlement) => ({
+        fromUserId: settlement.fromUserId,
+        toUserId: settlement.toUserId,
+        amountMinor: settlement.amountMinor,
+        currency: settlement.currency,
+        exchangeRateToBase: settlement.exchangeRateToBase ?? null,
+        deletedAt: settlement.deletedAt,
+      })),
+      baseCurrency,
+    );
   }, [expenses, settlements, sharesByExpense, baseCurrency]);
 
   return {

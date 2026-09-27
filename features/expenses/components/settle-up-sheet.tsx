@@ -63,6 +63,7 @@ export function SettleUpSheet({
         toUserId: debt.receiverId,
         amountMinor,
         currency,
+        exchangeRateToBase: null,
         date: String(data.get("date") || new Date().toISOString().slice(0, 10)),
         createdBy: userId,
         receiverName,

@@ -60,6 +60,44 @@ describe("trip ledger balances", () => {
     ]);
   });
 
+  it("keeps a foreign settlement on the rate frozen at creation", () => {
+    const expenses = [splitEven("aby", "traveler-b", 1000n)];
+    const settlement = {
+      fromUserId: "traveler-b",
+      toUserId: "aby",
+      amountMinor: 10000n,
+      currency: "MXN",
+      exchangeRateToBase: 0.05,
+      deletedAt: null,
+    };
+
+    const frozen = buildTripBalances(expenses, [settlement], "USD");
+    const sameSnapshot = buildTripBalances(expenses, [{ ...settlement, exchangeRateToBase: 0.05 }], "USD");
+
+    expect(frozen.pairwiseDebts).toEqual(sameSnapshot.pairwiseDebts);
+    expect(frozen.balances).toEqual(sameSnapshot.balances);
+    expect(frozen.pairwiseDebts).toEqual([]);
+  });
+
+  it("does not invent a rate for an older foreign settlement that has no snapshot", () => {
+    const debts = calculatePairwiseDebts(
+      [splitEven("aby", "traveler-b", 10000n)],
+      [
+        {
+          fromUserId: "traveler-b",
+          toUserId: "aby",
+          amountMinor: 10000n,
+          currency: "MXN",
+          exchangeRateToBase: null,
+          deletedAt: null,
+        },
+      ],
+      "USD",
+    );
+
+    expect(debts[0]?.amountMinor).toBe(5000n);
+  });
+
   it("ignores deleted settlements", () => {
     const debts = calculatePairwiseDebts(
       [splitEven("aby", "traveler-b", 10000n)],
