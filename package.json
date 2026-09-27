@@ -17,7 +17,7 @@
     "ios": "pnpm cap:sync:ios",
     "android": "pnpm cap:sync:android",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
