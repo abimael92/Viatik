@@ -3,11 +3,12 @@
 import { localizeThrownError } from "@/lib/i18n/localize-error";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowRight, Luggage, Plane, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { WrapUpSheet } from "@/features/trips/components/home/wrap-up-sheet";
+import { queueReturnPackReminder } from "@/features/trips/lib/return-pack-reminder";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +25,8 @@ import { useHomeData } from "@/features/trips/components/home/use-home-data";
 import { HomeSkeleton } from "@/features/trips/components/home/home-skeleton";
 import { TripCountdownHero } from "@/features/trips/components/home/trip-countdown-hero";
 import { LiveTimelineHud } from "@/features/trips/components/home/live-timeline-hud";
+import { TripNotesBoard } from "@/features/trips/components/home/trip-notes-board";
+import { OpenTasksWidget } from "@/features/trips/components/home/open-tasks-widget";
 import { ActiveTripActions } from "@/features/trips/components/home/active-trip-actions";
 import { TripStepsWidget } from "@/features/steps/components/trip-steps-widget";
 import { QuickActionHub } from "@/features/trips/components/home/quick-action-hub";
@@ -47,6 +50,11 @@ export function HomePage({ userId }: { userId: string }) {
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [moneyToolsOpen, setMoneyToolsOpen] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (!primaryTrip) return;
+    void queueReturnPackReminder({ userId, trip: primaryTrip, message: t("copy.packForHome") });
+  }, [primaryTrip, t, userId]);
 
   if (loading) {
     return (
@@ -129,6 +137,10 @@ export function HomePage({ userId }: { userId: string }) {
                   canManageExpenses={canManageExpenses}
                 />
 
+                <TripNotesBoard tripId={primaryTrip.id} userId={userId} />
+
+                <OpenTasksWidget tripId={primaryTrip.id} userId={userId} />
+
                 <ActiveTripActions activeTrip={activeTrip} />
 
                 {primaryTrip.startedAt && primaryTrip.endDate && (
@@ -197,14 +209,16 @@ export function HomePage({ userId }: { userId: string }) {
           />
         )}
 
-        <ConfirmDialog
-          open={confirmEnd}
-          onOpenChange={setConfirmEnd}
-          title={t("copy.endTripQuestion")}
-          description="It will be moved to Past Trips."
-          confirmLabel={t("common.endTrip")}
-          onConfirm={confirmEndTrip}
-        />
+        {confirmEnd && primaryTrip && (
+          <WrapUpSheet
+            open
+            trip={primaryTrip}
+            userId={userId}
+            pending={pending}
+            onClose={() => setConfirmEnd(false)}
+            onEndTrip={confirmEndTrip}
+          />
+        )}
 
         <Dialog open={confirmCancel} onOpenChange={setConfirmCancel}>
           <DialogContent>
