@@ -15,6 +15,7 @@ vi.mock("@/features/packing/data/dexie-packing-repository", () => ({
     remove: vi.fn(),
     updateQuantity: vi.fn(),
     setPacked: vi.fn(),
+    setPackedForReturn: vi.fn(),
     addCustom: vi.fn(),
     resetToSuggested: vi.fn(),
   },
@@ -38,6 +39,7 @@ function item(overrides: Partial<PackingItem> & Pick<PackingItem, "id" | "name">
     category: "electronics",
     quantity: 1,
     isPacked: false,
+    packedForReturn: false,
     isSuggested: true,
     suggestedReason: "recommended",
     position: 0,
@@ -94,5 +96,25 @@ describe("PackingListView", () => {
 
     fireEvent.click(deleteButtons[0]!);
     expect(packingRepository.remove).toHaveBeenCalledWith("adapter");
+  });
+
+  it("toggles packedForReturn without changing the outbound check", () => {
+    vi.mocked(packingRepository.watchByTrip).mockImplementation((_tripId, onChange) => {
+      onChange([item({ id: "adapter", name: "Travel adapter", isPacked: true, packedForReturn: false })]);
+      return () => {};
+    });
+    render(
+      <I18nProvider>
+        <PackingListView tripId="trip-1" trip={trip} activities={[]} mode="return" />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByRole("heading", { name: "Pack for home" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Delete item" })).toBeNull();
+    const checkbox = screen.getByRole("checkbox", { name: /Travel adapter/ });
+    expect((checkbox as HTMLInputElement).checked).toBe(false);
+    fireEvent.click(checkbox);
+    expect(packingRepository.setPackedForReturn).toHaveBeenCalledWith(["adapter"], true);
+    expect(packingRepository.toggle).not.toHaveBeenCalled();
   });
 });

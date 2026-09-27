@@ -31,7 +31,20 @@ import { cn } from "@/lib/utils";
  * duration, climate, and scheduled activities, then lets each traveler tick
  * items off (offline) and add their own. Fully local-first via Dexie.
  */
-export function PackingListView({ tripId, trip, activities, canEdit = true }: { tripId: string; trip: Trip; activities: Activity[]; canEdit?: boolean }) {
+export function PackingListView({
+  tripId,
+  trip,
+  activities,
+  canEdit = true,
+  mode = "outbound",
+}: {
+  tripId: string;
+  trip: Trip;
+  activities: Activity[];
+  canEdit?: boolean;
+  /** `return` checks `packedForReturn` and does not change outbound `isPacked`. */
+  mode?: "outbound" | "return";
+}) {
   const { t } = useI18n();
   const [items, setItems] = useState<PackingItem[]>([]);
   const [adding, setAdding] = useState(false);
@@ -45,7 +58,9 @@ export function PackingListView({ tripId, trip, activities, canEdit = true }: { 
   // Reactive local query — re-renders whenever packing items change on disk.
   useEffect(() => packingRepository.watchByTrip(tripId, setItems), [tripId]);
 
-  const packedCount = items.filter((item) => item.isPacked).length;
+  const returning = mode === "return";
+  const isChecked = (item: PackingItem) => (returning ? item.packedForReturn === true : item.isPacked);
+  const packedCount = items.filter((item) => isChecked(item)).length;
   const totalCount = items.length;
   const packedPercent = totalCount ? Math.round((packedCount / totalCount) * 100) : 0;
 
@@ -64,6 +79,7 @@ export function PackingListView({ tripId, trip, activities, canEdit = true }: { 
   );
 
   useEffect(() => {
+    if (returning) return;
     const drafts = generatePackingDrafts({
       durationDays: tripDurationDays(trip.startDate, trip.endDate),
       startDate: trip.startDate,
@@ -71,11 +87,15 @@ export function PackingListView({ tripId, trip, activities, canEdit = true }: { 
       activities,
     });
     void packingRepository.applySuggested(tripId, drafts);
-  }, [tripId, signature, activities, trip.startDate, trip.endDate, trip.latitude]);
+  }, [returning, tripId, signature, activities, trip.startDate, trip.endDate, trip.latitude]);
 
   const handleToggle = useCallback(async (item: PackingItem) => {
+    if (returning) {
+      await packingRepository.setPackedForReturn([item.id], item.packedForReturn !== true);
+      return;
+    }
     await packingRepository.toggle(item.id, !item.isPacked);
-  }, []);
+  }, [returning]);
 
   const handleRemove = useCallback(async (id: string) => {
     await packingRepository.remove(id);
@@ -85,10 +105,15 @@ export function PackingListView({ tripId, trip, activities, canEdit = true }: { 
     await packingRepository.updateQuantity(item.id, Math.min(99, Math.max(1, item.quantity + delta)));
   }, []);
 
-  const handleCategoryPack = useCallback(async (category: PackingCategory, categoryItems: PackingItem[], isPacked: boolean) => {
-    await packingRepository.setPacked(categoryItems.map((item) => item.id), isPacked);
-    if (category === "toiletries") await tripRepository.update(tripId, { personalCareConfirmed: isPacked });
-  }, [tripId]);
+  const handleCategoryPack = useCallback(async (category: PackingCategory, categoryItems: PackingItem[], packed: boolean) => {
+    const ids = categoryItems.map((item) => item.id);
+    if (returning) {
+      await packingRepository.setPackedForReturn(ids, packed);
+      return;
+    }
+    await packingRepository.setPacked(ids, packed);
+    if (category === "toiletries") await tripRepository.update(tripId, { personalCareConfirmed: packed });
+  }, [returning, tripId]);
 
   const setPackingComplete = useCallback(async (complete: boolean) => {
     setActionError(null);
@@ -179,14 +204,14 @@ export function PackingListView({ tripId, trip, activities, canEdit = true }: { 
           </span>
           <div>
             <Heading level={2} id="packing-heading" className="text-xl font-bold">
-              {t("common.packingList")}
+              {returning ? t("copy.packForHomeTitle") : t("common.packingList")}
             </Heading>
             <p className="text-sm text-muted-foreground">
-              {t("common.packingDescription")}
+              {returning ? t("copy.packForHomeHelp") : t("common.packingDescription")}
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        {!returning && <div className="flex flex-wrap gap-2">
           <Button
             type="button"
             variant="primary"
@@ -205,7 +230,7 @@ export function PackingListView({ tripId, trip, activities, canEdit = true }: { 
           >
             <RotateCcw className="size-4" /> {t("common.resetPackingList")}
           </Button>
-        </div>
+        </div>}
       </div>
 
       {actionError && (
@@ -250,7 +275,7 @@ export function PackingListView({ tripId, trip, activities, canEdit = true }: { 
           {PACKING_CATEGORIES.map((category) => {
             const categoryItems = grouped.get(category) ?? [];
             if (categoryItems.length === 0) return null;
-            const categoryPacked = categoryItems.filter((item) => item.isPacked).length;
+            const categoryPacked = categoryItems.filter((item) => isChecked(item)).length;
             const collapsed = collapsedCategories.has(category);
             const categoryContentId = `packing-category-${category}`;
             return (
@@ -314,10 +339,10 @@ export function PackingListView({ tripId, trip, activities, canEdit = true }: { 
                           <span className="relative inline-flex size-5 shrink-0">
                             <input
                               type="checkbox"
-                              checked={item.isPacked}
+                              checked={isChecked(item)}
                               onChange={() => void handleToggle(item)}
                               className="peer size-5 appearance-none rounded-md border border-border bg-background transition-colors checked:border-primary checked:bg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                              aria-label={t("common.markPacked", { name: label, status: item.isPacked ? t("common.unpacked") : t("common.packed") })}
+                              aria-label={t("common.markPacked", { name: label, status: isChecked(item) ? t("common.unpacked") : t("common.packed") })}
                             />
                             <Check
                               className="pointer-events-none absolute inset-0 m-auto size-3.5 text-primary-foreground opacity-0 transition-opacity peer-checked:opacity-100"
@@ -328,7 +353,7 @@ export function PackingListView({ tripId, trip, activities, canEdit = true }: { 
                             <span
                               className={cn(
                                 "flex min-w-0 flex-wrap items-center gap-2 text-sm",
-                                item.isPacked && "text-muted-foreground line-through"
+                                isChecked(item) && "text-muted-foreground line-through"
                               )}
                             >
                               <span className="min-w-0">{label}</span>
@@ -353,7 +378,7 @@ export function PackingListView({ tripId, trip, activities, canEdit = true }: { 
                             )}
                           </span>
                         </label>
-                        <div className="flex shrink-0 items-center gap-1">
+                        {!returning && <div className="flex shrink-0 items-center gap-1">
                           <button
                             type="button"
                             className="grid size-8 place-items-center rounded-md bg-linear-to-br from-secondary to-viatik-blue text-white hover:opacity-90 disabled:opacity-40"
@@ -373,15 +398,15 @@ export function PackingListView({ tripId, trip, activities, canEdit = true }: { 
                           >
                             <Plus className="size-3.5" aria-hidden />
                           </button>
-                        </div>
-                        <button
+                        </div>}
+                        {!returning && <button
                           type="button"
                           onClick={() => void handleRemove(item.id)}
                           className="grid size-11 shrink-0 place-items-center rounded-md text-destructive transition-colors hover:bg-destructive/10 active:bg-destructive/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                           aria-label={t("common.deletePackingItem")}
                         >
                           <Trash className="size-4" aria-hidden />
-                        </button>
+                        </button>}
                       </div>
                     </li>
                     );
@@ -394,7 +419,7 @@ export function PackingListView({ tripId, trip, activities, canEdit = true }: { 
         </div>
       )}
 
-      <div className="rounded-2xl border bg-card p-4">
+      {!returning && <div className="rounded-2xl border bg-card p-4">
         <Heading level={3} className="text-sm font-semibold">
           {t("common.addYourOwn")}
         </Heading>
@@ -432,9 +457,9 @@ export function PackingListView({ tripId, trip, activities, canEdit = true }: { 
             <Plus className="size-4" /> {t("common.addItem")}
           </Button>
         </div>
-      </div>
+      </div>}
 
-      {canEdit && (
+      {!returning && canEdit && (
         <div className="flex justify-end border-t pt-5">
           <Button
             type="button"

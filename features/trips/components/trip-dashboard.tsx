@@ -34,7 +34,8 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { WrapUpSheet } from "@/features/trips/components/home/wrap-up-sheet";
+import { queueReturnPackReminder } from "@/features/trips/lib/return-pack-reminder";
 import { useToast } from "@/components/ui/toast";
 import { Heading } from "@/components/ui/heading";
 import { daysUntil, isTripActive, isTripEnded, todayKey } from "@/features/trips/lib/home-trips";
@@ -103,15 +104,25 @@ export function TripDashboard({ userId }: { userId: string }) {
 
   const [tab, setTab] = useState<"upcoming" | "past">("upcoming");
 
-  const active = filtered
-    .filter((trip) => isTripActive(trip))
-    .sort((a, b) => (a.startDate ?? "9999").localeCompare(b.startDate ?? "9999"));
+  const active = useMemo(
+    () =>
+      filtered
+        .filter((trip) => isTripActive(trip))
+        .sort((a, b) => (a.startDate ?? "9999").localeCompare(b.startDate ?? "9999")),
+    [filtered],
+  );
   const upcoming = filtered
     .filter((trip) => resolveTripStatus(trip) === "planned")
     .sort((a, b) => (a.startDate ?? "9999").localeCompare(b.startDate ?? "9999"));
   const past = filtered
     .filter((trip) => isTripEnded(trip))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  useEffect(() => {
+    const message = t("copy.packForHome");
+    for (const trip of active) {
+      void queueReturnPackReminder({ userId, trip, message });
+    }
+  }, [active, t, userId]);
 
   function startTrip(id: string) {
     setError(null);
@@ -123,6 +134,8 @@ export function TripDashboard({ userId }: { userId: string }) {
   function endTrip(id: string) {
     setEndTripId(id);
   }
+
+  const endingTrip = (trips ?? []).find((trip) => trip.id === endTripId) ?? null;
 
   function confirmEndTrip() {
     if (!endTripId) return;
@@ -298,14 +311,15 @@ export function TripDashboard({ userId }: { userId: string }) {
           toast({ title: t("copy.unableSaveTrip"), description: message, variant: "error" })
         }
       />
-      <ConfirmDialog
-        open={endTripId !== null}
-        onOpenChange={(open) => !open && setEndTripId(null)}
-        title={t("copy.endTripQuestion")}
-        description="It will be moved to Past Trips."
-        confirmLabel={t("common.endTrip")}
-        onConfirm={confirmEndTrip}
-      />
+      {endingTrip && (
+        <WrapUpSheet
+          open
+          trip={endingTrip}
+          userId={userId}
+          onClose={() => setEndTripId(null)}
+          onEndTrip={confirmEndTrip}
+        />
+      )}
     </div>
   );
 }
@@ -605,6 +619,7 @@ export function TripFormDialog({
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [step, setStep] = useState(1);
+  const [visited, setVisited] = useState<boolean[]>([true, false, false]);
 
   const [name, setName] = useState(trip?.name ?? "");
   const [destination, setDestination] = useState(trip?.destination ?? "");
@@ -733,24 +748,16 @@ export function TripFormDialog({
   }
 
   function handleNext() {
-    const errors = validateStep(step);
-    if (Object.keys(errors).length > 0) {
-      setFieldErrors(errors);
-      focusFirstError(errors);
-      return;
-    }
-    setFieldErrors({});
-    setStep((s) => s + 1);
+    goToStep(step + 1);
   }
 
-  /** Jump to a step from the clickable step header. Going back is free; going
-   *  forward requires every intermediate step to validate so users can't skip
-   *  past incomplete required fields. */
+  /** Move one screen at a time. Going back is free. Going forward validates the
+   *  screen being left and never skips a screen that has not been shown. */
   function goToStep(target: number) {
-    if (target === step) return;
+    if (target === step || target < 1 || target > 3) return;
     if (target > step) {
-      let errors: Record<string, string> = {};
-      for (let s = step; s < target; s++) errors = { ...errors, ...validateStep(s) };
+      if (target !== step + 1 || visited.slice(0, target - 1).some((seen) => !seen)) return;
+      const errors = validateStep(step);
       if (Object.keys(errors).length > 0) {
         setFieldErrors(errors);
         focusFirstError(errors);
@@ -758,6 +765,7 @@ export function TripFormDialog({
       }
     }
     setFieldErrors({});
+    setVisited((current) => current.map((seen, index) => (index === target - 1 ? true : seen)));
     setStep(target);
   }
 
@@ -1030,14 +1038,8 @@ export function TripFormDialog({
             {step < 3 ? (
               <Button type="button" onClick={handleNext}>{t("common.next")}</Button>
             ) : (
-              <Button type="submit" variant="primary" disabled={saving}>
-                {uploadingCover
-                  ? "Uploading cover…"
-                  : saving
-                    ? "Saving trip…"
-                    : trip
-                      ? t("common.saveChanges")
-                      : t("common.createNewTrip")}
+              <Button type="submit" variant="primary" disabled={saving || !visited.every(Boolean)}>
+                {uploadingCover ? "Uploading cover…" : saving ? "Saving trip…" : t("common.submit")}
               </Button>
             )}
           </DialogFooter>
