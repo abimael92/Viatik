@@ -6,6 +6,8 @@ import { Plus, X } from "lucide-react";
 import { useEffect, useMemo, useState, type ComponentProps, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
+import { fetchExchangeRate } from "@/app/actions/exchange-rates";
 import {
   Dialog,
   DialogContent,
@@ -43,7 +45,10 @@ import {
   parseMinorUnits,
   toBaseMinorUnits,
 } from "@/features/domain/money";
-import { lookupRate } from "@/features/finance/lib/currency-converter";
+import {
+  resolveExchangeRate,
+  type ResolvedExchangeRate,
+} from "@/features/finance/lib/exchange-rate-service";
 import { expenseRepository } from "@/features/expenses/data/dexie-expense-repository";
 import { calculateSplit } from "@/features/expenses/lib/expense-calculator";
 import { useLocalProfile } from "@/features/profile/lib/use-local-profile";
@@ -177,7 +182,13 @@ function ExpenseFormBody({
   onSaved?: (expense: Expense) => void;
 }) {
   const { t } = useI18n();
+  const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const [resolvedRate, setResolvedRate] = useState<{
+    from: string;
+    to: string;
+    rate: ResolvedExchangeRate;
+  } | null>(null);
   const [mode, setMode] = useState<ExpenseSplitType>(expense?.splitType ?? "equal");
   const [participantSelection, setParticipants] = useState<string[] | null>(null);
   const [extraPeople, setExtraPeople] = useState<string[]>([]);
@@ -201,15 +212,36 @@ function ExpenseFormBody({
   );
 
   const isForeign = expenseCurrency !== currency;
-  const suggestedRate = useMemo(() => {
-    if (!isForeign) return null;
-    try {
-      return lookupRate(expenseCurrency, currency);
-    } catch {
-      return null;
-    }
-  }, [isForeign, expenseCurrency, currency]);
-  const exchangeRateToBase = isForeign ? (expense?.exchangeRateToBase ?? suggestedRate) : null;
+  const historicalRate =
+    expense != null && expense.currency === expenseCurrency ? expense.exchangeRateToBase : null;
+  const keepsHistoricalRate = historicalRate != null;
+
+  useEffect(() => {
+    if (!open || !isForeign || keepsHistoricalRate) return;
+    let cancelled = false;
+    const from = expenseCurrency;
+    const to = currency;
+    void resolveExchangeRate(from, to, { fetchRate: fetchExchangeRate })
+      .then((resolved) => {
+        if (!cancelled && resolved) setResolvedRate({ from, to, rate: resolved });
+      })
+      .catch(() => {
+        if (!cancelled) setResolvedRate(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, isForeign, keepsHistoricalRate, expenseCurrency, currency]);
+
+  const activeResolved =
+    resolvedRate && resolvedRate.from === expenseCurrency && resolvedRate.to === currency
+      ? resolvedRate.rate
+      : null;
+  const exchangeRateToBase = isForeign ? (historicalRate ?? activeResolved?.rate ?? null) : null;
+  const rateNotice =
+    isForeign && historicalRate == null && activeResolved && activeResolved.source !== "live"
+      ? activeResolved
+      : null;
 
   const parsedAmount = useMemo(() => {
     if (!amountInput.trim()) return null;
@@ -483,6 +515,12 @@ function ExpenseFormBody({
         });
         onSaved?.(created);
       }
+      if (rateNotice && exchangeRateToBase != null) {
+        toast({
+          title: t("copy.cachedRateApplied", { rate: formatRate(exchangeRateToBase) }),
+          variant: "info",
+        });
+      }
       onClose();
     } catch (cause) {
       onError(localizeThrownError(cause, t, "Unable to save expense."));
@@ -561,6 +599,13 @@ function ExpenseFormBody({
                 ) : (
                   <p className="mt-1 text-xs text-muted-foreground">
                     That&rsquo;s how much {expenseCurrency} equals in {currency}.
+                  </p>
+                )}
+                {rateNotice && (
+                  <p role="status" aria-live="polite" className="mt-2 text-xs text-foreground">
+                    {rateNotice.source === "default"
+                      ? t("copy.defaultRateWarning")
+                      : t("copy.cachedRateWarning", { date: rateNotice.fetchedAt.slice(0, 10) })}
                   </p>
                 )}
               </div>
@@ -776,7 +821,7 @@ function ExpenseFormBody({
             <Button type="button" variant="outline" onClick={onClose}>
               {t("common.cancel")}
             </Button>
-            <Button type="submit" variant="primary" disabled={saving}>
+            <Button type="submit" variant="primary" disabled={saving || (isForeign && exchangeRateToBase == null)}>
               {saving ? t("settings.saving") : t("copy.saveExpense")}
             </Button>
           </DialogFooter>
