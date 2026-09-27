@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { latestBirthDate } from "@/lib/auth/birth-date";
+
 const mocks = vi.hoisted(() => ({
   replace: vi.fn(),
   refresh: vi.fn(),
@@ -25,6 +27,7 @@ vi.mock("@/lib/supabase/browser-client", () => ({
 }));
 
 import { LoginForm } from "@/app/(auth)/login/login-form";
+import { registerWithPassword } from "@/app/actions/auth";
 
 describe("native passkey login", () => {
   beforeEach(() => {
@@ -59,5 +62,20 @@ describe("native passkey login", () => {
     render(<LoginForm />);
 
     expect(screen.getByRole("link", { name: /forgot password/i }).getAttribute("href")).toBe("/forgot-password");
+    expect(screen.queryByText("Existing account")).toBeNull();
+  });
+
+  it("rejects today's date of birth before creating an account", async () => {
+    render(<LoginForm mode="register" />);
+    const birthDate = screen.getByLabelText(/date of birth/i);
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+    expect(birthDate.getAttribute("max")).toBe(latestBirthDate());
+    fireEvent.change(birthDate, { target: { value: today } });
+    fireEvent.submit(birthDate.closest("form")!);
+
+    expect((await screen.findByRole("alert")).textContent).toBe("Date of birth must be before today.");
+    expect(registerWithPassword).not.toHaveBeenCalled();
   });
 });

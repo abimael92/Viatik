@@ -21,6 +21,7 @@ export const translations = {
       undo: "Undo",
       overview: "Overview",
       itinerary: "Itinerary",
+      tasks: "Tasks",
       map: "Map",
       money: "Money",
       people: "People",
@@ -109,9 +110,11 @@ export const translations = {
       profileDirectory: "Profile directory",
       signInSecurity: "Sign-in and security",
       yourViatikId: "Your Viatik ID",
+      // Unused until SMS verification is re-enabled. See .ai/specs/sms-verification.md.
       noPhoneAvailable: "No phone number available",
       passkeyAdded: "Passkey added to your account.",
       passkeyCancelled: "Passkey setup was cancelled.",
+      // Unused until SMS verification is re-enabled. See .ai/specs/sms-verification.md.
       smsAuthentication: "SMS authentication",
       verifiedSession: "Verified session",
       identity: "Identity",
@@ -749,6 +752,7 @@ export const translations = {
       quickAmounts: "Quick amounts",
       back: "Back",
       next: "Next",
+      submit: "Submit",
       continue: "Continue",
     },
     navigation: {
@@ -789,7 +793,6 @@ export const translations = {
       resend: "Resend code",
       backToPassword: "Back to email and password",
       newToViatik: "New to Viatik",
-      existingAccount: "Existing account",
       signInWelcome: "Welcome back",
       registerDescription: "Sign up to create trips, invite friends, and keep every plan in one place.",
       loginDescription: "Sign in with the email already connected to your Viatik account.",
@@ -861,6 +864,7 @@ export const translations = {
       undo: "Deshacer",
       overview: "Resumen",
       itinerary: "Itinerario",
+      tasks: "Tareas",
       map: "Mapa",
       money: "Dinero",
       people: "Personas",
@@ -949,9 +953,11 @@ export const translations = {
       profileDirectory: "Directorio de perfiles",
       signInSecurity: "Inicio de sesión y seguridad",
       yourViatikId: "Tu ID de Viatik",
+      // Sin uso hasta reactivar la verificación por SMS. Ver .ai/specs/sms-verification.md.
       noPhoneAvailable: "No hay teléfono disponible",
       passkeyAdded: "Clave de acceso añadida a tu cuenta.",
       passkeyCancelled: "Se canceló la configuración de la clave de acceso.",
+      // Sin uso hasta reactivar la verificación por SMS. Ver .ai/specs/sms-verification.md.
       smsAuthentication: "Autenticación por SMS",
       verifiedSession: "Sesión verificada",
       identity: "Identidad",
@@ -1589,6 +1595,7 @@ export const translations = {
       quickAmounts: "Cantidades rápidas",
       back: "Atrás",
       next: "Siguiente",
+      submit: "Enviar",
       continue: "Continuar",
     },
     navigation: {
@@ -1629,7 +1636,6 @@ export const translations = {
       resend: "Reenviar código",
       backToPassword: "Volver al correo y contraseña",
       newToViatik: "¿Nuevo en Viatik?",
-      existingAccount: "Cuenta existente",
       signInWelcome: "Te damos la bienvenida",
       registerDescription: "Regístrate para crear viajes, invitar amigos y mantener todos tus planes en un solo lugar.",
       loginDescription: "Inicia sesión con el correo asociado a tu cuenta de Viatik.",

@@ -25,13 +25,15 @@ describe("native passkey registration", () => {
 
   it("reports success only after Supabase persists a passkey", async () => {
     mocks.registerPasskey.mockResolvedValue({ data: { id: "passkey-1" }, error: null });
-    render(<SettingsClient phone={null} fullName="Alice" />);
+    render(<SettingsClient fullName="Alice" />);
 
     fireEvent.mouseDown(screen.getByRole("tab", { name: "Security" }));
     fireEvent.click(screen.getByRole("button", { name: "Add passkey" }));
 
     await waitFor(() => expect(mocks.registerPasskey).toHaveBeenCalledOnce());
     expect((await screen.findByRole("status")).textContent).toBe("Passkey added to your account.");
+    expect(screen.queryByText("SMS authentication")).toBeNull();
+    expect(screen.queryByText("Verified session")).toBeNull();
   });
 
   it("shows the user's Viatik ID and signed QR code when present", async () => {
@@ -42,7 +44,7 @@ describe("native passkey registration", () => {
       viatikId: "VTK-1234ABCD5678EF90",
       expiresAt: "2026-09-21T21:00:00.000Z",
     });
-    const { container } = render(<SettingsClient phone={null} fullName="Alice" viatikId="VTK-1234ABCD5678EF90" />);
+    const { container } = render(<SettingsClient fullName="Alice" viatikId="VTK-1234ABCD5678EF90" />);
 
     fireEvent.mouseDown(screen.getByRole("tab", { name: "Directory" }));
     expect(screen.getByText("VTK-1234ABCD5678EF90")).toBeTruthy();
@@ -53,7 +55,6 @@ describe("native passkey registration", () => {
   it("displays saved profile details read-only until edit is pressed", () => {
     render(
       <SettingsClient
-        phone={null}
         fullName="Alice"
         profile={{ fullName: "Alice", phone: "+1 555 0100", birthDate: "1990-01-01", dietaryRestrictions: ["vegetarian"] }}
       />
@@ -68,7 +69,7 @@ describe("native passkey registration", () => {
   it("edits profile details through the server action", async () => {
     mocks.updateProfileDetails.mockResolvedValue({ success: true, data: undefined });
     mocks.refresh.mockImplementation(() => undefined);
-    render(<SettingsClient phone={null} fullName="Alice" />);
+    render(<SettingsClient fullName="Alice" />);
 
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
     fireEvent.change(screen.getByLabelText("Full name"), { target: { value: "Alicia" } });

@@ -38,7 +38,6 @@ export default async function SettingsPage() {
     : null;
   return (
     <SettingsClient
-      phone={data.user.phone ?? null}
       fullName={profileDetails?.fullName ?? ""}
       viatikId={profile?.viatik_id ?? null}
       profile={profileDetails}

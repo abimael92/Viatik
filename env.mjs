@@ -11,6 +11,8 @@ import { z } from "zod";
 export const env = createEnv({
   server: {
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
+    // Reserved. Nothing reads this until SMS verification is re-enabled.
+    // See .ai/specs/sms-verification.md.
     SMS_PROVIDER_API_KEY: z.string().optional(),
     GOOGLE_MAPS_API_KEY: z.string().min(1).optional(),
     // Optional AI Activity Scout LLM endpoint + key. When unset, the scout uses

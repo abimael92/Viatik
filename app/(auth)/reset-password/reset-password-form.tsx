@@ -68,7 +68,6 @@ export function ResetPasswordForm({ canReset }: { canReset: boolean }) {
     return (
       <div className="space-y-6">
         <div>
-          <p className="mb-2 text-sm font-semibold text-primary">{t("auth.existingAccount")}</p>
           <h1 className="text-3xl font-bold tracking-tight">{t("auth.resetLinkInvalidTitle")}</h1>
           <p className="mt-2 text-muted-foreground">{t("auth.resetLinkInvalidBody")}</p>
         </div>
@@ -85,7 +84,6 @@ export function ResetPasswordForm({ canReset }: { canReset: boolean }) {
   return (
     <form className="space-y-6" onSubmit={submit}>
       <div>
-        <p className="mb-2 text-sm font-semibold text-primary">{t("auth.existingAccount")}</p>
         <h1 className="text-3xl font-bold tracking-tight">{t("auth.resetPasswordTitle")}</h1>
         <p className="mt-2 text-muted-foreground">{t("auth.resetPasswordDescription")}</p>
       </div>

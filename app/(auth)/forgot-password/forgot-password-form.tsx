@@ -58,7 +58,6 @@ export function ForgotPasswordForm() {
     return (
       <div className="space-y-6">
         <div>
-          <p className="mb-2 text-sm font-semibold text-primary">{t("auth.existingAccount")}</p>
           <h1 className="text-3xl font-bold tracking-tight">{t("auth.checkEmail")}</h1>
           <p className="mt-2 text-muted-foreground">{t("auth.resetLinkSent", { email: maskEmail(email) })}</p>
         </div>
@@ -79,7 +78,6 @@ export function ForgotPasswordForm() {
   return (
     <form className="space-y-6" onSubmit={submit}>
       <div>
-        <p className="mb-2 text-sm font-semibold text-primary">{t("auth.existingAccount")}</p>
         <h1 className="text-3xl font-bold tracking-tight">{t("auth.forgotPasswordTitle")}</h1>
         <p className="mt-2 text-muted-foreground">{t("auth.forgotPasswordDescription")}</p>
       </div>
