@@ -8,6 +8,7 @@ const VALID_TABS = [
   "feed",
   "journal",
   "itinerary",
+  "tasks",
   "map",
   "expenses",
   "finance",
