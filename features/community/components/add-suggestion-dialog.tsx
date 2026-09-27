@@ -186,6 +186,7 @@ function SuggestionForm({
     ? template.source.trip.startDate
     : today;
   const [step, setStep] = useState(0);
+  const [visited, setVisited] = useState<boolean[]>([true, false, false]);
   const [name, setName] = useState(template.name);
   const [destination, setDestination] = useState(template.destination);
   const [description, setDescription] = useState(template.source.trip.description ?? "");
@@ -281,6 +282,7 @@ function SuggestionForm({
   };
 
   async function save() {
+    if (step !== STEPS.length - 1 || !visited.every(Boolean)) return;
     setMessage(null);
     const allErrors: Record<string, string> = {};
     for (let s = 0; s < STEPS.length; s++) {
@@ -365,21 +367,26 @@ function SuggestionForm({
   }
 
   function goToStep(target: number) {
-    const errors = validateStep(step);
-    if (Object.keys(errors).length > 0) {
-      setFieldErrors(errors);
-      return;
+    if (target === step || target < 0 || target >= STEPS.length) return;
+    if (target > step) {
+      if (target !== step + 1 || visited.slice(0, target).some((seen) => !seen)) return;
+      const errors = validateStep(step);
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+        return;
+      }
     }
     setFieldErrors({});
+    setVisited((current) => current.map((seen, index) => (index === target ? true : seen)));
     setStep(target);
   }
 
   function handleNext() {
-    if (step < STEPS.length - 1) goToStep(step + 1);
+    goToStep(step + 1);
   }
 
   function handleBack() {
-    if (step > 0) goToStep(step - 1);
+    goToStep(step - 1);
   }
 
   return (
@@ -680,14 +687,14 @@ function SuggestionForm({
           {t("common.cancel")}
         </Button>
         {step < STEPS.length - 1 ? (
-          <Button variant="primary" onClick={handleNext} disabled={saving}>
+          <Button type="button" variant="primary" onClick={handleNext} disabled={saving}>
             {t("common.next")}
             <ChevronRight className="size-4 ml-1" aria-hidden />
           </Button>
         ) : (
-          <Button variant="primary" onClick={() => void save()} disabled={saving}>
+          <Button type="button" variant="primary" onClick={() => void save()} disabled={saving || !visited.every(Boolean)}>
             <Sparkles className="size-4" aria-hidden />
-            {saving ? t("common.adding") : "Add to my trips"}
+            {saving ? t("common.adding") : t("common.submit")}
           </Button>
         )}
       </DialogFooter>

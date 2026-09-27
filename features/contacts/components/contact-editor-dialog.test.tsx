@@ -64,7 +64,7 @@ describe("ContactEditorDialog", () => {
     expect(within(dialog).getByLabelText("Allergies")).toBeTruthy();
     expect(within(dialog).getByLabelText("Passport expiration")).toBeTruthy();
     expect(within(dialog).getByText("No passport number is stored.")).toBeTruthy();
-    expect(within(dialog).getByRole("button", { name: "Save contact" })).toBeTruthy();
+    expect(within(dialog).getByRole("button", { name: "Submit" })).toBeTruthy();
   });
 
   it("requires completing every step before the final one is reachable", () => {
@@ -83,8 +83,19 @@ describe("ContactEditorDialog", () => {
 
     fireEvent.click(within(dialog).getByRole("button", { name: "Go to step: Travel details" }));
     expect(within(dialog).getByRole("heading", { name: "Travel details" })).toBeTruthy();
-    expect(within(dialog).getByRole("button", { name: "Save contact" })).toBeTruthy();
+    expect(within(dialog).getByRole("button", { name: "Submit" })).toBeTruthy();
     expect(within(dialog).queryByRole("button", { name: "Next" })).toBeNull();
+  });
+
+  it("does not save a contact when Next submits the form early", async () => {
+    render(<ContactEditorDialog open userId="user-1" onOpenChange={vi.fn()} />);
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText("Full name"), { target: { value: "Jordan Rivera" } });
+    fireEvent.submit(dialog.querySelector("form")!);
+
+    expect(contactRepository.create).not.toHaveBeenCalled();
+    expect(within(dialog).getByRole("heading", { name: "Contact details" })).toBeTruthy();
+    expect(within(dialog).queryByRole("button", { name: "Submit" })).toBeNull();
   });
 
   it("preserves manual form state while switching add methods", () => {

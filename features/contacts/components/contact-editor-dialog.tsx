@@ -1,5 +1,6 @@
 "use client";
 
+import { isValidBirthDate, latestBirthDate } from "@/lib/auth/birth-date";
 import { localizeThrownError } from "@/lib/i18n/localize-error";
 
 import { CalendarDays, ContactRound, Mail, ShieldCheck, Sparkles, UserRound } from "lucide-react";
@@ -214,6 +215,9 @@ function ContactForm({
       if (name.length < 2) errors.fullName = "Enter at least 2 characters.";
       else if (name.length > 100) errors.fullName = "Use no more than 100 characters.";
     }
+    if (targetStep === 3 && values.birthDate && !isValidBirthDate(values.birthDate)) {
+      errors.birthDate = t("errors.validDob");
+    }
     return errors;
   }
 
@@ -261,6 +265,18 @@ function ContactForm({
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!isRelationshipOnly && step < steps.length) {
+      handleNext();
+      return;
+    }
+    if (!isRelationshipOnly && !allVisited) return;
+    if (!isRelationshipOnly && values.birthDate && !isValidBirthDate(values.birthDate)) {
+      const errors = { birthDate: t("errors.validDob") };
+      setFieldErrors(errors);
+      if (step !== 3) goToStep(3);
+      focusFirstError(errors);
+      return;
+    }
     const fullName = values.fullName.trim();
     if (fullName.length < 2) {
       const errors = { fullName: "Enter a full name with at least 2 characters." };
@@ -518,8 +534,9 @@ function ContactForm({
                   type="date"
                   value={values.birthDate}
                   onChange={(event) => setField("birthDate", event.target.value)}
-                  max={new Date().toISOString().slice(0, 10)}
+                  max={latestBirthDate()}
                   helper="Private · useful for age requirements."
+                  error={fieldErrors.birthDate}
                 />
                 <Field
                   label={t("settings.preferredLanguage")}
@@ -683,11 +700,7 @@ function ContactForm({
                 ? operation === "edit"
                   ? t("common.updating")
                   : t("common.creating")
-                : contact
-                  ? t("common.updateContact")
-                  : attachToTrip
-                    ? t("common.saveAndAdd")
-                    : t("common.saveContact")}
+                : t("common.submit")}
             </Button>
           )}
         </DialogFooter>
