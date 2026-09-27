@@ -20,7 +20,9 @@ export type OutboxEntityType =
   | "notification"
   | "decision"
   | "decisionOption"
-  | "decisionVote";
+  | "decisionVote"
+  | "tripNote"
+  | "tripTask";
 export type OutboxOperation = "insert" | "update" | "delete";
 export type OutboxMutationStatus = "pending" | "processing" | "blocked";
 

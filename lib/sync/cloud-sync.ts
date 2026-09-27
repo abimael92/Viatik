@@ -1,6 +1,8 @@
 import type { RealtimeChannel, RealtimePostgresChangesPayload, SupabaseClient } from "@supabase/supabase-js";
 
 import type { Activity, ActivityPersonalBudget, Contact, Decision, DecisionOption, DecisionVote, Expense, ExpenseSettlement, ExpenseShare, Trip, TripInvitation, TripMember, TripTraveler, UserWallet } from "@/features/domain/entities";
+import type { TripNote } from "@/features/trips/domain/trip-note";
+import type { TripTask } from "@/features/trips/domain/trip-task";
 import type { TripMedia } from "@/features/domain/entities-media";
 import type { TripFeedItem } from "@/features/feed/domain/feed-types";
 import type { TripShareLink } from "@/features/sharing/domain/share-types";
@@ -41,6 +43,8 @@ import {
   rowToDecision,
   rowToDecisionOption,
   rowToDecisionVote,
+  rowToNote,
+  rowToTask,
 } from "@/lib/supabase/mappers";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import type { OutboxEntityType } from "@/lib/sync/types";
@@ -56,7 +60,7 @@ function getDb(): ViatikDatabase {
 const LAST_PULL_KEY = "cloud:last-pull";
 const ACTIVE_USER_KEY = "cloud:active-user";
 const PULL_PAGE_SIZE = 500;
-const OPTIONAL_REMOTE_TABLES = new Set(["activity_personal_budgets", "decisions", "decision_options", "decision_votes"]);
+const OPTIONAL_REMOTE_TABLES = new Set(["activity_personal_budgets", "decisions", "decision_options", "decision_votes", "trip_notes", "trip_tasks"]);
 const CREW_POLL_TABLES = new Set(["decisions", "decision_options", "decision_votes"]);
 let realtimeChannel: RealtimeChannel | null = null;
 let pollRealtimeChannel: RealtimeChannel | null = null;
@@ -83,9 +87,11 @@ const tableDefinitions = [
   { table: "decisions", entityType: "decision" as const, map: rowToDecision, store: "decisions" as const },
   { table: "decision_options", entityType: "decisionOption" as const, map: rowToDecisionOption, store: "decisionOptions" as const },
   { table: "decision_votes", entityType: "decisionVote" as const, map: rowToDecisionVote, store: "decisionVotes" as const },
+  { table: "trip_notes", entityType: "tripNote" as const, map: rowToNote, store: "tripNotes" as const },
+  { table: "trip_tasks", entityType: "tripTask" as const, map: rowToTask, store: "tripTasks" as const },
 ];
 
-type RemoteEntity = Trip | TripMember | TripInvitation | Activity | ActivityPersonalBudget | Expense | ExpenseShare | TripMedia | ExpenseSettlement | Contact | TripTraveler | VaultEntry | VaultKeyset | TripWeatherForecast | UserWallet | TripShareLink | Notification | Decision | DecisionOption | DecisionVote;
+type RemoteEntity = Trip | TripMember | TripInvitation | Activity | ActivityPersonalBudget | Expense | ExpenseShare | TripMedia | ExpenseSettlement | Contact | TripTraveler | VaultEntry | VaultKeyset | TripWeatherForecast | UserWallet | TripShareLink | Notification | Decision | DecisionOption | DecisionVote | TripNote | TripTask;
 
 async function signedMediaUrl(client: SupabaseClient, entity: RemoteEntity, signal?: AbortSignal): Promise<RemoteEntity> {
   signal?.throwIfAborted();
