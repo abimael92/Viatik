@@ -5,6 +5,10 @@ import { describe, expect, it } from "vitest";
 const budgetMigration = readFileSync(join(process.cwd(), "supabase/migrations/00000000000029_finance_budgets.sql"), "utf8");
 const casMigration = readFileSync(join(process.cwd(), "supabase/migrations/00000000000030_finance_cas.sql"), "utf8");
 const plannedMigration = readFileSync(join(process.cwd(), "supabase/migrations/00000000000031_finance_planned_estimates.sql"), "utf8");
+const settlementRateMigration = readFileSync(
+  join(process.cwd(), "supabase/migrations/00000000000067_settlement_exchange_rate_snapshot.sql"),
+  "utf8",
+);
 
 describe("finance budgets migration (Phase 2A)", () => {
   it("adds trip-level budget and expense metadata columns", () => {
@@ -82,5 +86,13 @@ describe("finance planned-estimates migration (Phase 2B)", () => {
   it("still registers the finance entities in the recreated CAS function", () => {
     expect(plannedMigration).toMatch(/when 'userWallet' then 'user_wallets'/);
     expect(plannedMigration).toMatch(/when 'dailyBudgetOverride' then 'daily_budget_overrides'/);
+  });
+});
+
+describe("settlement exchange-rate snapshot", () => {
+  it("adds a nullable frozen rate without rewriting settlement updates", () => {
+    expect(settlementRateMigration).toContain("add column if not exists exchange_rate_to_base numeric");
+    expect(settlementRateMigration).toContain("exchange_rate_to_base is null or exchange_rate_to_base > 0");
+    expect(settlementRateMigration).not.toContain("update public.expense_settlements");
   });
 });
