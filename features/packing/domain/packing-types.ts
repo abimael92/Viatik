@@ -46,7 +46,10 @@ export interface PackingItem {
   category: PackingCategory;
   name: string;
   quantity: number;
+  /** Outbound checklist. Independent of `packedForReturn`. */
   isPacked: boolean;
+  /** Return-home checklist. Independent of `isPacked`. */
+  packedForReturn: boolean;
   isSuggested: boolean;
   suggestedReason: string | null;
   position: number;
@@ -90,6 +93,8 @@ export interface PackingRepository {
   watchByTrip(tripId: string, onChange: (items: PackingItem[]) => void): () => void;
   toggle(id: string, isPacked: boolean): Promise<void>;
   setPacked(ids: string[], isPacked: boolean): Promise<void>;
+  /** Updates only `packedForReturn`. Outbound `isPacked` is left unchanged. */
+  setPackedForReturn(ids: string[], packedForReturn: boolean): Promise<void>;
   updateQuantity(id: string, quantity: number): Promise<void>;
   addCustom(input: {
     tripId: string;

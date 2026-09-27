@@ -36,8 +36,9 @@ describe("DexiePackingRepository", () => {
     expect(await db.packingItems.get(second.id)).toEqual(expect.objectContaining({ quantity: 2, isPacked: true }));
 
     await packingRepository.setPacked([first.id, second.id], false);
-    expect(await db.packingItems.get(first.id)).toEqual(expect.objectContaining({ isPacked: false }));
-    expect(await db.packingItems.get(second.id)).toEqual(expect.objectContaining({ isPacked: false }));
+    await packingRepository.setPackedForReturn([first.id], true);
+    expect(await db.packingItems.get(first.id)).toEqual(expect.objectContaining({ isPacked: false, packedForReturn: true }));
+    expect(await db.packingItems.get(second.id)).toEqual(expect.objectContaining({ isPacked: false, packedForReturn: false }));
   });
 
   it("does not add duplicate item names after casing and whitespace normalization", async () => {

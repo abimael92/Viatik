@@ -28,14 +28,19 @@ export const CURRENCY_EXPONENTS: Readonly<Record<string, number>> = {
  * A cached exchange rate for one (base → quote) pair. Persisted in the local
  * `currencyRates` store so it survives offline. `rate` means "1 base = rate quote".
  */
+/** Where a cached pair came from. Manual rows are never replaced by a live fetch. */
+export type CurrencyRateSource = "default" | "live" | "manual";
+
 export interface CurrencyRate {
   /** Composite key `${baseCurrency}:${quoteCurrency}`. */
   id: string;
   baseCurrency: CurrencyCode;
   quoteCurrency: CurrencyCode;
   rate: number;
+  /** `default` is the built-in table, `live` is a fetched quote, `manual` is a user-confirmed rate. */
+  source: CurrencyRateSource;
   fetchedAt: string; // ISO datetime
-  /** When the rate was last confirmed; null for built-in default rates. */
+  /** When a live quote should be refreshed; null for built-in and manual rates. */
   expiresAt: string | null;
   createdAt: string; // ISO datetime
   updatedAt: string; // ISO datetime
@@ -44,8 +49,12 @@ export interface CurrencyRate {
 /** Storage-agnostic contract for the offline rate cache. */
 export interface CurrencyRateRepository {
   getRate(baseCurrency: CurrencyCode, quoteCurrency: CurrencyCode): Promise<CurrencyRate | undefined>;
-  /** Persist a user-confirmed (or fetched) rate for a pair. */
+  /** Persist a user-confirmed rate for a pair. Marks the row `manual`. */
   saveRate(baseCurrency: CurrencyCode, quoteCurrency: CurrencyCode, rate: number): Promise<CurrencyRate>;
+  /**
+   * Persist a fetched quote. A `manual` row for the same pair is left unchanged.
+   */
+  saveLiveRate(baseCurrency: CurrencyCode, quoteCurrency: CurrencyCode, rate: number): Promise<CurrencyRate>;
   listRates(): Promise<CurrencyRate[]>;
   /** Seed the empty cache with built-in default rates. No-op once populated. */
   ensureDefaults(): Promise<void>;

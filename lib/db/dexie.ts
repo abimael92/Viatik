@@ -16,6 +16,8 @@ import type { CurrencyRate } from "@/features/finance/domain/currency-types";
 import type { TripShareLink } from "@/features/sharing/domain/share-types";
 import type { TransitSegment } from "@/features/transit/domain/transit-types";
 import type { JournalDayEntry } from "@/features/journal/domain/journal-types";
+import type { TripNote } from "@/features/trips/domain/trip-note";
+import type { TripTask } from "@/features/trips/domain/trip-task";
 import type { DailyStepCount } from "@/features/steps/domain/step-types";
 import type { OutboxMutation, SyncConflict, SyncLease, SyncMetadata } from "@/lib/sync/types";
 
@@ -77,7 +79,7 @@ export class ViatikDatabase extends Dexie {
   /** Local-only group polls and votes (not synced — device-local, like feed). */
   polls!: EntityTable<Poll, "id">;
   pollVotes!: EntityTable<PollVote, "id">;
-  /** Local-only cached offline exchange rates (not synced). */
+  /** Local-only cached offline exchange rates (not synced). `source` is Dexie v38. */
   currencyRates!: EntityTable<CurrencyRate, "id">;
   /** Guest share links for trips (synced via the outbox to Supabase). */
   shareLinks!: EntityTable<TripShareLink, "id">;
@@ -89,6 +91,8 @@ export class ViatikDatabase extends Dexie {
   decisionOptions!: EntityTable<DecisionOption, "id">;
   decisionVotes!: EntityTable<DecisionVote, "id">;
   notifications!: EntityTable<Notification, "id">;
+  tripNotes!: EntityTable<TripNote, "id">;
+  tripTasks!: EntityTable<TripTask, "id">;
 
   constructor(name: string) {
     super(name);
@@ -471,6 +475,41 @@ export class ViatikDatabase extends Dexie {
           settlement.settledAt = settlement.settledAt ?? settlement.createdAt ?? new Date().toISOString();
         }
       });
+    });
+
+    // v38: provenance on the local-only exchange-rate cache. Expense snapshots
+    // stay on `exchangeRateToBase`; this flag is not synced.
+    this.version(38).stores({}).upgrade(async (transaction) => {
+      await transaction.table("currencyRates").toCollection().modify((rate: Record<string, unknown>) => {
+        if (rate.source !== "live" && rate.source !== "manual" && rate.source !== "default") {
+          rate.source = "default";
+        }
+      });
+    });
+
+    // v39: return-home packing checks. Local-only, and independent of outbound `isPacked`.
+    this.version(39).stores({}).upgrade(async (transaction) => {
+      await transaction.table("packingItems").toCollection().modify((item: Record<string, unknown>) => {
+        if (typeof item.packedForReturn !== "boolean") item.packedForReturn = false;
+      });
+    });
+
+    // v40: freeze the settlement exchange rate. Null means the row is already
+    // in the trip base currency, which is how every existing settlement was logged.
+    this.version(40).stores({}).upgrade(async (transaction) => {
+      await transaction.table("expenseSettlements").toCollection().modify((settlement: Record<string, unknown>) => {
+        if (settlement.exchangeRateToBase == null) settlement.exchangeRateToBase = null;
+      });
+    });
+
+    // v41: shared trip notes. v40 is the settlement rate snapshot.
+    this.version(41).stores({
+      tripNotes: "id, tripId, userId, createdAt, updatedAt, deletedAt",
+    });
+
+    // v42: crew research tasks. v41 is trip notes.
+    this.version(42).stores({
+      tripTasks: "id, tripId, creatorId, assigneeId, status, createdAt, updatedAt, deletedAt",
     });
   }
 }

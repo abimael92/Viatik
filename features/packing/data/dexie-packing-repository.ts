@@ -39,6 +39,7 @@ function newPackingItem(
     name: draft.name,
     quantity: draft.quantity,
     isPacked: false,
+    packedForReturn: false,
     isSuggested: true,
     suggestedReason: draft.reason,
     position,
@@ -88,6 +89,18 @@ export class DexiePackingRepository implements PackingRepository {
     });
   }
 
+  async setPackedForReturn(ids: string[], packedForReturn: boolean): Promise<void> {
+    if (!ids.length) return;
+    const db = getDb();
+    const now = new Date().toISOString();
+    await db.transaction("rw", db.packingItems, async () => {
+      for (const id of ids) {
+        const existing = await db.packingItems.get(id);
+        if (existing) await db.packingItems.put({ ...existing, packedForReturn, updatedAt: now });
+      }
+    });
+  }
+
   async updateQuantity(id: string, quantity: number): Promise<void> {
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
       throw new Error("Quantity must be a whole number from 1 to 99.");
@@ -121,6 +134,7 @@ export class DexiePackingRepository implements PackingRepository {
       name,
       quantity: input.quantity ?? 1,
       isPacked: false,
+      packedForReturn: false,
       isSuggested: false,
       suggestedReason: null,
       position: (last?.position ?? 0) + 1,
