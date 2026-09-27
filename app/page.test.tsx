@@ -46,6 +46,28 @@ describe("landing page visual hierarchy", () => {
     expect(heroSecondary.className).toContain("bg-transparent");
     expect(heroSecondary.className).toContain("hover:bg-viatik-magenta/10");
     expect(within(hero!).queryByText("Free to start. No password required.")).toBeNull();
+
+    const themeToggle = within(navigation).getByRole("button", { name: "Toggle theme" });
+    expect(themeToggle.className).toContain("text-muted-foreground");
+    expect(themeToggle.className).toContain("hover:bg-muted");
+  });
+
+  it("places each feature title beside its icon", () => {
+    render(<Home />);
+
+    const title = screen.getByRole("heading", { name: "Plan together" });
+    const row = title.parentElement;
+    expect(row?.className).toContain("flex");
+    expect(row?.className).toContain("items-center");
+    expect(row?.className).not.toContain("flex-col");
+    expect(title.className).not.toContain("mt-");
+    expect(row?.firstElementChild).not.toBe(title);
+    expect(row?.firstElementChild?.className).toContain("bg-viatik-magenta/10");
+    expect(row?.firstElementChild?.className).toContain("text-viatik-magenta");
+
+    const offline = screen.getByRole("heading", { name: "Ready offline" });
+    expect(offline.parentElement?.firstElementChild?.className).toContain("bg-viatik-blue/10");
+    expect(offline.parentElement?.firstElementChild?.className).toContain("text-viatik-blue");
   });
 
   it("shows the offline-ready synchronized product state", () => {
@@ -54,5 +76,13 @@ describe("landing page visual hierarchy", () => {
     expect(screen.getByText("Offline Ready")).toBeTruthy();
     expect(screen.getByText("Synced")).toBeTruthy();
     expect(screen.getByText("Today in Lisbon")).toBeTruthy();
+
+    const cta = screen.getByRole("heading", { name: "Your next trip deserves one shared plan." }).closest("section");
+    expect(cta?.className).toContain("glow-viatik");
+    expect(cta?.className).toContain("border-viatik-magenta/35");
+    expect(cta?.className).toContain("bg-surface-dark");
+
+    const features = screen.getByRole("heading", { name: "Less coordination. More adventure." }).closest("section");
+    expect(features?.querySelector(".glow-viatik")).not.toBeNull();
   });
 });

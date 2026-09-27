@@ -82,7 +82,7 @@ export function Toaster() {
               <Icon className="size-5" aria-hidden />
             </span>
             <div className="min-w-0 flex-1">
-              {title && <p className="text-sm font-semibold">{title}</p>}
+              {title && <p className="text-sm font-semibold text-foreground">{title}</p>}
               {description && <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>}
             </div>
             <button
