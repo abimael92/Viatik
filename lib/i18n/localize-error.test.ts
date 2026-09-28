@@ -28,6 +28,12 @@ describe("localizeUserError", () => {
     expect(localizeUserError("Passkey sign-in did not create a session.", t, "errors.unexpected")).toBe(
       "La clave de acceso no creó una sesión.",
     );
+    expect(localizeUserError("errors.validPhone", t, "errors.unexpected")).toBe(
+      "Introduce un número de teléfono válido.",
+    );
+    expect(
+      localizeUserError("Trips can be up to 60 days long. This trip is 61 days.", t, "errors.unexpected"),
+    ).toBe("Los viajes pueden durar hasta 60 días. Este viaje dura 61 días.");
     expect(localizeUserError("Email not confirmed", t, "errors.unexpected")).toBe(
       "Tu correo aún está pendiente de confirmación. Abre el enlace que te enviamos y luego inicia sesión.",
     );

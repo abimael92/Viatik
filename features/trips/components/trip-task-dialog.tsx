@@ -18,7 +18,9 @@ import { collaborationRepository } from "@/features/collaboration/data/dexie-col
 import { tripTaskRepository } from "@/features/trips/data/dexie-trip-task-repository";
 import type { TripTask } from "@/features/trips/domain/trip-task";
 import { mediaIdFromStoragePath, storeTaskImages } from "@/features/trips/lib/task-attachments";
+import { localizeThrownError } from "@/lib/i18n/localize-error";
 import { useI18n } from "@/lib/i18n/i18n-provider";
+import { validateResolution } from "@/lib/validation/common";
 
 const fieldClass =
   "w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -137,11 +139,12 @@ function ResolveTaskForm({
   async function resolve(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (saving) return;
-    const text = resolution.trim();
-    if (!text) {
-      setError(t("copy.resolutionRequired"));
+    const issue = validateResolution(resolution);
+    if (issue) {
+      setError(t(issue.key, issue.variables));
       return;
     }
+    const text = resolution.trim();
     const form = event.currentTarget;
     setSaving(true);
     setError(null);
@@ -153,7 +156,7 @@ function ResolveTaskForm({
       await tripTaskRepository.resolve(task.id, userId, text, attachments);
       onClose();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t("copy.unableSaveTask"));
+      setError(localizeThrownError(cause, t, "copy.unableSaveTask"));
     } finally {
       setSaving(false);
     }
@@ -169,6 +172,8 @@ function ResolveTaskForm({
         value={resolution}
         onChange={(event) => setResolution(event.target.value)}
         required
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? "task-resolution-error" : undefined}
         className={`${fieldClass} min-h-24`}
       />
       <label htmlFor="task-resolution-file" className="block text-sm font-medium text-foreground">
@@ -183,7 +188,7 @@ function ResolveTaskForm({
         className={fieldClass}
       />
       {error ? (
-        <p role="alert" className="text-sm text-destructive">
+        <p id="task-resolution-error" role="alert" className="text-sm text-destructive">
           {error}
         </p>
       ) : null}

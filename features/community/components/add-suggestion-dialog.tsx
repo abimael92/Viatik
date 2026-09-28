@@ -1,6 +1,17 @@
 "use client";
 
-import { localizeThrownError } from "@/lib/i18n/localize-error";
+import { localizeThrownError, localizeUserError } from "@/lib/i18n/localize-error";
+import {
+  ADULT_COUNT_MAX,
+  ADULT_COUNT_MIN,
+  CHILD_COUNT_MAX,
+  CHILD_COUNT_MIN,
+  COVER_IMAGE_MAX_BYTES,
+  validateContactName,
+  validateImageFile,
+  validateOnboardingName,
+  validateWholeCount,
+} from "@/lib/validation/common";
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -256,27 +267,29 @@ function SuggestionForm({
   const validateStep = (s: number): Record<string, string> => {
     const errors: Record<string, string> = {};
     if (s === 0) {
-      const trimmedName = name.trim();
-      if (trimmedName.length < 2 || trimmedName.length > 60) {
-        errors.name = "Enter a name between 2 and 60 characters.";
-      }
+      const nameIssue = validateOnboardingName(name);
+      if (nameIssue) errors.name = t(nameIssue.key, nameIssue.variables);
       if (!startDate || !endDate) {
-        errors.dates = t("copy.datesRequired");
+        errors.dates = t("errors.datesRequired");
       } else if (startDate < today) {
-        errors.dates = "Start date cannot be before today.";
+        errors.dates = t("errors.startDatePast");
       } else if (dateError) {
-        errors.dates = dateError;
+        errors.dates = localizeUserError(dateError, t, "errors.invalidDates");
       }
     }
     if (s === 2) {
-      if (!Number.isInteger(adultCount) || adultCount < 1 || adultCount > 99) errors.adultCount = t("copy.wholeNumberAdults1");
-      if (!Number.isInteger(childCount) || childCount < 0 || childCount > 99) errors.childCount = t("copy.wholeNumberRange0");
-      if (manualTravelers.some((traveler) => traveler.fullName.trim().length < 2)) errors.travelers = "Enter a name for every added traveler.";
+      const adultIssue = validateWholeCount(adultCount, ADULT_COUNT_MIN, ADULT_COUNT_MAX);
+      if (adultIssue) errors.adultCount = t(adultIssue.key, adultIssue.variables);
+      const childIssue = validateWholeCount(childCount, CHILD_COUNT_MIN, CHILD_COUNT_MAX);
+      if (childIssue) errors.childCount = t(childIssue.key, childIssue.variables);
+      if (manualTravelers.some((traveler) => validateContactName(traveler.fullName))) {
+        errors.travelers = t("errors.travelerNameRequired");
+      }
       const namedAdults = Object.values(selectedContacts).filter((type) => type === "adult").length + manualTravelers.filter((traveler) => traveler.travelerType === "adult").length;
       const namedChildren = Object.values(selectedContacts).filter((type) => type === "child").length + manualTravelers.filter((traveler) => traveler.travelerType === "child").length;
-      if (namedAdults > adultCount || namedChildren > childCount) errors.travelers = "Named travelers cannot exceed the adult and child totals above.";
-      if (coverFile && coverFile.size > 5 * 1024 * 1024) errors.coverImage = "Choose an image smaller than 5 MB.";
-      if (coverFile && !["image/jpeg", "image/png", "image/webp"].includes(coverFile.type)) errors.coverImage = "Choose a JPG, PNG, or WebP image.";
+      if (namedAdults > adultCount || namedChildren > childCount) errors.travelers = t("errors.travelersExceedTotals");
+      const imageIssue = validateImageFile(coverFile, { maxBytes: COVER_IMAGE_MAX_BYTES });
+      if (imageIssue) errors.coverImage = t(imageIssue.key, imageIssue.variables);
     }
     return errors;
   };
@@ -447,8 +460,9 @@ function SuggestionForm({
                 placeholder={t("copy.placeholderTripName")}
                 className="mt-1"
                 aria-invalid={Boolean(fieldErrors.name)}
+                aria-describedby={fieldErrors.name ? "suggestion-name-error" : undefined}
               />
-              {fieldErrors.name && <p className="mt-1 text-xs text-destructive">{fieldErrors.name}</p>}
+              {fieldErrors.name && <p id="suggestion-name-error" role="alert" className="mt-1 text-xs text-destructive">{fieldErrors.name}</p>}
             </div>
 
             <div>
@@ -485,6 +499,7 @@ function SuggestionForm({
                   onChange={(event) => handleStartDate(event.target.value)}
                   className="mt-1"
                   aria-invalid={Boolean(fieldErrors.dates)}
+                  aria-describedby={fieldErrors.dates ? "suggestion-dates-error" : undefined}
                 />
               </div>
               <div>
@@ -498,6 +513,7 @@ function SuggestionForm({
                   onChange={(event) => handleEndDate(event.target.value)}
                   className="mt-1"
                   aria-invalid={Boolean(fieldErrors.dates)}
+                  aria-describedby={fieldErrors.dates ? "suggestion-dates-error" : undefined}
                 />
               </div>
             </div>
@@ -509,7 +525,7 @@ function SuggestionForm({
                 </span>
               )}
             </p>
-            {fieldErrors.dates && <p className="text-xs text-destructive">{fieldErrors.dates}</p>}
+            {fieldErrors.dates && <p id="suggestion-dates-error" role="alert" className="text-xs text-destructive">{fieldErrors.dates}</p>}
           </div>
         )}
 
@@ -566,6 +582,7 @@ function SuggestionForm({
                   onChange={(event) => setAdultCount(Number(event.target.value))}
                   className="mt-1"
                   aria-invalid={Boolean(fieldErrors.adultCount)}
+                  aria-describedby={fieldErrors.adultCount ? "suggestion-adults-error" : undefined}
                 />
               </div>
               <div>
@@ -578,6 +595,8 @@ function SuggestionForm({
                   value={childCount}
                   onChange={(event) => setChildCount(Number(event.target.value))}
                   className="mt-1"
+                  aria-invalid={Boolean(fieldErrors.childCount)}
+                  aria-describedby={fieldErrors.childCount ? "suggestion-children-error" : undefined}
                 />
               </div>
               <div>
@@ -596,8 +615,8 @@ function SuggestionForm({
                 </select>
               </div>
             </div>
-            {fieldErrors.adultCount && <p className="text-xs text-destructive">{fieldErrors.adultCount}</p>}
-            {fieldErrors.childCount && <p className="text-xs text-destructive">{fieldErrors.childCount}</p>}
+            {fieldErrors.adultCount && <p id="suggestion-adults-error" role="alert" className="text-xs text-destructive">{fieldErrors.adultCount}</p>}
+            {fieldErrors.childCount && <p id="suggestion-children-error" role="alert" className="text-xs text-destructive">{fieldErrors.childCount}</p>}
 
             <fieldset id="travelers" className="space-y-3 rounded-xl border p-4">
               <legend className="px-1 text-sm font-semibold">{t("copy.namedTravelers")}</legend>
@@ -655,7 +674,7 @@ function SuggestionForm({
                   </div>
                 </div>
               ))}
-              {fieldErrors.travelers && <p role="alert" className="text-xs font-semibold text-destructive">{fieldErrors.travelers}</p>}
+              {fieldErrors.travelers && <p id="suggestion-travelers-error" role="alert" className="text-xs font-semibold text-destructive">{fieldErrors.travelers}</p>}
               <Button type="button" variant="outline" size="sm" onClick={() => {
                 setManualTravelers((items) => [...items, { id: crypto.randomUUID(), fullName: "", email: "", phone: "", travelerType: "adult" }]);
                 setAdultCount((count) => Math.min(99, count + 1));
@@ -665,8 +684,16 @@ function SuggestionForm({
             <div>
               <Label htmlFor="suggestion-cover">{t("copy.coverImage")}</Label>
               <p className="text-xs text-muted-foreground">{t("copy.imageTypes")}</p>
-              <Input id="suggestion-cover" type="file" accept="image/jpeg,image/png,image/webp" className="mt-1" onChange={(event) => setCoverFile(event.target.files?.[0] ?? null)} />
-              {fieldErrors.coverImage && <p role="alert" className="mt-1 text-xs font-semibold text-destructive">{fieldErrors.coverImage}</p>}
+              <Input
+                id="suggestion-cover"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="mt-1"
+                aria-invalid={Boolean(fieldErrors.coverImage)}
+                aria-describedby={fieldErrors.coverImage ? "suggestion-cover-error" : undefined}
+                onChange={(event) => setCoverFile(event.target.files?.[0] ?? null)}
+              />
+              {fieldErrors.coverImage && <p id="suggestion-cover-error" role="alert" className="mt-1 text-xs font-semibold text-destructive">{fieldErrors.coverImage}</p>}
             </div>
           </div>
         )}

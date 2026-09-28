@@ -30,10 +30,20 @@ const patterns: Array<{ test: RegExp; key: TranslationKey }> = [
   { test: /unable to reach the weather service/i, key: "errors.weatherUnreachable" },
 ];
 
-/** Turn a thrown or server-returned English failure into the active locale. */
+function translationKey(value: string): TranslationKey | null {
+  if (!value.startsWith("errors.")) return null;
+  const name = value.slice("errors.".length);
+  return name in errorCopy.en ? (`errors.${name}` as TranslationKey) : null;
+}
+
+/** Turn a thrown or server-returned failure into the active locale. */
 export function localizeUserError(message: string | null | undefined, t: Translate, fallback: TranslationKey): string {
   const value = message?.trim();
   if (!value) return t(fallback);
+  const key = translationKey(value);
+  if (key) return t(key);
+  const longTrip = /^Trips can be up to (\d+) days long\. This trip is (\d+) days\.$/.exec(value);
+  if (longTrip) return t("errors.tripTooLong", { max: Number(longTrip[1]), days: Number(longTrip[2]) });
   const known = exact.get(value);
   if (known) return t(known);
   const pattern = patterns.find((entry) => entry.test.test(value));

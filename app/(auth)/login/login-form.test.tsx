@@ -72,6 +72,8 @@ describe("native passkey login", () => {
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
     expect(birthDate.getAttribute("max")).toBe(latestBirthDate());
+    fireEvent.change(screen.getByLabelText(/display name/i), { target: { value: "Ada Lovelace" } });
+    fireEvent.change(screen.getByLabelText(/phone/i), { target: { value: "+1 555 012 3456" } });
     fireEvent.change(birthDate, { target: { value: today } });
     fireEvent.submit(birthDate.closest("form")!);
 

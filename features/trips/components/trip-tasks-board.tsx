@@ -14,7 +14,9 @@ import {
   memberName,
   useTripCrew,
 } from "@/features/trips/components/trip-task-dialog";
+import { localizeThrownError } from "@/lib/i18n/localize-error";
 import { useI18n } from "@/lib/i18n/i18n-provider";
+import { validateTaskTitle } from "@/lib/validation/common";
 
 const fieldClass =
   "w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -40,11 +42,12 @@ export function TripTasksBoard({ tripId, userId }: { tripId: string; userId: str
   async function createTask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (saving) return;
-    const nextTitle = title.trim();
-    if (!nextTitle) {
-      setError(t("copy.taskTitleRequired"));
+    const titleIssue = validateTaskTitle(title);
+    if (titleIssue) {
+      setError(t(titleIssue.key, titleIssue.variables));
       return;
     }
+    const nextTitle = title.trim();
     const form = event.currentTarget;
     setSaving(true);
     setError(null);
@@ -67,7 +70,7 @@ export function TripTasksBoard({ tripId, userId }: { tripId: string; userId: str
       setAssigneeId("");
       form.reset();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t("copy.unableSaveTask"));
+      setError(localizeThrownError(cause, t, "copy.unableSaveTask"));
     } finally {
       setSaving(false);
     }
@@ -93,6 +96,8 @@ export function TripTasksBoard({ tripId, userId }: { tripId: string; userId: str
             maxLength={TRIP_TASK_TITLE_MAX}
             onChange={(event) => setTitle(event.target.value)}
             required
+            aria-invalid={Boolean(error)}
+            aria-describedby={error ? "task-title-error" : undefined}
             className="bg-background text-foreground"
           />
           <label htmlFor="task-description" className="block text-sm font-medium text-foreground">
@@ -129,7 +134,7 @@ export function TripTasksBoard({ tripId, userId }: { tripId: string; userId: str
           </label>
           <input id="task-create-file" name="attachments" type="file" accept="image/*" multiple className={fieldClass} />
           {error ? (
-            <p role="alert" className="text-sm text-destructive">
+            <p id="task-title-error" role="alert" className="text-sm text-destructive">
               {error}
             </p>
           ) : null}

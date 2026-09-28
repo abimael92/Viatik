@@ -13,6 +13,12 @@ import {
   verifyEmailOtp,
 } from "@/app/actions/auth";
 import { isValidBirthDate, latestBirthDate } from "@/lib/auth/birth-date";
+import {
+  PROFILE_IMAGE_MAX_BYTES,
+  validateDisplayName,
+  validateImageFile,
+  validatePhone,
+} from "@/lib/validation/common";
 import { localizeThrownError, localizeUserError } from "@/lib/i18n/localize-error";
 import { AvatarPicker, type AvatarChange } from "@/components/ui/avatar-picker";
 import { Button } from "@/components/ui/button";
@@ -101,6 +107,7 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
   const [digits, setDigits] = useState<string[]>(() => Array.from({ length: OTP_LENGTH }, () => ""));
   const [sent, setSent] = useState(false);
   const [message, setMessage] = useState<string | null>(initialError ?? null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
   const [pending, startTransition] = useTransition();
@@ -116,14 +123,30 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
     router.refresh();
   }
 
+  function collectRegisterErrors(): Record<string, string> {
+    if (mode !== "register") return {};
+    const next: Record<string, string> = {};
+    const nameIssue = validateDisplayName(fullName);
+    if (nameIssue) next.fullName = t(nameIssue.key, nameIssue.variables);
+    const phoneIssue = validatePhone(phone);
+    if (phoneIssue) next.phone = t(phoneIssue.key, phoneIssue.variables);
+    if (!birthDate) next.birthDate = t("errors.enterDob");
+    else if (!isValidBirthDate(birthDate)) next.birthDate = t("errors.validDob");
+    const imageIssue = validateImageFile(avatarFile, {
+      maxBytes: PROFILE_IMAGE_MAX_BYTES,
+      sizeKey: "errors.imageTooLarge",
+    });
+    if (imageIssue) next.avatar = t(imageIssue.key, imageIssue.variables);
+    return next;
+  }
+
   function submitWithPassword(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage(null);
     setSuccess(null);
-    if (mode === "register" && !isValidBirthDate(birthDate)) {
-      setMessage(t("errors.validDob"));
-      return;
-    }
+    const next = collectRegisterErrors();
+    setFieldErrors(next);
+    if (Object.keys(next).length > 0) return;
     startTransition(async () => {
       if (mode === "register") {
         const result = await registerWithPassword(email, password, fullName, phone, birthDate, avatarFile, avatarSeed);
@@ -144,6 +167,9 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
   function requestCode() {
     setMessage(null);
     setSuccess(null);
+    const next = collectRegisterErrors();
+    setFieldErrors(next);
+    if (Object.keys(next).length > 0) return;
     startTransition(async () => {
       const result = await sendEmailOtp(email, mode === "register", mode === "register" ? fullName : undefined, mode === "register" ? phone : undefined);
       if (!result.success) {
@@ -318,13 +344,20 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
         </ul>
       )}
       {mode === "register" && (
-        <AvatarPicker
-          seed={avatarSeed}
-          src={null}
-          name={fullName}
-          onChange={handleAvatarChange}
-          uploadHint={t("auth.optionalAvatar")}
-        />
+        <div className="space-y-2">
+          <AvatarPicker
+            seed={avatarSeed}
+            src={null}
+            name={fullName}
+            onChange={handleAvatarChange}
+            uploadHint={t("auth.optionalAvatar")}
+          />
+          {fieldErrors.avatar ? (
+            <p id="register-avatar-error" role="alert" className="text-xs text-destructive">
+              {fieldErrors.avatar}
+            </p>
+          ) : null}
+        </div>
       )}
       {mode === "register" && (
         <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
@@ -332,8 +365,9 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
             <Label htmlFor="fullName">{t("common.displayName")}<span className="text-destructive" aria-hidden="true">*</span></Label>
             <div className="relative">
               <User className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input id="fullName" name="fullName" type="text" autoComplete="name" placeholder={t("copy.placeholderJohn")} minLength={2} maxLength={60} required autoFocus value={fullName} onChange={(event) => setFullName(event.target.value)} disabled={pending} className="pl-9" />
+              <Input id="fullName" name="fullName" type="text" autoComplete="name" placeholder={t("copy.placeholderJohn")} minLength={2} maxLength={60} required autoFocus value={fullName} onChange={(event) => setFullName(event.target.value)} disabled={pending} className="pl-9" aria-invalid={Boolean(fieldErrors.fullName)} aria-describedby={fieldErrors.fullName ? "fullName-error" : undefined} />
             </div>
+            {fieldErrors.fullName ? <p id="fullName-error" role="alert" className="text-xs text-destructive">{fieldErrors.fullName}</p> : null}
           </div>
           <div className="space-y-2">
             <Label htmlFor="email">{t("auth.email")} <span className="text-destructive" aria-hidden="true">*</span></Label>
@@ -346,15 +380,17 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
             <Label htmlFor="phone">{t("auth.phone")} <span className="text-destructive" aria-hidden="true">*</span></Label>
             <div className="relative">
               <Phone className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input id="phone" name="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="+1 555 012 3456" required value={phone} onChange={(event) => setPhone(event.target.value)} disabled={pending} className="pl-9" />
+              <Input id="phone" name="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="+1 555 012 3456" required value={phone} onChange={(event) => setPhone(event.target.value)} disabled={pending} className="pl-9" aria-invalid={Boolean(fieldErrors.phone)} aria-describedby={fieldErrors.phone ? "phone-error" : undefined} />
             </div>
+            {fieldErrors.phone ? <p id="phone-error" role="alert" className="text-xs text-destructive">{fieldErrors.phone}</p> : null}
           </div>
           <div className="space-y-2">
             <Label htmlFor="birthDate">{t("common.dateOfBirth")}<span className="text-destructive" aria-hidden="true">*</span></Label>
             <div className="relative">
               <CalendarDays className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input id="birthDate" name="birthDate" type="date" required max={latestBirthDate()} value={birthDate} onChange={(event) => setBirthDate(event.target.value)} disabled={pending} className="pl-9" />
+              <Input id="birthDate" name="birthDate" type="date" required max={latestBirthDate()} value={birthDate} onChange={(event) => setBirthDate(event.target.value)} disabled={pending} className="pl-9" aria-invalid={Boolean(fieldErrors.birthDate)} aria-describedby={fieldErrors.birthDate ? "birthDate-error" : undefined} />
             </div>
+            {fieldErrors.birthDate ? <p id="birthDate-error" role="alert" className="text-xs text-destructive">{fieldErrors.birthDate}</p> : null}
           </div>
           <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="password">{t("auth.password")} <span className="text-destructive" aria-hidden="true">*</span></Label>

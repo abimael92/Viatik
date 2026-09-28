@@ -193,7 +193,29 @@
   --text-4xl--line-height: 2.75rem;
 }
 
+/* Theme toggle icons. Both stay in the DOM so SSR and hydration match;
+   which one shows follows the same rules as the color tokens above. */
+.theme-toggle-sun {
+  display: none;
+}
+.theme-toggle-moon {
+  display: block;
+}
+[data-theme="dark"] .theme-toggle-sun {
+  display: block;
+}
+[data-theme="dark"] .theme-toggle-moon {
+  display: none;
+}
+
 @media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .theme-toggle-sun {
+    display: block;
+  }
+  :root:not([data-theme="light"]) .theme-toggle-moon {
+    display: none;
+  }
+
   :root:not([data-theme="light"]) {
     --background: #090a0f;
     --foreground: oklch(0.95 0.005 264);

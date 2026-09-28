@@ -13,8 +13,8 @@ function getDb(): ViatikDatabase {
 
 function cleanTitle(title: string): string {
   const value = title.trim();
-  if (!value) throw new Error("Enter a task title.");
-  if (value.length > TRIP_TASK_TITLE_MAX) throw new Error("Keep the title under 120 characters.");
+  if (!value) throw new Error("errors.taskTitleRequired");
+  if (value.length > TRIP_TASK_TITLE_MAX) throw new Error("errors.taskTitleTooLong");
   return value;
 }
 
@@ -74,7 +74,7 @@ export class DexieTripTaskRepository {
 
   async resolve(id: string, userId: string, resolutionText: string, attachments: string[]): Promise<TripTask> {
     const resolution = cleanOptional(resolutionText);
-    if (!resolution) throw new Error("Write how this was resolved.");
+    if (!resolution) throw new Error("errors.resolutionRequired");
     const db = getDb();
     const existing = await db.tripTasks.get(id);
     if (!existing || existing.deletedAt) throw new Error("That task is no longer available.");

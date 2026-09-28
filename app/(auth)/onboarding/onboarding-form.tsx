@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 
 import { completeOnboarding, type OnboardingDetails } from "@/app/actions/auth";
 import { isValidBirthDate, latestBirthDate } from "@/lib/auth/birth-date";
+import { validateOnboardingName, validatePhone } from "@/lib/validation/common";
 import { AvatarPicker, type AvatarChange } from "@/components/ui/avatar-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -90,14 +91,13 @@ export function OnboardingForm({ email, next, initialName = "" }: { email: strin
   function validateStep(targetStep: number): Record<string, string> {
     const errors: Record<string, string> = {};
     if (targetStep === 1) {
-      const name = values.fullName.trim();
-      if (name.length < 2) errors.fullName = "Enter at least 2 characters.";
-      else if (name.length > 60) errors.fullName = "Use no more than 60 characters.";
-      const phoneDigits = values.phone.replace(/\D/g, "");
-      if (!phoneDigits || phoneDigits.length < 7) errors.phone = "Enter a valid phone number.";
+      const nameIssue = validateOnboardingName(values.fullName);
+      if (nameIssue) errors.fullName = t(nameIssue.key, nameIssue.variables);
+      const phoneIssue = validatePhone(values.phone);
+      if (phoneIssue) errors.phone = t(phoneIssue.key, phoneIssue.variables);
     }
     if (targetStep === 3) {
-      if (!values.birthDate) errors.birthDate = "Enter your date of birth.";
+      if (!values.birthDate) errors.birthDate = t("errors.enterDob");
       else if (!isValidBirthDate(values.birthDate)) errors.birthDate = t("errors.validDob");
     }
     return errors;
@@ -133,7 +133,7 @@ export function OnboardingForm({ email, next, initialName = "" }: { email: strin
     if (skipped) {
       const firstUnvisited = visited.findIndex((visitedStep) => !visitedStep);
       setNotice(
-        firstUnvisited === -1 ? null : `Complete ${STEPS[firstUnvisited]} before moving on.`
+        firstUnvisited === -1 ? null : t("errors.completeStep", { step: STEPS[firstUnvisited] }),
       );
       return;
     }
@@ -345,19 +345,18 @@ function Field({
   helper?: string;
   error?: string;
 }) {
-  const helperId = helper || error ? `onboarding-${name}-help` : undefined;
+  const errorId = error ? `onboarding-${name}-error` : undefined;
+  const helperId = helper ? `onboarding-${name}-help` : undefined;
+  const describedBy = [errorId, helperId].filter(Boolean).join(" ") || undefined;
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-0.5">
         <Label htmlFor={`onboarding-${name}`}>{label}</Label>
         {props.required && <span className="text-destructive" aria-hidden="true">*</span>}
       </div>
-      {error ? (
-        <p id={helperId} role="alert" className="text-xs leading-5 text-destructive">{error}</p>
-      ) : helper ? (
-        <p id={helperId} className="text-xs leading-5 text-muted-foreground">{helper}</p>
-      ) : null}
-      <Input id={`onboarding-${name}`} name={name} aria-describedby={helperId} aria-invalid={Boolean(error)} {...props} />
+      {helper ? <p id={helperId} className="text-xs leading-5 text-muted-foreground">{helper}</p> : null}
+      <Input id={`onboarding-${name}`} name={name} aria-describedby={describedBy} aria-invalid={Boolean(error)} {...props} />
+      {error ? <p id={errorId} role="alert" className="text-xs leading-5 text-destructive">{error}</p> : null}
     </div>
   );
 }

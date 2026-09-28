@@ -53,7 +53,6 @@ vi.mock("@/lib/supabase/server-client", () => ({
   }),
 }));
 
-import { BIRTH_DATE_ERROR } from "@/lib/auth/birth-date";
 import { grantPasswordRecovery, loginWithPassword, registerWithPassword, requestPasswordReset, sendEmailOtp, sendPhoneOtp, updatePassword, verifyEmailOtp, verifyPhoneOtp } from "@/app/actions/auth";
 
 const OTP_RESULT = {
@@ -181,7 +180,7 @@ describe("registerWithPassword", () => {
 
     const result = await registerWithPassword("a@b.com", "Str0ngPass!9", "Alice", "1234567", today);
 
-    expect(result).toEqual({ success: false, error: BIRTH_DATE_ERROR });
+    expect(result).toEqual({ success: false, error: "errors.validDob" });
     expect(mocks.signUp).not.toHaveBeenCalled();
   });
 });

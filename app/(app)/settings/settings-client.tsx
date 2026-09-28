@@ -9,6 +9,12 @@ import QRCode from "react-qr-code";
 import { getConnectionQrPayload } from "@/app/actions/connections";
 import { updateProfileDetails, type ProfileDetails } from "@/app/actions/auth";
 import { isValidBirthDate, latestBirthDate } from "@/lib/auth/birth-date";
+import {
+  PROFILE_IMAGE_MAX_BYTES,
+  validateImageFile,
+  validatePhone,
+  validateProfileName,
+} from "@/lib/validation/common";
 import { PROFILE_UPDATED_EVENT } from "@/features/profile/lib/use-local-profile";
 import { AvatarPicker, type AvatarChange } from "@/components/ui/avatar-picker";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -270,6 +276,7 @@ function ProfileEditForm({
     passportExpiresOn: initial.passportExpiresOn ?? "",
   });
   const [message, setMessage] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [pending, startTransition] = useTransition();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initial.avatarUrl ?? null);
   const [avatarSeed, setAvatarSeed] = useState<string | null>(initial.avatarSeed ?? null);
@@ -294,10 +301,20 @@ function ProfileEditForm({
   function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage(null);
-    if (!isValidBirthDate(values.birthDate)) {
-      setMessage(t("errors.validDob"));
-      return;
-    }
+    const next: Record<string, string> = {};
+    const nameIssue = validateProfileName(values.fullName);
+    if (nameIssue) next.fullName = t(nameIssue.key, nameIssue.variables);
+    const phoneIssue = validatePhone(values.phone);
+    if (phoneIssue) next.phone = t(phoneIssue.key, phoneIssue.variables);
+    if (!values.birthDate) next.birthDate = t("errors.enterDob");
+    else if (!isValidBirthDate(values.birthDate)) next.birthDate = t("errors.validDob");
+    const imageIssue = validateImageFile(avatarFile, {
+      maxBytes: PROFILE_IMAGE_MAX_BYTES,
+      sizeKey: "errors.imageTooLarge",
+    });
+    if (imageIssue) next.avatar = t(imageIssue.key, imageIssue.variables);
+    setFieldErrors(next);
+    if (Object.keys(next).length > 0) return;
     startTransition(async () => {
       const result = await updateProfileDetails(
         {
@@ -335,18 +352,66 @@ function ProfileEditForm({
           onChange={handleAvatarChange}
           uploadHint="Optional · randomize a playful avatar or upload a photo."
         />
+        {fieldErrors.avatar ? (
+          <p id="settings-avatar-error" role="alert" className="mt-2 text-xs text-destructive">
+            {fieldErrors.avatar}
+          </p>
+        ) : null}
       </div>
       <div className="space-y-2 sm:col-span-2">
         <Label htmlFor="settings-fullName">{t("common.fullName")}</Label>
-        <Input id="settings-fullName" value={values.fullName} onChange={(event) => setField("fullName", event.target.value)} autoComplete="name" required />
+        <Input
+          id="settings-fullName"
+          value={values.fullName}
+          onChange={(event) => setField("fullName", event.target.value)}
+          autoComplete="name"
+          required
+          aria-invalid={Boolean(fieldErrors.fullName)}
+          aria-describedby={fieldErrors.fullName ? "settings-fullName-error" : undefined}
+        />
+        {fieldErrors.fullName ? (
+          <p id="settings-fullName-error" role="alert" className="text-xs text-destructive">
+            {fieldErrors.fullName}
+          </p>
+        ) : null}
       </div>
       <div className="space-y-2">
         <Label htmlFor="settings-phone">{t("common.phone")}</Label>
-        <Input id="settings-phone" type="tel" inputMode="tel" autoComplete="tel" value={values.phone} onChange={(event) => setField("phone", event.target.value)} placeholder="+1 555 012 3456" required />
+        <Input
+          id="settings-phone"
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          value={values.phone}
+          onChange={(event) => setField("phone", event.target.value)}
+          placeholder="+1 555 012 3456"
+          required
+          aria-invalid={Boolean(fieldErrors.phone)}
+          aria-describedby={fieldErrors.phone ? "settings-phone-error" : undefined}
+        />
+        {fieldErrors.phone ? (
+          <p id="settings-phone-error" role="alert" className="text-xs text-destructive">
+            {fieldErrors.phone}
+          </p>
+        ) : null}
       </div>
       <div className="space-y-2">
         <Label htmlFor="settings-birthDate">{t("common.dateOfBirth")}</Label>
-        <Input id="settings-birthDate" type="date" value={values.birthDate} onChange={(event) => setField("birthDate", event.target.value)} max={latestBirthDate()} required />
+        <Input
+          id="settings-birthDate"
+          type="date"
+          value={values.birthDate}
+          onChange={(event) => setField("birthDate", event.target.value)}
+          max={latestBirthDate()}
+          required
+          aria-invalid={Boolean(fieldErrors.birthDate)}
+          aria-describedby={fieldErrors.birthDate ? "settings-birthDate-error" : undefined}
+        />
+        {fieldErrors.birthDate ? (
+          <p id="settings-birthDate-error" role="alert" className="text-xs text-destructive">
+            {fieldErrors.birthDate}
+          </p>
+        ) : null}
       </div>
       <div className="space-y-2">
         <Label htmlFor="settings-preferredCurrency">{t("common.preferredCurrency")}</Label>
