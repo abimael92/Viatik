@@ -8,7 +8,15 @@ import {
   passwordRecoveryRedirect,
   passwordRejection,
 } from "@/lib/auth/password-recovery";
-import { BIRTH_DATE_ERROR, isValidBirthDate } from "@/lib/auth/birth-date";
+import { isValidBirthDate } from "@/lib/auth/birth-date";
+import {
+  PROFILE_IMAGE_MAX_BYTES,
+  validateDisplayName,
+  validateImageFile,
+  validatePhone,
+  validateProfileName,
+  type ValidationIssue,
+} from "@/lib/validation/common";
 import { createClient } from "@/lib/supabase/server-client";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { logger } from "@/lib/observability/logger";
@@ -43,10 +51,12 @@ export async function sendEmailOtp(
   const normalizedEmail = normalizeEmail(email);
   const normalizedName = fullName?.trim();
   if (!isValidEmail(normalizedEmail)) return { success: false, error: "Enter a valid email address." };
-  if (shouldCreateUser && (!normalizedName || normalizedName.length < 2 || normalizedName.length > 60)) {
-    return { success: false, error: "Enter a display name between 2 and 60 characters." };
+  if (shouldCreateUser) {
+    const nameIssue = rejectValidation(validateDisplayName(normalizedName ?? ""));
+    if (nameIssue) return nameIssue;
+    const phoneIssue = rejectValidation(validatePhone(phone ?? ""));
+    if (phoneIssue) return phoneIssue;
   }
-  if (shouldCreateUser && !phone?.trim()) return { success: false, error: "Enter a phone number." };
 
   // Development-only registration: skip sending an email entirely. Supabase's
   // built-in sender is rate-limited (~2/hour), which blocks repeated signups
@@ -109,9 +119,15 @@ export async function sendEmailOtp(
   }
 }
 
-function isValidPhone(phone: string) {
-  const digits = phone.replace(/\D/g, "");
-  return digits.length >= 7 && digits.length <= 15;
+function rejectValidation(issue: ValidationIssue | null): { success: false; error: string } | null {
+  if (!issue) return null;
+  return { success: false, error: issue.key };
+}
+
+function rejectProfileImage(avatar?: File | null): { success: false; error: string } | null {
+  return rejectValidation(
+    validateImageFile(avatar, { maxBytes: PROFILE_IMAGE_MAX_BYTES, sizeKey: "errors.imageTooLarge" }),
+  );
 }
 
 function passwordMessage(error?: { code?: string; message?: string } | null) {
@@ -342,17 +358,16 @@ export async function registerWithPassword(
   const normalizedEmail = normalizeEmail(email);
   const normalizedName = fullName.trim();
   if (!isValidEmail(normalizedEmail)) return { success: false, error: "Enter a valid email address." };
-  if (normalizedName.length < 2 || normalizedName.length > 60) {
-    return { success: false, error: "Enter a display name between 2 and 60 characters." };
-  }
-  if (!phone.trim()) return { success: false, error: "Enter a phone number." };
-  if (!isValidPhone(phone)) return { success: false, error: "Enter a valid phone number." };
-  if (!isValidBirthDate(birthDate)) return { success: false, error: BIRTH_DATE_ERROR };
+  const nameIssue = rejectValidation(validateDisplayName(normalizedName));
+  if (nameIssue) return nameIssue;
+  const phoneIssue = rejectValidation(validatePhone(phone));
+  if (phoneIssue) return phoneIssue;
+  if (!isValidBirthDate(birthDate)) return { success: false, error: "errors.validDob" };
   if (!password || password.length < 8 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/\d/.test(password)) {
     return { success: false, error: "Password must be at least 8 characters and include an uppercase letter, a lowercase letter, and a number." };
   }
-  if (avatar && avatar.size > 2 * 1024 * 1024) return { success: false, error: "Choose an image smaller than 2 MB." };
-  if (avatar && !["image/jpeg", "image/png", "image/webp"].includes(avatar.type)) return { success: false, error: "Choose a JPG, PNG, or WebP image." };
+  const imageIssue = rejectProfileImage(avatar);
+  if (imageIssue) return imageIssue;
 
   try {
     const supabase = await createClient();
@@ -514,6 +529,8 @@ export async function verifyPhoneOtp(): Promise<ActionResult<{ userId: string }>
 }
 
 export async function updateProfile(fullName: string): Promise<ActionResult> {
+  const nameIssue = rejectValidation(validateProfileName(fullName));
+  if (nameIssue) return nameIssue;
   try {
     const supabase = await createClient();
     const { data } = await supabase.auth.getUser();
@@ -561,12 +578,14 @@ export async function updateProfileDetails(
   avatar?: File | null
 ): Promise<ActionResult> {
   const name = details.fullName.trim();
-  if (name.length < 2 || name.length > 60) return { success: false, error: "Enter a name between 2 and 60 characters." };
-  if (!details.phone?.trim()) return { success: false, error: "Enter a phone number." };
-  if (!isValidPhone(details.phone)) return { success: false, error: "Enter a valid phone number." };
-  if (!details.birthDate || !isValidBirthDate(details.birthDate)) return { success: false, error: BIRTH_DATE_ERROR };
-  if (avatar && avatar.size > 2 * 1024 * 1024) return { success: false, error: "Choose an image smaller than 2 MB." };
-  if (avatar && !["image/jpeg", "image/png", "image/webp"].includes(avatar.type)) return { success: false, error: "Choose a JPG, PNG, or WebP image." };
+  const nameIssue = rejectValidation(validateProfileName(name));
+  if (nameIssue) return nameIssue;
+  const phoneIssue = rejectValidation(validatePhone(details.phone ?? ""));
+  if (phoneIssue) return phoneIssue;
+  if (!details.birthDate) return { success: false, error: "errors.enterDob" };
+  if (!isValidBirthDate(details.birthDate)) return { success: false, error: "errors.validDob" };
+  const imageIssue = rejectProfileImage(avatar);
+  if (imageIssue) return imageIssue;
   try {
     const supabase = await createClient();
     const { data } = await supabase.auth.getUser();
@@ -628,12 +647,14 @@ export async function completeOnboarding(
   details?: OnboardingDetails
 ): Promise<ActionResult> {
   const name = fullName.trim();
-  if (name.length < 2 || name.length > 60) return { success: false, error: "Enter a name between 2 and 60 characters." };
-  if (!details?.phone?.trim()) return { success: false, error: "Enter a phone number." };
-  if (!isValidPhone(details.phone)) return { success: false, error: "Enter a valid phone number." };
-  if (!details?.birthDate || !isValidBirthDate(details.birthDate)) return { success: false, error: BIRTH_DATE_ERROR };
-  if (avatar && avatar.size > 2 * 1024 * 1024) return { success: false, error: "Choose an image smaller than 2 MB." };
-  if (avatar && !["image/jpeg", "image/png", "image/webp"].includes(avatar.type)) return { success: false, error: "Choose a JPG, PNG, or WebP image." };
+  const nameIssue = rejectValidation(validateProfileName(name));
+  if (nameIssue) return nameIssue;
+  const phoneIssue = rejectValidation(validatePhone(details?.phone ?? ""));
+  if (phoneIssue) return phoneIssue;
+  if (!details?.birthDate) return { success: false, error: "errors.enterDob" };
+  if (!isValidBirthDate(details.birthDate)) return { success: false, error: "errors.validDob" };
+  const imageIssue = rejectProfileImage(avatar);
+  if (imageIssue) return imageIssue;
 
   try {
     const supabase = await createClient();
