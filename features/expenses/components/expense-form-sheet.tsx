@@ -1,6 +1,7 @@
 "use client";
 
 import { localizeThrownError } from "@/lib/i18n/localize-error";
+import { validatePositiveAmount } from "@/lib/validation/common";
 
 import { Plus, X } from "lucide-react";
 import { useEffect, useMemo, useState, type ComponentProps, type FormEvent } from "react";
@@ -184,6 +185,8 @@ function ExpenseFormBody({
   const { t } = useI18n();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const [amountError, setAmountError] = useState<string | null>(null);
+  const [participantError, setParticipantError] = useState<string | null>(null);
   const [resolvedRate, setResolvedRate] = useState<{
     from: string;
     to: string;
@@ -428,8 +431,14 @@ function ExpenseFormBody({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSaving(true);
     const data = new FormData(event.currentTarget);
+    const amountIssue = validatePositiveAmount(String(data.get("amount") ?? ""));
+    const nextAmountError = amountIssue ? t(amountIssue.key, amountIssue.variables) : null;
+    const nextParticipantError = effectiveParticipants.length ? null : t("errors.participantRequired");
+    setAmountError(nextAmountError);
+    setParticipantError(nextParticipantError);
+    if (nextAmountError || nextParticipantError) return;
+    setSaving(true);
     const description = String(data.get("description"));
     const rawCategory = String(data.get("category") || "");
     const rawSubcategory = String(data.get("subcategory") || "");
@@ -444,8 +453,10 @@ function ExpenseFormBody({
     const date = String(data.get("date") || defaultDate);
     try {
       const amountMinor = parseMinorUnits(String(data.get("amount")), expenseCurrency);
-      if (amountMinor <= 0n) throw new Error("Enter an amount greater than zero.");
-      if (!effectiveParticipants.length) throw new Error("Select at least one participant.");
+      if (amountMinor <= 0n) {
+        setAmountError(t("errors.positiveAmount"));
+        return;
+      }
       const exactMinor =
         effectiveMode === "exact"
           ? Object.fromEntries(
@@ -565,6 +576,7 @@ function ExpenseFormBody({
             value={amountInput}
             onChange={(event) => setAmountInput(event.target.value)}
             required
+            error={amountError}
           />
           <div className="space-y-2">
             <Label htmlFor="expenseCurrency">{t("common.currency")}</Label>
@@ -711,7 +723,11 @@ function ExpenseFormBody({
                   <option value="shares">{t("copy.shares")}</option>
                 </select>
               </div>
-              <fieldset className="space-y-3">
+              <fieldset
+                className="space-y-3"
+                aria-invalid={Boolean(participantError)}
+                aria-describedby={participantError ? "expense-participants-error" : undefined}
+              >
                 <legend className="text-sm font-semibold">{t("copy.participants")}</legend>
                 {members.map((member) => {
                   const selected = participants.includes(member.userId);
@@ -814,6 +830,11 @@ function ExpenseFormBody({
                 {members.length <= 1 && (
                   <p className="text-xs text-muted-foreground">{t("copy.noOtherTravelers")}</p>
                 )}
+                {participantError ? (
+                  <p id="expense-participants-error" role="alert" className="text-xs text-destructive">
+                    {participantError}
+                  </p>
+                ) : null}
               </fieldset>
             </>
           )}
@@ -834,12 +855,25 @@ function ExpenseFormBody({
 function Field({
   label,
   name,
+  error,
   ...props
-}: ComponentProps<typeof Input> & { label: string; name: string }) {
+}: ComponentProps<typeof Input> & { label: string; name: string; error?: string | null }) {
+  const errorId = error ? `expense-${name}-error` : undefined;
   return (
     <div className="space-y-2">
       <Label htmlFor={`expense-${name}`}>{label}</Label>
-      <Input id={`expense-${name}`} name={name} {...props} />
+      <Input
+        id={`expense-${name}`}
+        name={name}
+        {...props}
+        aria-invalid={Boolean(error)}
+        aria-describedby={errorId}
+      />
+      {error ? (
+        <p id={errorId} role="alert" className="text-xs text-destructive">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

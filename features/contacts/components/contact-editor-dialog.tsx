@@ -1,6 +1,7 @@
 "use client";
 
 import { isValidBirthDate, latestBirthDate } from "@/lib/auth/birth-date";
+import { validateContactName } from "@/lib/validation/common";
 import { localizeThrownError } from "@/lib/i18n/localize-error";
 
 import { CalendarDays, ContactRound, Mail, ShieldCheck, Sparkles, UserRound } from "lucide-react";
@@ -211,9 +212,8 @@ function ContactForm({
   function validateStep(targetStep: number): Record<string, string> {
     const errors: Record<string, string> = {};
     if (targetStep === 1) {
-      const name = values.fullName.trim();
-      if (name.length < 2) errors.fullName = "Enter at least 2 characters.";
-      else if (name.length > 100) errors.fullName = "Use no more than 100 characters.";
+      const nameIssue = validateContactName(values.fullName);
+      if (nameIssue) errors.fullName = t(nameIssue.key, nameIssue.variables);
     }
     if (targetStep === 3 && values.birthDate && !isValidBirthDate(values.birthDate)) {
       errors.birthDate = t("errors.validDob");
@@ -256,7 +256,7 @@ function ContactForm({
       setNotice(
         firstUnvisited === -1
           ? null
-          : `Complete ${steps[firstUnvisited]} before moving on.`
+          : t("errors.completeStep", { step: steps[firstUnvisited] }),
       );
       return;
     }
@@ -907,7 +907,9 @@ function Field({
   helper?: string;
   error?: string;
 }) {
-  const helperId = helper || error ? `contact-${name}-help` : undefined;
+  const errorId = error ? `contact-${name}-error` : undefined;
+  const helperId = helper ? `contact-${name}-help` : undefined;
+  const describedBy = [errorId, helperId].filter(Boolean).join(" ") || undefined;
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-0.5">
@@ -918,11 +920,7 @@ function Field({
           </span>
         )}
       </div>
-      {error ? (
-        <p id={helperId} role="alert" className="text-xs leading-5 text-destructive">
-          {error}
-        </p>
-      ) : helper ? (
+      {helper ? (
         <p id={helperId} className="text-xs leading-5 text-muted-foreground">
           {helper}
         </p>
@@ -930,10 +928,15 @@ function Field({
       <Input
         id={`contact-${name}`}
         name={name}
-        aria-describedby={helperId}
+        aria-describedby={describedBy}
         aria-invalid={Boolean(error)}
         {...props}
       />
+      {error ? (
+        <p id={errorId} role="alert" className="text-xs leading-5 text-destructive">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

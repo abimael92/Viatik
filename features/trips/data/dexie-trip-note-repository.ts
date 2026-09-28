@@ -13,8 +13,8 @@ function getDb(): ViatikDatabase {
 
 function cleanContent(content: string): string {
   const value = content.trim();
-  if (!value) throw new Error("Write a note before saving.");
-  if (value.length > TRIP_NOTE_MAX_LENGTH) throw new Error("Keep the note under 280 characters.");
+  if (!value) throw new Error("errors.noteRequired");
+  if (value.length > TRIP_NOTE_MAX_LENGTH) throw new Error("errors.noteTooLong");
   return value;
 }
 

@@ -1,6 +1,18 @@
 "use client";
 
-import { localizeThrownError } from "@/lib/i18n/localize-error";
+import { localizeThrownError, localizeUserError } from "@/lib/i18n/localize-error";
+import {
+  ADULT_COUNT_MAX,
+  ADULT_COUNT_MIN,
+  CHILD_COUNT_MAX,
+  CHILD_COUNT_MIN,
+  COVER_IMAGE_MAX_BYTES,
+  validateContactName,
+  validateImageFile,
+  validateMaxText,
+  validateTripName,
+  validateWholeCount,
+} from "@/lib/validation/common";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -663,10 +675,10 @@ export function TripFormDialog({
     [contacts, existingTravelers]
   );
 
-  const dateError = useMemo(() => {
-    if (!startDate || !endDate) return "Start and end dates are required.";
-    return getTripDurationError(startDate, endDate);
-  }, [startDate, endDate]);
+  const dateError = useMemo(
+    () => (startDate && endDate ? getTripDurationError(startDate, endDate) : null),
+    [startDate, endDate],
+  );
 
   const maxEndDate = useMemo(() => getMaxEndDate(startDate), [startDate]);
 
@@ -694,41 +706,39 @@ export function TripFormDialog({
   function validateStep(targetStep: number): Record<string, string> {
     const errors: Record<string, string> = {};
     if (targetStep === 1) {
-      const trimmedName = name.trim();
-      if (trimmedName.length < 2) errors.name = "Enter at least 2 characters.";
-      else if (trimmedName.length > 80) errors.name = "Use no more than 80 characters.";
-      if (destination.trim().length > 120) errors.destination = "Use no more than 120 characters.";
-      if (description.trim().length > 500) errors.description = "Use no more than 500 characters.";
+      const nameIssue = validateTripName(name);
+      if (nameIssue) errors.name = t(nameIssue.key, nameIssue.variables);
+      const destinationIssue = validateMaxText(destination, 120);
+      if (destinationIssue) errors.destination = t(destinationIssue.key, destinationIssue.variables);
+      const descriptionIssue = validateMaxText(description, 500);
+      if (descriptionIssue) errors.description = t(descriptionIssue.key, descriptionIssue.variables);
     }
     if (targetStep === 2) {
       if (!startDate || !endDate) {
-        if (!startDate) errors.startDate = "Start and end dates are required.";
-        else errors.endDate = "Start and end dates are required.";
+        errors[startDate ? "endDate" : "startDate"] = t("errors.datesRequired");
       } else if (dateError) {
-        errors.endDate = dateError;
+        errors.endDate = localizeUserError(dateError, t, "errors.invalidDates");
       }
     }
     if (targetStep === 3) {
-      if (!Number.isInteger(adultCount) || adultCount < 1 || adultCount > 99)
-        errors.adultCount = "Enter a whole number from 0 to 99.";
-      if (!Number.isInteger(childCount) || childCount < 0 || childCount > 99)
-        errors.childCount = "Enter a whole number from 0 to 99.";
-      if (adultCount + childCount < 1)
-        errors.adultCount = "Add at least one adult or child traveler.";
-      if (manualTravelers.some((traveler) => traveler.fullName.trim().length < 2))
-        errors.travelers = "Enter a name for every added traveler.";
+      const adultIssue = validateWholeCount(adultCount, ADULT_COUNT_MIN, ADULT_COUNT_MAX);
+      if (adultIssue) errors.adultCount = t(adultIssue.key, adultIssue.variables);
+      const childIssue = validateWholeCount(childCount, CHILD_COUNT_MIN, CHILD_COUNT_MAX);
+      if (childIssue) errors.childCount = t(childIssue.key, childIssue.variables);
+      if (manualTravelers.some((traveler) => validateContactName(traveler.fullName))) {
+        errors.travelers = t("errors.travelerNameRequired");
+      }
       const namedAdults =
         Object.values(selectedContacts).filter((type) => type === "adult").length +
-        manualTravelers.filter((t) => t.travelerType === "adult").length;
+        manualTravelers.filter((traveler) => traveler.travelerType === "adult").length;
       const namedChildren =
         Object.values(selectedContacts).filter((type) => type === "child").length +
-        manualTravelers.filter((t) => t.travelerType === "child").length;
-      if (namedAdults > adultCount || namedChildren > childCount)
-        errors.travelers = "Named travelers cannot exceed the adult and child totals above.";
-      if (coverFile && coverFile.size > 5 * 1024 * 1024)
-        errors.coverImage = "Choose an image smaller than 5 MB.";
-      if (coverFile && !["image/jpeg", "image/png", "image/webp"].includes(coverFile.type))
-        errors.coverImage = "Choose a JPG, PNG, or WebP image.";
+        manualTravelers.filter((traveler) => traveler.travelerType === "child").length;
+      if (namedAdults > adultCount || namedChildren > childCount) {
+        errors.travelers = t("errors.travelersExceedTotals");
+      }
+      const imageIssue = validateImageFile(coverFile, { maxBytes: COVER_IMAGE_MAX_BYTES });
+      if (imageIssue) errors.coverImage = t(imageIssue.key, imageIssue.variables);
     }
     return errors;
   }

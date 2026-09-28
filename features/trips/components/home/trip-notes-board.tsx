@@ -15,7 +15,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { tripNoteRepository } from "@/features/trips/data/dexie-trip-note-repository";
 import { TRIP_NOTE_MAX_LENGTH, type TripNote } from "@/features/trips/domain/trip-note";
+import { localizeThrownError } from "@/lib/i18n/localize-error";
 import { useI18n } from "@/lib/i18n/i18n-provider";
+import { validateNote } from "@/lib/validation/common";
 
 export function TripNotesBoard({ tripId, userId }: { tripId: string; userId: string }) {
   const { t } = useI18n();
@@ -31,6 +33,11 @@ export function TripNotesBoard({ tripId, userId }: { tripId: string; userId: str
   async function addNote(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (saving) return;
+    const issue = validateNote(draft);
+    if (issue) {
+      setError(t(issue.key, issue.variables));
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -42,7 +49,7 @@ export function TripNotesBoard({ tripId, userId }: { tripId: string; userId: str
       });
       setDraft("");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t("copy.unableSaveNote"));
+      setError(localizeThrownError(cause, t, "copy.unableSaveNote"));
     } finally {
       setSaving(false);
     }
@@ -56,13 +63,18 @@ export function TripNotesBoard({ tripId, userId }: { tripId: string; userId: str
 
   async function saveEdit() {
     if (!selected || saving) return;
+    const issue = validateNote(editText);
+    if (issue) {
+      setError(t(issue.key, issue.variables));
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
       await tripNoteRepository.update(selected.id, userId, editText);
       setSelected(null);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t("copy.unableSaveNote"));
+      setError(localizeThrownError(cause, t, "copy.unableSaveNote"));
     } finally {
       setSaving(false);
     }
@@ -76,7 +88,7 @@ export function TripNotesBoard({ tripId, userId }: { tripId: string; userId: str
       await tripNoteRepository.remove(selected.id, userId);
       setSelected(null);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t("copy.unableSaveNote"));
+      setError(localizeThrownError(cause, t, "copy.unableSaveNote"));
     } finally {
       setSaving(false);
     }
@@ -100,6 +112,8 @@ export function TripNotesBoard({ tripId, userId }: { tripId: string; userId: str
           maxLength={TRIP_NOTE_MAX_LENGTH}
           placeholder={t("copy.notePlaceholder")}
           aria-label={t("copy.notePlaceholder")}
+          aria-invalid={Boolean(error && !selected)}
+          aria-describedby={error && !selected ? "trip-note-draft-error" : undefined}
           onChange={(event) => setDraft(event.target.value)}
           className="bg-background text-foreground"
         />
@@ -108,7 +122,7 @@ export function TripNotesBoard({ tripId, userId }: { tripId: string; userId: str
         </Button>
       </form>
       {error && !selected ? (
-        <p role="alert" className="mt-2 text-sm text-destructive">
+        <p id="trip-note-draft-error" role="alert" className="mt-2 text-sm text-destructive">
           {error}
         </p>
       ) : null}
@@ -142,11 +156,13 @@ export function TripNotesBoard({ tripId, userId }: { tripId: string; userId: str
             value={editText}
             maxLength={TRIP_NOTE_MAX_LENGTH}
             aria-label={t("copy.notePlaceholder")}
+            aria-invalid={Boolean(error && selected)}
+            aria-describedby={error && selected ? "trip-note-edit-error" : undefined}
             onChange={(event) => setEditText(event.target.value)}
             className="min-h-24 w-full rounded-md border bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
           {error && selected ? (
-            <p role="alert" className="text-sm text-destructive">
+            <p id="trip-note-edit-error" role="alert" className="text-sm text-destructive">
               {error}
             </p>
           ) : null}
