@@ -5,9 +5,10 @@ import {
   formatTimeInZone,
   getTemporalState,
   inferTimeZoneFromDestination,
+  pickPrimaryTrips,
   resolveTripScheduleTimeZone,
 } from "./home-trips";
-import type { Activity } from "@/features/domain/entities";
+import type { Activity, Trip, TripStatus } from "@/features/domain/entities";
 
 const TEST_NOW = new Date("2024-06-15T12:00:00Z");
 
@@ -241,5 +242,54 @@ describe("Temporal state transitions across midnight", () => {
     expect(getTemporalState(activity, new Date("2024-06-16T00:30:00Z"), "UTC")).toBe("current");
     // After end
     expect(getTemporalState(activity, new Date("2024-06-16T02:00:00Z"), "UTC")).toBe("past");
+  });
+});
+
+function homeTrip(id: string, status: TripStatus, startDate: string, endDate: string): Trip {
+  return { id, status, startDate, endDate } as Trip;
+}
+
+describe("pickPrimaryTrips", () => {
+  const today = new Date(2026, 8, 28, 13, 44, 0);
+
+  it("features the trip that starts tomorrow instead of an earlier planned trip that still overlaps today", () => {
+    const selection = pickPrimaryTrips(
+      [
+        homeTrip("arizona", "planned", "2026-09-20", "2026-09-28"),
+        homeTrip("vegas", "planned", "2026-09-29", "2026-10-02"),
+      ],
+      today,
+    );
+
+    expect(selection.primaryTrip?.id).toBe("vegas");
+    expect(selection.activeTrip).toBeNull();
+    expect(selection.nextTrip?.id).toBe("vegas");
+  });
+
+  it("does not keep a started trip on Home after its end date when another trip starts tomorrow", () => {
+    const selection = pickPrimaryTrips(
+      [
+        homeTrip("arizona", "active", "2026-09-20", "2026-09-27"),
+        homeTrip("vegas", "planned", "2026-09-29", "2026-10-02"),
+      ],
+      today,
+    );
+
+    expect(selection.primaryTrip?.id).toBe("vegas");
+    expect(selection.activeTrip).toBeNull();
+  });
+
+  it("keeps an explicitly started trip whose dates still include today", () => {
+    const selection = pickPrimaryTrips(
+      [
+        homeTrip("arizona", "active", "2026-09-26", "2026-09-30"),
+        homeTrip("vegas", "planned", "2026-09-29", "2026-10-02"),
+      ],
+      today,
+    );
+
+    expect(selection.primaryTrip?.id).toBe("arizona");
+    expect(selection.activeTrip?.id).toBe("arizona");
+    expect(selection.upNext.map((trip) => trip.id)).toEqual(["vegas"]);
   });
 });

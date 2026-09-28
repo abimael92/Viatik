@@ -1,7 +1,7 @@
 import type { Activity, ActivityAttachment, ActivityChecklistItem, ActivityParticipant, Trip } from "@/features/domain/entities";
 import { normalizeActivityAttachments } from "@/features/activities/domain/activity-attachments";
 import { normalizeActivityChecklist } from "@/features/activities/domain/activity-checklist";
-import { resolveTripStatus } from "@/features/trips/lib/trip-status";
+import { calendarDay, resolveTripStatus } from "@/features/trips/lib/trip-status";
 import { isUserAttending } from "@/features/trips/lib/activity-category-colors";
 
 export const DAY_MS = 86_400_000;
@@ -16,9 +16,9 @@ export function tripActivityEditPath(tripId: string, activityId: string): string
   return `/trips/${tripId}?tab=itinerary&action=edit-activity&activityId=${encodeURIComponent(activityId)}`;
 }
 
-/** `yyyy-mm-dd` for a given date (UTC-safe, matches how trip dates are stored). */
+/** `yyyy-mm-dd` for the traveler's local calendar day. */
 export function todayKey(date: Date = new Date()): string {
-  return date.toISOString().slice(0, 10);
+  return calendarDay(date);
 }
 
 export function todayKeyInZone(timeZone: string | null | undefined, date: Date = new Date()): string {
@@ -36,7 +36,7 @@ export function todayKeyInZone(timeZone: string | null | undefined, date: Date =
 export function daysUntil(date: string, today: Date = new Date()): number {
   const [y, m, d] = date.split("-").map(Number);
   const target = Date.UTC(y, m - 1, d);
-  const now = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+  const now = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
   return Math.round((target - now) / DAY_MS);
 }
 
@@ -50,10 +50,10 @@ export function isTripEnded(trip: Trip, today: Date = new Date()): boolean {
   return status === "completed" || status === "cancelled";
 }
 
-/** A trip is "upcoming" when it is planned and starts today or later. */
+/** A trip is "upcoming" when it is not underway and starts on the local calendar day or later. */
 export function isTripUpcoming(trip: Trip, today: Date = new Date()): boolean {
-  if (resolveTripStatus(trip, today) !== "planned") return false;
-  return trip.startDate !== null && daysUntil(trip.startDate, today) >= 0;
+  if (isTripEnded(trip, today) || trip.status === "active" || trip.startDate === null) return false;
+  return trip.startDate >= calendarDay(today);
 }
 
 /** Human countdown for the hero, e.g. "14 days left" or "Today". */
@@ -78,18 +78,30 @@ export interface PrimaryTripSelection {
   upNext: Trip[];
 }
 
+function coversDay(trip: Trip, day: string): boolean {
+  if (!trip.startDate || trip.startDate > day) return false;
+  if (!trip.endDate) return true;
+  return trip.endDate >= day;
+}
+
 /**
  * Picks the hero trip and the active/upcoming split from the user's trips.
- * Ended trips (completed/cancelled) are excluded entirely. A trip is "active"
- * when its resolved status is active; otherwise the nearest upcoming planned
- * trip becomes the hero. Trips without a start date are ignored for "upcoming".
+ * Ended trips (completed/cancelled) are excluded entirely. The live hero is an
+ * explicitly started trip whose dates still include the local calendar day.
+ * A planned trip that merely overlaps today, or a started trip whose dates
+ * have already ended, must not hide the next trip that starts today or later.
  */
 export function pickPrimaryTrips(trips: Trip[], today: Date = new Date()): PrimaryTripSelection {
-  const activeTrip = trips.find((trip) => isTripActive(trip, today)) ?? null;
-  const upcoming = trips
-    .filter((trip) => isTripUpcoming(trip, today))
-    .sort((a, b) => a.startDate!.localeCompare(b.startDate!));
-  const primaryTrip = activeTrip ?? upcoming[0] ?? null;
+  const day = calendarDay(today);
+  const open = trips.filter((trip) => !isTripEnded(trip, today));
+  const activeTrip =
+    open
+      .filter((trip) => trip.status === "active" && coversDay(trip, day))
+      .sort((left, right) => (right.startDate ?? "").localeCompare(left.startDate ?? ""))[0] ?? null;
+  const upcoming = open
+    .filter((trip) => trip.id !== activeTrip?.id && trip.status !== "active" && trip.startDate !== null && trip.startDate >= day)
+    .sort((left, right) => left.startDate!.localeCompare(right.startDate!));
+  const primaryTrip = activeTrip ?? upcoming[0] ?? open.find((trip) => trip.status === "active") ?? null;
   const upNext = upcoming.filter((trip) => trip.id !== primaryTrip?.id);
   return { primaryTrip, activeTrip, nextTrip: upcoming[0] ?? null, upNext };
 }
