@@ -13,7 +13,7 @@ import type { Contact } from "@/features/domain/entities";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
-type Tab = "contacts" | "requests";
+export type ContactInboxTab = "contacts" | "requests";
 
 function relativeTime(isoDate: string) {
   return formatDistanceToNow(new Date(isoDate), { addSuffix: true });
@@ -30,18 +30,20 @@ const RELATIONSHIP_STYLES: Record<Contact["relationship"], string> = {
 export function ContactRequestInbox({
   ownerId,
   contacts,
+  initialTab = "contacts",
   onView,
   onEdit,
   onRemove,
 }: {
   ownerId: string;
   contacts: Contact[];
+  initialTab?: ContactInboxTab;
   onView?: (contact: Contact) => void;
   onEdit: (contact: Contact) => void;
   onRemove: (contact: Contact) => void;
 }) {
   const { t } = useI18n();
-  const [tab, setTab] = useState<Tab>("contacts");
+  const [tab, setTab] = useState<ContactInboxTab>(initialTab);
   const [relationship, setRelationship] = useState("all");
   const inbound = contacts.filter(
     (contact) => contact.connectionStatus === "pending" && contact.connectionDirection === "inbound"

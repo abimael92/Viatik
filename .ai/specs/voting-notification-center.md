@@ -16,7 +16,7 @@ Viatik needs deterministic group-vote completion and one centralized place for a
 - Require at least two trip members with a non-null Viatik identity before enabling activity voting.
 - Close a poll when every eligible Viatik user has voted; resolve a unique winner and mark ties for owner intervention.
 - Add the Level B `notifications` table and local domain/repository model.
-- Add notifications for poll requests, connection requests, pending settlements, and imminent trip starts.
+- Add notifications for poll requests, connection requests, pending settlements, and imminent trip starts. Recorded repayments use `settlement_recorded` for the payee (migration 70). Existing `settlement_pending` rows stay readable.
 - Add `/notifications`, navigation badge, and profile-menu entry using existing UI primitives.
 
 ## Out of Scope

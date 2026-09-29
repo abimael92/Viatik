@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
  * an error, or unresolved conflicts — opens a dropdown exposing the outbox
  * with a manual retry so the user can push pending mutations on demand.
  */
-const pillSize = "min-h-10 max-w-full gap-2 px-4 py-2 text-base font-semibold normal-case tracking-normal lg:min-h-9 lg:px-3.5 lg:py-1.5 lg:text-sm xl:min-h-10 xl:px-4 xl:py-2 xl:text-base";
+const pillSize = "min-h-10 min-w-0 max-w-full gap-1.5 px-2.5 py-2 text-base font-semibold normal-case tracking-normal lg:min-h-9 lg:px-2 lg:py-1.5 lg:text-sm xl:min-h-10 xl:px-2.5 xl:py-2 xl:text-base";
 
 export function SyncStatusPill() {
   const sync = useSyncStatus();
@@ -57,7 +57,7 @@ export function SyncStatusPill() {
       return (
         <Badge variant="success" className={pillSize}>
           <StatusDot tone="success" pulse />
-          {t("common.offlineSaved")}
+          <PillLabel>{t("common.offlineSaved")}</PillLabel>
         </Badge>
       );
     }
@@ -65,7 +65,7 @@ export function SyncStatusPill() {
       return (
         <Badge variant="muted" className={pillSize}>
           <LoaderCircle className="size-4 shrink-0 animate-spin text-primary" />
-          {t("common.syncing")}
+          <PillLabel>{t("common.syncing")}</PillLabel>
         </Badge>
       );
     }
@@ -73,7 +73,7 @@ export function SyncStatusPill() {
       return (
         <Badge variant="warning" className={pillSize}>
           <StatusDot tone="warning" pulse />
-          {t("common.syncIssue")}
+          <PillLabel>{t("common.syncIssue")}</PillLabel>
           <RefreshCw className="size-4 shrink-0" aria-hidden />
         </Badge>
       );
@@ -84,7 +84,7 @@ export function SyncStatusPill() {
           <span className="grid size-5 shrink-0 place-items-center rounded-full bg-primary px-1 text-xs font-bold text-primary-foreground animate-pulse">
             {sync.pending}
           </span>
-          {t("common.pendingChanges")}
+          <PillLabel>{t("common.pendingChanges")}</PillLabel>
         </Badge>
       );
     }
@@ -92,20 +92,20 @@ export function SyncStatusPill() {
       return (
         <Badge variant="warning" className={pillSize}>
           <StatusDot tone="warning" pulse />
-          {t("common.resolveConflicts")}
+          <PillLabel>{t("common.resolveConflicts")}</PillLabel>
         </Badge>
       );
     }
     return (
-      <StatusBadge>
+      <StatusBadge className="min-w-0 gap-1.5 px-2.5 lg:px-2 xl:px-2.5">
         <span className="inline-block size-2.5 shrink-0 rounded-full bg-green-700 sm:size-3" aria-hidden />
-        {t("common.synced")}
+        <PillLabel>{t("common.synced")}</PillLabel>
       </StatusBadge>
     );
   }
 
   return (
-    <div className="relative max-w-full" ref={triggerRef}>
+    <div className="relative min-w-0 max-w-full" ref={triggerRef}>
       <button
         type="button"
         onClick={() => interactive && setOpen((value) => !value)}
@@ -187,6 +187,10 @@ export function SyncStatusPill() {
       )}
     </div>
   );
+}
+
+function PillLabel({ children }: { children: React.ReactNode }) {
+  return <span className="min-w-0 truncate">{children}</span>;
 }
 
 function StatusDot({ tone, pulse = false }: { tone: "success" | "warning"; pulse?: boolean }) {

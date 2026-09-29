@@ -13,6 +13,7 @@ import {
   verifyEmailOtp,
 } from "@/app/actions/auth";
 import { isValidBirthDate, latestBirthDate } from "@/lib/auth/birth-date";
+import { safeNext } from "@/lib/auth/safe-next";
 import {
   PROFILE_IMAGE_MAX_BYTES,
   validateDisplayName,
@@ -37,10 +38,6 @@ type LoginFormProps = {
   next?: string;
   initialError?: string;
 };
-
-function safeNext(value?: string) {
-  return value?.startsWith("/") && !value.startsWith("//") ? value : "/home";
-}
 
 function maskEmail(email: string) {
   const [name, domain] = email.split("@");

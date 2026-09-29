@@ -4,11 +4,17 @@ import { createServerClient } from "@supabase/ssr";
 import { env } from "@/env.mjs";
 import { logger } from "@/lib/observability/logger";
 
+export type SessionUpdate = {
+  response: NextResponse;
+  /** `null` when the session check itself failed, so the caller cannot tell. */
+  authenticated: boolean | null;
+};
+
 /**
  * Next.js middleware that refreshes the user's Supabase session on every
  * request and makes it available to downstream server components/actions.
  */
-export async function updateSession(request: NextRequest) {
+export async function updateSession(request: NextRequest): Promise<SessionUpdate> {
   const response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -31,7 +37,7 @@ export async function updateSession(request: NextRequest) {
     });
 
     // This will refresh the session if expired and update cookies in `response`.
-    const { error } = await supabase.auth.getUser();
+    const { data, error } = await supabase.auth.getUser();
 
     if (error) {
       logger.warn("Failed to refresh session in middleware", {
@@ -40,12 +46,12 @@ export async function updateSession(request: NextRequest) {
       });
     }
 
-    return response;
+    return { response, authenticated: Boolean(data.user) };
   } catch (error) {
     logger.error("Unexpected error in auth middleware", error instanceof Error ? error : new Error(String(error)), {
       path: request.nextUrl.pathname,
     });
     // Continue with the response even if auth refresh fails
-    return response;
+    return { response, authenticated: null };
   }
 }

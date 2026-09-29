@@ -87,6 +87,26 @@ describe("ContactRequestInbox", () => {
     expect(screen.queryByText("Connected Person")).toBeNull();
   });
 
+  it("opens on the requests tab when asked", () => {
+    render(
+      <ContactRequestInbox
+        ownerId="owner-1"
+        initialTab="requests"
+        contacts={[
+          contact("inbound", "Incoming Person", "pending", "inbound"),
+          contact("accepted", "Connected Person", "accepted", null),
+        ]}
+        onEdit={vi.fn()}
+        onRemove={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole("tab", { name: "Friend Requests, 1 pending" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByText("Incoming Person")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Accept" })).toBeTruthy();
+    expect(screen.queryByText("Connected Person")).toBeNull();
+  });
+
   it("calls onView when clicking or pressing Enter on a contact card", () => {
     const onView = vi.fn();
     const testContact = contact("manual", "Manual Person", "unverified_offline", null);

@@ -36,13 +36,16 @@ export function ThemeToggle({ className }: { className?: string }) {
       type="button"
       variant="ghost"
       size="icon"
-      className={cn("text-side-muted hover:bg-side-hover hover:text-side-fg", className)}
+      className={cn("theme-toggle text-side-muted hover:text-side-fg", className)}
       aria-label={t("common.toggleTheme")}
       title={t("common.toggleTheme")}
       onClick={() => applyTheme(!isDarkTheme())}
     >
-      <Sun className="theme-toggle-sun size-5" aria-hidden />
-      <Moon className="theme-toggle-moon size-5" aria-hidden />
+      <Sun
+        className="theme-toggle-sun size-5 fill-amber-400/30 text-amber-400 drop-shadow-[0_0_6px_rgb(251_191_36_/_0.55)]"
+        aria-hidden
+      />
+      <Moon className="theme-toggle-moon size-5 fill-viatik-magenta/15 text-viatik-magenta" aria-hidden />
     </Button>
   );
 }

@@ -92,6 +92,7 @@ import { TripGallery } from "@/features/trips/components/trip-gallery";
 // import { TripHealthBar } from "@/features/trips/components/trip-health-bar";
 import { getTripCoverGradient, isTripCoverImage } from "@/features/trips/lib/trip-cover";
 import { replaceActivitySnapshot } from "@/features/trips/lib/activity-snapshot";
+import { isHydratingTrip } from "@/features/trips/lib/trip-hydration";
 import { tripRepository } from "@/features/trips/data/dexie-trip-repository";
 import { mediaRepository } from "@/features/media/data/dexie-media-repository";
 import { VaultPanel } from "@/features/vault/components/vault-panel";
@@ -108,10 +109,14 @@ import type { TripWeatherForecast } from "@/features/weather/domain/weather-type
 import type { PlaceDetails } from "@/app/actions/places";
 import { nextPosition } from "@/lib/ordering";
 import { useI18n } from "@/lib/i18n/i18n-provider";
+import { useSyncStatus } from "@/lib/sync/use-sync-status";
 import { cn } from "@/lib/utils";
 import { downloadActivitiesIcs } from "@/features/itinerary/lib/export-ics";
 import { TripStepsWidget } from "@/features/steps/components/trip-steps-widget";
 import { TripTasksBoard } from "@/features/trips/components/trip-tasks-board";
+
+/** A peer tab can hold the sync lock, so this tab may never finish its own first sync. */
+const HYDRATION_TIMEOUT_MS = 15_000;
 
 const SECONDARY_TOOLS = ["packing", "health", "polls", "vault"] as const;
 type SecondaryTool = (typeof SECONDARY_TOOLS)[number];
@@ -244,6 +249,15 @@ export function TripWorkspace({
     journal: t("common.journal"),
     settings: t("common.settings"),
   };
+
+  const sync = useSyncStatus();
+  const [hydrationTimedOut, setHydrationTimedOut] = useState(false);
+  const hydrating = isHydratingTrip(trip === null, sync, hydrationTimedOut);
+  useEffect(() => {
+    if (!hydrating) return;
+    const timer = window.setTimeout(() => setHydrationTimedOut(true), HYDRATION_TIMEOUT_MS);
+    return () => window.clearTimeout(timer);
+  }, [hydrating]);
 
   useEffect(() => tripRepository.watchById(tripId, (value) => setTrip(value ?? null)), [tripId]);
   useEffect(() => activityRepository.watchByTrip(tripId, setActivities), [tripId]);
@@ -457,9 +471,14 @@ export function TripWorkspace({
     }
   }
 
-  if (trip === undefined)
+  if (trip === undefined || hydrating)
     return (
       <div className="space-y-4" aria-label="Loading trip">
+        {hydrating && (
+          <p role="status" aria-live="polite" className="text-sm text-muted-foreground">
+            {t("copy.hydratingTrip")}
+          </p>
+        )}
         <div className="h-48 animate-pulse rounded-2xl bg-muted" />
         <div className="h-96 animate-pulse rounded-2xl bg-muted" />
       </div>

@@ -2,12 +2,13 @@ import { redirect } from "next/navigation";
 
 import { ContactsPanel } from "@/features/contacts/components/contacts-panel";
 import type { CurrentPublicProfile } from "@/features/contacts/lib/profile-directory";
+import { loginPath } from "@/lib/auth/safe-next";
 import { createClient } from "@/lib/supabase/server-client";
 
-export default async function ContactsPage() {
-  const supabase = await createClient();
+export default async function ContactsPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
+  const [{ view }, supabase] = await Promise.all([searchParams, createClient()]);
   const { data } = await supabase.auth.getUser();
-  if (!data.user) redirect("/login");
+  if (!data.user) redirect(loginPath(view === "requests" ? "/contacts?view=requests" : "/contacts"));
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -24,5 +25,11 @@ export default async function ContactsPage() {
     publicHandle: profile?.public_handle ?? null,
   };
 
-  return <ContactsPanel userId={data.user.id} ownProfile={ownProfile} />;
+  return (
+    <ContactsPanel
+      userId={data.user.id}
+      ownProfile={ownProfile}
+      initialView={view === "requests" ? "requests" : "contacts"}
+    />
+  );
 }

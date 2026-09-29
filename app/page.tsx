@@ -182,7 +182,7 @@ function LandingHeader() {
         </Link>
         <nav className="flex items-center gap-2.5 sm:gap-3" aria-label={t("common.primaryNavigation")}>
           <LanguageSwitcher />
-          <ThemeToggle className="text-muted-foreground hover:bg-muted hover:text-foreground" />
+          <ThemeToggle className="text-muted-foreground hover:text-foreground" />
           <Button
             asChild
             size="sm"

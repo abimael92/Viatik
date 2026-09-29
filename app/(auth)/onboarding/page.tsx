@@ -3,14 +3,15 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { OnboardingForm } from "@/app/(auth)/onboarding/onboarding-form";
+import { loginPath, safeNext } from "@/lib/auth/safe-next";
 import { createClient } from "@/lib/supabase/server-client";
 
 export default async function OnboardingPage({ searchParams }: { searchParams: Promise<{ next?: string; setup?: string }> }) {
   const [{ next, setup }, supabase] = await Promise.all([searchParams, createClient()]);
   const { data: authData } = await supabase.auth.getUser();
-  if (!authData.user) redirect(`/login?next=${encodeURIComponent(next ?? "/home")}`);
+  if (!authData.user) redirect(loginPath(safeNext(next)));
 
-  const destination = next?.startsWith("/") && !next.startsWith("//") ? next : "/trips";
+  const destination = safeNext(next, "/trips");
 
   const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", authData.user.id).maybeSingle();
   if (setup !== "1" && profile?.full_name?.trim()) redirect(destination);

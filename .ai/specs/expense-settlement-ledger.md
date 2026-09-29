@@ -112,3 +112,4 @@ All criteria must be objectively testable.
 - **Verification results:** Remote pulls now emit `logged_settlement` for collaborator inserts. `settleShare` is removed so share `settledAt` is no longer a repayment write path.
 - **Bug-ledger updates:** Settlement dual-source invariant recorded.
 - **Follow-up work:** Live Finance and Home browser QA after an authenticated session is available. Hosted project `spcpdbxripukvqrnsuim` now has migration 62 (`expense_settlements.date`).
+- **Remote notice:** Migration 70 replaces `generate_settlement_notification`. A committed settlement notifies `to_user_id` with type `settlement_recorded` and a JSON payment payload. It does not read `status`, store a phone number, or enqueue `notification_deliveries`.

@@ -40,7 +40,10 @@ describe("SyncStatusPill", () => {
   it("renders the up-to-date state at a screen-scaled size", () => {
     render(<SyncStatusPill />);
 
-    const status = screen.getByText("Up to date");
+    const label = screen.getByText("Up to date");
+    expect(label.className).toContain("truncate");
+    const status = label.parentElement!;
+    expect(status.className).toContain("min-w-0");
     expect(status.className).toContain("text-base");
     expect(status.className).toContain("lg:text-sm");
     expect(status.className).toContain("xl:text-base");

@@ -2,11 +2,8 @@ import { type EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { PASSWORD_RECOVERY_COOKIE, passwordRecoveryCookieOptions } from "@/lib/auth/password-recovery";
+import { safeNext } from "@/lib/auth/safe-next";
 import { createClient } from "@/lib/supabase/server-client";
-
-function safeNext(value: string | null) {
-  return value?.startsWith("/") && !value.startsWith("//") ? value : "/home";
-}
 
 function redirectToPasswordReset(origin: string) {
   const response = NextResponse.redirect(`${origin}/reset-password`);

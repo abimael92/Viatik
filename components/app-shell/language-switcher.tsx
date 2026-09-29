@@ -5,10 +5,20 @@ import { Languages } from "lucide-react";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { SUPPORTED_LOCALES, type Locale } from "@/lib/i18n/translations";
 
-export function LanguageSwitcher({ dark = false, showLabel = false }: { dark?: boolean; showLabel?: boolean }) {
+export function LanguageSwitcher({
+  dark = false,
+  showLabel = false,
+  compact = false,
+}: {
+  dark?: boolean;
+  showLabel?: boolean;
+  compact?: boolean;
+}) {
   const { locale, setLocale, t } = useI18n();
   return (
-    <label className={`inline-flex items-center gap-2 rounded-md px-2 ${dark ? "text-side-fg" : "text-muted-foreground"}`}>
+    <label
+      className={`inline-flex shrink-0 items-center rounded-md ${compact ? "gap-1 px-0" : "gap-2 px-2"} ${dark ? "text-side-fg" : "text-muted-foreground"}`}
+    >
       <Languages className="size-4 shrink-0" aria-hidden />
       <span className={showLabel ? "text-xs font-semibold" : "sr-only"}>{t("common.language")}</span>
       <select

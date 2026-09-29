@@ -10,7 +10,7 @@ import { Heading } from "@/components/ui/heading";
 import { useToast } from "@/components/ui/toast";
 import { ContactDetailsDialog } from "@/features/contacts/components/contact-details-dialog";
 import { ContactEditorDialog } from "@/features/contacts/components/contact-editor-dialog";
-import { ContactRequestInbox } from "@/features/contacts/components/ContactRequestInbox";
+import { ContactRequestInbox, type ContactInboxTab } from "@/features/contacts/components/ContactRequestInbox";
 import { contactRepository } from "@/features/contacts/data/dexie-contact-repository";
 import type { CurrentPublicProfile } from "@/features/contacts/lib/profile-directory";
 import type { Contact } from "@/features/domain/entities";
@@ -20,7 +20,15 @@ export function contactsPageContacts(contacts: Contact[]): Contact[] {
   return contacts.filter((contact) => Boolean(contact.linkedProfileId));
 }
 
-export function ContactsPanel({ userId, ownProfile }: { userId: string; ownProfile: CurrentPublicProfile }) {
+export function ContactsPanel({
+  userId,
+  ownProfile,
+  initialView = "contacts",
+}: {
+  userId: string;
+  ownProfile: CurrentPublicProfile;
+  initialView?: ContactInboxTab;
+}) {
   const { t } = useI18n();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [editing, setEditing] = useState<Contact | null | undefined>(undefined);
@@ -84,6 +92,7 @@ export function ContactsPanel({ userId, ownProfile }: { userId: string; ownProfi
 
       <ContactRequestInbox
         ownerId={userId}
+        initialTab={initialView}
         contacts={contactsPageContacts(contacts)}
         onView={(contact) => setViewing(contact)}
         onEdit={(contact) => setEditing(contact)}
