@@ -12,15 +12,18 @@ import { contactRepository } from "@/features/contacts/data/dexie-contact-reposi
 import { notificationRepository } from "@/features/notifications/data/dexie-notification-repository";
 import { notificationBadgeCount } from "@/features/notifications/lib/notification-badge";
 import { tripIdFromNotificationReference } from "@/features/trips/lib/return-pack-reminder";
-import { notificationMessage } from "@/features/notifications/lib/notification-message";
+import { notificationMessage, parseSettlementRecordedPayload } from "@/features/notifications/lib/notification-message";
 import type { Notification, NotificationType } from "@/features/notifications/domain/notification-types";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
+
+const CONTACT_REQUESTS_HREF = "/contacts?view=requests";
 
 const icons = {
   friend_request: UserRound,
   vote_pending: Vote,
   settlement_pending: CreditCard,
+  settlement_recorded: CreditCard,
   trip_alert: Map,
   trip_invitation: CalendarDays,
   trip_added: CalendarDays,
@@ -30,6 +33,7 @@ const tones: Record<NotificationType, string> = {
   friend_request: "bg-viatik-magenta/15 text-viatik-magenta",
   vote_pending: "bg-viatik-blue/15 text-viatik-blue",
   settlement_pending: "bg-success/15 text-success",
+  settlement_recorded: "bg-success/15 text-success",
   trip_alert: "bg-viatik-red/15 text-viatik-red",
   trip_invitation: "bg-primary/10 text-primary",
   trip_added: "bg-primary/10 text-primary",
@@ -145,14 +149,20 @@ export function NotificationCenter({ userId }: { userId: string }) {
 function NotificationRow({ item, onRead }: { item: Notification; onRead: () => void }) {
   const { t } = useI18n();
   const Icon = icons[item.type];
+  const recordedTripId =
+    item.type === "settlement_recorded" ? parseSettlementRecordedPayload(item.message)?.tripId ?? null : null;
   const action =
     item.type === "friend_request" ? (
       <>
-        <Button size="sm" variant="primary" onClick={onRead}>
-          {t("common.accept")}
+        <Button size="sm" variant="primary" asChild>
+          <Link href={CONTACT_REQUESTS_HREF} onClick={onRead}>
+            {t("common.accept")}
+          </Link>
         </Button>
-        <Button size="sm" variant="outline" onClick={onRead}>
-          {t("common.decline")}
+        <Button size="sm" variant="outline" asChild>
+          <Link href={CONTACT_REQUESTS_HREF} onClick={onRead}>
+            {t("common.decline")}
+          </Link>
         </Button>
       </>
     ) : item.type === "vote_pending" ? (
@@ -165,6 +175,14 @@ function NotificationRow({ item, onRead }: { item: Notification; onRead: () => v
       <Button size="sm" variant="primary" onClick={onRead}>
         {t("copy.pay")}
       </Button>
+    ) : item.type === "settlement_recorded" ? (
+      recordedTripId ? (
+        <Button size="sm" variant="outline" asChild>
+          <Link href={`/trips/${recordedTripId}`} onClick={onRead}>
+            {t("copy.viewItineraryTitle")}
+          </Link>
+        </Button>
+      ) : null
     ) : item.type === "trip_invitation" ? (
       <Button size="sm" variant="outline" onClick={onRead}>
         {t("copy.viewInvitation")}

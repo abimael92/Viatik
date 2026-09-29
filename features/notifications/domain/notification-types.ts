@@ -2,6 +2,7 @@ export const notificationTypes = [
   "vote_pending",
   "friend_request",
   "settlement_pending",
+  "settlement_recorded",
   "trip_alert",
   "trip_invitation",
   "trip_added",
