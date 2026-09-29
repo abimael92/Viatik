@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { AuthShell } from "@/app/(auth)/auth-shell";
 import { LoginForm } from "@/app/(auth)/login/login-form";
+import { safeNext } from "@/lib/auth/safe-next";
 import { createClient } from "@/lib/supabase/server-client";
 
 export default async function RegisterPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
@@ -9,7 +10,7 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
   const { data } = await supabase.auth.getUser();
   if (data.user) {
     const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", data.user.id).maybeSingle();
-    const destination = next?.startsWith("/") && !next.startsWith("//") ? next : "/trips";
+    const destination = safeNext(next, "/trips");
     redirect(profile?.full_name?.trim() ? destination : `/onboarding?next=${encodeURIComponent(destination)}`);
   }
 
