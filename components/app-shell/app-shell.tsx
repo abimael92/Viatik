@@ -147,8 +147,8 @@ export function AppShell({
         </span>
         <NotificationBell userId={userId} />
       </div>
-      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-side-border pt-2.5">
-        <LanguageSwitcher dark />
+      <div className="mt-3 flex flex-nowrap items-center gap-1.5 border-t border-side-border pt-2.5">
+        <LanguageSwitcher dark compact />
         <SyncStatusPill />
       </div>
     </div>
