@@ -49,7 +49,9 @@ describe("landing page visual hierarchy", () => {
 
     const themeToggle = within(navigation).getByRole("button", { name: "Toggle theme" });
     expect(themeToggle.className).toContain("text-muted-foreground");
-    expect(themeToggle.className).toContain("hover:bg-muted");
+    expect(themeToggle.className).toContain("theme-toggle");
+    expect(themeToggle.querySelector(".theme-toggle-moon")?.getAttribute("class")).toContain("text-viatik-magenta");
+    expect(themeToggle.querySelector(".theme-toggle-sun")?.getAttribute("class")).toContain("text-amber-400");
   });
 
   it("places each feature title beside its icon", () => {
