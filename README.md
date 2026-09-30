@@ -562,5 +562,3 @@ Known false positives are allowlisted in `.gitguardian.yaml`.
 Viatik is released under the **MIT License**.
 
 Copyright (c) 2026 Viatik-team26!
-
-Add the standard MIT license text to a root-level `LICENSE` file before publishing a production release.
