@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Activity, Contact, Trip, TripMember } from "@/features/domain/entities";
 import type { VaultEntry } from "@/features/vault/domain/vault-types";
 import { HomePage } from "@/features/trips/components/home/home-page";
+import { tripRepository } from "@/features/trips/data/dexie-trip-repository";
 
 const state = vi.hoisted(() => ({
   trips: null as ((trips: Trip[]) => void) | null,
@@ -22,7 +23,10 @@ vi.mock("next/link", () => ({
 }));
 
 vi.mock("@/features/trips/data/dexie-trip-repository", () => ({
-  tripRepository: { watchAll: vi.fn((cb) => { state.trips = cb; return () => {}; }) },
+  tripRepository: {
+    watchAll: vi.fn((cb) => { state.trips = cb; return () => {}; }),
+    startTrip: vi.fn(async () => undefined),
+  },
 }));
 vi.mock("@/features/steps/data/dexie-step-repository", () => ({
   stepRepository: {
@@ -78,6 +82,9 @@ vi.mock("@/features/profile/data/dexie-profile-repository", () => ({
 }));
 vi.mock("@/app/actions/profile", () => ({
   getMyProfile: vi.fn(async () => null),
+}));
+vi.mock("@/app/actions/trip-notifications", () => ({
+  notifyTripStarted: vi.fn(async () => ({ success: true, sent: 0, failed: 0, skipped: 0, configured: false })),
 }));
 vi.mock("@/lib/security/web-crypto-vault", () => ({
   webCryptoVault: {
@@ -234,6 +241,26 @@ describe("HomePage", () => {
     expect(screen.getByText("Start becomes available 7 days before departure.")).toBeTruthy();
     // The itinerary is hidden until the trip is started.
     expect(screen.queryByRole("heading", { name: "Up next in Lisbon, Portugal" })).toBeNull();
+  });
+
+  it("shows a current-date planned trip on Home with an explicit start action", () => {
+    const dateKey = (date: Date) =>
+      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 6);
+
+    render(<HomePage userId="owner-1" />);
+    act(() => state.trips?.([makeTrip({ name: "Phoenix Family", destination: "Phoenix", startDate: dateKey(yesterday), endDate: dateKey(tomorrow), status: "planned" })]));
+
+    expect(screen.getByRole("heading", { name: "Phoenix" })).toBeTruthy();
+    const startButton = screen.getByRole("button", { name: /Start planning/ });
+    expect(startButton).toBeTruthy();
+    fireEvent.click(startButton);
+    expect(tripRepository.startTrip).toHaveBeenCalledWith("trip-1");
+    expect(screen.queryByRole("heading", { name: "Active Trip Actions" })).toBeNull();
   });
 
   it("offers Start trip seven days before departure", () => {

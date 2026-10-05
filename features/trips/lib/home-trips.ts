@@ -101,7 +101,11 @@ export function pickPrimaryTrips(trips: Trip[], today: Date = new Date()): Prima
   const upcoming = open
     .filter((trip) => trip.id !== activeTrip?.id && trip.status !== "active" && trip.startDate !== null && trip.startDate >= day)
     .sort((left, right) => left.startDate!.localeCompare(right.startDate!));
-  const primaryTrip = activeTrip ?? upcoming[0] ?? open.find((trip) => trip.status === "active") ?? null;
+  const plannedCoveringToday =
+    open
+      .filter((trip) => trip.status === "planned" && coversDay(trip, day))
+      .sort((left, right) => (right.startDate ?? "").localeCompare(left.startDate ?? ""))[0] ?? null;
+  const primaryTrip = activeTrip ?? upcoming[0] ?? plannedCoveringToday ?? open.find((trip) => trip.status === "active") ?? null;
   const upNext = upcoming.filter((trip) => trip.id !== primaryTrip?.id);
   return { primaryTrip, activeTrip, nextTrip: upcoming[0] ?? null, upNext };
 }

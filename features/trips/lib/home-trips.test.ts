@@ -266,6 +266,17 @@ describe("pickPrimaryTrips", () => {
     expect(selection.nextTrip?.id).toBe("vegas");
   });
 
+  it("features a planned trip spanning today when no active or upcoming trip exists", () => {
+    const selection = pickPrimaryTrips(
+      [homeTrip("phoenix", "planned", "2026-10-04", "2026-10-11")],
+      new Date(2026, 9, 5, 13, 44, 0),
+    );
+
+    expect(selection.primaryTrip?.id).toBe("phoenix");
+    expect(selection.activeTrip).toBeNull();
+    expect(selection.nextTrip).toBeNull();
+  });
+
   it("does not keep a started trip on Home after its end date when another trip starts tomorrow", () => {
     const selection = pickPrimaryTrips(
       [
