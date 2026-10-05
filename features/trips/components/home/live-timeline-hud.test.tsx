@@ -8,12 +8,47 @@ import type { Trip } from "@/features/domain/entities";
 const update = vi.fn().mockResolvedValue(undefined);
 const updateChecklist = vi.fn().mockResolvedValue(undefined);
 const notify = vi.fn();
+const roster = vi.hoisted(() => ({
+  members: [] as { userId: string; removedAt: null }[],
+  profiles: [] as { id: string; fullName: string | null; avatarUrl: string | null; avatarSeed: string | null; email: null }[],
+  travelers: [] as { id: string; contactId: string; displayName: string }[],
+  contacts: [] as { id: string; ownerId: string; fullName: string; avatarUrl: string | null; avatarSeed: string | null; linkedProfileId: string | null; linkedAvatarUrl: string | null; phone: string | null }[],
+}));
 
 vi.mock("@/features/activities/data/dexie-activity-repository", () => ({
   activityRepository: {
     update: (...args: unknown[]) => update(...args),
     updateChecklist: (...args: unknown[]) => updateChecklist(...args),
   },
+}));
+
+vi.mock("@/features/collaboration/data/dexie-collaboration-repository", () => ({
+  collaborationRepository: {
+    watchMembers: (_tripId: string, onChange: (members: typeof roster.members) => void) => {
+      onChange(roster.members);
+      return () => undefined;
+    },
+    listProfiles: vi.fn(async () => roster.profiles),
+  },
+}));
+
+vi.mock("@/features/contacts/data/dexie-contact-repository", () => ({
+  contactRepository: {
+    watch: (_ownerId: string, onChange: (contacts: typeof roster.contacts) => void) => {
+      onChange(roster.contacts);
+      return () => undefined;
+    },
+  },
+  tripTravelerRepository: {
+    watch: (_tripId: string, onChange: (travelers: typeof roster.travelers) => void) => {
+      onChange(roster.travelers);
+      return () => undefined;
+    },
+  },
+}));
+
+vi.mock("@/features/profile/lib/use-local-profile", () => ({
+  useLocalProfile: () => null,
 }));
 
 vi.mock("@/lib/db/dexie", () => ({
@@ -162,6 +197,10 @@ describe("LiveTimelineHud execution UI", () => {
     update.mockClear();
     updateChecklist.mockClear();
     notify.mockClear();
+    roster.members = [];
+    roster.profiles = [];
+    roster.travelers = [];
+    roster.contacts = [];
   });
 
   it("shows weather on the timeline header and countdown/progress on cards", async () => {
@@ -396,6 +435,45 @@ describe("LiveTimelineHud execution UI", () => {
     expect(screen.queryByRole("checkbox")).toBeNull();
     expect(screen.queryByRole("button", { name: /archive/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /delete/i })).toBeNull();
+  });
+
+  it("shows resolved attendee names and avatars, dims non-attendees, and offers a WhatsApp invite", async () => {
+    roster.members = [{ userId: "user-2", removedAt: null }, { userId: "user-3", removedAt: null }];
+    roster.profiles = [
+      { id: "user-2", fullName: "Rosa Diaz", avatarUrl: null, avatarSeed: "adventurer|rosa", email: null },
+      { id: "user-3", fullName: "Marco Diaz", avatarUrl: null, avatarSeed: null, email: null },
+    ];
+    roster.travelers = [{ id: "traveler-1", contactId: "contact-1", displayName: "Alex Chen" }];
+    roster.contacts = [{ id: "contact-1", ownerId: "user-1", fullName: "Alex Chen", avatarUrl: null, avatarSeed: "adventurer|alex", linkedProfileId: null, linkedAvatarUrl: null, phone: null }];
+    const activity: TimelineItem = {
+      ...items[0],
+      participants: [
+        { userId: "user-2", status: "attending" },
+        { userId: null, travelerId: "traveler-1", displayName: "Trip traveler 1", status: "declined" },
+        { userId: "user-3", status: "pending" },
+      ],
+    };
+    render(<LiveTimelineHud trip={trip} items={[activity]} active userId="user-1" />);
+
+    fireEvent.click(screen.getByText("compras"));
+
+    await waitFor(() => expect(screen.getByText("Rosa Diaz")).toBeTruthy());
+    expect(screen.getByText("Alex Chen")).toBeTruthy();
+    expect(screen.getByText("Marco Diaz")).toBeTruthy();
+    expect(screen.queryByText("Trip traveler 1")).toBeNull();
+    expect(screen.getByLabelText("Rosa Diaz").querySelector("img")).toBeTruthy();
+    expect(screen.getByLabelText("Alex Chen").querySelector("img")).toBeTruthy();
+    const inviteButton = screen.getByRole("button", { name: /Invite Alex Chen via WhatsApp/ });
+    const pendingButton = screen.getByRole("button", { name: /Marco Diaz: No response/ });
+    expect(inviteButton.className).toContain("opacity-50");
+    expect(pendingButton.className).toContain("opacity-50");
+    fireEvent.click(inviteButton);
+
+    expect(screen.getByRole("heading", { name: "Invite Alex Chen to this activity" })).toBeTruthy();
+    expect(screen.getByText(/join us for compras/)).toBeTruthy();
+    const whatsapp = screen.getByRole("link", { name: "Open WhatsApp" });
+    expect(whatsapp.getAttribute("href")).toContain("https://wa.me/?text=");
+    expect(decodeURIComponent(whatsapp.getAttribute("href")!)).toContain("Alex Chen");
   });
 
   it("represents a missing description with a neutral fallback", () => {

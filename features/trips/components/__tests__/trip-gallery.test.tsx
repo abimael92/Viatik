@@ -19,6 +19,8 @@ let callback: (media: TripMedia[]) => void = () => {};
 const makeMedia = (id: string, caption: string, takenAt: string | null = null): TripMedia => ({
   id,
   tripId: "trip-1",
+  kind: "photo",
+  durationMs: null,
   activityId: null,
   caption,
   takenAt,

@@ -51,6 +51,7 @@ vi.mock("@/features/collaboration/data/dexie-collaboration-repository", () => ({
 }));
 vi.mock("@/features/contacts/data/dexie-contact-repository", () => ({
   contactRepository: { watch: vi.fn((_ownerId, cb) => { state.contacts = cb; return () => {}; }) },
+  tripTravelerRepository: { watch: vi.fn((_tripId, cb) => { cb([]); return () => {}; }) },
 }));
 vi.mock("@/features/vault/data/dexie-vault-repository", () => ({
   vaultRepository: { watchEntries: vi.fn((_tripId, _ownerId, cb) => { state.vault = cb; return () => {}; }) },
