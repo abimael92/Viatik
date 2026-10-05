@@ -21,6 +21,10 @@ export const env = createEnv({
     AI_SCOUT_API_KEY: z.string().optional(),
     // Signs the short-lived QR connection tokens. Must be >= 32 bytes.
     QR_SIGNING_SECRET: z.string().min(32).optional(),
+    // WhatsApp trip-start notifications (Twilio). When unset, nothing is sent.
+    TWILIO_ACCOUNT_SID: z.string().min(1).optional(),
+    TWILIO_AUTH_TOKEN: z.string().min(1).optional(),
+    TWILIO_WHATSAPP_FROM: z.string().min(1).optional(),
   },
   client: {
     NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
@@ -33,6 +37,9 @@ export const env = createEnv({
     AI_SCOUT_ENDPOINT: process.env.AI_SCOUT_ENDPOINT,
     AI_SCOUT_API_KEY: process.env.AI_SCOUT_API_KEY,
     QR_SIGNING_SECRET: process.env.QR_SIGNING_SECRET,
+    TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID,
+    TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN,
+    TWILIO_WHATSAPP_FROM: process.env.TWILIO_WHATSAPP_FROM,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   },

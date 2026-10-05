@@ -52,6 +52,7 @@ import { useToast } from "@/components/ui/toast";
 import { Heading } from "@/components/ui/heading";
 import { daysUntil, isTripActive, isTripEnded, todayKey } from "@/features/trips/lib/home-trips";
 import { resolveTripStatus } from "@/features/trips/lib/trip-status";
+import { notifyTripStarted } from "@/app/actions/trip-notifications";
 import { tripReadinessSummary } from "@/features/trips/lib/readiness";
 import { SuggestionsDrawer } from "@/features/community/components/suggestions-drawer";
 import {
@@ -140,6 +141,7 @@ export function TripDashboard({ userId }: { userId: string }) {
     setError(null);
     void tripRepository
       .startTrip(id)
+      .then(() => void notifyTripStarted(id).catch(() => undefined))
       .catch((cause) => setError(localizeThrownError(cause, t, "Unable to start trip")));
   }
 
