@@ -9,11 +9,14 @@ const mocks = vi.hoisted(() => ({
   headersGet: vi.fn<(name: string) => string | null>(() => null),
   resetPasswordForEmail: vi.fn(),
   updateUser: vi.fn(),
+  profileUpsert: vi.fn(),
+  profileUpsertMaybeSingle: vi.fn(),
   getUser: vi.fn(),
   signOut: vi.fn(),
   signInWithPassword: vi.fn(),
   cookieGet: vi.fn(),
   cookieSet: vi.fn(),
+  storageUpload: vi.fn(),
 }));
 
 vi.mock("next/headers", () => ({
@@ -47,13 +50,23 @@ vi.mock("@/lib/supabase/server-client", () => ({
       signOut: mocks.signOut,
       signInWithPassword: mocks.signInWithPassword,
     },
+    storage: {
+      from: () => ({
+        upload: mocks.storageUpload,
+        getPublicUrl: (path: string) => ({ data: { publicUrl: `https://cdn.example/avatars/${path}` } }),
+      }),
+    },
     from: vi.fn(() => ({
       select: vi.fn(() => ({ eq: vi.fn(() => ({ maybeSingle: mocks.maybeSingle })) })),
+      upsert: (...args: unknown[]) => {
+        mocks.profileUpsert(...args);
+        return { select: vi.fn(() => ({ maybeSingle: mocks.profileUpsertMaybeSingle })) };
+      },
     })),
   }),
 }));
 
-import { grantPasswordRecovery, loginWithPassword, registerWithPassword, requestPasswordReset, sendEmailOtp, sendPhoneOtp, updatePassword, verifyEmailOtp, verifyPhoneOtp } from "@/app/actions/auth";
+import { grantPasswordRecovery, loginWithPassword, registerWithPassword, requestPasswordReset, sendEmailOtp, sendPhoneOtp, updatePassword, updateProfileDetails, verifyEmailOtp, verifyPhoneOtp } from "@/app/actions/auth";
 
 const OTP_RESULT = {
   data: { user: { id: "user-1" }, session: { access_token: "token" } },
@@ -270,6 +283,62 @@ describe("grantPasswordRecovery", () => {
 
     expect(result.success).toBe(false);
     expect(mocks.cookieSet).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateProfileDetails", () => {
+  beforeEach(() => {
+    mocks.getUser.mockResolvedValue({ data: { user: { id: "user-1" } }, error: null });
+  });
+
+  it("persists the selected avatar fields with the signed-in profile", async () => {
+    mocks.profileUpsertMaybeSingle.mockResolvedValue({ data: { id: "user-1" }, error: null });
+
+    const result = await updateProfileDetails({
+      fullName: "Alice",
+      phone: "+1 555 0100",
+      birthDate: "1990-01-01",
+      avatarSeed: "adventurer|custom-avatar",
+    });
+
+    expect(result).toEqual({ success: true, data: undefined });
+    expect(mocks.profileUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "user-1", avatar_url: null, avatar_seed: "adventurer|custom-avatar" })
+    );
+  });
+
+  it("does not report success when no profile row was persisted", async () => {
+    mocks.profileUpsertMaybeSingle.mockResolvedValue({ data: null, error: null });
+
+    const result = await updateProfileDetails({
+      fullName: "Alice",
+      phone: "+1 555 0100",
+      birthDate: "1990-01-01",
+      avatarSeed: "adventurer|custom-avatar",
+    });
+
+    expect(result).toEqual({ success: false, error: "We couldn't save your profile right now. Please try again." });
+  });
+
+  it("versions the uploaded photo URL so a replaced photo is not served from cache", async () => {
+    mocks.profileUpsertMaybeSingle.mockResolvedValue({ data: { id: "user-1" }, error: null });
+    mocks.storageUpload.mockResolvedValue({ error: null });
+    const photo = new File(["png"], "me.png", { type: "image/png" });
+    const details = { fullName: "Alice", phone: "+1 555 0100", birthDate: "1990-01-01" };
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(1_790_000_000_000);
+      await updateProfileDetails(details, photo);
+      vi.setSystemTime(1_790_000_001_000);
+      await updateProfileDetails(details, photo);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(mocks.profileUpsert.mock.calls.map(([row]) => row.avatar_url)).toEqual([
+      "https://cdn.example/avatars/user-1/avatar.png?v=1790000000000",
+      "https://cdn.example/avatars/user-1/avatar.png?v=1790000001000",
+    ]);
   });
 });
 

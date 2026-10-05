@@ -130,6 +130,11 @@ function rejectProfileImage(avatar?: File | null): { success: false; error: stri
   );
 }
 
+/** Photos are overwritten at a stable storage path, so each upload needs a distinct URL to bypass image caches. */
+function versionedAvatarUrl(publicUrl: string): string {
+  return `${publicUrl}${publicUrl.includes("?") ? "&" : "?"}v=${Date.now()}`;
+}
+
 function passwordMessage(error?: { code?: string; message?: string } | null) {
   const message = (error?.message ?? "").toLowerCase();
   if (error?.code === "email_not_confirmed" || message.includes("email not confirmed")) {
@@ -405,7 +410,7 @@ export async function registerWithPassword(
       const { error: uploadError } = await serviceClient.storage
         .from("avatars")
         .upload(path, avatar, { contentType: avatar.type, upsert: true });
-      if (!uploadError) avatarUrl = serviceClient.storage.from("avatars").getPublicUrl(path).data.publicUrl;
+      if (!uploadError) avatarUrl = versionedAvatarUrl(serviceClient.storage.from("avatars").getPublicUrl(path).data.publicUrl);
       else logger.warn("Unable to upload registration avatar", { code: uploadError.name });
     }
 
@@ -597,7 +602,7 @@ export async function updateProfileDetails(
       const path = `${data.user.id}/avatar.${extension}`;
       const { error: uploadError } = await supabase.storage.from("avatars").upload(path, avatar, { contentType: avatar.type, upsert: true });
       if (uploadError) return { success: false, error: "We couldn't upload that photo. Try another image or remove it." };
-      avatarUrl = supabase.storage.from("avatars").getPublicUrl(path).data.publicUrl;
+      avatarUrl = versionedAvatarUrl(supabase.storage.from("avatars").getPublicUrl(path).data.publicUrl);
     }
 
     const update = {
@@ -617,8 +622,13 @@ export async function updateProfileDetails(
       preferred_language: details.preferredLanguage || undefined,
       mute_trip_notifications: details.muteTripNotifications ?? false,
     };
-    const { error } = await supabase.from("profiles").update(update).eq("id", data.user.id);
+    const { data: savedProfile, error } = await supabase
+      .from("profiles")
+      .upsert({ id: data.user.id, ...update })
+      .select("id")
+      .maybeSingle();
     if (error) return { success: false, error: error.message };
+    if (!savedProfile) return { success: false, error: "We couldn't save your profile right now. Please try again." };
     return { success: true, data: undefined };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Unable to update profile" };
@@ -670,7 +680,7 @@ export async function completeOnboarding(
         logger.warn("Unable to upload onboarding avatar", { code: uploadError.name });
         return { success: false, error: "We couldn't upload that photo. Try another image or continue without one." };
       }
-      avatarUrl = supabase.storage.from("avatars").getPublicUrl(path).data.publicUrl;
+      avatarUrl = versionedAvatarUrl(supabase.storage.from("avatars").getPublicUrl(path).data.publicUrl);
     }
 
     const profile = {
