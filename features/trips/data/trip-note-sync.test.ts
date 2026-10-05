@@ -22,11 +22,19 @@ const note: TripNote = {
   createdAt: "2026-09-27T12:00:00.000Z",
   updatedAt: "2026-09-27T12:00:00.000Z",
   deletedAt: null,
+  audioMediaId: null,
 };
 
 describe("trip notes", () => {
   it("round-trips a note through the sync mapper", () => {
     expect(rowToNote(noteToRow(note))).toEqual(note);
+  });
+
+  it("round-trips a voice note's audio reference", () => {
+    const voiceNote = { ...note, content: "", audioMediaId: "media-1" };
+    expect(noteToRow(voiceNote)).toMatchObject({ audio_media_id: "media-1", content: "" });
+    expect(rowToNote(noteToRow(voiceNote))).toEqual(voiceNote);
+    expect(rowToNote({ ...noteToRow(note), audio_media_id: undefined }).audioMediaId).toBeNull();
   });
 
   it("lets trip members read and write without replacing the shared sync function", () => {

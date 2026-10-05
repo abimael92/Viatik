@@ -1,7 +1,7 @@
 import Dexie, { type EntityTable } from "dexie";
 
 import type { Activity, ActivityPersonalBudget, Contact, Decision, DecisionOption, DecisionVote, Expense, ExpenseSettlement, ExpenseShare, Trip, TripBudget, TripInvitation, TripMember, TripTraveler, UserWallet } from "@/features/domain/entities";
-import type { TripMedia } from "@/features/domain/entities-media";
+import type { MediaTranscript, TripMedia } from "@/features/domain/entities-media";
 import { MAX_MINOR_UNITS } from "@/features/domain/money";
 import type { VaultEntry, VaultKeyset } from "@/features/vault/domain/vault-types";
 import type { TripWeatherForecast } from "@/features/weather/domain/weather-types";
@@ -53,6 +53,7 @@ export class ViatikDatabase extends Dexie {
   outboxMutations!: EntityTable<OutboxMutation, "id">;
   /** Offline gallery media (compressed images and their upload state). */
   tripMedia!: EntityTable<TripMedia, "id">;
+  mediaTranscripts!: EntityTable<MediaTranscript, "mediaId">;
   tripInvitations!: EntityTable<TripInvitation, "id">;
   expenseSettlements!: EntityTable<ExpenseSettlement, "id">;
   syncMetadata!: EntityTable<SyncMetadata, "key">;
@@ -510,6 +511,25 @@ export class ViatikDatabase extends Dexie {
     // v42: crew research tasks. v41 is trip notes.
     this.version(42).stores({
       tripTasks: "id, tripId, creatorId, assigneeId, status, createdAt, updatedAt, deletedAt",
+    });
+
+    // v43: voice notes. Audio clips share tripMedia with photos (kind) and a
+    // trip note may point at one clip.
+    this.version(43).stores({
+      tripMedia: "id, tripId, activityId, uploadStatus, takenAt, kind, updatedAt, deletedAt",
+    }).upgrade(async (transaction) => {
+      await transaction.table("tripMedia").toCollection().modify((media: Record<string, unknown>) => {
+        if (media.kind !== "photo" && media.kind !== "audio") media.kind = "photo";
+        if (typeof media.durationMs !== "number") media.durationMs = null;
+      });
+      await transaction.table("tripNotes").toCollection().modify((note: Record<string, unknown>) => {
+        if (typeof note.audioMediaId !== "string") note.audioMediaId = null;
+      });
+    });
+
+    // v44: read-only local mirror of server-written crew voice-note transcripts.
+    this.version(44).stores({
+      mediaTranscripts: "mediaId, tripId, status, updatedAt",
     });
   }
 }
