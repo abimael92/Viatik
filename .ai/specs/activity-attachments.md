@@ -4,7 +4,7 @@
 **Owner:** Viatik Product
 **Status:** Implemented on the Activity form Extras tab
 **Created:** 2026-09-24
-**Updated:** 2026-09-24
+**Updated:** 2026-10-05
 **Related work:** Activity planning form, Home activity detail modal, trip media sync
 
 ## What & Why
@@ -55,6 +55,7 @@ them from Activity detail views, including after the Activity was prepared offli
   says photos save with the activity; upload starts only after the Dexie write.
 - [x] Execution and read-only planning dialogs render the same ordered attachments.
 - [x] Photos open in a keyboard-accessible Dialog lightbox.
+- [x] Image previews prefer an available local Blob and replace failed sources with a localized fallback.
 - [x] Links open safely in a new context; pins open a universal maps URL.
 
 ### Authorization and security
@@ -76,6 +77,7 @@ them from Activity detail views, including after the Activity was prepared offli
 ### Accessibility and UX
 
 - [x] All controls have 44px targets, focus styles, and localized accessible labels.
+- [x] Attachment menu default/highlighted states maintain readable contrast in light and dark themes.
 - [x] Async preparation/upload status uses a polite live region.
 - [x] The detail modal remains scannable on mobile and omits empty attachment UI.
 
@@ -113,10 +115,8 @@ them from Activity detail views, including after the Activity was prepared offli
   cannot default `attachments` back to `[]`. Dialog dismiss ignores
   portaled place results, Google `.pac-container`, and menus so pin
   search can complete inside ActivityForm.
-- `pnpm lint` still fails on pre-existing `lib/i18n/i18n-provider.tsx`
-  setState-in-effect. Parallel i18n files stay out of this commit.
-- Full `pnpm test`, `pnpm build`, Playwright, and a dedicated Security report
-  remain recommended before release.
+- Historical note (2026-09-24): lint then failed on a setState-in-effect warning in `lib/i18n/i18n-provider.tsx`. On 2026-10-05, `pnpm test` (196 files / 1,237 tests), `pnpm lint`, `pnpm typecheck`, and `pnpm build` passed after the preview/contrast fix.
+- Playwright and a dedicated Security report remain recommended before release.
 
 ## Risks
 
