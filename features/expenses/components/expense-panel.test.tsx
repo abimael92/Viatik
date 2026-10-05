@@ -44,6 +44,9 @@ vi.mock("@/features/collaboration/data/dexie-collaboration-repository", () => ({
 vi.mock("@/features/profile/lib/use-local-profile", () => ({
   useLocalProfile: vi.fn(() => null),
 }));
+vi.mock("@/features/finance/lib/exchange-rate-service", () => ({
+  resolveExchangeRate: vi.fn(async () => ({ rate: 17.2, source: "live", fetchedAt: "2026-09-27T12:00:00.000Z" })),
+}));
 vi.mock("@/features/contacts/data/dexie-contact-repository", () => ({
   contactRepository: {
     create: vi.fn().mockResolvedValue({ id: "contact-1", fullName: "Mom", travelerType: "adult" }),
@@ -161,7 +164,7 @@ describe("ExpenseDialog", () => {
     fireEvent.change(screen.getByLabelText("Currency"), { target: { value: "USD" } });
 
     // Read-only rate label: 1 USD = 17.2 MXN (correct direction, no manual entry).
-    expect(screen.getByText(/1 USD = 17\.2 MXN/)).toBeTruthy();
+    expect(await screen.findByText(/1 USD = 17\.2 MXN/)).toBeTruthy();
 
     fireEvent.change(screen.getByLabelText(/Amount \(USD\)/), { target: { value: "20" } });
 

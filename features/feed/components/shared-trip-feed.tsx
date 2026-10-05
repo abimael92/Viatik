@@ -139,10 +139,14 @@ export function FeedRow({ item, currentUserId, profile }: { item: TripFeedItem; 
   const style = ENTITY_STYLE[item.entityType] ?? ENTITY_STYLE.activity;
   const Icon = style.icon;
   const actorLabel = item.actorId === currentUserId ? t("common.you") : profile?.name ?? resolveActorLabel(item.actorId, currentUserId);
+  const avatarSrc =
+    profile?.avatarUrl && item.actorId === currentUserId && profile.avatarRevision
+      ? `${profile.avatarUrl}${profile.avatarUrl.includes("?") ? "&" : "?"}v=${encodeURIComponent(profile.avatarRevision)}`
+      : profile?.avatarUrl;
 
   return (
     <div className="flex items-start gap-3">
-      <UserAvatar seed={profile?.avatarSeed ?? (item.actorId === currentUserId ? undefined : item.actorId)} src={profile?.avatarUrl} name={actorLabel} size="sm" />
+      <UserAvatar seed={profile?.avatarSeed} src={avatarSrc} name={profile?.name ?? actorLabel} size="sm" />
       <div className="min-w-0 flex-1">
         <p className="text-sm leading-snug text-foreground">
           <span className="font-semibold">
