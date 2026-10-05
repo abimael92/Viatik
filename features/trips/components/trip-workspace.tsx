@@ -67,6 +67,7 @@ import {
 import type {
   Activity,
   ActivityPersonalBudget,
+  Contact,
   ProfileSummary,
   Trip,
   TripMember,
@@ -1452,6 +1453,8 @@ function ActivityDialog({
   onDelete: (activity: Activity) => void;
 }) {
   const { t } = useI18n();
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  useEffect(() => contactRepository.watch(userId, setContacts), [userId]);
   const stateActivity =
     state && state !== "new" && "activity" in state ? state.activity : undefined;
   const activity = stateActivity
@@ -1718,6 +1721,7 @@ function ActivityDialog({
             members={members}
             profiles={memberProfiles}
             travelers={travelers}
+            contacts={contacts}
             currentUserId={userId}
             currency={trip.baseCurrency}
             personalBudgetMinor={currentPersonalBudget?.amountMinor ?? null}

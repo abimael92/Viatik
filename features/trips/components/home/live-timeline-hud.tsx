@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { useToast } from "@/components/ui/toast";
 import {
   Dialog,
@@ -19,7 +20,7 @@ import {
 import { getCurrentDatabase } from "@/lib/db/dexie";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
-import type { ActivityChecklistItem, Trip } from "@/features/domain/entities";
+import type { ActivityChecklistItem } from "@/features/domain/entities";
 import {
   isPurchaseOrientedMustDo,
   spendingCategoryFromActivity,
@@ -43,6 +44,10 @@ import {
 } from "@/features/activities/components/activity-checklist";
 import { normalizeActivityChecklist } from "@/features/activities/domain/activity-checklist";
 import { activityRepository } from "@/features/activities/data/dexie-activity-repository";
+import { collaborationRepository } from "@/features/collaboration/data/dexie-collaboration-repository";
+import { contactRepository, tripTravelerRepository } from "@/features/contacts/data/dexie-contact-repository";
+import type { ActivityParticipant, Contact, ProfileSummary, Trip, TripMember, TripTraveler } from "@/features/domain/entities";
+import { useLocalProfile } from "@/features/profile/lib/use-local-profile";
 import type { ChecklistFeedAction } from "@/features/feed/lib/feed-builder";
 import { weatherRepository } from "@/features/weather/data/dexie-weather-repository";
 import { weatherCodeSummary } from "@/features/weather/domain/weather-warnings";
@@ -102,6 +107,11 @@ export function LiveTimelineHud({
   const [showAll, setShowAll] = useState(false);
   const [now, setNow] = useState(() => new Date());
   const [optimisticChecklists, setOptimisticChecklists] = useState<Record<string, ActivityChecklistItem[]>>({});
+  const [members, setMembers] = useState<TripMember[]>([]);
+  const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
+  const [travelers, setTravelers] = useState<TripTraveler[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const currentProfile = useLocalProfile(userId);
   const [expenseIntent, setExpenseIntent] = useState<ExpenseFormInitialData | null>(null);
   const checklistWriteVersionRef = useRef(new Map<string, number>());
   const timelineId = useId();
@@ -113,6 +123,32 @@ export function LiveTimelineHud({
           : null;
       })()
     : null;
+
+  useEffect(() => {
+    if (!getCurrentDatabase()) return;
+    const stopMembers = collaborationRepository.watchMembers(trip.id, setMembers);
+    const stopTravelers = tripTravelerRepository.watch(trip.id, setTravelers);
+    const stopContacts = contactRepository.watch(userId, setContacts);
+    return () => {
+      stopMembers();
+      stopTravelers();
+      stopContacts();
+    };
+  }, [trip.id, userId]);
+
+  useEffect(() => {
+    const userIds = [...new Set(members.filter((member) => member.removedAt === null).map((member) => member.userId).filter((id) => id !== userId))];
+    let cancelled = false;
+    const request = userIds.length ? collaborationRepository.listProfiles(userIds) : Promise.resolve([]);
+    void request.then((next) => {
+      if (!cancelled) setProfiles(next);
+    }).catch(() => {
+      if (!cancelled) setProfiles([]);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [members, userId]);
 
   useEffect(() => {
     const interval = window.setInterval(() => setNow(new Date()), 30_000);
@@ -378,8 +414,12 @@ export function LiveTimelineHud({
             ),
             startsIn: getTimeUntil(selectedActivity, now, scheduleTimeZone),
           }}
-          timeZone={scheduleTimeZone}
+          trip={trip}
           currentUserId={userId}
+          currentProfile={currentProfile}
+          profiles={profiles}
+          travelers={travelers}
+          contacts={contacts}
           dismissible={!expenseIntent}
           onClose={() => setSelectedActivityId(null)}
           onChecklistChange={(checklist, event) => void saveChecklist(selectedActivity.id, checklist, event)}
@@ -682,16 +722,33 @@ function TimelineCard({
   );
 }
 
+interface ActivityAttendeeView {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+  avatarSeed: string | null;
+  status: ActivityParticipant["status"];
+}
+
 function ActivityDetailModal({
   activity,
+  trip,
   currentUserId,
+  currentProfile,
+  profiles,
+  travelers,
+  contacts,
   dismissible = true,
   onClose,
   onChecklistChange,
 }: {
   activity: TimelineCardItem;
-  timeZone?: string | null;
+  trip: Trip;
   currentUserId: string;
+  currentProfile: ReturnType<typeof useLocalProfile>;
+  profiles: ProfileSummary[];
+  travelers: TripTraveler[];
+  contacts: Contact[];
   dismissible?: boolean;
   onClose: () => void;
   onChecklistChange: (
@@ -700,15 +757,39 @@ function ActivityDetailModal({
   ) => void;
 }) {
   const { t } = useI18n();
+  const [invitee, setInvitee] = useState<ActivityAttendeeView | null>(null);
   const checklist = activity.checklist ?? [];
   const description = activity.description?.trim() || t("common.activityNoDescription");
-  const attendees = (activity.participants ?? [])
-    .filter((participant) => participant.status === "attending")
-    .map((participant, index) => {
-      if (participant.userId === currentUserId) return t("common.you");
-      const displayName = participant.displayName?.trim();
-      return displayName || t("common.activityTravelerFallback", { count: index + 1 });
-    });
+  const attendees = (activity.participants ?? []).map((participant, index): ActivityAttendeeView => {
+    const isCurrentUser = participant.userId === currentUserId;
+    const profile = participant.userId ? profiles.find((candidate) => candidate.id === participant.userId) : null;
+    const traveler = participant.travelerId ? travelers.find((candidate) => candidate.id === participant.travelerId) : null;
+    const contact = traveler
+      ? contacts.find((candidate) => candidate.id === traveler.contactId)
+      : participant.userId
+        ? contacts.find((candidate) => candidate.linkedProfileId === participant.userId)
+        : null;
+    const name = isCurrentUser
+      ? currentProfile?.fullName?.trim() || t("common.you")
+      : profile?.fullName?.trim() || traveler?.displayName?.trim() || contact?.fullName?.trim() || participant.displayName?.trim() || t("common.activityTravelerFallback", { count: index + 1 });
+    return {
+      id: participant.userId ? `user:${participant.userId}` : `traveler:${participant.travelerId ?? index}`,
+      name,
+      avatarUrl: isCurrentUser ? currentProfile?.avatarUrl ?? null : profile?.avatarUrl ?? contact?.linkedAvatarUrl ?? contact?.avatarUrl ?? null,
+      avatarSeed: isCurrentUser ? currentProfile?.avatarSeed ?? null : profile?.avatarSeed ?? contact?.avatarSeed ?? null,
+      status: participant.status,
+    };
+  });
+  const whatsappMessage = invitee
+    ? t("common.activityInviteMessage", {
+        name: invitee.name,
+        activity: activity.title,
+        date: activity.dayDate,
+        time: activity.formattedTime ?? t("common.activityAllDay"),
+        trip: trip.name,
+      })
+    : "";
+  const whatsappHref = `https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`;
   const timeLabel = activity.formattedTime ?? "All day";
   const statusLabel =
     activity.state === "past"
@@ -748,14 +829,32 @@ function ActivityDetailModal({
             </h3>
             {attendees.length > 0 ? (
               <ul className="flex flex-wrap gap-2" aria-label={t("common.activityAttendeesHeading")}>
-                {attendees.map((name, index) => (
-                  <li
-                    key={`${name}-${index}`}
-                    className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground"
-                  >
-                    {name}
-                  </li>
-                ))}
+                {attendees.map((attendee) => {
+                  const notGoing = attendee.status !== "attending";
+                  const statusLabel = attendee.status === "declined" ? t("common.notGoing") : t("common.activityPending");
+                  const avatar = <UserAvatar seed={attendee.avatarSeed} src={attendee.avatarUrl} name={attendee.name} size="sm" />;
+                  return (
+                    <li key={attendee.id}>
+                      {notGoing ? (
+                        <button
+                          type="button"
+                          aria-label={`${attendee.name}: ${statusLabel}. ${t("common.activityInviteParticipant", { name: attendee.name })}`}
+                          className="inline-flex items-center gap-2 rounded-full bg-muted py-1 pl-1 pr-2.5 text-xs font-medium text-muted-foreground opacity-50 transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          onClick={() => setInvitee(attendee)}
+                        >
+                          {avatar}
+                          <span className="max-w-44 truncate">{attendee.name}</span>
+                          <span className="text-[10px]">{statusLabel}</span>
+                        </button>
+                      ) : (
+                        <span className="inline-flex items-center gap-2 rounded-full bg-muted py-1 pl-1 pr-2.5 text-xs font-medium text-muted-foreground">
+                          {avatar}
+                          <span className="max-w-44 truncate">{attendee.name}</span>
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             ) : (
               <p className="text-sm text-muted-foreground">
@@ -822,6 +921,25 @@ function ActivityDetailModal({
           </Button>
         </DialogFooter>
       </DialogContent>
+      <Dialog open={invitee !== null} onOpenChange={(open) => !open && setInvitee(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{invitee ? t("common.activityInviteHeading", { name: invitee.name }) : null}</DialogTitle>
+            <DialogDescription>{t("common.activityInviteDescription")}</DialogDescription>
+          </DialogHeader>
+          <p className="rounded-xl bg-muted p-3 text-sm leading-relaxed">{whatsappMessage}</p>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setInvitee(null)}>
+              {t("common.close")}
+            </Button>
+            <Button asChild variant="primary">
+              <a href={whatsappHref} target="_blank" rel="noopener noreferrer">
+                {t("common.openWhatsApp")}
+              </a>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
