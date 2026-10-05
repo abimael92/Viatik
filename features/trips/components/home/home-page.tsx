@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
+import { notifyTripStarted } from "@/app/actions/trip-notifications";
 import { DocumentRiskBanner } from "@/features/health/components/document-risk-banner";
 import { SharedTripFeed } from "@/features/feed/components/shared-trip-feed";
 import { tripRepository } from "@/features/trips/data/dexie-trip-repository";
@@ -70,7 +71,11 @@ export function HomePage({ userId }: { userId: string }) {
   function handleStart() {
     if (!primaryTrip || pending) return;
     setPending(true);
-    void tripRepository.startTrip(primaryTrip.id).finally(() => setPending(false));
+    const tripId = primaryTrip.id;
+    void tripRepository
+      .startTrip(tripId)
+      .then(() => void notifyTripStarted(tripId).catch(() => undefined))
+      .finally(() => setPending(false));
   }
 
   function handleEnd() {
