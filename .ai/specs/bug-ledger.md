@@ -96,6 +96,10 @@ When skipping, record `None — incidental issue` in the bug report or related s
 
 || 2026-10-05 | Home hid Phoenix Family while its planned travel dates included today. [Bug report](./bug-home-hides-planned-current-trip.md). | **Invariant:** Home's Ongoing/Active quick view includes every non-ended trip with stored `active` status and every `planned` trip with non-null start/end dates that inclusively contain the traveler's local calendar day. Planned trips remain planned until explicitly started and expose a direct Start trip action; the quick view does not remove future trips from the separate upcoming selection. | `features/trips/lib/home-trips.ts`; `features/trips/lib/home-trips.test.ts`; `features/trips/components/home/home-page.test.tsx`; `.ai/specs/trip-lifecycle.md`. |
 
+|| 2026-10-05 | Recent activity could keep showing an old signed-in profile photo after an avatar replacement. [Bug report](./bug-feed-avatar-cache.md). | **Invariant:** The current user's activity-feed photo URL includes the local profile revision when rendered, so replacing an image at a stable storage URL invalidates the browser cache; collaborators keep their authorized profile avatar and seed avatars remain unchanged. | `features/feed/lib/use-shared-trip-feed.ts`; `features/feed/lib/use-recent-activity.ts`; `features/feed/components/shared-trip-feed.tsx`; `features/feed/components/shared-trip-feed.test.tsx`. |
+
+|| 2026-10-05 | Settings could report a profile save while the user's avatar remained absent from Recent activity. [Bug report](./bug-feed-avatar-cache.md). | **Invariant:** A profile settings save succeeds only after the signed-in user's profile row is returned; the Recent activity photo avatar uses that local profile revision as its cache key, while collaborator avatars and seed avatars retain their existing behavior. | `app/actions/auth.ts`; `app/actions/auth.test.ts`; `features/feed/lib/use-shared-trip-feed.ts`; `features/feed/lib/use-recent-activity.ts`; `features/feed/components/shared-trip-feed.tsx`; `features/feed/components/shared-trip-feed.test.tsx`. |
+
 ## Entry Quality Checklist
 
 - [ ] The bug was reproduced or evidence was collected.
