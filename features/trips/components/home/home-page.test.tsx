@@ -243,7 +243,7 @@ describe("HomePage", () => {
     expect(screen.queryByRole("heading", { name: "Up next in Lisbon, Portugal" })).toBeNull();
   });
 
-  it("shows a current-date planned trip on Home with an explicit start action", () => {
+  it("shows a current-date planned trip on Home with an explicit start action", async () => {
     const dateKey = (date: Date) =>
       `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
     const today = new Date();
@@ -256,11 +256,38 @@ describe("HomePage", () => {
     act(() => state.trips?.([makeTrip({ name: "Phoenix Family", destination: "Phoenix", startDate: dateKey(yesterday), endDate: dateKey(tomorrow), status: "planned" })]));
 
     expect(screen.getByRole("heading", { name: "Phoenix" })).toBeTruthy();
-    const startButton = screen.getByRole("button", { name: /Start planning/ });
+    const startButton = screen.getByRole("button", { name: /Start trip/ });
     expect(startButton).toBeTruthy();
-    fireEvent.click(startButton);
+    await act(async () => {
+      fireEvent.click(startButton);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
     expect(tripRepository.startTrip).toHaveBeenCalledWith("trip-1");
     expect(screen.queryByRole("heading", { name: "Active Trip Actions" })).toBeNull();
+  });
+
+  it("shows a Start trip action for another planned trip in the ongoing quick view", async () => {
+    const dateKey = (date: Date) =>
+      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const futureActive = makeTrip({ id: "active-trip", name: "Denver Weekend", destination: "Denver", status: "active", startDate: dateKey(today), endDate: dateKey(tomorrow) });
+    const plannedCurrent = makeTrip({ id: "phoenix-trip", name: "Phoenix Family", destination: "Phoenix", status: "planned", startDate: dateKey(yesterday), endDate: dateKey(tomorrow) });
+
+    render(<HomePage userId="owner-1" />);
+    act(() => state.trips?.([futureActive, plannedCurrent]));
+
+    expect(screen.getByRole("heading", { name: "Denver" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Active trips" })).toBeTruthy();
+    const startButton = screen.getByRole("button", { name: /Start trip/ });
+    await act(async () => {
+      fireEvent.click(startButton);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(tripRepository.startTrip).toHaveBeenCalledWith("phoenix-trip");
   });
 
   it("offers Start trip seven days before departure", () => {
