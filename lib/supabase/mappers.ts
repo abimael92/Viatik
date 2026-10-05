@@ -25,7 +25,7 @@ import {
   type SpendingCategory,
   type SpendingSubcategory,
 } from "@/features/domain/categories";
-import type { TripMedia } from "@/features/domain/entities-media";
+import type { MediaTranscript, TripMedia } from "@/features/domain/entities-media";
 import type { Notification } from "@/features/notifications/domain/notification-types";
 import type { TripNote } from "@/features/trips/domain/trip-note";
 import type { TripTask, TripTaskStatus } from "@/features/trips/domain/trip-task";
@@ -656,6 +656,8 @@ export function mediaToRow(media: TripMedia): Record<string, unknown> {
     id: media.id,
     trip_id: media.tripId,
     activity_id: media.activityId,
+    kind: media.kind,
+    duration_ms: media.durationMs,
     caption: media.caption,
     storage_path: media.storagePath,
     content_type: media.contentType,
@@ -676,6 +678,8 @@ export function rowToMedia(row: Record<string, unknown>): TripMedia {
     id: String(row.id),
     tripId: String(row.trip_id),
     activityId: row.activity_id == null ? null : String(row.activity_id),
+    kind: row.kind === "audio" ? "audio" : "photo",
+    durationMs: row.duration_ms == null ? null : Number(row.duration_ms),
     caption: row.caption == null ? null : String(row.caption),
     blob: null,
     storagePath: String(row.storage_path),
@@ -1138,6 +1142,7 @@ export function noteToRow(note: TripNote): Record<string, unknown> {
     trip_id: note.tripId,
     user_id: note.userId,
     content: note.content,
+    audio_media_id: note.audioMediaId,
     created_by: note.createdBy,
     updated_by: note.updatedBy,
     deleted_by: note.deletedBy,
@@ -1154,6 +1159,7 @@ export function rowToNote(row: Record<string, unknown>): TripNote {
     tripId: String(row.trip_id),
     userId: String(row.user_id),
     content: String(row.content ?? ""),
+    audioMediaId: row.audio_media_id == null ? null : String(row.audio_media_id),
     createdBy: String(row.created_by ?? row.user_id),
     updatedBy: String(row.updated_by ?? row.user_id),
     deletedBy: row.deleted_by == null ? null : String(row.deleted_by),
@@ -1161,6 +1167,19 @@ export function rowToNote(row: Record<string, unknown>): TripNote {
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
     deletedAt: row.deleted_at == null ? null : String(row.deleted_at),
+  };
+}
+
+export function rowToMediaTranscript(row: Record<string, unknown>): MediaTranscript {
+  return {
+    mediaId: String(row.media_id),
+    tripId: String(row.trip_id),
+    status: String(row.status) as MediaTranscript["status"],
+    text: row.text == null ? null : String(row.text),
+    language: row.language == null ? null : String(row.language),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+    version: Number(row.version ?? 1),
   };
 }
 

@@ -1546,6 +1546,8 @@ export type Database = {
           public_handle: string | null
           updated_at: string
           viatik_id: string
+          whatsapp_consent_updated_at: string | null
+          whatsapp_notifications_enabled: boolean
         }
         Insert: {
           allergies?: string[]
@@ -1568,6 +1570,8 @@ export type Database = {
           public_handle?: string | null
           updated_at?: string
           viatik_id?: string
+          whatsapp_consent_updated_at?: string | null
+          whatsapp_notifications_enabled?: boolean
         }
         Update: {
           allergies?: string[]
@@ -1590,6 +1594,8 @@ export type Database = {
           public_handle?: string | null
           updated_at?: string
           viatik_id?: string
+          whatsapp_consent_updated_at?: string | null
+          whatsapp_notifications_enabled?: boolean
         }
         Relationships: []
       }

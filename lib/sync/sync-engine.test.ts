@@ -20,6 +20,9 @@ const mocks = vi.hoisted(() => ({
   tripTravelersWhere: vi.fn(),
   expenseUpdate: vi.fn(),
   expenseGet: vi.fn(),
+  tripMediaGet: vi.fn(),
+  tripMediaError: vi.fn(),
+  processPendingMedia: vi.fn(),
   CoordinationInterruptedError: class extends Error {},
 }));
 
@@ -35,14 +38,16 @@ vi.mock("@/lib/db/dexie", () => ({
     expenseShares: { update: mocks.expenseUpdate },
     tripTravelers: { where: mocks.tripTravelersWhere },
     tripMedia: {
-      where: () => ({ anyOf: () => ({ filter: () => ({ count: vi.fn().mockResolvedValue(0) }) }) }),
+      get: mocks.tripMediaGet,
+      where: () => ({ anyOf: () => ({ filter: () => ({ count: vi.fn().mockResolvedValue(0), first: mocks.tripMediaError }) }) }),
     },
   }),
   ViatikDatabase: class {},
 }));
 vi.mock("@/lib/sync/cloud-sync", () => ({
   deleteRemoteMedia: vi.fn(),
-  processPendingMedia: vi.fn(),
+  processPendingMedia: mocks.processPendingMedia,
+  resetPendingMediaUploadRetries: vi.fn(),
   pullRemoteChanges: mocks.pullRemoteChanges,
   startRealtimeSync: vi.fn(),
 }));
@@ -68,7 +73,7 @@ vi.mock("@/lib/sync/sync-coordinator", () => ({
   }),
 }));
 
-import { __syncEngineInternals } from "@/lib/sync/sync-engine";
+import { __syncEngineInternals, getSyncState } from "@/lib/sync/sync-engine";
 import { configureSyncUser } from "@/lib/sync/sync-context";
 
 function tripMutation(overrides: Partial<OutboxMutation> = {}): OutboxMutation {
@@ -112,6 +117,8 @@ describe("CAS mutation replay", () => {
     mocks.conflictAdd.mockResolvedValue(undefined);
     mocks.pullRemoteChanges.mockResolvedValue(undefined);
     mocks.listPendingMutations.mockResolvedValue([]);
+    mocks.tripMediaError.mockResolvedValue(undefined);
+    __syncEngineInternals.resetDiagnostics();
     mocks.countPendingMutations.mockResolvedValue(0);
     mocks.countRetryableMutations.mockResolvedValue(0);
     mocks.tripTravelersWhere.mockReturnValue({
@@ -121,6 +128,22 @@ describe("CAS mutation replay", () => {
     mocks.expenseGet.mockResolvedValue(undefined);
     mocks.shouldRetryMutation.mockReturnValue(true);
     configureSyncUser("user-1");
+  });
+
+  it("surfaces a persisted outbox failure through sync status", async () => {
+    mocks.listPendingMutations.mockResolvedValue([tripMutation({ lastError: "RLS denied this update" })]);
+
+    await __syncEngineInternals.refreshPending(true);
+
+    expect(getSyncState().lastError).toBe("trip update: RLS denied this update");
+  });
+
+  it("surfaces a persisted media upload failure through sync status", async () => {
+    mocks.tripMediaError.mockResolvedValue({ id: "media-1", uploadError: "Storage policy denied this upload" });
+
+    await __syncEngineInternals.refreshPending(true);
+
+    expect(getSyncState().lastError).toBe("Media upload media-1: Storage policy denied this upload");
   });
 
   it("replays expense parents before their shares", () => {
@@ -508,6 +531,109 @@ describe("CAS mutation replay", () => {
     );
     expect(mocks.mutationDelete).not.toHaveBeenCalled();
     expect(mocks.pullRemoteChanges).not.toHaveBeenCalled();
+  });
+
+  describe("voice notes", () => {
+    const MEDIA_ID = "00000000-0000-4000-8000-0000000000a1";
+
+    function voiceNoteMutation(payload: Record<string, unknown> = {}): OutboxMutation {
+      return tripMutation({
+        id: "voice-mutation",
+        entityType: "tripNote",
+        entityId: "00000000-0000-4000-8000-0000000000b1",
+        operation: "insert",
+        baseUpdatedAt: null,
+        payload: {
+          id: "00000000-0000-4000-8000-0000000000b1",
+          tripId: "00000000-0000-4000-8000-000000000001",
+          userId: "user-1",
+          content: "",
+          audioMediaId: MEDIA_ID,
+          createdBy: "user-1",
+          updatedBy: "user-1",
+          deletedBy: null,
+          version: 1,
+          createdAt: "2026-01-02T00:00:00.000Z",
+          updatedAt: "2026-01-02T00:00:00.000Z",
+          deletedAt: null,
+          ...payload,
+        },
+      });
+    }
+
+    function runSync() {
+      mocks.coordinatorRunExclusive.mockImplementation(async (_scope, operation) => ({
+        acquired: true,
+        value: await operation(),
+      }));
+      return __syncEngineInternals.runCoordinatedSync();
+    }
+
+    beforeEach(() => {
+      mocks.rpc.mockResolvedValue({
+        data: { status: "applied", server_updated_at: "2026-01-03T00:00:00.000Z" },
+        error: null,
+      });
+    });
+
+    it("waits for the clip upload and replays the note after media processing", async () => {
+      const mutation = voiceNoteMutation();
+      mocks.listPendingMutations.mockResolvedValue([mutation]);
+      let uploaded = false;
+      mocks.tripMediaGet.mockImplementation(async () => ({ id: MEDIA_ID, deletedAt: null, uploadStatus: uploaded ? "uploaded" : "pending" }));
+      mocks.processPendingMedia.mockImplementation(async () => {
+        uploaded = true;
+      });
+
+      await runSync();
+
+      expect(mocks.rpc).toHaveBeenCalledWith(
+        "sync_trip_note_cas_upsert",
+        expect.objectContaining({ p_payload: expect.objectContaining({ audio_media_id: MEDIA_ID }) })
+      );
+      expect(mocks.processPendingMedia.mock.invocationCallOrder[0]).toBeLessThan(mocks.rpc.mock.invocationCallOrder[0]);
+      expect(mocks.mutationDelete).toHaveBeenCalledWith(mutation, "2026-01-03T00:00:00.000Z");
+    });
+
+    it("keeps the note queued without spending a retry while the clip is not uploaded", async () => {
+      mocks.listPendingMutations.mockResolvedValue([voiceNoteMutation()]);
+      mocks.tripMediaGet.mockResolvedValue({ id: MEDIA_ID, deletedAt: null, uploadStatus: "failed" });
+
+      await runSync();
+
+      expect(mocks.rpc).not.toHaveBeenCalled();
+      expect(mocks.markMutationFailed).not.toHaveBeenCalled();
+      expect(mocks.mutationDelete).not.toHaveBeenCalled();
+    });
+
+    it("syncs the caption without the clip when the clip no longer exists", async () => {
+      mocks.listPendingMutations.mockResolvedValue([voiceNoteMutation({ content: "Market at 9" })]);
+      mocks.tripMediaGet.mockResolvedValue(undefined);
+
+      await runSync();
+
+      expect(mocks.rpc).toHaveBeenCalledWith(
+        "sync_trip_note_cas_upsert",
+        expect.objectContaining({ p_payload: expect.objectContaining({ audio_media_id: null, content: "Market at 9" }) })
+      );
+    });
+
+    it("drops a voice note that was deleted before its clip ever uploaded", async () => {
+      const mutation = voiceNoteMutation({ deletedAt: "2026-01-02T01:00:00.000Z" });
+      mocks.listPendingMutations.mockResolvedValue([mutation]);
+      mocks.tripMediaGet.mockResolvedValue({ id: MEDIA_ID, deletedAt: "2026-01-02T01:00:00.000Z", uploadStatus: "pending" });
+
+      await runSync();
+
+      expect(mocks.rpc).not.toHaveBeenCalled();
+      expect(mocks.mutationDelete).toHaveBeenCalledWith(mutation.id);
+    });
+
+    it("does not hold text notes or later voice-note edits", async () => {
+      expect(await __syncEngineInternals.voiceNoteAudioDependency(voiceNoteMutation({ audioMediaId: null }))).toBe("ready");
+      expect(await __syncEngineInternals.voiceNoteAudioDependency({ ...voiceNoteMutation(), operation: "update" })).toBe("ready");
+      expect(mocks.tripMediaGet).not.toHaveBeenCalled();
+    });
   });
 
   it("treats an absent hard-delete target as idempotently applied", async () => {
