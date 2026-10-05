@@ -94,6 +94,8 @@ When skipping, record `None — incidental issue` in the bug report or related s
 | 2026-09-28 | A fresh browser opening a trip deep link showed "Trip not found" before the first pull. | **Invariant:** A trip missing from Dexie is not reported as not found until this tab's first sync completes, sync reports offline or error, or 15 seconds pass. Until then the workspace shows "Loading your trip...". | `features/trips/lib/trip-hydration.ts`; `features/trips/components/trip-workspace.tsx`. |
 | 2026-09-28 | Accept and Decline on a connection notification only marked it read. | **Invariant:** A connection-request notification links to `/contacts?view=requests`, which opens the Friend Requests tab. The response itself goes through `contactRepository.respondToConnectionRequest`, never from the notification row. | `features/notifications/components/notification-center.tsx`; `app/(app)/contacts/page.tsx`; `features/contacts/components/ContactRequestInbox.tsx`. |
 
+|| 2026-10-05 | Home hid Phoenix Family while its planned travel dates included today. [Bug report](./bug-home-hides-planned-current-trip.md). | **Invariant:** When Home has no explicitly active trip or planned trip starting today or later, it must feature a non-ended planned trip covering the local calendar day, preserving its planned state until the user explicitly starts it. A current-date overlap must not displace a planned trip starting today or later. | `features/trips/lib/home-trips.ts`; `features/trips/lib/home-trips.test.ts`; `features/trips/components/home/home-page.test.tsx`; `.ai/specs/trip-lifecycle.md`. |
+
 ## Entry Quality Checklist
 
 - [ ] The bug was reproduced or evidence was collected.

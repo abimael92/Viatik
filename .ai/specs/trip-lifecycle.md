@@ -27,7 +27,7 @@ Today "active" is derived purely from dates, ended trips are buried in a "recent
 
 - **Primary user:** Trip owner / organizer.
 - **Scenario 1 (active):** Today is within a trip's dates and the trip is `active`. Home shows a Live hero ("Day X of Y") with an **End trip** action; no "Up Next" rail appears. Ended trips are absent from Home.
-- **Scenario 2 (planned/starting soon):** A trip is `planned` and starts within ~7 days. Home shows a countdown hero with a **Start trip** action, plus a compact **Up Next** rail of other planned trips.
+- **Scenario 2 (planned/starting soon):** A trip is `planned` and starts within ~7 days. Home shows a countdown hero with a **Start trip** action, plus a compact **Up Next** rail of other planned trips. If its start date has passed but its end date includes today, Home still offers the planned trip as the fallback hero when no explicitly active or upcoming trip is available; it remains planned until the user explicitly starts it.
 - **Scenario 3 (ended/cancelled):** A trip is `completed` or `cancelled`. It drops from Home immediately and appears only under **Past Trips**, muted and non-actionable.
 - **Offline or degraded-network behavior:** Status changes are local-first and queued via the existing outbox sync; they are durable on refresh and reconcile with Supabase when online.
 
@@ -69,6 +69,8 @@ All criteria must be objectively testable.
 - [ ] `resolveTripStatus` returns the stored status for `active`/`completed`/`cancelled`, and date-derives `planned`→`active` when today is within the trip's dates.
 - [ ] Home shows a Live hero when a trip is active, with no "Up Next" rail.
 - [ ] Home shows a countdown hero + "Up Next" rail when the hero trip is planned and other planned trips exist.
+- [ ] When no explicitly active or upcoming trip exists, a planned trip whose date range includes today is the Home hero with its Start action; it stays planned until explicit user action.
+- [ ] A planned overlap does not displace a planned trip that starts today or later.
 - [ ] `completed` and `cancelled` trips never appear on Home.
 - [ ] Trips dashboard tab bar separates `Upcoming & Active` from `Past Trips`; `completed`/`cancelled` appear only in Past Trips.
 - [ ] Lifecycle nudge offers a one-click confirm; state never flips without user action.
