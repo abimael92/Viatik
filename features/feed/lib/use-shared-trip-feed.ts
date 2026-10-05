@@ -13,6 +13,7 @@ export interface FeedActorProfile {
   name: string | null;
   avatarUrl: string | null;
   avatarSeed: string | null;
+  avatarRevision?: string | null;
 }
 
 export interface SharedTripFeedData {
@@ -51,6 +52,7 @@ export function useSharedTripFeed(tripId: string, userId: string): SharedTripFee
             name: profile.fullName,
             avatarUrl: profile.avatarUrl,
             avatarSeed: profile.avatarSeed ?? null,
+            avatarRevision: profile.updatedAt,
           })
         );
       }),
@@ -93,6 +95,7 @@ export function useSharedTripFeed(tripId: string, userId: string): SharedTripFee
       name: localProfile.fullName,
       avatarUrl: localProfile.avatarUrl,
       avatarSeed: localProfile.avatarSeed ?? null,
+      avatarRevision: localProfile.updatedAt,
     });
   }
 

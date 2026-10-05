@@ -45,6 +45,7 @@ export function useRecentActivity(userId: string): RecentActivityData {
             name: profile.fullName,
             avatarUrl: profile.avatarUrl,
             avatarSeed: profile.avatarSeed ?? null,
+            avatarRevision: profile.updatedAt,
           })
         );
       }),
@@ -87,6 +88,7 @@ export function useRecentActivity(userId: string): RecentActivityData {
       name: localProfile.fullName,
       avatarUrl: localProfile.avatarUrl,
       avatarSeed: localProfile.avatarSeed ?? null,
+      avatarRevision: localProfile.updatedAt,
     });
   }
 
