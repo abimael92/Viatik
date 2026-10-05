@@ -6,7 +6,9 @@ import { collaborationRepository } from "@/features/collaboration/data/dexie-col
 import { contactRepository, tripTravelerRepository } from "@/features/contacts/data/dexie-contact-repository";
 import type { ProfileSummary, TripMember } from "@/features/domain/entities";
 import { tripRepository } from "@/features/trips/data/dexie-trip-repository";
+import { useLocalProfile } from "@/features/profile/lib/use-local-profile";
 
+vi.mock("@/features/profile/lib/use-local-profile", () => ({ useLocalProfile: vi.fn(() => null) }));
 vi.mock("next/link", () => ({
   default: ({ children, href }: { children: React.ReactNode; href: string }) => <a href={href}>{children}</a>,
 }));
@@ -55,6 +57,7 @@ describe("PeoplePanel", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(useLocalProfile).mockReturnValue(null);
     vi.mocked(tripRepository.watchById).mockImplementation((_tripId, callback) => {
       callback({ crewConfirmed: false, packingConfirmed: false } as never);
       return () => undefined;
@@ -135,5 +138,43 @@ describe("PeoplePanel", () => {
     expect(screen.getAllByText("Viatik account").length).toBe(1);
     expect(screen.getByText("editor")).toBeTruthy();
     expect(screen.getByText("Crew status").closest(".overflow-hidden")?.textContent).toContain("Alex Traveler");
+  });
+
+  it("renders the signed-in user's configured local avatar instead of stale public profile data", async () => {
+    vi.mocked(collaborationRepository.watchMembers).mockImplementation((_tripId, callback) => {
+      callback([{ ...member, id: "member-self", userId: "user-1", role: "owner" }]);
+      return () => undefined;
+    });
+    vi.mocked(collaborationRepository.listProfiles).mockResolvedValue([
+      { id: "user-1", fullName: "Abimael Garcia", avatarUrl: "https://example.com/stale.png", avatarSeed: null, email: null },
+    ]);
+    vi.mocked(useLocalProfile).mockReturnValue({
+      id: "user-1",
+      fullName: "Abimael Garcia",
+      avatarUrl: "https://example.com/configured.png?v=2",
+      avatarSeed: null,
+      updatedAt: "2026-10-05T00:00:00.000Z",
+    } as never);
+
+    const { container } = render(<PeoplePanel tripId="trip-1" userId="user-1" canEdit={false} />);
+    await waitFor(() => expect(collaborationRepository.listProfiles).toHaveBeenCalled());
+
+    await waitFor(() => expect(container.querySelector("img")?.getAttribute("src")).toBe("https://example.com/configured.png?v=2"));
+  });
+
+  it("renders a linked traveler with the linked profile photo", async () => {
+    vi.mocked(contactRepository.watch).mockImplementation((_userId, callback) => {
+      callback([{ id: "contact-1", ownerId: "user-1", fullName: "Alex Traveler", linkedProfileId: "user-2", avatarUrl: null, avatarSeed: null, linkedAvatarUrl: "https://example.com/alex.png" } as never]);
+      return () => undefined;
+    });
+    vi.mocked(tripTravelerRepository.watch).mockImplementation((_tripId, callback) => {
+      callback([{ id: "traveler-1", tripId: "trip-1", contactId: "contact-1", displayName: "Alex Traveler", travelerType: "adult", createdBy: "user-1" } as never]);
+      return () => undefined;
+    });
+
+    const { container } = render(<PeoplePanel tripId="trip-1" userId="user-1" canEdit={false} />);
+    await waitFor(() => expect(collaborationRepository.listProfiles).toHaveBeenCalled());
+
+    expect(container.querySelector("img")?.getAttribute("src")).toBe("https://example.com/alex.png");
   });
 });

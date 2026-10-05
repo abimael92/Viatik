@@ -4,7 +4,10 @@ export interface TripNote {
   tripId: string;
   /** Author. Stays the same when another member edits the text. */
   userId: string;
+  /** May be empty when the note has a voice clip. */
   content: string;
+  /** Voice clip in tripMedia (kind "audio"). Set at creation and never changed. */
+  audioMediaId: string | null;
   createdBy: string;
   updatedBy: string;
   deletedBy: string | null;

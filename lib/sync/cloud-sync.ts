@@ -29,6 +29,7 @@ import {
   rowToExpenseShare,
   rowToInvitation,
   rowToMedia,
+  rowToMediaTranscript,
   rowToSettlement,
   rowToTrip,
   rowToTripMember,
@@ -60,7 +61,7 @@ function getDb(): ViatikDatabase {
 const LAST_PULL_KEY = "cloud:last-pull";
 const ACTIVE_USER_KEY = "cloud:active-user";
 const PULL_PAGE_SIZE = 500;
-const OPTIONAL_REMOTE_TABLES = new Set(["activity_personal_budgets", "decisions", "decision_options", "decision_votes", "trip_notes", "trip_tasks"]);
+const OPTIONAL_REMOTE_TABLES = new Set(["activity_personal_budgets", "decisions", "decision_options", "decision_votes", "trip_notes", "trip_tasks", "media_transcripts"]);
 const CREW_POLL_TABLES = new Set(["decisions", "decision_options", "decision_votes"]);
 let realtimeChannel: RealtimeChannel | null = null;
 let pollRealtimeChannel: RealtimeChannel | null = null;
@@ -166,6 +167,19 @@ async function applyRemote(entityType: OutboxEntityType, store: typeof tableDefi
     entity = { ...entity, completedAt: previous.completedAt };
   }
   
+  // The author's voice clip stays playable offline after its row syncs back.
+  if (
+    entityType === "media" &&
+    previous &&
+    "kind" in entity &&
+    entity.kind === "audio" &&
+    entity.blob == null &&
+    "blob" in previous &&
+    previous.blob instanceof Blob
+  ) {
+    entity = { ...entity, blob: previous.blob };
+  }
+
   if (pending && pending.mutatedAt >= remoteUpdatedAt) return;
   if (pending) {
     signal?.throwIfAborted();
@@ -184,6 +198,7 @@ async function applyRemote(entityType: OutboxEntityType, store: typeof tableDefi
 
 async function emitRemoteFeedItem(entityType: OutboxEntityType, previous: RemoteEntity | undefined, entity: RemoteEntity): Promise<void> {
   if (entityType !== "activity" && entityType !== "expense" && entityType !== "media" && entityType !== "settlement") return;
+  if (entityType === "media" && (entity as TripMedia).kind === "audio") return;
   if (!("createdBy" in entity)) return;
   if (previous && "updatedAt" in previous && "updatedAt" in entity && previous.updatedAt === entity.updatedAt) return;
 
@@ -266,14 +281,14 @@ async function deleteLocal(store: typeof tableDefinitions[number]["store"], id: 
   await getDb().table(store).delete(id);
 }
 
-async function fetchTablePages(client: SupabaseClient, table: string, since: string | null, through: string, signal?: AbortSignal): Promise<Record<string, unknown>[]> {
+async function fetchTablePages(client: SupabaseClient, table: string, since: string | null, through: string, signal?: AbortSignal, keyColumn = "id"): Promise<Record<string, unknown>[]> {
   const rows: Record<string, unknown>[] = [];
   let cursor: { updatedAt: string; id: string } | null = null;
 
   while (true) {
-    let query = client.from(table).select("*").lte("updated_at", through).order("updated_at", { ascending: true }).order("id", { ascending: true }).limit(PULL_PAGE_SIZE);
+    let query = client.from(table).select("*").lte("updated_at", through).order("updated_at", { ascending: true }).order(keyColumn, { ascending: true }).limit(PULL_PAGE_SIZE);
     if (since) query = query.gt("updated_at", since);
-    if (cursor) query = query.or(`updated_at.gt.${cursor.updatedAt},and(updated_at.eq.${cursor.updatedAt},id.gt.${cursor.id})`);
+    if (cursor) query = query.or(`updated_at.gt.${cursor.updatedAt},and(updated_at.eq.${cursor.updatedAt},${keyColumn}.gt.${cursor.id})`);
     if (signal) query = query.abortSignal(signal);
     const { data, error } = await query;
     if (error) throw new Error(`Pull ${table}: ${error.message}`);
@@ -281,7 +296,7 @@ async function fetchTablePages(client: SupabaseClient, table: string, since: str
     rows.push(...page);
     if (page.length < PULL_PAGE_SIZE) return rows;
     const last = page[page.length - 1];
-    cursor = { updatedAt: String(last.updated_at), id: String(last.id) };
+    cursor = { updatedAt: String(last.updated_at), id: String(last[keyColumn]) };
   }
 }
 
@@ -297,6 +312,8 @@ export async function pullRemoteChanges(full = false, signal?: AbortSignal): Pro
   const since = full ? null : metadata?.value ?? null;
   const startedAt = new Date().toISOString();
   const staged: Array<{ definition: typeof tableDefinitions[number]; rows: Record<string, unknown>[]; complete: boolean }> = [];
+  let transcriptRows: Record<string, unknown>[] = [];
+  let transcriptPullComplete = false;
   let pullError: unknown = null;
 
   for (const definition of tableDefinitions) {
@@ -315,10 +332,30 @@ export async function pullRemoteChanges(full = false, signal?: AbortSignal): Pro
     }
   }
 
+  if (!pullError) {
+    try {
+      transcriptRows = await fetchTablePages(client, "media_transcripts", since, startedAt, signal, "media_id");
+      transcriptPullComplete = true;
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : String(cause);
+      if (OPTIONAL_REMOTE_TABLES.has("media_transcripts") || isTransientSchemaCacheError(message)) {
+        logger.warn("Skipping remote table until its migration is available", { table: "media_transcripts" });
+      } else {
+        pullError = cause;
+      }
+    }
+  }
+
   for (const { definition, rows } of staged) {
     for (const row of rows) {
       signal?.throwIfAborted();
       await applyRemote(definition.entityType, definition.store, definition.map(row), client, signal);
+    }
+  }
+  if (transcriptPullComplete) {
+    for (const row of transcriptRows) {
+      signal?.throwIfAborted();
+      await applyMediaTranscript(row);
     }
   }
 
@@ -331,10 +368,10 @@ export async function pullRemoteChanges(full = false, signal?: AbortSignal): Pro
       if (remoteTripIds.has(trip.id)) continue;
       const pending = await getDb().outboxMutations.where("tripId").equals(trip.id).count();
       if (pending > 0) continue;
-      await getDb().transaction("rw", [getDb().trips, getDb().tripMembers, getDb().activities, getDb().activityPersonalBudgets, getDb().expenses, getDb().expenseShares, getDb().tripMedia, getDb().tripInvitations, getDb().expenseSettlements, getDb().tripTravelers, getDb().vaultEntries, getDb().tripWeatherForecasts, getDb().userWallets], async () => {
+      await getDb().transaction("rw", [getDb().trips, getDb().tripMembers, getDb().activities, getDb().activityPersonalBudgets, getDb().expenses, getDb().expenseShares, getDb().tripMedia, getDb().mediaTranscripts, getDb().tripInvitations, getDb().expenseSettlements, getDb().tripTravelers, getDb().vaultEntries, getDb().tripWeatherForecasts, getDb().userWallets], async () => {
         const expenseIds = await getDb().expenses.where("tripId").equals(trip.id).primaryKeys();
         await getDb().expenseShares.where("expenseId").anyOf(expenseIds).delete();
-        await Promise.all([getDb().trips.delete(trip.id), getDb().tripMembers.where("tripId").equals(trip.id).delete(), getDb().activities.where("tripId").equals(trip.id).delete(), getDb().activityPersonalBudgets.where("tripId").equals(trip.id).delete(), getDb().expenses.where("tripId").equals(trip.id).delete(), getDb().tripMedia.where("tripId").equals(trip.id).delete(), getDb().tripInvitations.where("tripId").equals(trip.id).delete(), getDb().expenseSettlements.where("tripId").equals(trip.id).delete(), getDb().tripTravelers.where("tripId").equals(trip.id).delete(), getDb().vaultEntries.where("tripId").equals(trip.id).delete(), getDb().tripWeatherForecasts.filter((forecast) => forecast.tripId === trip.id).delete(), getDb().userWallets.where("tripId").equals(trip.id).delete()]);
+        await Promise.all([getDb().trips.delete(trip.id), getDb().tripMembers.where("tripId").equals(trip.id).delete(), getDb().activities.where("tripId").equals(trip.id).delete(), getDb().activityPersonalBudgets.where("tripId").equals(trip.id).delete(), getDb().expenses.where("tripId").equals(trip.id).delete(), getDb().tripMedia.where("tripId").equals(trip.id).delete(), getDb().mediaTranscripts.where("tripId").equals(trip.id).delete(), getDb().tripInvitations.where("tripId").equals(trip.id).delete(), getDb().expenseSettlements.where("tripId").equals(trip.id).delete(), getDb().tripTravelers.where("tripId").equals(trip.id).delete(), getDb().vaultEntries.where("tripId").equals(trip.id).delete(), getDb().tripWeatherForecasts.filter((forecast) => forecast.tripId === trip.id).delete(), getDb().userWallets.where("tripId").equals(trip.id).delete()]);
       });
     }
 
@@ -370,11 +407,34 @@ export async function pullRemoteChanges(full = false, signal?: AbortSignal): Pro
   await getDb().syncMetadata.bulkPut([{ key: cursorKey, value: startedAt }, { key: ACTIVE_USER_KEY, value: auth.user.id }]);
 }
 
-function bindRealtime(client: ReturnType<typeof getSupabaseBrowserClient>, name: string, definitions: typeof tableDefinitions): RealtimeChannel {
+async function applyMediaTranscript(row: Record<string, unknown>): Promise<void> {
+  const transcript = rowToMediaTranscript(row);
+  await getDb().transaction("rw", getDb().mediaTranscripts, async () => {
+    const local = await getDb().mediaTranscripts.get(transcript.mediaId);
+    if (local && local.version > transcript.version) return;
+    await getDb().mediaTranscripts.put(transcript);
+  });
+}
+
+async function handleMediaTranscriptRealtimePayload(payload: RealtimePostgresChangesPayload<Record<string, unknown>>): Promise<void> {
+  if (payload.eventType === "DELETE") {
+    const mediaId = payload.old.media_id;
+    if (typeof mediaId === "string" && mediaId) await getDb().mediaTranscripts.delete(mediaId);
+    return;
+  }
+  await applyMediaTranscript(payload.new);
+}
+
+function bindRealtime(client: ReturnType<typeof getSupabaseBrowserClient>, name: string, definitions: typeof tableDefinitions, includeMediaTranscripts = false): RealtimeChannel {
   let channel = client.channel(name);
   for (const definition of definitions) {
     channel = channel.on("postgres_changes", { event: "*", schema: "public", table: definition.table }, (payload) => {
       void handleRealtimePayload(definition, payload, client).catch((error) => logger.error("Realtime apply failed", error instanceof Error ? error : new Error(String(error)), { table: definition.table }));
+    });
+  }
+  if (includeMediaTranscripts) {
+    channel = channel.on("postgres_changes", { event: "*", schema: "public", table: "media_transcripts" }, (payload) => {
+      void handleMediaTranscriptRealtimePayload(payload).catch((error) => logger.error("Realtime transcript apply failed", error instanceof Error ? error : new Error(String(error)), { table: "media_transcripts" }));
     });
   }
   return channel.subscribe();
@@ -383,7 +443,7 @@ function bindRealtime(client: ReturnType<typeof getSupabaseBrowserClient>, name:
 export function startRealtimeSync(): () => void {
   if (realtimeChannel) return () => undefined;
   const client = getSupabaseBrowserClient();
-  realtimeChannel = bindRealtime(client, "viatik-collaboration", tableDefinitions.filter((definition) => !CREW_POLL_TABLES.has(definition.table)));
+  realtimeChannel = bindRealtime(client, "viatik-collaboration", tableDefinitions.filter((definition) => !CREW_POLL_TABLES.has(definition.table)), true);
   pollRealtimeChannel = bindRealtime(client, "viatik-crew-polls", tableDefinitions.filter((definition) => CREW_POLL_TABLES.has(definition.table)));
   return () => {
     if (realtimeChannel) void client.removeChannel(realtimeChannel);
@@ -406,7 +466,7 @@ export async function processPendingMedia(signal?: AbortSignal): Promise<void> {
   signal?.throwIfAborted();
   if (typeof navigator !== "undefined" && !navigator.onLine) return;
   const client = getSupabaseBrowserClient();
-  const pending = await getDb().tripMedia.where("uploadStatus").anyOf("pending", "failed", "uploading").filter((media) => media.deletedAt === null && media.blob !== null && media.createdBy === getSyncUser() && media.uploadAttempts < 5 && (!media.nextUploadAt || media.nextUploadAt <= new Date().toISOString())).toArray();
+  const pending = await getDb().tripMedia.where("uploadStatus").anyOf("pending", "failed", "uploading").filter((media) => media.deletedAt === null && media.blob !== null && media.createdBy === getSyncUser() && (!media.nextUploadAt || media.nextUploadAt <= new Date().toISOString())).toArray();
   for (const media of pending) {
     signal?.throwIfAborted();
     try {
@@ -448,6 +508,21 @@ export async function processPendingMedia(signal?: AbortSignal): Promise<void> {
     if (data?.signedUrl) await getDb().tripMedia.update(media.id, { uploadedUrl: data.signedUrl, signedUrlExpiresAt: new Date(Date.now() + 3600000).toISOString() });
     signal?.throwIfAborted();
   }
+}
+
+export async function resetPendingMediaUploadRetries(): Promise<void> {
+  const userId = getSyncUser();
+  if (!userId) return;
+  const pending = await getDb()
+    .tripMedia.where("uploadStatus")
+    .anyOf("pending", "failed", "uploading")
+    .filter((media) => media.createdBy === userId && (media.uploadAttempts > 0 || media.nextUploadAt !== null))
+    .toArray();
+  await Promise.all(
+    pending.map((media) =>
+      getDb().tripMedia.update(media.id, { uploadAttempts: 0, nextUploadAt: null, uploadError: null })
+    )
+  );
 }
 
 export async function deleteRemoteMedia(storagePath: string, signal?: AbortSignal): Promise<void> {

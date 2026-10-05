@@ -4,6 +4,7 @@ import { getCurrentDatabase, type ViatikDatabase } from "@/lib/db/dexie";
 import { TransactionContext } from "@/lib/db/transaction-context";
 import type { MediaRepository, NewTripMedia } from "@/features/domain/repositories/media-repository";
 import type { TripMedia } from "@/features/domain/entities-media";
+import { audioExtension, baseAudioType } from "@/features/media/lib/audio-recorder";
 import { buildMediaFeed, materializeFeedItem } from "@/features/feed/lib/feed-builder";
 import { emitFeedItem } from "@/features/feed/data/dexie-feed-repository";
 import { append, type OutboxAppendData } from "@/lib/sync/outbox-transactional";
@@ -18,7 +19,7 @@ function getDb(): ViatikDatabase {
 export class DexieMediaRepository implements MediaRepository {
   listByTrip(tripId: string, activityId: string | null = null): Promise<TripMedia[]> {
     const db = getDb();
-    return db.tripMedia.where("tripId").equals(tripId).filter((item) => item.activityId === activityId && item.deletedAt === null).reverse().sortBy("createdAt");
+    return db.tripMedia.where("tripId").equals(tripId).filter((item) => item.kind !== "audio" && item.activityId === activityId && item.deletedAt === null).reverse().sortBy("createdAt");
   }
 
   watchByTrip(tripId: string, activityId: string | null, onChange: (media: TripMedia[]) => void): () => void {
@@ -45,6 +46,8 @@ export class DexieMediaRepository implements MediaRepository {
         id: input.id,
         tripId: input.tripId,
         activityId: input.activityId ?? null,
+        kind: "photo",
+        durationMs: null,
         caption: input.caption ?? null,
         takenAt: input.takenAt ?? null,
         blob: input.blob,
@@ -98,7 +101,9 @@ export class DexieMediaRepository implements MediaRepository {
       const deletedAt = new Date().toISOString();
       const updated = { ...media, deletedAt, updatedAt: deletedAt };
       await ctx.table<TripMedia>("tripMedia").put(updated);
-      await emitFeedItem(ctx, materializeFeedItem(buildMediaFeed("deleted_photo", updated, getSyncUser() ?? updated.createdBy)));
+      if (media.kind !== "audio") {
+        await emitFeedItem(ctx, materializeFeedItem(buildMediaFeed("deleted_photo", updated, getSyncUser() ?? updated.createdBy)));
+      }
       if (media.uploadStatus === "uploaded") {
         await append("media", "update", mediaPayload(updated) as OutboxAppendData, { tx: ctx, baseUpdatedAt: media.updatedAt });
       }
@@ -121,8 +126,50 @@ export class DexieMediaRepository implements MediaRepository {
   }
 }
 
+/** A voice clip row. The caller writes it inside the voice note's transaction. */
+export function buildAudioMedia(input: {
+  id: string;
+  tripId: string;
+  createdBy: string;
+  blob: Blob;
+  contentType: string;
+  durationMs: number;
+  now: string;
+}): TripMedia {
+  const contentType = baseAudioType(input.contentType || input.blob.type);
+  return {
+    id: input.id,
+    tripId: input.tripId,
+    activityId: null,
+    kind: "audio",
+    durationMs: Math.max(0, Math.round(input.durationMs)),
+    caption: null,
+    takenAt: null,
+    blob: input.blob,
+    storagePath: `${input.tripId}/audio/${input.id}.${audioExtension(contentType)}`,
+    uploadedUrl: null,
+    signedUrlExpiresAt: null,
+    contentType,
+    byteSize: input.blob.size,
+    createdBy: input.createdBy,
+    updatedBy: input.createdBy,
+    deletedBy: null,
+    restoredAt: null,
+    restoredBy: null,
+    version: 1,
+    uploadStatus: "pending",
+    uploadProgress: 0,
+    uploadError: null,
+    uploadAttempts: 0,
+    nextUploadAt: null,
+    createdAt: input.now,
+    updatedAt: input.now,
+    deletedAt: null,
+  };
+}
+
 export function mediaPayload(media: TripMedia): Record<string, unknown> {
-  return { id: media.id, tripId: media.tripId, activityId: media.activityId, caption: media.caption, storagePath: media.storagePath, contentType: media.contentType, byteSize: media.byteSize, createdBy: media.createdBy, createdAt: media.createdAt, updatedAt: media.updatedAt, deletedAt: media.deletedAt };
+  return { id: media.id, tripId: media.tripId, activityId: media.activityId, kind: media.kind, durationMs: media.durationMs, caption: media.caption, storagePath: media.storagePath, contentType: media.contentType, byteSize: media.byteSize, createdBy: media.createdBy, createdAt: media.createdAt, updatedAt: media.updatedAt, deletedAt: media.deletedAt };
 }
 
 export const mediaRepository = new DexieMediaRepository();

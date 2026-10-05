@@ -71,6 +71,7 @@ import {
   deleteRemoteMedia,
   processPendingMedia,
   pullRemoteChanges,
+  resetPendingMediaUploadRetries,
   startRealtimeSync,
 } from "@/lib/sync/cloud-sync";
 import { getSyncUser } from "@/lib/sync/sync-context";
@@ -131,9 +132,9 @@ function notify() {
 
 let countPending = 0;
 let retryablePending = 0;
-async function refreshPending() {
+async function refreshPending(includeErrors = false) {
   const userId = getSyncUser();
-  const [mutations, retryableMutations, mediaUploads, retryableMediaUploads] = await Promise.all([
+  const [mutations, retryableMutations, mediaUploads] = await Promise.all([
     countPendingMutations(userId),
     countRetryableMutations(userId),
     getDb()
@@ -141,14 +142,24 @@ async function refreshPending() {
       .anyOf("pending", "failed", "uploading")
       .filter((media) => media.createdBy === userId)
       .count(),
-    getDb()
-      .tripMedia.where("uploadStatus")
-      .anyOf("pending", "failed", "uploading")
-      .filter((media) => media.createdBy === userId && media.uploadAttempts < 5)
-      .count(),
   ]);
   countPending = mutations + mediaUploads;
-  retryablePending = retryableMutations + retryableMediaUploads;
+  retryablePending = retryableMutations + mediaUploads;
+  if (includeErrors) {
+    const [failedMutation, failedMedia] = await Promise.all([
+      listPendingMutations(userId).then((pending) => pending.find((mutation) => mutation.lastError)),
+      getDb()
+        .tripMedia.where("uploadStatus")
+        .anyOf("pending", "failed", "uploading")
+        .filter((media) => media.createdBy === userId && Boolean(media.uploadError))
+        .first(),
+    ]);
+    if (failedMutation?.lastError) {
+      syncDiagnostics.lastSyncError = `${failedMutation.entityType} ${failedMutation.operation}: ${failedMutation.lastError}`;
+    } else if (failedMedia?.uploadError) {
+      syncDiagnostics.lastSyncError = `Media upload ${failedMedia.id}: ${failedMedia.uploadError}`;
+    }
+  }
   notify();
 }
 
@@ -282,6 +293,27 @@ async function requeueMissingExpenseParent(mutation: OutboxMutation): Promise<bo
     });
   });
   return true;
+}
+
+type VoiceNoteAudioDependency = "ready" | "wait" | "detach" | "drop";
+
+/**
+ * A voice note's insert references its clip, so the remote note may only exist
+ * after the clip row does. Updates never change the reference.
+ */
+async function voiceNoteAudioDependency(mutation: OutboxMutation): Promise<VoiceNoteAudioDependency> {
+  if (mutation.entityType !== "tripNote" || mutation.operation !== "insert") return "ready";
+  const audioMediaId = mutation.payload?.audioMediaId;
+  if (typeof audioMediaId !== "string" || !audioMediaId) return "ready";
+  const media = await getDb().tripMedia.get(audioMediaId);
+  if (media && !media.deletedAt) return media.uploadStatus === "uploaded" ? "ready" : "wait";
+  if (media?.uploadStatus === "uploaded") return "ready";
+  if (mutation.payload?.deletedAt) return "drop";
+  return typeof mutation.payload?.content === "string" && mutation.payload.content.trim() ? "detach" : "drop";
+}
+
+function detachVoiceNoteAudio(mutation: OutboxMutation): void {
+  mutation.payload = { ...mutation.payload, audioMediaId: null };
 }
 
 function isUuid(value: unknown): value is string {
@@ -613,6 +645,42 @@ async function replayOne(mutation: OutboxMutation, signal?: AbortSignal) {
   }
 }
 
+async function replayPending(
+  mutation: OutboxMutation,
+  signal?: AbortSignal
+): Promise<"success" | "failure" | "skipped"> {
+  try {
+    await replayOne(mutation, signal);
+    return "success";
+  } catch (error) {
+    signal?.throwIfAborted();
+    const message = error instanceof Error ? error.message : String(error);
+    if (isExpenseShareMembershipError(error)) {
+      await blockMutation(mutation.id, message);
+      logger.warn("Blocked expense share mutation for manual review", {
+        mutationId: mutation.id,
+        tripId: mutation.tripId,
+        entityId: mutation.entityId,
+        shareUserId: mutation.payload?.userId ?? null,
+        attempts: mutation.attempts,
+      });
+      return "skipped";
+    }
+    logger.error(
+      "Mutation failed, marking as failed",
+      error instanceof Error ? error : new Error(String(error)),
+      {
+        mutationId: mutation.id,
+        entityType: mutation.entityType,
+        attempts: mutation.attempts + 1,
+      }
+    );
+    await markMutationFailed(mutation.id, message);
+    syncDiagnostics.lastSyncError = message;
+    return "failure";
+  }
+}
+
 let coordinator: BrowserSyncCoordinator | null = null;
 let coordinatorDatabase: ViatikDatabase | null = null;
 let stopCoordinatorSubscription: (() => void) | null = null;
@@ -689,6 +757,20 @@ async function syncOnce(context?: SyncExecutionContext): Promise<void> {
   let successCount = 0;
   let failureCount = 0;
   let skippedCount = 0;
+  const awaitingAudio: OutboxMutation[] = [];
+
+  const settle = async (mutation: OutboxMutation, dependency: VoiceNoteAudioDependency): Promise<void> => {
+    if (dependency === "drop") {
+      await removeMutation(mutation.id);
+      logger.warn("Dropped voice note whose clip never synced", { mutationId: mutation.id, entityId: mutation.entityId });
+      return;
+    }
+    if (dependency === "detach") detachVoiceNoteAudio(mutation);
+    const outcome = await replayPending(mutation, context?.signal);
+    if (outcome === "success") successCount++;
+    else if (outcome === "failure") failureCount++;
+    else skippedCount++;
+  };
 
   for (const mutation of pending) {
     context?.signal.throwIfAborted();
@@ -722,6 +804,12 @@ async function syncOnce(context?: SyncExecutionContext): Promise<void> {
       }
     }
 
+    const dependency = await voiceNoteAudioDependency(mutation);
+    if (dependency === "wait") {
+      awaitingAudio.push(mutation);
+      continue;
+    }
+
     // Apply backoff if this mutation has failed before
     if (mutation.attempts > 0) {
       const delay = getRetryDelay(mutation.attempts);
@@ -733,41 +821,21 @@ async function syncOnce(context?: SyncExecutionContext): Promise<void> {
       await abortableDelay(delay, context?.signal);
     }
 
-    try {
-      await replayOne(mutation, context?.signal);
-      successCount++;
-    } catch (error) {
-      context?.signal.throwIfAborted();
-      const message = error instanceof Error ? error.message : String(error);
-      if (isExpenseShareMembershipError(error)) {
-        await blockMutation(mutation.id, message);
-        logger.warn("Blocked expense share mutation for manual review", {
-          mutationId: mutation.id,
-          tripId: mutation.tripId,
-          entityId: mutation.entityId,
-          shareUserId: mutation.payload?.userId ?? null,
-          attempts: mutation.attempts,
-        });
-        skippedCount++;
-        continue;
-      }
-      logger.error(
-        "Mutation failed, marking as failed",
-        error instanceof Error ? error : new Error(String(error)),
-        {
-          mutationId: mutation.id,
-          entityType: mutation.entityType,
-          attempts: mutation.attempts + 1,
-        }
-      );
-      await markMutationFailed(mutation.id, message);
-      failureCount++;
-      syncDiagnostics.lastSyncError = message;
-    }
+    await settle(mutation, dependency);
   }
 
   context?.signal.throwIfAborted();
   await processPendingMedia(context?.signal);
+  context?.signal.throwIfAborted();
+
+  // Voice notes whose clip just uploaded. The rest stay queued without
+  // spending an attempt until a later sync uploads (or the user retries) the clip.
+  for (const mutation of awaitingAudio) {
+    context?.signal.throwIfAborted();
+    const dependency = await voiceNoteAudioDependency(mutation);
+    if (dependency === "wait") continue;
+    await settle(mutation, dependency);
+  }
   context?.signal.throwIfAborted();
   await pullRemoteChanges(lastSyncAt === null, context?.signal);
   context?.signal.throwIfAborted();
@@ -792,7 +860,7 @@ async function syncOnce(context?: SyncExecutionContext): Promise<void> {
     syncDiagnostics.failedSyncs++;
   }
 
-  await refreshPending();
+  await refreshPending(true);
 
   const newStatus = countPending > 0 ? "error" : "idle";
   setStatus(newStatus);
@@ -920,6 +988,7 @@ export function syncNow(): Promise<void> {
 /** Explicit user retry: clear backoff/max-attempt state before replaying. */
 export async function retryFailedMutations(): Promise<void> {
   await resetPendingMutationAttempts(getSyncUser());
+  await resetPendingMediaUploadRetries();
   await syncNow();
 }
 
@@ -970,6 +1039,7 @@ export const __syncEngineInternals = {
   normalizeLegacyTravelerMutation,
   requeueMissingExpenseParent,
   sortPendingMutations,
+  voiceNoteAudioDependency,
   resetDiagnostics: () => {
     syncDiagnostics.totalSyncAttempts = 0;
     syncDiagnostics.successfulSyncs = 0;

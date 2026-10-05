@@ -10,3 +10,13 @@ additional_redirect_urls = [
 [auth.email.template.recovery]
 subject = "Reset your password"
 content_path = "./supabase/templates/recovery.html"
+
+# Called by the notifications pg_net trigger, which authenticates with the
+# x-viatik-webhook-secret header instead of a user JWT.
+[functions.whatsapp-dispatcher]
+verify_jwt = false
+
+# Called by the dictation_jobs pg_net trigger and the pg_cron backstop with the
+# x-viatik-webhook-secret header (TRANSCRIBE_WEBHOOK_SECRET).
+[functions.transcribe-audio]
+verify_jwt = false

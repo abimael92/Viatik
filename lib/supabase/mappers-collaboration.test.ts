@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { invitationToRow, rowToInvitation, rowToMedia, rowToTrip, rowToTripMember, tripMemberToRow, tripToRow } from "@/lib/supabase/mappers";
+import { invitationToRow, mediaToRow, rowToInvitation, rowToMedia, rowToTrip, rowToTripMember, tripMemberToRow, tripToRow } from "@/lib/supabase/mappers";
 
 const timestamp = "2026-01-01T00:00:00.000Z";
 
@@ -64,5 +64,13 @@ describe("collaboration mappers", () => {
   it("hydrates remote media without inventing a local blob", () => {
     const media = rowToMedia({ id: "media-1", trip_id: "trip-1", activity_id: null, caption: "View", storage_path: "trip-1/media-1.jpg", content_type: "image/jpeg", byte_size: 100, created_by: "user-1", created_at: timestamp, updated_at: timestamp, deleted_at: null });
     expect(media).toMatchObject({ blob: null, uploadStatus: "uploaded", uploadProgress: 100, storagePath: "trip-1/media-1.jpg" });
+    expect(media).toMatchObject({ kind: "photo", durationMs: null });
+  });
+
+  it("maps voice clip kind and duration both ways", () => {
+    const media = rowToMedia({ id: "media-2", trip_id: "trip-1", activity_id: null, caption: null, storage_path: "trip-1/audio/media-2.webm", content_type: "audio/webm", byte_size: 2048, kind: "audio", duration_ms: 4200, created_by: "user-1", created_at: timestamp, updated_at: timestamp, deleted_at: null });
+    expect(media).toMatchObject({ kind: "audio", durationMs: 4200 });
+    expect(mediaToRow(media)).toMatchObject({ kind: "audio", duration_ms: 4200, storage_path: "trip-1/audio/media-2.webm" });
+    expect(rowToMedia({ ...mediaToRow(media), kind: "video" }).kind).toBe("photo");
   });
 });

@@ -19,6 +19,7 @@ import {
   tripTravelerRepository,
 } from "@/features/contacts/data/dexie-contact-repository";
 import type { Contact, ProfileSummary, Trip, TripInvitation, TripMember, TripTraveler } from "@/features/domain/entities";
+import { useLocalProfile } from "@/features/profile/lib/use-local-profile";
 import { tripRepository } from "@/features/trips/data/dexie-trip-repository";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
@@ -40,6 +41,7 @@ export function PeoplePanel({ tripId, userId, canEdit }: { tripId: string; userI
   const [message, setMessage] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Contact | null>(null);
+  const localProfile = useLocalProfile(userId);
 
   useEffect(() => tripRepository.watchById(tripId, (value) => setTrip(value ?? null)), [tripId]);
   useEffect(() => contactRepository.watch(userId, setContacts), [userId]);
@@ -180,7 +182,7 @@ export function PeoplePanel({ tripId, userId, canEdit }: { tripId: string; userI
           const showToggle = isViatik && canEdit && !ownerMember;
           return (
             <div key={traveler.id} className="flex flex-wrap items-center gap-3 p-4">
-              <UserAvatar seed={contact?.avatarSeed} src={contact?.avatarUrl} name={traveler.displayName} size="md" />
+              <UserAvatar seed={contact?.avatarSeed} src={contact?.linkedAvatarUrl ?? contact?.avatarUrl} name={traveler.displayName} size="md" />
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold">{traveler.displayName}</p>
                 <p className="truncate text-xs capitalize text-muted-foreground">
@@ -213,8 +215,9 @@ export function PeoplePanel({ tripId, userId, canEdit }: { tripId: string; userI
           );
         })}
         {unrepresentedMembers.map((member) => {
-          const profile = profileById.get(member.userId);
-          const name = profile?.fullName?.trim() || (member.userId === userId ? t("common.you") : "Viatik traveler");
+          const isCurrentUser = member.userId === userId;
+          const profile = isCurrentUser && localProfile ? localProfile : profileById.get(member.userId);
+          const name = profile?.fullName?.trim() || (isCurrentUser ? t("common.you") : "Viatik traveler");
           return (
             <div key={`member-${member.id}`} className="flex flex-wrap items-center gap-3 p-4">
               <UserAvatar seed={profile?.avatarSeed} src={profile?.avatarUrl} name={name} size="md" />

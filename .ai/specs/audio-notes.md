@@ -84,7 +84,7 @@ These findings came from a read-only review on 2026-09-28. Each blocker must be 
 |---|---|---|---|
 | B1 | The `trip-media` bucket allows only `image/jpeg, png, webp, heic`, up to 10 MB. | migration 08 | Add `audio/webm`, `audio/mp4`, `audio/ogg`, and `audio/mpeg`. Keep 10 MB. |
 | B2 | `syncOnce` replays outbox mutations before `processPendingMedia`. A note would reach Postgres before its media row. | `lib/sync/sync-engine.ts` | The note mutation is deferred until its media is `uploaded`, without counting an attempt. |
-| B3 | Media stops retrying after 5 attempts. `retryFailedMutations()` resets outbox rows only, so audio can be stranded. | `lib/sync/cloud-sync.ts`, `lib/sync/outbox.ts` | Manual retry also resets media and dictation attempts. Automatic retries keep backing off and are never abandoned. |
+| B3 | Trip-media uploads stopped after 5 attempts, and `retryFailedMutations()` reset outbox rows only, so audio could be stranded. | `lib/sync/cloud-sync.ts`, `lib/sync/outbox.ts` | Media uploads now retry with capped exponential backoff, and explicit retry clears the media attempt count, error, and retry deadline. Apply equivalent reset behavior to dictation clips when that pipeline is implemented. |
 | B4 | `rowToMedia` sets `blob: null`, and `applyRemote` overwrites the local row. The author loses offline playback after the row syncs back. | `lib/supabase/mappers.ts`, `applyRemote` | Keep the local `blob` when `kind === "audio"`. |
 | B5 | `processPendingMedia` uploads one file at a time inside the exclusive sync lock, as one non-resumable request. | `lib/sync/cloud-sync.ts` | Cap each sync pass at about 20 s or 8 MB of uploads, then yield to the next pass. |
 | B6 | `processPendingMedia` returns early when `navigator.onLine` is false, although `syncOnce` documents that flag as unreliable. | `lib/sync/cloud-sync.ts:407` | Remove the early return. Rely on request failure and backoff. |
@@ -125,7 +125,7 @@ These findings came from a read-only review on 2026-09-28. Each blocker must be 
 - **Storage.** Call `navigator.storage.persist()` on first recording. Before recording, if `navigator.storage.estimate()` shows under 50 MB free, warn and still allow the recording.
 - **Secure context.** Recording needs HTTPS or localhost. When unavailable, the mic control is hidden rather than shown and then failing.
 
-### Local data (Dexie v43)
+### Local data (Dexie v43–v44)
 
 v43 is additive. It must not modify v39–v42.
 
@@ -262,8 +262,10 @@ All changes are additive and follow the Tiered Metadata Strategy: `created_at`, 
   | `skipped` (quota) | Daily transcription limit reached | Límite diario de transcripción alcanzado |
   | Offline, no local blob | Available when online | Disponible con conexión |
 
-  While transcribing, a shimmer placeholder takes the place of the text. The transcript is collapsed to 3 lines with "Show more". It is **read-only** (D4). There is no retry control in v1; failed and skipped states are final.
-- **Player.** Use `<audio controls preload="none">`. Its source is an object URL from the local blob when present, otherwise the signed URL.
+  While transcribing, a shimmer placeholder takes the place of the text. The transcript is hidden behind a "Show transcript" / "Hide transcript" toggle (`aria-expanded`, `aria-controls`) that expands a collapsible panel; collapsed content is `inert`. Before Phase 3 lands, the panel says "No transcript yet". It is **read-only** (D4). There is no retry control in v1; failed and skipped states are final.
+- **Player.** A custom player (`VoiceNotePlayer`) drives a hidden `<audio>` element; the native `controls` UI is not used. Controls: play/pause toggle, stop (rewind to 0:00), a 1x → 1.5x → 2x speed button, and a range scrubber with `current / total`. The total comes from `tripMedia.durationMs` because MediaRecorder WebM files report `duration` as Infinity. Starting one clip pauses any other. The source is an object URL from the local blob when present (`preload="metadata"`), otherwise the signed URL (`preload="none"`).
+- **Recorder.** Recording can be paused and resumed; paused time does not count toward the 120 s cap or the stored duration. The bar shows a pulsing red dot (amber and still while paused), a `00:15 / 02:00` timer, discard, pause/resume, and stop-and-save.
+- **List.** Voice notes are a vertical list of cards showing the recorded-at time and duration; text notes stay as horizontal chips.
 - **Deleting a voice note.** Deleting soft-deletes the note and its `trip_media` audio row, which removes the storage object through the existing media delete path.
 - **Journal chips.** Each clip shows a chip: "Transcribing 0:40…", then "Added to today's entry", or "Couldn't transcribe", which keeps the local audio for a manual retry.
 - **Appending text.** Text is appended on a new paragraph at the end of that day's entry. If the editor has focus, it waits for blur so typing is never interrupted. The appended text is highlighted briefly (reduced-motion aware).
@@ -339,7 +341,7 @@ The Architect Agent must review this section before implementation. Decision rec
 ### Reliability and offline behavior
 
 - [ ] A tab crash during recording loses at most about 1 s of audio, and the draft can be recovered on the next start.
-- [ ] A clip that fails upload is never stranded. Automatic backoff continues, and a manual retry resets media and dictation attempts (B3).
+- [x] A trip-media clip that fails upload continues retrying beyond five attempts until it succeeds. Automatic backoff continues, and manual retry resets its attempts, error, and retry deadline (B3). Dictation retry reset remains required when that pipeline is implemented.
 - [ ] A slow upload does not hold other outbox mutations longer than the per-pass budget (B5).
 - [ ] Duplicate webhook deliveries produce one transcription. The claim is atomic.
 - [ ] A lost webhook is recovered by the cron sweep within 10 minutes.
@@ -419,13 +421,60 @@ Nothing starts until the code freeze lifts, except where noted.
 - **Risk: iOS native crash without the microphone key.** *Mitigation:* recording stays hidden in the native build until B11 ships.
 - **Risk: transcription quality with accents or noise.** *Mitigation:* the language hint, noise suppression, the "Auto-transcribed" label, and correction by a new note (D4).
 - **Risk: `pg_net` and `pg_cron` availability.** Extensions must be enabled on the project. *Mitigation:* confirm before Phase 3.
-- **Question:** Should the language hint come from the author's `preferred_language` or the app's current locale? *Owner:* Viatik Product. *Deadline:* before Phase 3.
+- **Resolved (2026-10-05):** The language hint comes from the author's `preferred_language` (see Phase 3 Implementation Decisions).
 - **Question:** Are 60 minutes per trip per day and 30 per user per day the right quotas for the field test cohort? *Owner:* Viatik Product. *Deadline:* before Phase 3.
 - **Question:** Should crew voice-note audio (`trip-media/*/audio/*`) have a retention limit, for example deletion 90 days after trip completion? *Owner:* Viatik Product. *Deadline:* before Phase 5.
 
+## Phase 1–2 Implementation Decisions (2026-10-05)
+
+The freeze was cancelled and Viatik Product asked for Phase 1 (local capture) and Phase 2 (upload and sync). Phase 3 (transcription) is not started. These decisions supersede earlier sections where they differ.
+
+- **Included:** Dexie v43 (`tripMedia.kind`, `tripMedia.durationMs`, `tripNotes.audioMediaId`, `kind` index); `AudioRecorder` with format negotiation, mono 32 kbps, and the 120 s cap; a mic button, recording bar, and player in Quick Notes (later replaced by the custom recorder, player, and transcript toggle described under UX); `tripNoteRepository.createVoiceNote` writing the media row and the note in one transaction; gallery, journal, and feed filters (B7); blob retention on remote echo (B4); note deferral (B2); migration 74 (B1, B8, B9); persistent media retry diagnostics/retry handling (B3).
+- **B2 shape:** a `tripNote` insert whose `audioMediaId` media is not `uploaded` is held without an attempt and replayed in the same sync pass right after `processPendingMedia`. Media still uploads after other mutations, because photo rows can reference activities that must exist first. If the media row is gone or deleted before upload, the note is sent without `audio_media_id` when it has a caption, and dropped when it has no caption or was itself deleted (it never reached the server).
+- **`sync_cas_upsert('media')`:** not rewritten. Its insert path already uses `jsonb_populate_record` over the full payload, so `kind` and `duration_ms` are stored once the columns exist. Its update path lists columns explicitly, which keeps both immutable after insert. Because `jsonb_populate_record` inserts NULL for keys an older client omits, a BEFORE INSERT trigger defaults `kind` to `'photo'`; the same trigger forbids changing `kind`.
+- **Note audio integrity:** a `trip_notes` trigger requires `audio_media_id` to point at the author's audio row on the same trip, and forbids changing it afterwards. The FK is `on delete cascade` rather than `set null`: with an empty caption, `set null` would violate the content check and block the media delete.
+- **Viewer policies (D2):** members may insert audio rows (`activity_id is null`, path under `{tripId}/audio/`), and update or delete their own audio rows. Storage gets matching member insert, owner update, and owner delete policies on `{tripId}/audio/*` with audio extensions only.
+- **Deferred to later phases:** `recordingDrafts` crash safety, B5 pass budget, B6 (remove the `navigator.onLine` early return in a separate change with reachability regression coverage), the status-line states that depend on transcripts, the consent line, and the feature flag (the mic is hidden when recording is unsupported instead).
+- **Native builds:** the mic is hidden in Capacitor native builds until B11 (`NSMicrophoneUsageDescription`, Android `RECORD_AUDIO`) ships.
+
+## Phase 3 Implementation Decisions (2026-10-05): dictation transcription backend
+
+Viatik Product asked for the transcription backend for the dictation path (`private-audio` → `dictation_jobs`). These decisions supersede earlier sections where they differ.
+
+- **Scope delivered:** migration 76 (`dictation_jobs`, the `private-audio` bucket and owner-only policies, client RPCs `create_dictation_job` and `ack_dictation_job`, service RPCs, the insert trigger, the `pg_cron` backstop, and the realtime entry) and the Edge Function `supabase/functions/transcribe-audio`.
+- **Not yet delivered:** crew voice-note transcripts (`media_transcripts`, the `trip_media` audio trigger, and `kind: "media"` in the function), and all client work (Dexie `dictationClips` and `mediaTranscripts`, upload, pull, realtime, Journal UI). The function rejects `kind: "media"` with 400 until then.
+- **Language hint (answers the open question):** the author's `profiles.preferred_language`, when it is a two-letter code. Otherwise Whisper detects the language. The stored `language` is the hint, or the detected language mapped from Whisper's language name.
+- **Trigger:** the `dictation_jobs` insert, not a storage upload event. `create_dictation_job` refuses to create a job until the object exists at `{auth.uid()}/{tripId}/{jobId}.{webm|m4a|ogg|mp3}`, so the insert means "upload finished and registered". A storage trigger would fire before the job row exists.
+- **Order of writes (D3):** the function saves the transcript first, then deletes the audio through the Storage API, then sets `audio_deleted_at`. Deleting first would lose both the audio and the transcript if the save failed. Audio is also deleted immediately for quota skips, permanent failures, and the last failed attempt.
+- **Sweeps go through the function:** Supabase blocks SQL deletes on `storage.objects` (they would orphan files), so the 5-minute `run_dictation_maintenance` job POSTs `{ "kind": "sweep" }`; the function lists rows via `list_dictation_audio_cleanup` and deletes in one Storage batch. The same job clears `text` after 7 days, deletes `consumed` rows 30 days after ack once their audio is gone, and resends jobs that are `pending` for 2 min, `failed` with `attempts < 3`, or stuck `processing` for 10 min.
+- **Attempts:** the claim increments `attempts` and allows at most 3. Non-retryable failures (`unsupported_format`, `too_large`, `audio_missing`, `empty_audio`) set `attempts` to 3 so they are never resent. Silence is `done` with empty text, not a failure, so it is not retried at cost.
+- **Quotas:** a rolling 24 hours, counted from `processing`, `done`, and `consumed` jobs: 30 minutes per user and 60 per trip.
+- **Ack:** `ack_dictation_job` also accepts `failed` and `skipped`, so a device that gives up stops server retries.
+- **Shared Edge Function helpers:** `supabase/functions/_shared/http.ts` (secret check, JSON responses, service-role RPC). `whatsapp-dispatcher` uses it too.
+- **Setup:** Vault secrets `transcribe_audio_url` and `transcribe_audio_secret`; function secrets `TRANSCRIBE_WEBHOOK_SECRET` (same value) and `OPENAI_API_KEY`; deploy with `verify_jwt = false` (set in `supabase/config.toml`); `pg_net` and `pg_cron` enabled on the project.
+
+## Phase 3 Implementation Decisions (2026-10-05): voice-note transcription backend
+
+Viatik Product asked for transcription of crew voice notes (`trip_media` rows with `kind = 'audio'`). The audio must stay in `trip-media` because the player streams it.
+
+- **Where the transcript lives:** `media_transcripts`, as designed above, not a column on `trip_media`. A server write to `trip_media` bumps `updated_at` and `version` and would turn the author's offline edits into CAS conflicts. Clients only read it: select for trip members, with no insert, update, or delete grants (D4).
+- **Migration 78:**
+  - **Trigger:** `AFTER INSERT` on `trip_media` when `kind = 'audio'` and the row is not deleted. It inserts a `pending` transcript row and POSTs `{ "kind": "media", "id" }` through migration 76's `post_transcribe_audio` (same Vault secrets). It never raises, so a failure cannot roll back the upload's insert.
+  - **Service RPCs:** `claim_media_transcription` and `complete_media_transcription`. The claim also creates a missing transcript row, so a plain Database Webhook on `trip_media` works too.
+  - **Backstop:** `run_media_transcription_maintenance`, every 5 minutes. It fills in missing rows and resends rows `pending` for 2 min, `failed` with `attempts < 3`, or stuck `processing` for 10 min.
+  - **Realtime:** `media_transcripts` is added to the publication.
+- **Shared quota:** `transcription_usage_ms` counts dictation and voice notes together: 30 minutes per user and 60 per trip in a rolling 24 hours. `claim_dictation_job` is re-created to use it and is otherwise unchanged. A voice note without `duration_ms` counts as the 120 s cap. A quota skip is final.
+- **Whisper hints:** `language` is the author's `preferred_language` when it is a two-letter code. `prompt` is the trip name and destination joined as a short list of terms, with no framing words that would bias the language. Logs never include either.
+- **Audio retention:** the function never deletes from `trip-media`, including after permanent failures and quota skips. Deleting a voice note still removes the object through the existing media delete path.
+- **Edge Function:** `transcribe-audio` now accepts `kind: "media"` and Database Webhook inserts on `trip_media`; photo inserts get 200 `skipped`. Dictation and voice notes share one download, validate, and Whisper step.
+- **Delivered (client, 2026-10-05):** Dexie v44 adds the pull-only `mediaTranscripts` store keyed by `mediaId`; cloud sync pulls it using `media_id` pagination and maps snake_case fields plus remote version metadata. Pull and realtime writes are reconciled by version inside a Dexie transaction. `VoiceNoteCard` reactively reads its transcript through `useLiveQuery`, showing pending/processing, completed text and language, and terminal states through `TranscriptPanel`.
+- **Client verification (2026-10-05):** focused Dexie, sync, voice-transcript and card tests pass (48 tests); full `pnpm test`, `pnpm lint`, `pnpm typecheck`, `pnpm build`, and `git diff --check` pass.
+
 ## Completion Notes
 
-- **Verification commands:** Pending implementation.
-- **Verification results:** Not started. Spec written during the 2026-09-28 code freeze.
+- **Verification commands:** `pnpm test`, `pnpm typecheck`, `pnpm lint`, `pnpm build`.
+- **Verification results (voice-note transcription backend, 2026-10-05):** `supabase/functions/transcribe-audio/*.test.ts` and `supabase/voice-note-transcription.test.ts` pass with the full suite. Migrations 76 and 78 were executed together in PGlite against the same stand-ins: 38 behavioral checks passed (trigger and its failure safety, RLS, claim once, hints, completion, retries, shared quota in both directions, backstop backfill and resend, cascade). Not yet applied to a Supabase project; OpenAI and Storage exercised through mocks only.
+- **Verification results (Phase 3 backend, 2026-10-05):** `supabase/functions/transcribe-audio/{transcriber,whisper}.test.ts` and `supabase/dictation-transcription.test.ts` pass, along with the full suite. Migration 76 was also executed in PGlite (Postgres compiled to WebAssembly) against stand-ins for `auth`, `storage`, `vault`, `net`, and `cron`: 37 behavioral checks passed (RLS, path and upload checks, claim once, quotas, permanent failures, ack, cleanup listing, maintenance resend and sweep, trigger safety without secrets). It has not been applied to a Supabase project, and OpenAI and Storage were exercised only through mocks.
+- **Verification results (Phases 1–2, 2026-10-05):** 184 test files / 1107 tests pass; typecheck, lint, and build pass. New coverage: `lib/db/voice-notes-migration.test.ts` (v43 backfill), `features/media/lib/audio-recorder.test.ts`, voice-note cases in `dexie-trip-note-repository.test.ts`, `trip-note-sync.test.ts`, `mappers-collaboration.test.ts`, `sync-engine.test.ts` (hold, replay after media, detach, drop), `cloud-sync.test.ts` (audio upload path, B4 blob retention, no photo feed item), `supabase/voice-note-media.test.ts` (static migration checks), and `trip-notes-board.test.tsx`. Migration 74 is verified statically only; it has not been applied to a database. Recording itself needs a manual check in a real browser.
 - **Bug-ledger updates:** When Phase 0 lands, record the invariant: "Every table bound on the shared realtime channel must be in `supabase_realtime`, added by migration."
 - **Follow-up work:** Evaluate `gpt-4o-mini-transcribe` (D5). Consider on-device `SpeechRecognition` as a progressive enhancement for dictation.

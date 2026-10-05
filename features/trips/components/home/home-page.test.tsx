@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Activity, Contact, Trip, TripMember } from "@/features/domain/entities";
 import type { VaultEntry } from "@/features/vault/domain/vault-types";
 import { HomePage } from "@/features/trips/components/home/home-page";
+import { tripRepository } from "@/features/trips/data/dexie-trip-repository";
 
 const state = vi.hoisted(() => ({
   trips: null as ((trips: Trip[]) => void) | null,
@@ -22,7 +23,10 @@ vi.mock("next/link", () => ({
 }));
 
 vi.mock("@/features/trips/data/dexie-trip-repository", () => ({
-  tripRepository: { watchAll: vi.fn((cb) => { state.trips = cb; return () => {}; }) },
+  tripRepository: {
+    watchAll: vi.fn((cb) => { state.trips = cb; return () => {}; }),
+    startTrip: vi.fn(async () => undefined),
+  },
 }));
 vi.mock("@/features/steps/data/dexie-step-repository", () => ({
   stepRepository: {
@@ -47,6 +51,7 @@ vi.mock("@/features/collaboration/data/dexie-collaboration-repository", () => ({
 }));
 vi.mock("@/features/contacts/data/dexie-contact-repository", () => ({
   contactRepository: { watch: vi.fn((_ownerId, cb) => { state.contacts = cb; return () => {}; }) },
+  tripTravelerRepository: { watch: vi.fn((_tripId, cb) => { cb([]); return () => {}; }) },
 }));
 vi.mock("@/features/vault/data/dexie-vault-repository", () => ({
   vaultRepository: { watchEntries: vi.fn((_tripId, _ownerId, cb) => { state.vault = cb; return () => {}; }) },
@@ -78,6 +83,9 @@ vi.mock("@/features/profile/data/dexie-profile-repository", () => ({
 }));
 vi.mock("@/app/actions/profile", () => ({
   getMyProfile: vi.fn(async () => null),
+}));
+vi.mock("@/app/actions/trip-notifications", () => ({
+  notifyTripStarted: vi.fn(async () => ({ success: true, sent: 0, failed: 0, skipped: 0, configured: false })),
 }));
 vi.mock("@/lib/security/web-crypto-vault", () => ({
   webCryptoVault: {
@@ -234,6 +242,53 @@ describe("HomePage", () => {
     expect(screen.getByText("Start becomes available 7 days before departure.")).toBeTruthy();
     // The itinerary is hidden until the trip is started.
     expect(screen.queryByRole("heading", { name: "Up next in Lisbon, Portugal" })).toBeNull();
+  });
+
+  it("shows a current-date planned trip on Home with an explicit start action", async () => {
+    const dateKey = (date: Date) =>
+      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 6);
+
+    render(<HomePage userId="owner-1" />);
+    act(() => state.trips?.([makeTrip({ name: "Phoenix Family", destination: "Phoenix", startDate: dateKey(yesterday), endDate: dateKey(tomorrow), status: "planned" })]));
+
+    expect(screen.getByRole("heading", { name: "Phoenix" })).toBeTruthy();
+    const startButton = screen.getByRole("button", { name: /Start trip/ });
+    expect(startButton).toBeTruthy();
+    await act(async () => {
+      fireEvent.click(startButton);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(tripRepository.startTrip).toHaveBeenCalledWith("trip-1");
+    expect(screen.queryByRole("heading", { name: "Active Trip Actions" })).toBeNull();
+  });
+
+  it("shows a Start trip action for another planned trip in the ongoing quick view", async () => {
+    const dateKey = (date: Date) =>
+      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const futureActive = makeTrip({ id: "active-trip", name: "Denver Weekend", destination: "Denver", status: "active", startDate: dateKey(today), endDate: dateKey(tomorrow) });
+    const plannedCurrent = makeTrip({ id: "phoenix-trip", name: "Phoenix Family", destination: "Phoenix", status: "planned", startDate: dateKey(yesterday), endDate: dateKey(tomorrow) });
+
+    render(<HomePage userId="owner-1" />);
+    act(() => state.trips?.([futureActive, plannedCurrent]));
+
+    expect(screen.getByRole("heading", { name: "Denver" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Active trips" })).toBeTruthy();
+    const startButton = screen.getByRole("button", { name: /Start trip/ });
+    await act(async () => {
+      fireEvent.click(startButton);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(tripRepository.startTrip).toHaveBeenCalledWith("phoenix-trip");
   });
 
   it("offers Start trip seven days before departure", () => {

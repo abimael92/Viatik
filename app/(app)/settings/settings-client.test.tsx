@@ -12,8 +12,14 @@ const mocks = vi.hoisted(() => ({
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
 vi.mock("@/app/actions/connections", () => ({ getConnectionQrPayload: mocks.getConnectionQrPayload }));
 vi.mock("@/app/actions/auth", () => ({ updateProfile: mocks.updateProfile, updateProfileDetails: mocks.updateProfileDetails }));
+vi.mock("@/app/actions/profile", () => ({ setWhatsAppNotifications: vi.fn() }));
 vi.mock("@/lib/supabase/browser-client", () => ({
   getSupabaseBrowserClient: () => ({ auth: { registerPasskey: mocks.registerPasskey } }),
+}));
+vi.mock("@/components/ui/avatar-picker", () => ({
+  AvatarPicker: ({ onChange }: { onChange: (change: { seed: string }) => void }) => (
+    <button type="button" onClick={() => onChange({ seed: "adventurer|selected" })}>Set avatar</button>
+  ),
 }));
 
 import { SettingsClient } from "@/app/(app)/settings/settings-client";
@@ -66,6 +72,12 @@ describe("native passkey registration", () => {
     expect(screen.getByRole("button", { name: "Edit" })).toBeTruthy();
   });
 
+  it("shows the WhatsApp opt-in on the profile tab with the saved state", () => {
+    render(<SettingsClient fullName="Alice" whatsAppNotificationsEnabled />);
+
+    expect(screen.getByRole("switch", { name: "WhatsApp notifications" }).getAttribute("aria-checked")).toBe("true");
+  });
+
   it("edits profile details through the server action", async () => {
     mocks.updateProfileDetails.mockResolvedValue({ success: true, data: undefined });
     mocks.refresh.mockImplementation(() => undefined);
@@ -75,10 +87,12 @@ describe("native passkey registration", () => {
     fireEvent.change(screen.getByLabelText("Full name"), { target: { value: "Alicia" } });
     fireEvent.change(screen.getByLabelText("Phone"), { target: { value: "+1 555 0100" } });
     fireEvent.change(screen.getByLabelText("Date of birth"), { target: { value: "1990-01-01" } });
+    fireEvent.click(screen.getByRole("button", { name: "Set avatar" }));
     fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
 
     await waitFor(() => expect(mocks.updateProfileDetails).toHaveBeenCalled());
     expect(mocks.updateProfileDetails.mock.calls[0][0].fullName).toBe("Alicia");
+    expect(mocks.updateProfileDetails.mock.calls[0][0].avatarSeed).toBe("adventurer|selected");
     expect(mocks.refresh).toHaveBeenCalled();
   });
 });

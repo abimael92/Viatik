@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { ChevronLeft, ChevronRight, ExternalLink, ImagePlus, Link2, MapPin, Paperclip, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import imageCompression from "browser-image-compression";
@@ -40,9 +41,9 @@ const EXTRA_SAVE =
   "border-transparent bg-gradient-to-b from-sky-400 to-sky-600 text-white hover:brightness-105 dark:from-sky-500 dark:to-sky-800";
 const EXTRA_CANCEL =
   "border-slate-300 bg-slate-100 text-slate-800 hover:bg-slate-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100";
-const MENU_PHOTO = "text-amber-950 focus:bg-amber-100 dark:text-amber-100 dark:focus:bg-amber-900";
-const MENU_LINK = "text-sky-950 focus:bg-sky-100 dark:text-sky-100 dark:focus:bg-sky-900";
-const MENU_PIN = "text-teal-950 focus:bg-teal-100 dark:text-teal-100 dark:focus:bg-teal-900";
+const MENU_PHOTO = "text-foreground focus:bg-amber-100 focus:text-amber-950 data-[highlighted]:bg-amber-100 data-[highlighted]:text-amber-950 dark:focus:bg-amber-900 dark:focus:text-amber-50 dark:data-[highlighted]:bg-amber-900 dark:data-[highlighted]:text-amber-50";
+const MENU_LINK = "text-foreground focus:bg-sky-100 focus:text-sky-950 data-[highlighted]:bg-sky-100 data-[highlighted]:text-sky-950 dark:focus:bg-sky-900 dark:focus:text-sky-50 dark:data-[highlighted]:bg-sky-900 dark:data-[highlighted]:text-sky-50";
+const MENU_PIN = "text-foreground focus:bg-teal-100 focus:text-teal-950 data-[highlighted]:bg-teal-100 data-[highlighted]:text-teal-950 dark:focus:bg-teal-900 dark:focus:text-teal-50 dark:data-[highlighted]:bg-teal-900 dark:data-[highlighted]:text-teal-50";
 
 const COMPRESSION_OPTIONS = {
   maxSizeMB: 0.5,
@@ -57,18 +58,63 @@ function useAttachmentMedia(ids: readonly string[]) {
   return media;
 }
 
-function useMediaPreviewUrl(media: TripMedia | undefined, pending?: PendingActivityImage): string {
+function useMediaPreviewUrls(media: TripMedia | undefined, pending?: PendingActivityImage): {
+  src: string;
+  fallbackSrc: string;
+} {
   const objectUrl = useMemo(() => {
-    if (media?.uploadedUrl) return null;
     const blob = pending?.blob ?? media?.blob ?? null;
     return blob ? URL.createObjectURL(blob) : null;
-  }, [media?.uploadedUrl, media?.blob, pending?.blob]);
+  }, [media?.blob, pending?.blob]);
 
   useEffect(() => () => {
     if (objectUrl) URL.revokeObjectURL(objectUrl);
   }, [objectUrl]);
 
-  return media?.uploadedUrl ?? objectUrl ?? "";
+  return {
+    src: objectUrl ?? media?.uploadedUrl ?? "",
+    fallbackSrc: objectUrl ? media?.uploadedUrl ?? "" : "",
+  };
+}
+
+function ActivityAttachmentPreview({
+  src,
+  fallbackSrc = "",
+  alt,
+  className,
+  fallbackClassName = "flex h-full w-full flex-col items-center justify-center gap-2 bg-muted px-3 py-5 text-center text-xs font-medium text-muted-foreground",
+}: {
+  src: string;
+  fallbackSrc?: string;
+  alt: string;
+  className: string;
+  fallbackClassName?: string;
+}) {
+  const { t } = useI18n();
+  const [failedSources, setFailedSources] = useState<string[]>([]);
+  const activeSrc = [src, fallbackSrc].find((candidate) => candidate && !failedSources.includes(candidate));
+
+  if (!activeSrc) {
+    const message = src ? t("common.activityAttachmentsPreviewUnavailable") : t("common.activityAttachmentsSyncing");
+    return (
+      <span role="img" aria-label={message} className={fallbackClassName}>
+        <ImagePlus className="size-8 text-muted-foreground/70" aria-hidden />
+        <span>{message}</span>
+      </span>
+    );
+  }
+
+  return (
+    <Image
+      src={activeSrc}
+      alt={alt}
+      width={1600}
+      height={1200}
+      unoptimized
+      className={className}
+      onError={() => setFailedSources((failed) => failed.includes(activeSrc) ? failed : [...failed, activeSrc])}
+    />
+  );
 }
 
 export function ActivityAttachmentsSection({
@@ -169,7 +215,7 @@ function AttachmentImageButton({
   onOpen: () => void;
 }) {
   const { t } = useI18n();
-  const preview = useMediaPreviewUrl(media, pending);
+  const preview = useMediaPreviewUrls(media, pending);
   return (
     <button
       type="button"
@@ -177,14 +223,12 @@ function AttachmentImageButton({
       aria-label={t("common.activityAttachmentsViewPhoto", { name: item.caption ?? item.altText ?? item.id })}
       onClick={onOpen}
     >
-      {preview ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={preview} alt={item.altText ?? item.caption ?? ""} className="h-full w-full object-contain" />
-      ) : (
-        <span className="flex h-full items-center justify-center px-2 text-center text-xs text-muted-foreground">
-          {t("common.activityAttachmentsSyncing")}
-        </span>
-      )}
+      <ActivityAttachmentPreview
+        src={preview.src}
+        fallbackSrc={preview.fallbackSrc}
+        alt={item.altText ?? item.caption ?? ""}
+        className="h-full w-full object-cover"
+      />
       {overflowLabel && (
         <span className="absolute inset-0 flex items-center justify-center bg-background/70 text-sm font-semibold">
           {overflowLabel}
@@ -213,7 +257,7 @@ function ActivityMediaLightbox({
 }) {
   const { t } = useI18n();
   const current = images[index];
-  const src = useMediaPreviewUrl(
+  const preview = useMediaPreviewUrls(
     current ? mediaById.get(current.mediaId) : undefined,
     current ? pendingById.get(current.mediaId) : undefined,
   );
@@ -234,12 +278,13 @@ function ActivityMediaLightbox({
         <DialogTitle className="sr-only">{t("common.activityAttachmentsPhotoPreview")}</DialogTitle>
         <DialogDescription className="sr-only">{t("common.activityAttachmentsPhotoBrowseHelp")}</DialogDescription>
         <div className="relative flex items-center justify-center">
-          {src ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={src} alt={current?.altText ?? current?.caption ?? ""} className="max-h-[85vh] max-w-full rounded-lg object-contain" />
-          ) : (
-            <p className="rounded-lg bg-background/90 px-4 py-3 text-sm">{t("common.activityAttachmentsSyncing")}</p>
-          )}
+          <ActivityAttachmentPreview
+            src={preview.src}
+            fallbackSrc={preview.fallbackSrc}
+            alt={current?.altText ?? current?.caption ?? ""}
+            className="max-h-[85vh] max-w-full rounded-lg object-contain"
+            fallbackClassName="flex min-h-[40vh] w-full max-w-[90vw] flex-col items-center justify-center gap-3 rounded-xl border border-border/60 bg-card/95 p-8 text-center text-sm text-muted-foreground"
+          />
           {images.length > 1 && (
             <>
               <button
@@ -465,20 +510,18 @@ function EditorGalleryCard({
   const label = item.kind === "location" ? item.name : item.kind === "link" ? item.title : item.caption ?? t("common.activityAttachmentsAddPhoto");
   const imageMedia = item.kind === "image" ? media.find((entry) => entry.id === item.mediaId) : undefined;
   const pending = item.kind === "image" ? pendingImages.find((entry) => entry.id === item.mediaId) : undefined;
-  const preview = useMediaPreviewUrl(imageMedia, pending);
+  const preview = useMediaPreviewUrls(imageMedia, pending);
 
   return (
     <div className="relative overflow-hidden rounded-xl border border-border bg-muted">
       {item.kind === "image" ? (
         <div className="aspect-square bg-muted">
-          {preview ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={preview} alt={item.altText ?? item.caption ?? ""} className="h-full w-full object-contain" />
-          ) : (
-            <span className="flex h-full items-center justify-center px-3 text-center text-xs text-muted-foreground">
-              {t("common.activityAttachmentsSyncing")}
-            </span>
-          )}
+          <ActivityAttachmentPreview
+            src={preview.src}
+            fallbackSrc={preview.fallbackSrc}
+            alt={item.altText ?? item.caption ?? ""}
+            className="h-full w-full object-cover"
+          />
         </div>
       ) : (
         <div className="flex aspect-square flex-col justify-between bg-background p-3">

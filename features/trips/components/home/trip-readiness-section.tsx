@@ -76,7 +76,7 @@ export function TripReadinessSection({
             onClick={onStart}
           >
             <Play className="size-4" aria-hidden />
-            {t("common.startPlanningTrip")}
+            {t("copy.startTrip")}
           </Button>
         )}
       </div>

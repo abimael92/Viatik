@@ -20,6 +20,7 @@ export interface HomeData {
   trips: Trip[];
   primaryTrip: Trip | null;
   activeTrip: Trip | null;
+  ongoingTrips: Trip[];
   nextTrip: Trip | null;
   /** Planned trips that start today or later, excluding the hero trip. */
   upNext: Trip[];
@@ -48,7 +49,7 @@ export function useHomeData(ownerId: string): HomeData {
 
   useEffect(() => tripRepository.watchAll(setTrips), []);
 
-  const { primaryTrip, activeTrip, nextTrip, upNext } = useMemo(
+  const { primaryTrip, activeTrip, ongoingTrips, nextTrip, upNext } = useMemo(
     () => pickPrimaryTrips(trips ?? []),
     [trips]
   );
@@ -107,6 +108,7 @@ export function useHomeData(ownerId: string): HomeData {
     trips: trips ?? [],
     primaryTrip,
     activeTrip,
+    ongoingTrips,
     nextTrip,
     upNext,
     readiness,

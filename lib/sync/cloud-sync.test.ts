@@ -10,6 +10,9 @@ const mocks = vi.hoisted(() => {
   const outboxLast = vi.fn();
   const conflictAdd = vi.fn();
   const mediaUpdate = vi.fn();
+  const transcriptGet = vi.fn();
+  const transcriptPut = vi.fn();
+  const transcriptDelete = vi.fn();
   const pendingMedia = vi.fn();
   const feedItemsAdd = vi.fn();
   const feedItemFirst = vi.fn();
@@ -44,7 +47,10 @@ const mocks = vi.hoisted(() => {
   const storageFrom = vi.fn(() => ({ upload, createSignedUrl, remove }));
 
   const db = {
-    transaction: vi.fn(),
+    transaction: vi.fn(async (...args: unknown[]) => {
+      const work = args.at(-1);
+      if (typeof work === "function") await (work as () => Promise<void>)();
+    }),
     trips: { toArray: vi.fn().mockResolvedValue([]) },
     syncMetadata: { get: metadataGet, bulkPut: metadataPut },
     outboxMutations: {
@@ -63,9 +69,11 @@ const mocks = vi.hoisted(() => {
       })),
       delete: contactDelete,
     },
+    mediaTranscripts: { get: transcriptGet, put: transcriptPut, delete: transcriptDelete, toArray: vi.fn().mockResolvedValue([]) },
+    tripMembers: { where: vi.fn(() => ({ equals: vi.fn(() => ({ toArray: vi.fn().mockResolvedValue([]) })) })) },
     tripMedia: {
       where: vi.fn(() => ({
-        anyOf: vi.fn(() => ({ filter: vi.fn(() => ({ toArray: pendingMedia })) })),
+        anyOf: vi.fn(() => ({ filter: vi.fn((predicate: (media: Record<string, unknown>) => boolean) => ({ toArray: async () => (await pendingMedia()).filter(predicate) })) })),
         equals: vi.fn(() => ({ filter: vi.fn(() => ({ toArray: vi.fn().mockResolvedValue([]) })) })),
       })),
       update: mediaUpdate,
@@ -89,7 +97,7 @@ const mocks = vi.hoisted(() => {
     storage: { from: storageFrom },
   };
 
-  return { put, tableGet, tableDelete, metadataGet, metadataPut, queryResponses, query, from, upsert, rpc, channel, upload, createSignedUrl, remove, storageFrom, mediaUpdate, pendingMedia, feedItemsAdd, feedItemFirst, db, client, outboxLast, outboxDelete, conflictAdd, contactQueryToArray, contactDelete, outboxAnyOfCount };
+  return { put, tableGet, tableDelete, metadataGet, metadataPut, queryResponses, query, from, upsert, rpc, channel, upload, createSignedUrl, remove, storageFrom, mediaUpdate, transcriptGet, transcriptPut, transcriptDelete, pendingMedia, feedItemsAdd, feedItemFirst, db, client, outboxLast, outboxDelete, conflictAdd, contactQueryToArray, contactDelete, outboxAnyOfCount };
 });
 
 vi.mock("@/lib/db/dexie", () => ({
@@ -99,12 +107,13 @@ vi.mock("@/lib/db/dexie", () => ({
 vi.mock("@/lib/supabase/browser-client", () => ({ getSupabaseBrowserClient: () => mocks.client }));
 vi.mock("@/features/media/data/dexie-media-repository", () => ({ mediaPayload: vi.fn() }));
 
-import { __cloudSyncInternals, processPendingMedia, pullRemoteChanges, startRealtimeSync } from "@/lib/sync/cloud-sync";
+import { __cloudSyncInternals, processPendingMedia, pullRemoteChanges, resetPendingMediaUploadRetries, startRealtimeSync } from "@/lib/sync/cloud-sync";
 import { configureSyncUser } from "@/lib/sync/sync-context";
 
 describe("cloud synchronization", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    configureSyncUser(null);
     mocks.queryResponses.length = 0;
     mocks.query.lte.mockReturnValue(mocks.query);
     mocks.query.order.mockReturnValue(mocks.query);
@@ -117,6 +126,7 @@ describe("cloud synchronization", () => {
     mocks.client.auth.getUser.mockResolvedValue({ data: { user: { id: "user-1" } } });
     mocks.metadataGet.mockResolvedValue(undefined);
     mocks.tableGet.mockResolvedValue(undefined);
+    mocks.transcriptGet.mockResolvedValue(undefined);
     mocks.pendingMedia.mockResolvedValue([]);
     mocks.feedItemFirst.mockResolvedValue(undefined);
     mocks.outboxLast.mockResolvedValue(undefined);
@@ -130,14 +140,36 @@ describe("cloud synchronization", () => {
 
   it("bootstraps every collaborative table and stores a pull cursor", async () => {
     await pullRemoteChanges(true);
-    expect(mocks.from).toHaveBeenCalledTimes(21);
+    expect(mocks.from).toHaveBeenCalledTimes(24);
     expect(mocks.metadataPut).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ key: "cloud:last-pull:user-1" })]));
+  });
+
+  it("pulls media transcripts and maps backend keys into the local store", async () => {
+    mocks.queryResponses.push(
+      ...Array.from({ length: 23 }, () => ({ data: [], error: null })),
+      { data: [{ media_id: "media-1", trip_id: "trip-1", status: "done", text: "Take the second street", language: "en", created_at: "2026-01-01T00:00:00.000Z", updated_at: "2026-01-02T00:00:00.000Z", version: 2 }], error: null },
+    );
+
+    await pullRemoteChanges(true);
+
+    expect(mocks.from).toHaveBeenLastCalledWith("media_transcripts");
+    expect(mocks.query.order).toHaveBeenCalledWith("media_id", { ascending: true });
+    expect(mocks.transcriptPut).toHaveBeenCalledWith({
+      mediaId: "media-1",
+      tripId: "trip-1",
+      status: "done",
+      text: "Take the second street",
+      language: "en",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-02T00:00:00.000Z",
+      version: 2,
+    });
   });
 
   it("uses the stored cursor for incremental pulls", async () => {
     mocks.metadataGet.mockImplementation(async (key: string) => key === "cloud:active-user" ? { key, value: "user-1" } : { key, value: "2026-01-01T00:00:00.000Z" });
     await pullRemoteChanges();
-    expect(mocks.query.gt).toHaveBeenCalledTimes(21);
+    expect(mocks.query.gt).toHaveBeenCalledTimes(24);
     expect(mocks.query.gt).toHaveBeenCalledWith("updated_at", "2026-01-01T00:00:00.000Z");
   });
 
@@ -169,7 +201,7 @@ describe("cloud synchronization", () => {
 
     await pullRemoteChanges(false, controller.signal);
 
-    expect(mocks.query.abortSignal).toHaveBeenCalledTimes(21);
+    expect(mocks.query.abortSignal).toHaveBeenCalledTimes(24);
     expect(mocks.query.abortSignal).toHaveBeenCalledWith(controller.signal);
   });
 
@@ -268,18 +300,121 @@ describe("cloud synchronization", () => {
   });
 
   it("uploads pending compressed media and marks it complete", async () => {
+    configureSyncUser("user-1");
     const blob = new Blob(["photo"], { type: "image/jpeg" });
     mocks.pendingMedia.mockResolvedValue([{ id: "media-1", tripId: "trip-1", activityId: null, caption: null, blob, storagePath: "trip-1/media-1.jpg", uploadedUrl: null, contentType: "image/jpeg", byteSize: blob.size, createdBy: "user-1", uploadStatus: "pending", uploadProgress: 0, uploadError: null, createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z", deletedAt: null }]);
     await processPendingMedia();
     expect(mocks.upload).toHaveBeenCalledWith("trip-1/media-1.jpg", blob, expect.objectContaining({ upsert: true }));
     expect(mocks.rpc).toHaveBeenCalledWith("sync_cas_upsert", expect.objectContaining({ p_entity: "media", p_base_updated_at: null }));
     expect(mocks.mediaUpdate).toHaveBeenLastCalledWith("media-1", expect.objectContaining({ uploadStatus: "uploaded", uploadProgress: 100 }));
+    configureSyncUser(null);
+  });
+
+  it("uploads a pending voice clip into the trip audio folder with its kind and duration", async () => {
+    configureSyncUser("user-1");
+    const blob = new Blob(["voice"], { type: "audio/webm" });
+    mocks.pendingMedia.mockResolvedValue([{ id: "media-2", tripId: "trip-1", activityId: null, caption: null, blob, storagePath: "trip-1/audio/media-2.webm", uploadedUrl: null, contentType: "audio/webm", byteSize: blob.size, kind: "audio", durationMs: 4200, createdBy: "user-1", uploadStatus: "pending", uploadProgress: 0, uploadError: null, uploadAttempts: 0, createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z", deletedAt: null }]);
+
+    await processPendingMedia();
+
+    expect(mocks.upload).toHaveBeenCalledWith("trip-1/audio/media-2.webm", blob, expect.objectContaining({ contentType: "audio/webm", upsert: true }));
+    expect(mocks.rpc).toHaveBeenCalledWith("sync_cas_upsert", expect.objectContaining({ p_entity: "media", p_payload: expect.objectContaining({ kind: "audio", duration_ms: 4200 }) }));
+    expect(mocks.mediaUpdate).toHaveBeenLastCalledWith("media-2", expect.objectContaining({ uploadStatus: "uploaded" }));
+    configureSyncUser(null);
+  });
+
+  it("continues retrying a media upload after five failures", async () => {
+    configureSyncUser("user-1");
+    const blob = new Blob(["voice"], { type: "audio/webm" });
+    mocks.pendingMedia.mockResolvedValue([{ id: "media-3", tripId: "trip-1", activityId: null, caption: null, blob, storagePath: "trip-1/audio/media-3.webm", uploadedUrl: null, contentType: "audio/webm", byteSize: blob.size, kind: "audio", durationMs: 4200, createdBy: "user-1", uploadStatus: "failed", uploadProgress: 0, uploadError: "previous failure", uploadAttempts: 5, nextUploadAt: null, createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z", deletedAt: null }]);
+
+    await processPendingMedia();
+
+    expect(mocks.upload).toHaveBeenCalledWith("trip-1/audio/media-3.webm", blob, expect.objectContaining({ upsert: true }));
+    configureSyncUser(null);
+  });
+
+  it("resets failed media retry state on explicit retry", async () => {
+    configureSyncUser("user-1");
+    mocks.pendingMedia.mockResolvedValue([{ id: "media-4", createdBy: "user-1", uploadAttempts: 5, nextUploadAt: "2026-01-02T00:00:00.000Z" }]);
+
+    await resetPendingMediaUploadRetries();
+
+    expect(mocks.mediaUpdate).toHaveBeenCalledWith("media-4", { uploadAttempts: 0, nextUploadAt: null, uploadError: null });
+    configureSyncUser(null);
+  });
+
+  it("keeps the author's local voice clip when the uploaded row syncs back", async () => {
+    const blob = new Blob(["voice"], { type: "audio/webm" });
+    mocks.tableGet.mockResolvedValue({ id: "media-2", tripId: "trip-1", kind: "audio", blob, updatedAt: "2026-01-01T00:00:00.000Z" });
+    const remote = { id: "media-2", tripId: "trip-1", activityId: null, caption: null, blob: null, storagePath: "trip-1/audio/media-2.webm", uploadedUrl: null, signedUrlExpiresAt: null, contentType: "audio/webm", byteSize: 5, kind: "audio", durationMs: 4200, createdBy: "user-1", updatedBy: "user-1", deletedBy: null, restoredAt: null, restoredBy: null, version: 1, uploadStatus: "uploaded", uploadProgress: 100, uploadError: null, uploadAttempts: 0, nextUploadAt: null, createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-02T00:00:00.000Z", deletedAt: null };
+
+    await __cloudSyncInternals.applyRemote("media", "tripMedia", remote as never, mocks.client as never);
+
+    expect(mocks.put).toHaveBeenCalledWith(expect.objectContaining({ id: "media-2", blob, uploadStatus: "uploaded" }));
+  });
+
+  it("does not announce a collaborator's voice clip as a photo", async () => {
+    configureSyncUser("user-1");
+    const remote = { id: "media-3", tripId: "trip-1", activityId: null, caption: null, blob: null, storagePath: "trip-1/audio/media-3.webm", uploadedUrl: null, signedUrlExpiresAt: null, contentType: "audio/webm", byteSize: 5, kind: "audio", durationMs: 1000, createdBy: "user-2", updatedBy: "user-2", deletedBy: null, restoredAt: null, restoredBy: null, version: 1, uploadStatus: "uploaded", uploadProgress: 100, uploadError: null, uploadAttempts: 0, nextUploadAt: null, createdAt: "2026-01-02T00:00:00.000Z", updatedAt: "2026-01-02T00:00:00.000Z", deletedAt: null };
+
+    await __cloudSyncInternals.applyRemote("media", "tripMedia", remote as never, mocks.client as never);
+
+    expect(mocks.put).toHaveBeenCalledWith(expect.objectContaining({ id: "media-3", blob: null }));
+    expect(mocks.feedItemsAdd).not.toHaveBeenCalled();
+    configureSyncUser(null);
   });
 
   it("subscribes to realtime changes for every table", () => {
     const stop = startRealtimeSync();
-    expect(mocks.channel.on).toHaveBeenCalledTimes(21);
+    expect(mocks.channel.on).toHaveBeenCalledTimes(24);
     expect(mocks.channel.subscribe).toHaveBeenCalledTimes(2);
+    stop();
+  });
+
+  it("applies realtime transcript updates to Dexie using media_id as the key", async () => {
+    const stop = startRealtimeSync();
+    const registration = mocks.channel.on.mock.calls.find((call) => call[1].table === "media_transcripts");
+    registration?.[2]({
+      eventType: "INSERT",
+      old: {},
+      new: { media_id: "media-1", trip_id: "trip-1", status: "processing", text: null, language: "es", created_at: "2026-01-01T00:00:00.000Z", updated_at: "2026-01-02T00:00:00.000Z", version: 2 },
+    });
+
+    await vi.waitFor(() => expect(mocks.transcriptPut).toHaveBeenCalledWith({
+      mediaId: "media-1",
+      tripId: "trip-1",
+      status: "processing",
+      text: null,
+      language: "es",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-02T00:00:00.000Z",
+      version: 2,
+    }));
+    stop();
+  });
+
+  it("does not overwrite a newer local transcript with a stale realtime row", async () => {
+    mocks.transcriptGet.mockResolvedValue({
+      mediaId: "media-1",
+      tripId: "trip-1",
+      status: "done",
+      text: "New transcript",
+      language: "en",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-03T00:00:00.000Z",
+      version: 3,
+    });
+    const stop = startRealtimeSync();
+    const registration = mocks.channel.on.mock.calls.find((call) => call[1].table === "media_transcripts");
+    registration?.[2]({
+      eventType: "UPDATE",
+      old: {},
+      new: { media_id: "media-1", trip_id: "trip-1", status: "processing", text: null, language: "en", created_at: "2026-01-01T00:00:00.000Z", updated_at: "2026-01-02T00:00:00.000Z", version: 2 },
+    });
+
+    await vi.waitFor(() => expect(mocks.transcriptGet).toHaveBeenCalledWith("media-1"));
+    expect(mocks.transcriptPut).not.toHaveBeenCalled();
     stop();
   });
 

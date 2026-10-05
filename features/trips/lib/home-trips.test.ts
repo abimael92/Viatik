@@ -252,7 +252,7 @@ function homeTrip(id: string, status: TripStatus, startDate: string, endDate: st
 describe("pickPrimaryTrips", () => {
   const today = new Date(2026, 8, 28, 13, 44, 0);
 
-  it("features the trip that starts tomorrow instead of an earlier planned trip that still overlaps today", () => {
+  it("features a planned trip spanning today in the ongoing slot ahead of future trips", () => {
     const selection = pickPrimaryTrips(
       [
         homeTrip("arizona", "planned", "2026-09-20", "2026-09-28"),
@@ -263,7 +263,20 @@ describe("pickPrimaryTrips", () => {
 
     expect(selection.primaryTrip?.id).toBe("vegas");
     expect(selection.activeTrip).toBeNull();
+    expect(selection.ongoingTrips.map((trip) => trip.id)).toEqual(["arizona"]);
     expect(selection.nextTrip?.id).toBe("vegas");
+  });
+
+  it("features a planned trip spanning today when no active or upcoming trip exists", () => {
+    const selection = pickPrimaryTrips(
+      [homeTrip("phoenix", "planned", "2026-10-04", "2026-10-11")],
+      new Date(2026, 9, 5, 13, 44, 0),
+    );
+
+    expect(selection.primaryTrip?.id).toBe("phoenix");
+    expect(selection.activeTrip).toBeNull();
+    expect(selection.ongoingTrips.map((trip) => trip.id)).toEqual(["phoenix"]);
+    expect(selection.nextTrip).toBeNull();
   });
 
   it("does not keep a started trip on Home after its end date when another trip starts tomorrow", () => {
@@ -277,6 +290,23 @@ describe("pickPrimaryTrips", () => {
 
     expect(selection.primaryTrip?.id).toBe("vegas");
     expect(selection.activeTrip).toBeNull();
+  });
+
+  it("includes every explicit active and date-current planned trip in the ongoing quick view", () => {
+    const selection = pickPrimaryTrips(
+      [
+        homeTrip("active", "active", "2026-09-10", "2026-09-11"),
+        homeTrip("current-plan", "planned", "2026-09-20", "2026-09-28"),
+        homeTrip("starts-today", "planned", "2026-09-28", "2026-10-02"),
+        { ...homeTrip("no-end-date", "planned", "2026-09-20", "2026-09-28"), endDate: null },
+        homeTrip("future", "planned", "2026-09-29", "2026-10-02"),
+        homeTrip("ended-plan", "planned", "2026-09-20", "2026-09-27"),
+        homeTrip("completed", "completed", "2026-09-20", "2026-09-28"),
+      ],
+      today,
+    );
+
+    expect(selection.ongoingTrips.map((trip) => trip.id)).toEqual(["active", "starts-today", "current-plan"]);
   });
 
   it("keeps an explicitly started trip whose dates still include today", () => {

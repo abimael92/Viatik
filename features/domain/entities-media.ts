@@ -5,10 +5,16 @@
  */
 export type MediaUploadStatus = "pending" | "uploading" | "uploaded" | "failed";
 
+/** Photos appear in galleries; audio clips belong to voice notes only. */
+export type MediaKind = "photo" | "audio";
+
 export interface TripMedia {
   id: string;
   tripId: string;
   activityId: string | null;
+  kind: MediaKind;
+  /** Clip length for audio; null for photos. */
+  durationMs: number | null;
   caption: string | null;
   /**
    * Capture date of the photo (ISO date `yyyy-mm-dd`), read from EXIF
@@ -39,4 +45,19 @@ export interface TripMedia {
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
+}
+
+export type MediaTranscriptStatus = "pending" | "processing" | "done" | "failed" | "skipped";
+
+/** Read-only server transcript of a voice-note clip (audio-notes spec, Phase 3). */
+export interface MediaTranscript {
+  mediaId: string;
+  tripId: string;
+  status: MediaTranscriptStatus;
+  text: string | null;
+  /** Detected language code, e.g. `es`. */
+  language: string | null;
+  createdAt: string;
+  updatedAt: string;
+  version: number;
 }

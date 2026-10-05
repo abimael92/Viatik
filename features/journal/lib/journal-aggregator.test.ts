@@ -57,6 +57,8 @@ function media(overrides: Partial<TripMedia> = {}): TripMedia {
     id: "photo-1",
     tripId: "trip-1",
     activityId: null,
+    kind: "photo",
+    durationMs: null,
     caption: null,
     takenAt: "2026-07-01",
     blob: null,

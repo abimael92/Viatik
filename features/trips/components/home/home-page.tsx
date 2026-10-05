@@ -29,6 +29,7 @@ import { LiveTimelineHud } from "@/features/trips/components/home/live-timeline-
 import { TripNotesBoard } from "@/features/trips/components/home/trip-notes-board";
 import { OpenTasksWidget } from "@/features/trips/components/home/open-tasks-widget";
 import { ActiveTripActions } from "@/features/trips/components/home/active-trip-actions";
+import { OngoingTripsQuickView } from "@/features/trips/components/home/ongoing-trips-quick-view";
 import { TripStepsWidget } from "@/features/steps/components/trip-steps-widget";
 import { QuickActionHub } from "@/features/trips/components/home/quick-action-hub";
 import { SuggestionsDrawer } from "@/features/community/components/suggestions-drawer";
@@ -44,7 +45,7 @@ import { useI18n } from "@/lib/i18n/i18n-provider";
  */
 export function HomePage({ userId }: { userId: string }) {
   const { t } = useI18n();
-  const { loading, primaryTrip, activeTrip, readiness, timeline, canManageExpenses } = useHomeData(userId);
+  const { loading, primaryTrip, activeTrip, ongoingTrips, readiness, timeline, canManageExpenses } = useHomeData(userId);
   const [pending, setPending] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -68,10 +69,9 @@ export function HomePage({ userId }: { userId: string }) {
   // The operational cockpit stays hidden until the user explicitly starts the trip.
   const isActive = primaryTrip?.status === "active";
 
-  function handleStart() {
-    if (!primaryTrip || pending) return;
+  function handleStart(tripId = primaryTrip?.id) {
+    if (!tripId || pending) return;
     setPending(true);
-    const tripId = primaryTrip.id;
     void tripRepository
       .startTrip(tripId)
       .then(() => void notifyTripStarted(tripId).catch(() => undefined))
@@ -125,9 +125,15 @@ export function HomePage({ userId }: { userId: string }) {
               trip={primaryTrip}
               today={new Date()}
               readiness={readiness}
-              onStart={handleStart}
+              onStart={() => handleStart()}
               onEnd={handleEnd}
               onCancel={handleCancel}
+            />
+            <OngoingTripsQuickView
+              trips={ongoingTrips}
+              featuredTripId={primaryTrip.id}
+              pending={pending}
+              onStartTrip={handleStart}
             />
 
             {isActive && (

@@ -8,6 +8,7 @@ import { useEffect, useState, useTransition } from "react";
 import QRCode from "react-qr-code";
 import { getConnectionQrPayload } from "@/app/actions/connections";
 import { updateProfileDetails, type ProfileDetails } from "@/app/actions/auth";
+import { WhatsAppNotificationsCard } from "@/app/(app)/settings/whatsapp-notifications-card";
 import { isValidBirthDate, latestBirthDate } from "@/lib/auth/birth-date";
 import {
   PROFILE_IMAGE_MAX_BYTES,
@@ -30,10 +31,12 @@ export function SettingsClient({
   fullName,
   viatikId,
   profile = null,
+  whatsAppNotificationsEnabled = false,
 }: {
   fullName: string;
   viatikId?: string | null;
   profile?: ProfileDetails | null;
+  whatsAppNotificationsEnabled?: boolean;
 }) {
   const router = useRouter();
   const { t } = useI18n();
@@ -102,7 +105,7 @@ export function SettingsClient({
           <TabsTrigger value="directory"><ScanLine className="size-5" />{t("common.directory")}</TabsTrigger>
           <TabsTrigger value="security"><KeyRound className="size-5" />{t("common.security")}</TabsTrigger>
         </TabsList>
-        <TabsContent value="profile">
+        <TabsContent value="profile" className="space-y-6">
           <section className="rounded-2xl border bg-card p-5 sm:p-7" aria-labelledby="profile-heading">
             <div className="flex items-start justify-between gap-3">
               <div className="flex gap-3">
@@ -164,6 +167,7 @@ export function SettingsClient({
               </>
             )}
           </section>
+          <WhatsAppNotificationsCard initialEnabled={whatsAppNotificationsEnabled} />
         </TabsContent>
         <TabsContent value="directory">
           <section className="overflow-hidden rounded-2xl border bg-card" aria-labelledby="directory-heading">
