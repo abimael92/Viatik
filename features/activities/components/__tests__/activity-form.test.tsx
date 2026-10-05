@@ -105,6 +105,26 @@ describe("ActivityForm", () => {
     expect(screen.getAllByText("Alex Chen")).toHaveLength(1);
   });
 
+  it("renders a traveler with their contact's configured avatar instead of a generated one", () => {
+    const travelers = [{ id: "traveler-1", tripId: "trip-1", contactId: "contact-1", displayName: "Mom", travelerType: "adult" as const, createdBy: "user-1", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", deletedAt: null }];
+    const contacts = [{ id: "contact-1", fullName: "Mom", avatarUrl: "https://example.com/mom.png", avatarSeed: null, linkedAvatarUrl: null }];
+    render(<ActivityForm days={["2026-09-16"]} travelers={travelers} contacts={contacts as never} currentUserId="user-1" saving={false} onSubmit={vi.fn()} onCancel={vi.fn()} />);
+    openActivityTab("Group & money");
+
+    const chip = screen.getByRole("button", { name: /mom: going/i });
+    expect(chip.querySelector("img")?.getAttribute("src")).toBe("https://example.com/mom.png");
+  });
+
+  it("shows initials instead of a generated avatar for a traveler without a configured avatar", () => {
+    const travelers = [{ id: "traveler-1", tripId: "trip-1", contactId: "contact-missing", displayName: "Sam Rivera", travelerType: "adult" as const, createdBy: "user-1", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", deletedAt: null }];
+    render(<ActivityForm days={["2026-09-16"]} travelers={travelers} currentUserId="user-1" saving={false} onSubmit={vi.fn()} onCancel={vi.fn()} />);
+    openActivityTab("Group & money");
+
+    const chip = screen.getByRole("button", { name: /sam rivera: going/i });
+    expect(chip.querySelector("img")).toBeNull();
+    expect(chip.textContent).toContain("SR");
+  });
+
   it("shows trip travelers and immediately selects a manually added traveler", async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     const onAddTraveler = vi.fn().mockResolvedValue({ id: "traveler-2", tripId: "trip-1", contactId: "contact-2", displayName: "Sam Rivera", travelerType: "adult", createdBy: "user-1", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", deletedAt: null });

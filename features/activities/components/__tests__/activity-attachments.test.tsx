@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   ActivityAttachmentsEditor,
@@ -10,13 +10,19 @@ import type { ActivityAttachment } from "@/features/domain/entities";
 
 const { retry } = vi.hoisted(() => ({ retry: vi.fn() }));
 
+afterEach(() => vi.unstubAllGlobals());
+
 vi.mock("@/features/media/data/dexie-media-repository", () => ({
   mediaRepository: {
     watchByIds: (ids: string[], onChange: (media: unknown[]) => void) => {
       onChange(
         ids.includes("media-fail")
           ? [{ id: "media-fail", uploadStatus: "failed" }]
-          : [],
+          : ids.includes("media-preview-local")
+            ? [{ id: "media-preview-local", uploadStatus: "uploaded", uploadedUrl: "https://signed.example/remote", blob: null }]
+            : ids.includes("media-preview-fail")
+              ? [{ id: "media-preview-fail", uploadStatus: "uploaded", uploadedUrl: "https://signed.example/expired", blob: null }]
+              : [],
       );
       return () => undefined;
     },
@@ -89,9 +95,15 @@ describe("ActivityAttachmentsEditor", () => {
     fireEvent.click(trigger);
     expect(trigger.getAttribute("aria-expanded")).toBe("true");
     expect(screen.getByRole("button", { name: "Add attachment" }).className).toContain("from-amber-300");
-    expect(screen.getByRole("menuitem", { name: "Photo" }).className).toContain("text-amber-950");
-    expect(screen.getByRole("menuitem", { name: "Link" }).className).toContain("text-sky-950");
-    expect(screen.getByRole("menuitem", { name: "Location pin" }).className).toContain("text-teal-950");
+    expect(screen.getByRole("menuitem", { name: "Photo" }).className).toContain("data-[highlighted]:bg-amber-100");
+    expect(screen.getByRole("menuitem", { name: "Photo" }).className).toContain("data-[highlighted]:text-amber-950");
+    expect(screen.getByRole("menuitem", { name: "Link" }).className).toContain("data-[highlighted]:bg-sky-100");
+    expect(screen.getByRole("menuitem", { name: "Link" }).className).toContain("data-[highlighted]:text-sky-950");
+    expect(screen.getByRole("menuitem", { name: "Location pin" }).className).toContain("data-[highlighted]:bg-teal-100");
+    expect(screen.getByRole("menuitem", { name: "Location pin" }).className).toContain("data-[highlighted]:text-teal-950");
+    expect(screen.getByRole("menuitem", { name: "Photo" }).className).toContain("dark:data-[highlighted]:text-amber-50");
+    expect(screen.getByRole("menuitem", { name: "Link" }).className).toContain("dark:data-[highlighted]:text-sky-50");
+    expect(screen.getByRole("menuitem", { name: "Location pin" }).className).toContain("dark:data-[highlighted]:text-teal-50");
     expect(document.getElementById(trigger.getAttribute("aria-controls")!)?.getAttribute("role")).toBe("region");
 
     fireEvent.click(screen.getByRole("menuitem", { name: "Link" }));
@@ -156,6 +168,39 @@ describe("ActivityAttachmentsEditor", () => {
     expect(screen.queryByRole("button", { name: /Move attachment/i })).toBeNull();
     expect(screen.getByRole("button", { name: "Remove Dinner menu" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Remove Prado" })).toBeTruthy();
+  });
+
+  it("prefers the local Blob preview when a remote URL is also available", () => {
+    class URLWithObjectUrl extends URL {}
+    Object.defineProperty(URLWithObjectUrl, "createObjectURL", { value: vi.fn(() => "blob:local-preview") });
+    Object.defineProperty(URLWithObjectUrl, "revokeObjectURL", { value: vi.fn() });
+    vi.stubGlobal("URL", URLWithObjectUrl);
+    const blob = new Blob(["local image"], { type: "image/jpeg" });
+
+    render(
+      <ActivityAttachmentsEditor
+        attachments={[{ id: "image-local", kind: "image", mediaId: "media-preview-local", caption: null, altText: "Local preview" }]}
+        pendingImages={[{ id: "media-preview-local", blob, caption: null }]}
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByAltText("Local preview").getAttribute("src")).toBe("blob:local-preview");
+  });
+
+  it("replaces a broken remote image with a clear preview fallback", () => {
+    render(
+      <ActivityAttachmentsEditor
+        attachments={[{ id: "image-preview", kind: "image", mediaId: "media-preview-fail", caption: null, altText: "Menu preview" }]}
+        pendingImages={[]}
+        onChange={vi.fn()}
+      />,
+    );
+
+    fireEvent.error(screen.getByAltText("Menu preview"));
+
+    expect(screen.getByRole("img", { name: "Preview unavailable" })).toBeTruthy();
+    expect(screen.queryByAltText("Menu preview")).toBeNull();
   });
 
   it("exposes a polite live region and retry for failed uploads", () => {

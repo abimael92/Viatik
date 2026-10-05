@@ -45,7 +45,7 @@ import {
   normalizeActivityCategory,
   type ActivityCategory,
 } from "@/features/activities/domain/activity-category";
-import type { Activity, ActivityAttachment, ActivityChecklistItem, ActivityParticipant, ActivityPollOption, ActivityPollStatus, ActivityPollVote, ProfileSummary, TripMember, TripTraveler } from "@/features/domain/entities";
+import type { Activity, ActivityAttachment, ActivityChecklistItem, ActivityParticipant, ActivityPollOption, ActivityPollStatus, ActivityPollVote, Contact, ProfileSummary, TripMember, TripTraveler } from "@/features/domain/entities";
 import { decimalFromMinorUnits, parseMinorUnits, type MinorUnits } from "@/features/domain/money";
 import type { TransitSegment } from "@/features/transit/domain/transit-types";
 import { useLocalProfile } from "@/features/profile/lib/use-local-profile";
@@ -162,6 +162,7 @@ export function ActivityForm({
   transitSegment,
   members = [],
   travelers = [],
+  contacts = [],
   profiles = [],
   currentUserId,
   currency = "USD",
@@ -179,6 +180,7 @@ export function ActivityForm({
   transitSegment?: TransitSegment;
   members?: TripMember[];
   travelers?: TripTraveler[];
+  contacts?: Contact[];
   profiles?: ProfileSummary[];
   currentUserId?: string;
   currency?: string;
@@ -248,6 +250,7 @@ export function ActivityForm({
   const uniqueMembers = [...new Map(members.map((member) => [member.userId, member])).values()];
   const allTravelers = [...new Map([...travelers, ...addedTravelers].map((traveler) => [traveler.id, traveler])).values()];
   const profileById = new Map(profiles.map((profile) => [profile.id, profile]));
+  const contactById = new Map(contacts.map((contact) => [contact.id, contact]));
   const memberNames = new Set(uniqueMembers.map((member) => profileById.get(member.userId)?.fullName?.trim().toLocaleLowerCase()).filter(Boolean));
   const visibleTravelers = allTravelers.filter((traveler) => !memberNames.has(traveler.displayName.trim().toLocaleLowerCase()));
 
@@ -536,9 +539,10 @@ export function ActivityForm({
                 {visibleTravelers.map((traveler) => {
                   const key = travelerKey(traveler.id);
                   const attending = attendingParticipantKeys.has(key);
+                  const contact = contactById.get(traveler.contactId);
                   return (
                     <button key={traveler.id} type="button" aria-label={`${traveler.displayName}: ${attending ? t("common.going") : t("common.notGoing")}`} aria-pressed={attending} className={`flex min-w-0 items-center gap-3 text-left ${LIGHT_CHIP}`} onClick={() => toggleParticipant(key, setAttendingParticipantKeys)}>
-                      <UserAvatar seed={traveler.id} name={traveler.displayName} size="sm" />
+                      <UserAvatar seed={contact?.avatarSeed} src={contact?.linkedAvatarUrl ?? contact?.avatarUrl} name={traveler.displayName} size="sm" />
                       <span className="min-w-0 flex-1 truncate text-sm font-medium">{traveler.displayName}</span>
                       <span className={`text-xs font-medium ${attending ? "text-primary" : "text-muted-foreground"}`}>{attending ? t("common.going") : t("common.notGoing")}</span>
                     </button>

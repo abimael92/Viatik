@@ -1,7 +1,35 @@
 "use server";
 
+import type { ActionResult } from "@/app/actions/auth";
 import type { LocalProfile } from "@/features/profile/domain/profile-types";
+import { frontendCopy } from "@/lib/i18n/frontend-copy";
 import { createClient } from "@/lib/supabase/server-client";
+
+const whatsAppSaveFailed = frontendCopy.en.whatsAppNotificationsSaveFailed;
+
+/**
+ * Turns WhatsApp trip notifications on or off for the signed-in user only.
+ * The dispatcher skips recipients with the flag off (`not_opted_in`).
+ */
+export async function setWhatsAppNotifications(enabled: boolean): Promise<ActionResult<{ enabled: boolean }>> {
+  if (typeof enabled !== "boolean") return { success: false, error: whatsAppSaveFailed };
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) return { success: false, error: "Authentication required" };
+
+    const { data: saved, error } = await supabase
+      .from("profiles")
+      .update({ whatsapp_notifications_enabled: enabled })
+      .eq("id", data.user.id)
+      .select("whatsapp_notifications_enabled")
+      .maybeSingle();
+    if (error || !saved) return { success: false, error: whatsAppSaveFailed };
+    return { success: true, data: { enabled: saved.whatsapp_notifications_enabled } };
+  } catch {
+    return { success: false, error: whatsAppSaveFailed };
+  }
+}
 
 /**
  * Returns the signed-in user's own profile (safety-relevant fields included),

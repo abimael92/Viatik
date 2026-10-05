@@ -8,6 +8,7 @@ import { NotificationBell } from "@/features/notifications/components/notificati
 import { useState, useTransition } from "react";
 
 import { logout } from "@/app/actions/auth";
+import { SyncErrorBanner } from "@/components/app-shell/sync-error-banner";
 import { SyncStatusPill } from "@/components/app-shell/sync-status-pill";
 import { LanguageSwitcher } from "@/components/app-shell/language-switcher";
 import { ThemeToggle } from "@/components/app-shell/theme-toggle";
@@ -172,29 +173,7 @@ export function AppShell({
         </div>
       )}
       {sync.isOnline && sync.status === "error" && (
-        <div
-          role="alert"
-          className="flex flex-col items-center justify-center gap-2 border-b border-border/40 bg-destructive/10 px-4 py-3 text-sm text-destructive backdrop-blur-md"
-        >
-          <span>{t("sync.error")}</span>
-          {sync.lastError && (
-            <details className="max-w-2xl text-xs text-destructive/80">
-              <summary className="cursor-pointer">{t("copy.technicalDetails")}</summary>
-              <code className="mt-1 block wrap-break-word text-left">{sync.lastError}</code>
-            </details>
-          )}
-          {syncRetryCountdown !== null && (
-            <span aria-live="polite">{t("common.resyncIn", { count: syncRetryCountdown })}</span>
-          )}
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={retryNow}
-            className="min-h-11 border-destructive/40 bg-destructive/10 px-5 font-semibold text-destructive shadow-sm transition-all hover:bg-destructive/20 hover:text-destructive active:scale-[0.98]"
-          >
-            {t("common.retry")}
-          </Button>
-        </div>
+        <SyncErrorBanner error={sync.lastError} countdown={syncRetryCountdown} onRetry={retryNow} />
       )}
 
       {/* Arc-inspired dark glass sidebar — structural viatik-blue depth,

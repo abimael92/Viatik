@@ -35,6 +35,8 @@ function pendingMediaRecord(
     id: input.id,
     tripId,
     activityId,
+    kind: "photo",
+    durationMs: null,
     caption: input.caption ?? null,
     takenAt: null,
     blob: input.blob,
