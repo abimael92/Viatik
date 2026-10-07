@@ -931,6 +931,9 @@ export function TripWorkspace({
           trip={trip}
           days={days}
           canEdit={canEdit}
+          members={members}
+          memberProfiles={memberProfiles}
+          travelers={travelers}
           autoOpenExpense={pendingExpense}
           defaultExpenseCurrency={initialAction === "add-expense" ? trip.baseCurrency : undefined}
           autoOpenTools={initialMoneyToolsOpen}

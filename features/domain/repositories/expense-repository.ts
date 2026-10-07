@@ -6,6 +6,7 @@ import type { CurrencyCode, MinorUnits } from "@/features/domain/money";
 export interface ExpenseRepository {
   listByTrip(tripId: string): Promise<Expense[]>;
   listSharesByExpense(expenseId: string): Promise<ExpenseShare[]>;
+  watchSharesByExpenses(expenseIds: string[], onChange: (shares: ExpenseShare[]) => void): () => void;
   watchByTrip(tripId: string, onChange: (expenses: Expense[]) => void): () => void;
   create(input: NewExpense): Promise<Expense>;
   update(

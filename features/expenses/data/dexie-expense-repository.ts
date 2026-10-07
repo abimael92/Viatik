@@ -47,6 +47,15 @@ export class DexieExpenseRepository implements ExpenseRepository {
     return db.expenseShares.where("expenseId").equals(expenseId).toArray();
   }
 
+  watchSharesByExpenses(expenseIds: string[], onChange: (shares: ExpenseShare[]) => void): () => void {
+    const ids = [...new Set(expenseIds.filter(Boolean))];
+    const subscription = liveQuery(async () => {
+      if (!ids.length) return [] as ExpenseShare[];
+      return getDb().expenseShares.where("expenseId").anyOf(ids).toArray();
+    }).subscribe({ next: onChange });
+    return () => subscription.unsubscribe();
+  }
+
   watchByTrip(tripId: string, onChange: (expenses: Expense[]) => void): () => void {
     const subscription = liveQuery(() => this.listByTrip(tripId)).subscribe({ next: onChange });
     return () => subscription.unsubscribe();
