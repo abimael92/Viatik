@@ -6,6 +6,7 @@ const migrations = join(process.cwd(), "supabase/migrations");
 const migration = readFileSync(join(migrations, "00000000000080_trip_photo_sharing.sql"), "utf8").toLowerCase();
 const securityFollowUp = readFileSync(join(migrations, "00000000000081_trip_media_security_followup.sql"), "utf8").toLowerCase();
 const visibilityFollowUp = readFileSync(join(migrations, "00000000000082_trip_media_public_gallery.sql"), "utf8").toLowerCase();
+const invitationLifecycleFix = readFileSync(join(migrations, "00000000000083_fix_trip_invitation_lifecycle_trigger.sql"), "utf8").toLowerCase();
 const baseline = readFileSync(join(migrations, "00000000000008_collaboration_and_media.sql"), "utf8").toLowerCase();
 
 describe("trip photo sharing authorization migration", () => {
@@ -107,6 +108,17 @@ describe("trip photo sharing authorization migration", () => {
     expect(visibilityFollowUp).toContain("when public.trip_members.removed_at is not null or public.trip_members.deleted_at is not null then excluded.role");
     expect(visibilityFollowUp).toContain("else public.trip_members.role");
     expect(visibilityFollowUp).toMatch(/removed_at = null[\s\S]*removed_by = null[\s\S]*deleted_at = null[\s\S]*deleted_by = null/);
+  });
+
+  it("recreates the invitation lifecycle trigger without referencing absent columns", () => {
+    expect(invitationLifecycleFix).toMatch(/create or replace function public\.set_trip_invitations_lifecycle_metadata\(\)[\s\S]*returns trigger[\s\S]*security invoker[\s\S]*new\.updated_at := now\(\)[\s\S]*if tg_op = 'insert' then[\s\S]*new\.version := 1[\s\S]*new\.status_changed_at := now\(\)[\s\S]*new\.status_changed_by := new\.invited_by[\s\S]*else[\s\S]*new\.version := old\.version \+ 1[\s\S]*if new\.status is distinct from old\.status then[\s\S]*new\.status_changed_at := now\(\)/);
+    for (const status of ["accepted", "rejected", "revoked"]) {
+      expect(invitationLifecycleFix).toContain(`new.status = '${status}'`);
+      expect(invitationLifecycleFix).toContain(`new.${status}_at := now()`);
+      expect(invitationLifecycleFix).toContain(`new.${status}_by :=`);
+    }
+    expect(invitationLifecycleFix).not.toMatch(/new\.updated_by/);
+    expect(invitationLifecycleFix).not.toMatch(/alter table public\.trip_invitations[\s\S]*add column[^;]*updated_by/);
   });
 
   it("reactivates all soft-removal fields when an invited member accepts again", () => {
