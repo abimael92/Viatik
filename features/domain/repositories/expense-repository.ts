@@ -1,4 +1,4 @@
-import type { Expense, ExpenseShare } from "@/features/domain/entities";
+import type { Expense, ExpenseLineItem, ExpenseShare } from "@/features/domain/entities";
 import type { SpendingCategory, SpendingSubcategory } from "@/features/domain/categories";
 import type { CurrencyCode, MinorUnits } from "@/features/domain/money";
 
@@ -6,11 +6,13 @@ import type { CurrencyCode, MinorUnits } from "@/features/domain/money";
 export interface ExpenseRepository {
   listByTrip(tripId: string): Promise<Expense[]>;
   listSharesByExpense(expenseId: string): Promise<ExpenseShare[]>;
+  watchSharesByExpenses(expenseIds: string[], onChange: (shares: ExpenseShare[]) => void): () => void;
   watchByTrip(tripId: string, onChange: (expenses: Expense[]) => void): () => void;
   create(input: NewExpense): Promise<Expense>;
   update(
     id: string,
-    patch: Partial<Omit<Expense, "id" | "tripId">>
+    patch: Partial<Omit<Expense, "id" | "tripId">>,
+    shares?: NewExpense["shares"],
   ): Promise<Expense>;
   replaceShares(expenseId: string, shares: NewExpense["shares"]): Promise<void>;
   remove(id: string): Promise<void>;
@@ -22,6 +24,7 @@ export interface NewExpense {
   activityId?: string | null;
   description: string;
   amountMinor: MinorUnits;
+  lineItems?: ExpenseLineItem[];
   currency: CurrencyCode;
   exchangeRateToBase?: number | null;
   paidBy: string;

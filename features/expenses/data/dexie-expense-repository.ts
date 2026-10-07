@@ -3,6 +3,7 @@ import { liveQuery } from "dexie";
 import { getCurrentDatabase, type ViatikDatabase } from "@/lib/db/dexie";
 import { TransactionContext } from "@/lib/db/transaction-context";
 import type { Expense, ExpenseShare } from "@/features/domain/entities";
+import { summarizeExpenseLineItems } from "@/features/expenses/lib/expense-items";
 import type {
   ExpenseRepository,
   NewExpense,
@@ -32,6 +33,72 @@ function assertSyncableExpenseParticipants(input: { paidBy: string; createdBy: s
   if (invalid) throw new Error("Save the traveler to this trip before adding them to an expense.");
 }
 
+function assertLineItemShareTotals(
+  expense: Pick<Expense, "amountMinor" | "lineItems">,
+  shares: NewExpense["shares"],
+): void {
+  if (!expense.lineItems?.length) return;
+  const summary = summarizeExpenseLineItems(expense.lineItems);
+  if (summary.amountMinor !== expense.amountMinor) {
+    throw new Error("Expense total does not match its line items.");
+  }
+  const expected = new Map(summary.shares.map((share) => [share.userId, share.shareAmountMinor]));
+  const actual = new Map(shares.map((share) => [share.userId, share.shareAmountMinor]));
+  if (
+    expected.size !== actual.size ||
+    [...expected].some(([userId, amount]) => actual.get(userId) !== amount)
+  ) {
+    throw new Error("Expense shares do not match its item allocations.");
+  }
+}
+
+async function replaceExpenseShares(
+  ctx: TransactionContext,
+  expense: Expense,
+  shares: NewExpense["shares"],
+  now: string,
+): Promise<void> {
+  assertSyncableExpenseParticipants({ paidBy: expense.paidBy, createdBy: expense.createdBy, shares });
+  assertLineItemShareTotals(expense, shares);
+  const existing = await ctx.table<ExpenseShare>("expenseShares").where("expenseId").equals(expense.id).toArray();
+  const nextUsers = new Set(shares.map((share) => share.userId));
+  const removed = existing.filter((share) => !nextUsers.has(share.userId));
+
+  await ctx.table<ExpenseShare>("expenseShares").bulkDelete(removed.map((share) => share.id));
+  for (const share of removed) {
+    await append("expenseShare", "delete", { ...share, tripId: expense.tripId, mutatedAt: now }, { tx: ctx, baseUpdatedAt: share.updatedAt });
+  }
+
+  const existingByUser = new Map(existing.map((share) => [share.userId, share]));
+  const replacements: ExpenseShare[] = shares.map((share) => {
+    const previous = existingByUser.get(share.userId);
+    return {
+      id: previous?.id ?? crypto.randomUUID(),
+      expenseId: expense.id,
+      paidBy: expense.paidBy,
+      userId: share.userId,
+      travelerId: share.travelerId ?? (share.userId.startsWith("traveler:") ? share.userId.slice("traveler:".length) : null),
+      shareAmountMinor: share.shareAmountMinor,
+      sharePercentage: share.sharePercentage,
+      splitType: share.splitType ?? expense.splitType,
+      settlementStatus: "pending",
+      settledAt: null,
+      createdAt: previous?.createdAt ?? now,
+      updatedAt: now,
+    };
+  });
+
+  await ctx.table<ExpenseShare>("expenseShares").bulkPut(replacements);
+  for (const share of replacements) {
+    await append(
+      "expenseShare",
+      existingByUser.has(share.userId) ? "update" : "insert",
+      { ...share, tripId: expense.tripId },
+      { tx: ctx, baseUpdatedAt: existingByUser.get(share.userId)?.updatedAt ?? null }
+    );
+  }
+}
+
 export class DexieExpenseRepository implements ExpenseRepository {
   async listByTrip(tripId: string): Promise<Expense[]> {
     const db = getDb();
@@ -47,6 +114,15 @@ export class DexieExpenseRepository implements ExpenseRepository {
     return db.expenseShares.where("expenseId").equals(expenseId).toArray();
   }
 
+  watchSharesByExpenses(expenseIds: string[], onChange: (shares: ExpenseShare[]) => void): () => void {
+    const ids = [...new Set(expenseIds.filter(Boolean))];
+    const subscription = liveQuery(async () => {
+      if (!ids.length) return [] as ExpenseShare[];
+      return getDb().expenseShares.where("expenseId").anyOf(ids).toArray();
+    }).subscribe({ next: onChange });
+    return () => subscription.unsubscribe();
+  }
+
   watchByTrip(tripId: string, onChange: (expenses: Expense[]) => void): () => void {
     const subscription = liveQuery(() => this.listByTrip(tripId)).subscribe({ next: onChange });
     return () => subscription.unsubscribe();
@@ -54,6 +130,7 @@ export class DexieExpenseRepository implements ExpenseRepository {
 
   async create(input: NewExpense): Promise<Expense> {
     assertSyncableExpenseParticipants(input);
+    assertLineItemShareTotals(input, input.shares);
     const db = getDb();
     return TransactionContext.runInTransaction([db.expenses, db.expenseShares, db.feedItems], async (ctx) => {
       const now = new Date().toISOString();
@@ -63,6 +140,7 @@ export class DexieExpenseRepository implements ExpenseRepository {
         activityId: input.activityId ?? null,
         description: input.description,
         amountMinor: input.amountMinor,
+        ...(input.lineItems?.length ? { lineItems: input.lineItems } : {}),
         currency: input.currency,
         exchangeRateToBase: input.exchangeRateToBase ?? null,
         paidBy: input.paidBy,
@@ -108,17 +186,26 @@ export class DexieExpenseRepository implements ExpenseRepository {
 
   async update(
     id: string,
-    patch: Partial<Omit<Expense, "id" | "tripId">>
+    patch: Partial<Omit<Expense, "id" | "tripId">>,
+    shares?: NewExpense["shares"],
   ): Promise<Expense> {
     const db = getDb();
-    return TransactionContext.runInTransaction([db.expenses, db.feedItems], async (ctx) => {
+    return TransactionContext.runInTransaction([db.expenses, db.expenseShares, db.feedItems], async (ctx) => {
       const previous = await ctx.table<Expense>("expenses").get(id);
       if (!previous) throw new Error(`Expense ${id} not found before update`);
+      if (
+        shares === undefined &&
+        (previous.lineItems?.length || patch.lineItems?.length) &&
+        (patch.amountMinor !== undefined || patch.lineItems !== undefined)
+      ) {
+        throw new Error("Itemized expense updates require matching shares.");
+      }
       const updatedAt = new Date().toISOString();
-      await ctx.table<Expense>("expenses").update(id, { ...patch, updatedAt });
-      const expense = await ctx.table<Expense>("expenses").get(id);
-      if (!expense) throw new Error(`Expense ${id} not found after update`);
+      const expense = { ...previous, ...patch, updatedAt };
+      if (shares) assertLineItemShareTotals(expense, shares);
+      await ctx.table<Expense>("expenses").put(expense);
       await append("expense", "update", expense, { tx: ctx, baseUpdatedAt: previous.updatedAt });
+      if (shares) await replaceExpenseShares(ctx, expense, shares, updatedAt);
       await emitFeedItem(ctx, materializeFeedItem(buildExpenseFeed("updated_expense", expense, getSyncUser() ?? expense.createdBy)));
       logger.debug("Expense updated locally", { expenseId: expense.id });
       return expense;
@@ -130,45 +217,7 @@ export class DexieExpenseRepository implements ExpenseRepository {
     return TransactionContext.runInTransaction([db.expenses, db.expenseShares], async (ctx) => {
       const expense = await ctx.table<Expense>("expenses").get(expenseId);
       if (!expense) throw new Error("Expense not found");
-      assertSyncableExpenseParticipants({ paidBy: expense.paidBy, createdBy: expense.createdBy, shares });
-      const existing = await ctx.table<ExpenseShare>("expenseShares").where("expenseId").equals(expenseId).toArray();
-      const now = new Date().toISOString();
-      const nextUsers = new Set(shares.map((share) => share.userId));
-      const removed = existing.filter((share) => !nextUsers.has(share.userId));
-
-      await ctx.table<ExpenseShare>("expenseShares").bulkDelete(removed.map((share) => share.id));
-      for (const share of removed) {
-        await append("expenseShare", "delete", { ...share, tripId: expense.tripId, mutatedAt: now }, { tx: ctx, baseUpdatedAt: share.updatedAt });
-      }
-
-      const existingByUser = new Map(existing.map((share) => [share.userId, share]));
-      const replacements: ExpenseShare[] = shares.map((share) => {
-        const previous = existingByUser.get(share.userId);
-        return {
-          id: previous?.id ?? crypto.randomUUID(),
-          expenseId,
-          paidBy: expense.paidBy,
-          userId: share.userId,
-          travelerId: share.travelerId ?? (share.userId.startsWith("traveler:") ? share.userId.slice("traveler:".length) : null),
-          shareAmountMinor: share.shareAmountMinor,
-          sharePercentage: share.sharePercentage,
-          splitType: share.splitType ?? expense.splitType,
-          settlementStatus: "pending" as const,
-          settledAt: null,
-          createdAt: previous?.createdAt ?? now,
-          updatedAt: now,
-        };
-      });
-
-      await ctx.table<ExpenseShare>("expenseShares").bulkPut(replacements);
-      for (const share of replacements) {
-        await append(
-          "expenseShare",
-          existingByUser.has(share.userId) ? "update" : "insert",
-          { ...share, tripId: expense.tripId },
-          { tx: ctx, baseUpdatedAt: existingByUser.get(share.userId)?.updatedAt ?? null }
-        );
-      }
+      await replaceExpenseShares(ctx, expense, shares, new Date().toISOString());
     });
   }
 

@@ -2,6 +2,7 @@ import Dexie, { type EntityTable } from "dexie";
 
 import type { Activity, ActivityPersonalBudget, Contact, Decision, DecisionOption, DecisionVote, Expense, ExpenseSettlement, ExpenseShare, Trip, TripBudget, TripInvitation, TripMember, TripTraveler, UserWallet } from "@/features/domain/entities";
 import type { MediaTranscript, TripMedia } from "@/features/domain/entities-media";
+import type { StagedTripMedia } from "@/features/domain/entities-staged-media";
 import { MAX_MINOR_UNITS } from "@/features/domain/money";
 import type { VaultEntry, VaultKeyset } from "@/features/vault/domain/vault-types";
 import type { TripWeatherForecast } from "@/features/weather/domain/weather-types";
@@ -53,6 +54,7 @@ export class ViatikDatabase extends Dexie {
   outboxMutations!: EntityTable<OutboxMutation, "id">;
   /** Offline gallery media (compressed images and their upload state). */
   tripMedia!: EntityTable<TripMedia, "id">;
+  stagedTripMedia!: EntityTable<StagedTripMedia, "id">;
   mediaTranscripts!: EntityTable<MediaTranscript, "mediaId">;
   tripInvitations!: EntityTable<TripInvitation, "id">;
   expenseSettlements!: EntityTable<ExpenseSettlement, "id">;
@@ -530,6 +532,22 @@ export class ViatikDatabase extends Dexie {
     // v44: read-only local mirror of server-written crew voice-note transcripts.
     this.version(44).stores({
       mediaTranscripts: "mediaId, tripId, status, updatedAt",
+    });
+
+    this.version(45).stores({
+      stagedTripMedia: "id, tripId, createdBy, createdAt, [tripId+createdAt]",
+    }).upgrade(async (transaction) => {
+      await transaction.table("expenses").toCollection().modify((expense: Record<string, unknown>) => {
+        if (!Array.isArray(expense.lineItems)) expense.lineItems = [];
+      });
+    });
+
+    // v46: only photos that were already uploaded retain legacy public-gallery
+    // eligibility. Pending/failed photos and every voice clip stay private.
+    this.version(46).stores({}).upgrade(async (transaction) => {
+      await transaction.table("tripMedia").toCollection().modify((media: Record<string, unknown>) => {
+        media.publicGallery = media.kind === "photo" && media.uploadStatus === "uploaded";
+      });
     });
   }
 }

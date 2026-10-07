@@ -83,3 +83,39 @@ describe("direct trip member add", () => {
     expect(await db.outboxMutations.count()).toBe(1);
   });
 });
+
+describe("trip access cleanup", () => {
+  it("purges private staged photos when the signed-in member loses local trip access", async () => {
+    await db.tripMembers.add({
+      id: "member-current",
+      tripId: "trip-1",
+      userId: TEST_USER,
+      role: "viewer",
+      invitedBy: "owner-1",
+      joinedAt: "2026-01-01T00:00:00.000Z",
+      roleChangedAt: null,
+      roleChangedBy: null,
+      removedAt: null,
+      removedBy: null,
+      version: 1,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    await db.stagedTripMedia.add({
+      id: "private-draft",
+      tripId: "trip-1",
+      activityId: null,
+      caption: "Private",
+      takenAt: null,
+      blob: new Blob(["private"], { type: "image/jpeg" }),
+      contentType: "image/jpeg",
+      byteSize: 7,
+      createdBy: TEST_USER,
+      createdAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    await collaborationRepository.removeMember("member-current");
+
+    expect(await db.stagedTripMedia.count()).toBe(0);
+  });
+});

@@ -394,11 +394,9 @@ export function TripWorkspace({
     }
   }, [canEdit]);
   const handleAddPhotos = useCallback(() => {
-    if (canEdit) {
-      setPendingPhotos(true);
-      setTab("photos");
-    }
-  }, [canEdit]);
+    setPendingPhotos(true);
+    setTab("photos");
+  }, []);
   // Editing lives inline on the Settings tab (no modal). Opening it from a
   // shortcut bumps `editIntent` so TripDetailsSection remounts in edit mode.
   const handleOpenDetails = useCallback(() => {
@@ -931,6 +929,9 @@ export function TripWorkspace({
           trip={trip}
           days={days}
           canEdit={canEdit}
+          members={members}
+          memberProfiles={memberProfiles}
+          travelers={travelers}
           autoOpenExpense={pendingExpense}
           defaultExpenseCurrency={initialAction === "add-expense" ? trip.baseCurrency : undefined}
           autoOpenTools={initialMoneyToolsOpen}

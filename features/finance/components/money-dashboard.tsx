@@ -47,7 +47,7 @@ import {
   SPENDING_CATEGORY_LABELS,
   type SpendingCategory,
 } from "@/features/domain/categories";
-import type { Trip, TripBudget, Expense } from "@/features/domain/entities";
+import type { Expense, ExpenseShare, ProfileSummary, Trip, TripBudget, TripMember, TripTraveler } from "@/features/domain/entities";
 import {
   decimalFromMinorUnits,
   formatMinorUnits,
@@ -69,7 +69,7 @@ import {
   minorToInput,
   recommendedDailyBudget,
 } from "@/features/finance/lib/budget-currency";
-import { getBudgetUsage } from "@/features/finance/lib/finance-aggregators";
+import { getBudgetUsage, getPersonalTotalSpent, type AggregateExpense } from "@/features/finance/lib/finance-aggregators";
 import {
   formatAmount,
   getTipCustoms,
@@ -161,6 +161,9 @@ export function MoneyDashboard({
   defaultExpenseCurrency,
   autoOpenTools = false,
   onConsumeAutoOpenExpense,
+  members = [],
+  memberProfiles = [],
+  travelers = [],
 }: {
   tripId: string;
   userId: string;
@@ -171,6 +174,9 @@ export function MoneyDashboard({
   defaultExpenseCurrency?: string;
   autoOpenTools?: boolean;
   onConsumeAutoOpenExpense?: () => void;
+  members?: TripMember[];
+  memberProfiles?: ProfileSummary[];
+  travelers?: TripTraveler[];
 }) {
   const { t } = useI18n();
   const baseCurrency = trip.baseCurrency || "USD";
@@ -184,12 +190,34 @@ export function MoneyDashboard({
   const { balances } = useSettlement(tripId, baseCurrency);
 
   const [expenses, setExpenses] = useState<Expense[] | null>(null);
+  const [sharesByExpense, setSharesByExpense] = useState<Record<string, ExpenseShare[]>>({});
+  const [sharesLoadedKey, setSharesLoadedKey] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(autoOpenTools);
   const settlementRef = useRef<HTMLElement>(null);
+  const expenseShareKey = expenses === null
+    ? null
+    : `${tripId}:${expenses.filter((expense) => expense.deletedAt === null).map((expense) => `${expense.id}:${expense.updatedAt}`).sort().join(",")}`;
 
-  // Watch expenses for CSV export
   useEffect(() => expenseRepository.watchByTrip(tripId, setExpenses), [tripId]);
+  useEffect(() => {
+    if (expenses === null || expenseShareKey === null) return;
+    let active = true;
+    const stop = expenseRepository.watchSharesByExpenses(
+      expenses.filter((expense) => expense.deletedAt === null).map((expense) => expense.id),
+      (shares) => {
+        if (!active) return;
+        const grouped: Record<string, ExpenseShare[]> = {};
+        for (const share of shares) (grouped[share.expenseId] ??= []).push(share);
+        setSharesByExpense(grouped);
+        setSharesLoadedKey(expenseShareKey);
+      },
+    );
+    return () => {
+      active = false;
+      stop();
+    };
+  }, [expenses, expenseShareKey]);
 
   // A budget of zero (or unset) means "no budget yet" — avoid treating a 0 cap
   // as a budget that is already exceeded.
@@ -223,6 +251,36 @@ export function MoneyDashboard({
 
   const budgetTone = usageTone(usage);
   const personalStanding = balances[userId] ?? 0n;
+  const sharesLoading = expenses === null || sharesLoadedKey !== expenseShareKey;
+  const allocationExpenses = useMemo<AggregateExpense[]>(
+    () => (expenses ?? []).filter((expense) => expense.deletedAt === null).map((expense) => ({
+      amountMinor: expense.amountMinor,
+      currency: expense.currency,
+      exchangeRateToBase: expense.exchangeRateToBase,
+      paidBy: expense.paidBy,
+      date: expense.date,
+      category: expense.category,
+      shares: (sharesByExpense[expense.id] ?? []).map((share) => ({ userId: share.userId, shareAmountMinor: share.shareAmountMinor })),
+    })),
+    [expenses, sharesByExpense]
+  );
+  const spendingByTraveler = useMemo(() => {
+    const participantIds = new Set([userId, ...allocationExpenses.flatMap((expense) => expense.shares.map((share) => share.userId))]);
+    return [...participantIds].map((id, index) => {
+      const travelerId = id.startsWith("traveler:") ? id.slice("traveler:".length) : null;
+      const traveler = travelerId ? travelers.find((candidate) => candidate.id === travelerId) : null;
+      const profile = memberProfiles.find((candidate) => candidate.id === id);
+      const member = members.some((candidate) => candidate.userId === id && candidate.removedAt === null);
+      const name = id === userId
+        ? t("common.you")
+        : traveler?.displayName?.trim() || profile?.fullName?.trim() || (member ? t("common.tripMember") : t("common.activityTravelerFallback", { count: index + 1 }));
+      return { id, name, amountMinor: getPersonalTotalSpent(allocationExpenses, id, baseCurrency) };
+    }).sort((left, right) => left.id === userId ? -1 : right.id === userId ? 1 : left.name.localeCompare(right.name));
+  }, [allocationExpenses, baseCurrency, memberProfiles, members, t, travelers, userId]);
+  const personalSpend = spendingByTraveler.find((traveler) => traveler.id === userId)?.amountMinor ?? 0n;
+  const otherTravelersSpend = spendingByTraveler
+    .filter((traveler) => traveler.id !== userId)
+    .reduce((sum, traveler) => sum + traveler.amountMinor, 0n);
 
   return (
     <section className="space-y-8" aria-labelledby="spending-overview-heading">
@@ -263,6 +321,14 @@ export function MoneyDashboard({
             days={days}
             canEdit={canEdit}
             personalStanding={personalStanding}
+          />
+          <TravelerSpendingBreakdown
+            baseCurrency={baseCurrency}
+            groupTotal={totalSpent}
+            personalSpend={personalSpend}
+            otherTravelersSpend={otherTravelersSpend}
+            travelers={spendingByTraveler}
+            loading={sharesLoading}
           />
         </section>
       </section>
@@ -353,6 +419,72 @@ export function MoneyDashboard({
       </section>
 
       <MoneyToolsDialog open={toolsOpen} onOpenChange={setToolsOpen} trip={trip} />
+    </section>
+  );
+}
+
+interface TravelerSpendRow {
+  id: string;
+  name: string;
+  amountMinor: MinorUnits;
+}
+
+function TravelerSpendingBreakdown({
+  baseCurrency,
+  groupTotal,
+  personalSpend,
+  otherTravelersSpend,
+  travelers,
+  loading,
+}: {
+  baseCurrency: string;
+  groupTotal: MinorUnits;
+  personalSpend: MinorUnits;
+  otherTravelersSpend: MinorUnits;
+  travelers: TravelerSpendRow[];
+  loading: boolean;
+}) {
+  const { t } = useI18n();
+  const noShares = !loading && groupTotal > 0n && travelers.every((traveler) => traveler.amountMinor === 0n);
+  const totals: Array<{ label: string; amount: MinorUnits }> = [
+    { label: t("common.yourSpend"), amount: personalSpend },
+    { label: t("common.otherTravelersSpend"), amount: otherTravelersSpend },
+    { label: t("common.groupSpendTotal"), amount: groupTotal },
+  ];
+
+  return (
+    <section aria-labelledby="traveler-spending-heading" className="rounded-2xl border bg-card p-5">
+      <Heading level={3} id="traveler-spending-heading" className="text-base font-semibold">
+        {t("common.spendingByTraveler")}
+      </Heading>
+      <p className="mt-1 text-sm text-muted-foreground">{t("common.spendingByTravelerHelp")}</p>
+      {loading ? (
+        <p role="status" className="mt-4 text-sm text-muted-foreground">{t("common.loadingTravelerShares")}</p>
+      ) : (
+        <>
+          <dl className="mt-4 grid gap-3 sm:grid-cols-3">
+            {totals.map(({ label, amount }) => (
+              <div key={label} className="rounded-xl border bg-background p-3">
+                <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
+                <dd className="mt-1 font-mono text-lg font-semibold tabular-nums">
+                  {formatMoney(amount, baseCurrency)}
+                </dd>
+              </div>
+            ))}
+          </dl>
+          {noShares && <p role="status" className="mt-3 text-sm text-muted-foreground">{t("common.noTravelerShares")}</p>}
+          <ul className="mt-4 divide-y rounded-xl border px-3">
+            {travelers.map((traveler) => (
+              <li key={traveler.id} className="flex items-center justify-between gap-3 py-3 text-sm">
+                <span className="truncate font-medium">{traveler.name}</span>
+                <span className="shrink-0 font-mono font-semibold tabular-nums">
+                  {formatMoney(traveler.amountMinor, baseCurrency)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </section>
   );
 }
@@ -542,11 +674,7 @@ function FinancialHero({
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
             <p className="text-sm font-semibold text-muted-foreground">
-              {remaining !== null
-                ? remaining >= 0n
-                  ? "Budget remaining"
-                  : "Over budget by"
-                : "Trip spending"}
+              {t("common.groupSpent")}
             </p>
             {showConvertButton && (
               <button

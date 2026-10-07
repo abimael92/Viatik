@@ -34,7 +34,7 @@ describe("money schema migration", () => {
 
     // v18 backfills the Phase 2A expense columns with defaults on migration,
     // and v31 renames the free-form category to the typed category/subcategory.
-    expect(await db.expenses.get("expense-1")).toEqual({ id: "expense-1", amountMinor: 12345n, exchangeRateToBase: null, category: null, subcategory: null, date: "" });
+    expect(await db.expenses.get("expense-1")).toEqual({ id: "expense-1", amountMinor: 12345n, exchangeRateToBase: null, category: null, subcategory: null, date: "", lineItems: [] });
     expect(await db.expenseShares.get("share-1")).toEqual({ id: "share-1", shareAmountMinor: 4567n, splitType: "equal", paidBy: "", settlementStatus: "pending", settledAt: null });
     const migratedSettlement = await db.expenseSettlements.get("settlement-1");
     expect(migratedSettlement).toMatchObject({ id: "settlement-1", amountMinor: 1000n, status: "settled" });

@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => {
   const outboxLast = vi.fn();
   const conflictAdd = vi.fn();
   const mediaUpdate = vi.fn();
+  const mediaGet = vi.fn();
   const transcriptGet = vi.fn();
   const transcriptPut = vi.fn();
   const transcriptDelete = vi.fn();
@@ -17,6 +18,10 @@ const mocks = vi.hoisted(() => {
   const feedItemsAdd = vi.fn();
   const feedItemFirst = vi.fn();
   const contactQueryToArray = vi.fn();
+  const memberRows = vi.fn();
+  const memberDelete = vi.fn();
+  const stagedFilter = vi.fn();
+  const stagedDraftDelete = vi.fn();
   const contactDelete = vi.fn();
   const outboxAnyOfCount = vi.fn();
   const queryResponses: Array<{ data: Record<string, unknown>[] | null; error: { message: string } | null }> = [];
@@ -58,7 +63,7 @@ const mocks = vi.hoisted(() => {
       where: vi.fn(() => ({
         equals: vi.fn(() => ({
           count: vi.fn().mockResolvedValue(0),
-          and: vi.fn(() => ({ last: outboxLast, delete: outboxDelete })),
+          and: vi.fn(() => ({ last: outboxLast, first: outboxLast, count: outboxAnyOfCount, delete: outboxDelete })),
         })),
         anyOf: vi.fn(() => ({ filter: vi.fn(() => ({ count: outboxAnyOfCount })) })),
       })),
@@ -70,13 +75,15 @@ const mocks = vi.hoisted(() => {
       delete: contactDelete,
     },
     mediaTranscripts: { get: transcriptGet, put: transcriptPut, delete: transcriptDelete, toArray: vi.fn().mockResolvedValue([]) },
-    tripMembers: { where: vi.fn(() => ({ equals: vi.fn(() => ({ toArray: vi.fn().mockResolvedValue([]) })) })) },
+    stagedTripMedia: { where: vi.fn(() => ({ equals: vi.fn(() => ({ filter: stagedFilter.mockReturnValue({ delete: stagedDraftDelete }) })) })) },
+    tripMembers: { where: vi.fn(() => ({ equals: vi.fn(() => ({ toArray: memberRows })) })), get: vi.fn(), delete: memberDelete },
     tripMedia: {
       where: vi.fn(() => ({
         anyOf: vi.fn(() => ({ filter: vi.fn((predicate: (media: Record<string, unknown>) => boolean) => ({ toArray: async () => (await pendingMedia()).filter(predicate) })) })),
         equals: vi.fn(() => ({ filter: vi.fn(() => ({ toArray: vi.fn().mockResolvedValue([]) })) })),
       })),
       update: mediaUpdate,
+      get: mediaGet,
     },
     syncConflicts: { add: conflictAdd },
     feedItems: {
@@ -97,7 +104,7 @@ const mocks = vi.hoisted(() => {
     storage: { from: storageFrom },
   };
 
-  return { put, tableGet, tableDelete, metadataGet, metadataPut, queryResponses, query, from, upsert, rpc, channel, upload, createSignedUrl, remove, storageFrom, mediaUpdate, transcriptGet, transcriptPut, transcriptDelete, pendingMedia, feedItemsAdd, feedItemFirst, db, client, outboxLast, outboxDelete, conflictAdd, contactQueryToArray, contactDelete, outboxAnyOfCount };
+  return { put, tableGet, tableDelete, metadataGet, metadataPut, queryResponses, query, from, upsert, rpc, channel, upload, createSignedUrl, remove, storageFrom, mediaUpdate, mediaGet, transcriptGet, transcriptPut, transcriptDelete, pendingMedia, feedItemsAdd, feedItemFirst, db, client, outboxLast, outboxDelete, conflictAdd, contactQueryToArray, contactDelete, outboxAnyOfCount, memberRows, memberDelete, stagedFilter, stagedDraftDelete };
 });
 
 vi.mock("@/lib/db/dexie", () => ({
@@ -128,9 +135,11 @@ describe("cloud synchronization", () => {
     mocks.tableGet.mockResolvedValue(undefined);
     mocks.transcriptGet.mockResolvedValue(undefined);
     mocks.pendingMedia.mockResolvedValue([]);
+    mocks.mediaGet.mockImplementation(async (id: string) => (await mocks.pendingMedia()).find((item: { id: string }) => item.id === id));
     mocks.feedItemFirst.mockResolvedValue(undefined);
     mocks.outboxLast.mockResolvedValue(undefined);
     mocks.contactQueryToArray.mockResolvedValue([]);
+    mocks.memberRows.mockResolvedValue([]);
     mocks.outboxAnyOfCount.mockResolvedValue(0);
     mocks.upload.mockResolvedValue({ error: null });
     mocks.upsert.mockResolvedValue({ error: null });
@@ -169,8 +178,23 @@ describe("cloud synchronization", () => {
   it("uses the stored cursor for incremental pulls", async () => {
     mocks.metadataGet.mockImplementation(async (key: string) => key === "cloud:active-user" ? { key, value: "user-1" } : { key, value: "2026-01-01T00:00:00.000Z" });
     await pullRemoteChanges();
-    expect(mocks.query.gt).toHaveBeenCalledTimes(24);
+    expect(mocks.query.gt).toHaveBeenCalledTimes(23);
     expect(mocks.query.gt).toHaveBeenCalledWith("updated_at", "2026-01-01T00:00:00.000Z");
+  });
+
+  it("purges staged drafts when a full membership snapshot no longer grants local trip access", async () => {
+    mocks.memberRows.mockResolvedValue([
+      { id: "member-removed", tripId: "trip-1", userId: "user-1", role: "viewer", removedAt: null },
+    ]);
+
+    await pullRemoteChanges(true);
+
+    expect(mocks.memberDelete).toHaveBeenCalledWith("member-removed");
+    expect(mocks.stagedFilter).toHaveBeenCalledWith(expect.any(Function));
+    const ownsDraft = mocks.stagedFilter.mock.calls[0][0] as (draft: { createdBy: string }) => boolean;
+    expect(ownsDraft({ createdBy: "user-1" })).toBe(true);
+    expect(ownsDraft({ createdBy: "user-2" })).toBe(false);
+    expect(mocks.stagedDraftDelete).toHaveBeenCalledOnce();
   });
 
   it("skips the optional personal-budget table while its migration is absent", async () => {
@@ -299,6 +323,13 @@ describe("cloud synchronization", () => {
     expect(mocks.contactDelete).not.toHaveBeenCalled();
   });
 
+  it("never queries device-local drafts while processing shared media", async () => {
+    configureSyncUser("user-1");
+    await processPendingMedia();
+    expect(mocks.db.stagedTripMedia.where).not.toHaveBeenCalled();
+    configureSyncUser(null);
+  });
+
   it("uploads pending compressed media and marks it complete", async () => {
     configureSyncUser("user-1");
     const blob = new Blob(["photo"], { type: "image/jpeg" });
@@ -307,6 +338,43 @@ describe("cloud synchronization", () => {
     expect(mocks.upload).toHaveBeenCalledWith("trip-1/media-1.jpg", blob, expect.objectContaining({ upsert: true }));
     expect(mocks.rpc).toHaveBeenCalledWith("sync_cas_upsert", expect.objectContaining({ p_entity: "media", p_base_updated_at: null }));
     expect(mocks.mediaUpdate).toHaveBeenLastCalledWith("media-1", expect.objectContaining({ uploadStatus: "uploaded", uploadProgress: 100 }));
+    configureSyncUser(null);
+  });
+
+  it("re-uploads a restored photo and applies its queued compare-and-swap timestamp after the binary", async () => {
+    configureSyncUser("user-1");
+    const blob = new Blob(["restored photo"], { type: "image/jpeg" });
+    const media = { id: "photo-restore", tripId: "trip-1", activityId: null, caption: "Back again", blob, storagePath: "trip-1/photo-restore.jpg", contentType: "image/jpeg", byteSize: blob.size, createdBy: "user-1", uploadStatus: "pending", uploadAttempts: 0, updatedAt: "2026-10-06T00:00:00.000Z", deletedAt: null };
+    const mutation = { id: "media-mutation", entityId: media.id, entityType: "media", operation: "update", baseUpdatedAt: "2026-10-05T00:00:00.000Z", revision: 2 };
+    mocks.pendingMedia.mockResolvedValue([media]);
+    mocks.outboxLast.mockResolvedValue(mutation);
+
+    await processPendingMedia();
+
+    expect(mocks.rpc).toHaveBeenCalledWith("sync_cas_upsert", expect.objectContaining({ p_payload: expect.objectContaining({ id: media.id }), p_base_updated_at: mutation.baseUpdatedAt }));
+    expect(mocks.outboxDelete).toHaveBeenCalledWith(mutation.id);
+    configureSyncUser(null);
+  });
+
+  it("does not sign an unshared upload and leaves the pending tombstone retryable after CAS", async () => {
+    configureSyncUser("user-1");
+    const blob = new Blob(["photo being unshared"], { type: "image/jpeg" });
+    const media = { id: "photo-race", tripId: "trip-1", activityId: null, caption: null, blob, storagePath: "trip-1/photo-race.jpg", contentType: "image/jpeg", byteSize: blob.size, createdBy: "user-1", uploadStatus: "pending", uploadAttempts: 0, updatedAt: "2026-10-06T00:00:00.000Z", deletedAt: null };
+    const tombstone = { ...media, deletedAt: "2026-10-07T00:00:00.000Z", uploadedUrl: null };
+    const uploadMutation = { id: "upload-mutation", entityId: media.id, entityType: "media", operation: "insert", baseUpdatedAt: null, revision: 1 };
+    mocks.pendingMedia.mockResolvedValue([media]);
+    mocks.mediaGet.mockResolvedValueOnce(media).mockResolvedValueOnce(tombstone);
+    mocks.outboxLast.mockResolvedValue(uploadMutation);
+
+    await processPendingMedia();
+
+    expect(mocks.rpc).toHaveBeenCalledOnce();
+    expect(mocks.mediaGet).toHaveBeenCalledTimes(2);
+    expect(mocks.remove).toHaveBeenCalledWith([media.storagePath]);
+    expect(mocks.createSignedUrl).not.toHaveBeenCalled();
+    expect(mocks.mediaUpdate).not.toHaveBeenCalledWith(media.id, expect.objectContaining({ uploadStatus: "uploaded" }));
+    expect(mocks.outboxDelete).not.toHaveBeenCalled();
+    expect(tombstone.deletedAt).not.toBeNull();
     configureSyncUser(null);
   });
 
@@ -352,6 +420,16 @@ describe("cloud synchronization", () => {
     await __cloudSyncInternals.applyRemote("media", "tripMedia", remote as never, mocks.client as never);
 
     expect(mocks.put).toHaveBeenCalledWith(expect.objectContaining({ id: "media-2", blob, uploadStatus: "uploaded" }));
+  });
+
+  it("preserves a locally cached photo Blob when remote metadata merges", async () => {
+    const blob = new Blob(["downloaded photo"], { type: "image/jpeg" });
+    mocks.tableGet.mockResolvedValue({ id: "photo-1", tripId: "trip-1", kind: "photo", blob, updatedAt: "2026-01-01T00:00:00.000Z" });
+    const remote = { id: "photo-1", tripId: "trip-1", activityId: null, kind: "photo", durationMs: null, caption: "Shared", takenAt: null, blob: null, storagePath: "trip-1/photo-1.jpg", uploadedUrl: null, signedUrlExpiresAt: null, contentType: "image/jpeg", byteSize: blob.size, createdBy: "user-2", updatedBy: "user-2", deletedBy: null, restoredAt: null, restoredBy: null, version: 1, uploadStatus: "uploaded", uploadProgress: 100, uploadError: null, uploadAttempts: 0, nextUploadAt: null, createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-02T00:00:00.000Z", deletedAt: null };
+
+    await __cloudSyncInternals.applyRemote("media", "tripMedia", remote as never, mocks.client as never);
+
+    expect(mocks.put).toHaveBeenCalledWith(expect.objectContaining({ id: "photo-1", blob }));
   });
 
   it("does not announce a collaborator's voice clip as a photo", async () => {

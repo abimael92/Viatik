@@ -26,6 +26,7 @@ import type {
   ExpenseSplitType,
   ProfileSummary,
   TripMember,
+  TripTraveler,
 } from "@/features/domain/entities";
 import {
   SPENDING_CATEGORY_LABELS,
@@ -37,6 +38,7 @@ import {
 } from "@/features/domain/money";
 import { ExpenseFormSheet } from "@/features/expenses/components/expense-form-sheet";
 import { expenseRepository } from "@/features/expenses/data/dexie-expense-repository";
+import { tripTravelerRepository } from "@/features/contacts/data/dexie-contact-repository";
 import { calculateBalances } from "@/features/expenses/lib/expense-calculator";
 import { useLocalProfile } from "@/features/profile/lib/use-local-profile";
 import { useI18n } from "@/lib/i18n/i18n-provider";
@@ -113,6 +115,7 @@ export function ExpensePanel({
 }) {
   const [expenses, setExpenses] = useState<Expense[] | null>(null);
   const [members, setMembers] = useState<TripMember[]>([]);
+  const [travelers, setTravelers] = useState<TripTraveler[]>([]);
   const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
   const localProfile = useLocalProfile(userId);
   const [dialog, setDialog] = useState<Expense | "new" | null>(null);
@@ -140,6 +143,7 @@ export function ExpensePanel({
 
   useEffect(() => expenseRepository.watchByTrip(tripId, setExpenses), [tripId]);
   useEffect(() => collaborationRepository.watchMembers(tripId, setMembers), [tripId]);
+  useEffect(() => tripTravelerRepository.watch(tripId, setTravelers), [tripId]);
   useEffect(() => {
     const memberIds = [
       ...new Set(members.map((member) => member.userId).filter((id): id is string => Boolean(id))),
@@ -192,8 +196,9 @@ export function ExpensePanel({
       profiles.map((profile) => [profile.id, profile.fullName?.trim() || "Traveler"])
     );
     if (localProfile) next.set(userId, localProfile.fullName?.trim() || "Traveler");
+    for (const traveler of travelers) next.set(`traveler:${traveler.id}`, traveler.displayName);
     return next;
-  }, [localProfile, profiles, userId]);
+  }, [localProfile, profiles, travelers, userId]);
   const identityFor = (id: string) => {
     if (id === userId && localProfile) {
       return {
@@ -332,7 +337,7 @@ export function ExpensePanel({
                             size="sm"
                             className="size-8"
                           />
-                          {t("copy.paidBy")} {payer.name} · {splitLabel(expense.splitType, t)}
+                          {t("copy.paidBy")} {payer.name} · {expense.lineItems?.length ? t("copy.itemizedReceipt") : splitLabel(expense.splitType, t)}
                         </span>
                       </p>
                     </div>
@@ -392,6 +397,33 @@ export function ExpensePanel({
                         </p>
                       </div>
                     </div>
+                    {expense.lineItems?.length ? (
+                      <div className="mt-4 space-y-2">
+                        <p className="text-xs font-semibold text-muted-foreground">
+                          {t("copy.receiptItems")}
+                        </p>
+                        {expense.lineItems.map((item) => (
+                          <div key={item.id} className="border-b border-border/50 py-2 last:border-0">
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="min-w-0 truncate font-medium">{item.description}</span>
+                              <span className="shrink-0 font-mono tabular-nums">
+                                {formatMoney(item.amountMinor, expense.currency)}
+                              </span>
+                            </div>
+                            <div className="mt-1 space-y-1 pl-3 text-xs text-muted-foreground">
+                              {item.allocations.map((allocation) => (
+                                <div key={allocation.userId} className="flex justify-between gap-3">
+                                  <span>{names.get(allocation.userId) ?? "Traveler"}</span>
+                                  <span className="font-mono tabular-nums">
+                                    {formatMoney(allocation.shareAmountMinor, expense.currency)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
                     {shares.length > 0 && (
                       <div className="mt-4 space-y-2">
                         <p className="text-xs text-muted-foreground">Traveler shares</p>

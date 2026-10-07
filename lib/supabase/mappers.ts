@@ -11,6 +11,7 @@ import type {
   DecisionOption,
   DecisionVote,
   Expense,
+  ExpenseLineItem,
   ExpenseSettlement,
   ExpenseShare,
   Trip,
@@ -37,6 +38,7 @@ import type { TripShareLink } from "@/features/sharing/domain/share-types";
 import { normalizeActivityCategory } from "@/features/activities/domain/activity-category";
 import { normalizeActivityAttachments } from "@/features/activities/domain/activity-attachments";
 import { normalizeActivityChecklist } from "@/features/activities/domain/activity-checklist";
+import { summarizeExpenseLineItems } from "@/features/expenses/lib/expense-items";
 
 function minorUnitsToRemote(value: MinorUnits, field: string): string {
   if (value < 0n || value > MAX_MINOR_UNITS) throw new Error(`Invalid remote ${field}`);
@@ -397,13 +399,66 @@ export function rowToActivityPersonalBudget(row: Record<string, unknown>): Activ
   };
 }
 
+function lineItemsToRemote(items: ExpenseLineItem[] | undefined): Array<Record<string, unknown>> {
+  if (!items?.length) return [];
+  return items.map((item) => ({
+    id: item.id,
+    description: item.description,
+    amountMinor: minorUnitsToRemote(item.amountMinor, "line_item_amount"),
+    splitType: item.splitType,
+    allocations: item.allocations.map((allocation) => ({
+      userId: allocation.userId,
+      shareAmountMinor: minorUnitsToRemote(allocation.shareAmountMinor, "line_item_share_amount"),
+    })),
+  }));
+}
+
+function lineItemsFromRemote(value: unknown, expenseAmountMinor: MinorUnits): ExpenseLineItem[] {
+  if (value == null) return [];
+  if (!Array.isArray(value)) throw new Error("Invalid remote expense line items");
+  const items = value.map((entry) => {
+    const item = jsonObject(entry);
+    if (typeof item.id !== "string" || typeof item.description !== "string") {
+      throw new Error("Invalid remote expense line item");
+    }
+    if (item.splitType !== "equal" && item.splitType !== "exact") {
+      throw new Error("Invalid remote expense line item split type");
+    }
+    if (!Array.isArray(item.allocations)) throw new Error("Invalid remote expense line item allocations");
+    const allocations = item.allocations.map((entry) => {
+      const allocation = jsonObject(entry);
+      if (typeof allocation.userId !== "string") throw new Error("Invalid remote expense line item traveler");
+      return {
+        userId: allocation.userId,
+        shareAmountMinor: minorUnitsFromRemote(allocation.shareAmountMinor, "line_item_share_amount"),
+      };
+    });
+    return {
+      id: item.id,
+      description: item.description,
+      amountMinor: minorUnitsFromRemote(item.amountMinor, "line_item_amount"),
+      splitType: item.splitType,
+      allocations,
+    } as ExpenseLineItem;
+  });
+  if (items.length && summarizeExpenseLineItems(items).amountMinor !== expenseAmountMinor) {
+    throw new Error("Invalid remote expense line item total");
+  }
+  return items;
+}
+
 export function expenseToRow(expense: Expense): Record<string, unknown> {
+  const lineItems = lineItemsToRemote(expense.lineItems);
+  if (lineItems.length && summarizeExpenseLineItems(expense.lineItems ?? []).amountMinor !== expense.amountMinor) {
+    throw new Error("Expense total does not match its line items");
+  }
   return {
     id: expense.id,
     trip_id: expense.tripId,
     activity_id: expense.activityId,
     description: expense.description,
     amount: minorUnitsToRemote(expense.amountMinor, "amount"),
+    line_items: lineItems,
     currency: expense.currency,
     exchange_rate_to_base: expense.exchangeRateToBase,
     paid_by: expense.paidBy.startsWith("traveler:") ? null : expense.paidBy,
@@ -428,12 +483,15 @@ export function expenseToRow(expense: Expense): Record<string, unknown> {
 }
 
 export function rowToExpense(row: Record<string, unknown>): Expense {
+  const amountMinor = minorUnitsFromRemote(row.amount, "amount");
+  const lineItems = lineItemsFromRemote(row.line_items, amountMinor);
   return {
     id: String(row.id),
     tripId: String(row.trip_id),
     activityId: row.activity_id == null ? null : String(row.activity_id),
     description: String(row.description),
-    amountMinor: minorUnitsFromRemote(row.amount, "amount"),
+    amountMinor,
+    ...(lineItems.length ? { lineItems } : {}),
     currency: String(row.currency),
     exchangeRateToBase:
       row.exchange_rate_to_base == null ? null : Number(row.exchange_rate_to_base),
@@ -657,6 +715,7 @@ export function mediaToRow(media: TripMedia): Record<string, unknown> {
     trip_id: media.tripId,
     activity_id: media.activityId,
     kind: media.kind,
+    public_gallery: media.kind === "photo" ? media.publicGallery ?? false : false,
     duration_ms: media.durationMs,
     caption: media.caption,
     storage_path: media.storagePath,
@@ -679,6 +738,7 @@ export function rowToMedia(row: Record<string, unknown>): TripMedia {
     tripId: String(row.trip_id),
     activityId: row.activity_id == null ? null : String(row.activity_id),
     kind: row.kind === "audio" ? "audio" : "photo",
+    publicGallery: row.kind === "audio" ? false : row.public_gallery === true,
     durationMs: row.duration_ms == null ? null : Number(row.duration_ms),
     caption: row.caption == null ? null : String(row.caption),
     blob: null,

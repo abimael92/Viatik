@@ -47,6 +47,7 @@ export class DexieMediaRepository implements MediaRepository {
         tripId: input.tripId,
         activityId: input.activityId ?? null,
         kind: "photo",
+        publicGallery: false,
         durationMs: null,
         caption: input.caption ?? null,
         takenAt: input.takenAt ?? null,
@@ -142,6 +143,7 @@ export function buildAudioMedia(input: {
     tripId: input.tripId,
     activityId: null,
     kind: "audio",
+    publicGallery: false,
     durationMs: Math.max(0, Math.round(input.durationMs)),
     caption: null,
     takenAt: null,
@@ -169,7 +171,7 @@ export function buildAudioMedia(input: {
 }
 
 export function mediaPayload(media: TripMedia): Record<string, unknown> {
-  return { id: media.id, tripId: media.tripId, activityId: media.activityId, kind: media.kind, durationMs: media.durationMs, caption: media.caption, storagePath: media.storagePath, contentType: media.contentType, byteSize: media.byteSize, createdBy: media.createdBy, createdAt: media.createdAt, updatedAt: media.updatedAt, deletedAt: media.deletedAt };
+  return { id: media.id, tripId: media.tripId, activityId: media.activityId, kind: media.kind, publicGallery: media.kind === "photo" ? media.publicGallery ?? false : false, durationMs: media.durationMs, caption: media.caption, storagePath: media.storagePath, contentType: media.contentType, byteSize: media.byteSize, createdBy: media.createdBy, createdAt: media.createdAt, updatedAt: media.updatedAt, deletedAt: media.deletedAt };
 }
 
 export const mediaRepository = new DexieMediaRepository();

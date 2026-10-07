@@ -15,11 +15,13 @@ if (typeof window !== "undefined") {
 }
 
 let callback: (media: TripMedia[]) => void = () => {};
+let stagedCallback: (media: Array<{ id: string; blob: Blob; caption: string | null; takenAt: string | null }>) => void = () => {};
 
 const makeMedia = (id: string, caption: string, takenAt: string | null = null): TripMedia => ({
   id,
   tripId: "trip-1",
   kind: "photo",
+  publicGallery: false,
   durationMs: null,
   activityId: null,
   caption,
@@ -56,6 +58,24 @@ vi.mock("@/features/media/data/dexie-media-repository", () => ({
     remove: vi.fn(),
     retry: vi.fn(),
   },
+}));
+
+vi.mock("@/features/media/data/staged-trip-media-repository", () => ({
+  stagedTripMediaRepository: {
+    watchByTrip: vi.fn((_tripId, cb) => {
+      stagedCallback = cb;
+      return () => {};
+    }),
+    stage: vi.fn(),
+    discard: vi.fn(),
+    share: vi.fn(),
+    unshare: vi.fn(),
+  },
+}));
+
+vi.mock("@/features/media/data/trip-photo-download-service", () => ({
+  downloadPhoto: vi.fn(),
+  downloadPhotosSequentially: vi.fn(),
 }));
 
 vi.mock("browser-image-compression", () => ({
@@ -97,13 +117,26 @@ describe("TripGallery", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
-  it("hides upload and delete controls for viewers", () => {
+  it("lets viewers stage photos while hiding unshare controls for another contributor's photo", () => {
     render(<TripGallery tripId="trip-1" userId="user-1" canEdit={false} />);
-    act(() => { callback([makeMedia("m1", "Beach")]); });
+    act(() => { callback([{ ...makeMedia("m1", "Beach"), createdBy: "user-2", uploadStatus: "failed" }]); });
 
-    expect(screen.queryByLabelText("Add photos")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Delete photo" })).toBeNull();
+    expect(screen.getByLabelText("Stage photos privately")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Unshare photo" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Retry photo upload" })).toBeNull();
     expect(screen.getByRole("button", { name: /View Beach in lightbox/ })).toBeTruthy();
+  });
+
+  it("shows explicit share controls for staged drafts and unshare only for the contributor", () => {
+    render(<TripGallery tripId="trip-1" userId="user-1" canEdit={false} />);
+    act(() => {
+      callback([makeMedia("owned", "Mine"), { ...makeMedia("others", "Theirs"), createdBy: "user-2" }]);
+      stagedCallback([{ id: "draft-1", blob: new Blob(["draft"]), caption: "Draft", takenAt: null }]);
+    });
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select private photo Draft to share" }));
+    expect(screen.getByRole("button", { name: "Share 1 selected photos" })).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "Unshare photo" })).toHaveLength(1);
   });
 
   it("groups photos by day with headers and a fallback bucket for missing dates", () => {

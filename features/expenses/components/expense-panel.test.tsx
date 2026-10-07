@@ -112,6 +112,53 @@ describe("ExpensePanel", () => {
     expect(screen.getByText("Saved locally")).toBeTruthy();
     expect(screen.getAllByText("$42.50 USD").length).toBeGreaterThan(0);
   });
+
+  it("shows each item and its traveler allocation in an itemized expense", async () => {
+    const expense: Expense = {
+      id: "expense-items",
+      tripId: "trip-1",
+      activityId: null,
+      description: "Market",
+      amountMinor: 4250n,
+      lineItems: [
+        {
+          id: "water",
+          description: "Water",
+          amountMinor: 1250n,
+          splitType: "equal",
+          allocations: [{ userId: "user-1", shareAmountMinor: 1250n }],
+        },
+        {
+          id: "fruit",
+          description: "Fruit",
+          amountMinor: 3000n,
+          splitType: "exact",
+          allocations: [{ userId: "user-1", shareAmountMinor: 3000n }],
+        },
+      ],
+      currency: "USD",
+      exchangeRateToBase: null,
+      paidBy: "user-1",
+      splitType: "exact",
+      category: "shopping",
+      subcategory: null,
+      date: "2026-06-02",
+      createdBy: "user-1",
+      createdAt: "2026-06-02T12:00:00.000Z",
+      updatedAt: "2026-06-02T12:00:00.000Z",
+      deletedAt: null,
+    };
+    render(<ExpensePanel tripId="trip-1" userId="user-1" currency="USD" canEdit />);
+    act(() => expensesCallback?.([expense]));
+
+    fireEvent.click((await screen.findAllByRole("button", { name: /Market/ }))[0]);
+
+    expect(screen.getAllByText(/Itemized receipt/).length).toBeGreaterThan(0);
+    expect(screen.getByText("Water")).toBeTruthy();
+    expect(screen.getByText("Fruit")).toBeTruthy();
+    expect(screen.getAllByText("$12.50 USD").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("$30.00 USD").length).toBeGreaterThan(0);
+  });
 });
 
 describe("ExpenseDialog", () => {

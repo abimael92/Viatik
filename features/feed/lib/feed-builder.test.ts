@@ -55,6 +55,7 @@ const baseMedia: TripMedia = {
   tripId: "trip-1",
   activityId: null,
   kind: "photo",
+  publicGallery: false,
   durationMs: null,
   caption: null,
   blob: null,

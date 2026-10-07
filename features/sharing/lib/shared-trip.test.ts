@@ -32,6 +32,7 @@ const tripRow = {
 
 const activityRow = {
   id: "act-1",
+  trip_id: "trip-1",
   day_date: "2026-06-02",
   title: "Louvre",
   description: "Morning visit",
@@ -42,33 +43,52 @@ const activityRow = {
   start_time: "2026-06-02T09:00:00Z",
 };
 
-const mediaRow = { id: "media-1", caption: "The gallery", taken_at: "2026-06-02", storage_path: "trip-1/media-1.jpg" };
+const mediaRow = { id: "media-1", trip_id: "trip-1", kind: "photo", public_gallery: true, caption: "The gallery", taken_at: "2026-06-02", storage_path: "trip-1/media-1.jpg", deleted_at: null };
 
 function fakeClient(data: Record<string, unknown>) {
+  const signedPaths: string[] = [];
   const storage = {
     from: () => ({
-      createSignedUrl: async () => ({ data: { signedUrl: "https://signed/media-1" }, error: null }),
+      createSignedUrl: async (path: string) => {
+        signedPaths.push(path);
+        return { data: { signedUrl: `https://signed/${path.split("/").at(-1)}` }, error: null };
+      },
     }),
   };
   const rows = (table: string) => data[table];
-  const chain = (table: string) => ({
-    select: () => chain(table),
-    eq: () => chain(table),
-    is: () => chain(table),
-    order: () => chain(table),
-    maybeSingle: async () => {
-      const value = rows(table);
-      const single = Array.isArray(value) ? value[0] ?? null : value ?? null;
-      return { data: single, error: null };
-    },
-    then: (resolve: (value: unknown) => unknown, reject?: (reason?: unknown) => unknown) => {
+  const chain = (table: string) => {
+    const filters: Array<{ column: string; operator: "eq" | "is"; value: unknown }> = [];
+    const selectedColumns: string[] = [];
+    const filteredRows = () => {
       const value = rows(table);
       const list = Array.isArray(value) ? value : value ? [value] : [];
-      return Promise.resolve({ data: list, error: null }).then(resolve, reject);
-    },
-  });
+      return list.filter((row) => filters.every(({ column, operator, value: expected }) =>
+        (operator === "eq" ? row[column] === expected : row[column] == null === (expected == null)),
+      ));
+    };
+    const query = {
+      select: (columns: string) => {
+        selectedColumns.push(columns);
+        return query;
+      },
+      eq: (column: string, value: unknown) => {
+        filters.push({ column, operator: "eq", value });
+        return query;
+      },
+      is: (column: string, value: unknown) => {
+        filters.push({ column, operator: "is", value });
+        return query;
+      },
+      order: () => query,
+      maybeSingle: async () => ({ data: filteredRows()[0] ?? null, error: null }),
+      then: (resolve: (value: unknown) => unknown, reject?: (reason?: unknown) => unknown) =>
+        Promise.resolve({ data: filteredRows(), error: null }).then(resolve, reject),
+    };
+    return query;
+  };
   return {
     storage,
+    signedPaths,
     from: (table: string) => chain(table),
   } as never;
 }
@@ -90,7 +110,29 @@ describe("loadSharedTripSnapshot", () => {
     expect(result.snapshot.name).toBe("Paris Week");
     expect(result.snapshot.activities).toHaveLength(1);
     expect(result.snapshot.activities[0].title).toBe("Louvre");
-    expect(result.snapshot.media[0].url).toBe("https://signed/media-1");
+    expect(result.snapshot.media[0].url).toBe("https://signed/media-1.jpg");
+  });
+
+  it("signs only live legacy-public photos, excluding member-only, null, audio, and deleted media", async () => {
+    const client = fakeClient({
+      trip_share_links: linkRow(),
+      trips: tripRow,
+      activities: [],
+      trip_media: [
+        mediaRow,
+        { ...mediaRow, id: "private-photo", public_gallery: false },
+        { ...mediaRow, id: "unclassified-photo", public_gallery: null },
+        { ...mediaRow, id: "audio", kind: "audio" },
+        { ...mediaRow, id: "removed-photo", deleted_at: "2026-06-03T00:00:00Z" },
+      ],
+    });
+
+    const result = await loadSharedTripSnapshot("Abc123Def456", client as never);
+
+    expect(result.status).toBe("ok");
+    if (result.status !== "ok") return;
+    expect(result.snapshot.media.map(({ id }) => id)).toEqual(["media-1"]);
+    expect((client as unknown as { signedPaths: string[] }).signedPaths).toEqual(["trip-1/media-1.jpg"]);
   });
 
   it("returns not_found for malformed or unknown slugs", async () => {

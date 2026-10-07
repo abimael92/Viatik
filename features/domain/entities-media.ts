@@ -13,6 +13,8 @@ export interface TripMedia {
   tripId: string;
   activityId: string | null;
   kind: MediaKind;
+  /** Only true for legacy photos allowed in configured unauthenticated galleries. */
+  publicGallery: boolean | null;
   /** Clip length for audio; null for photos. */
   durationMs: number | null;
   caption: string | null;
