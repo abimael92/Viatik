@@ -1,7 +1,8 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { Expense, Trip, TripBudget } from "@/features/domain/entities";
+import type { Expense, ExpenseShare, ProfileSummary, Trip, TripBudget, TripMember, TripTraveler } from "@/features/domain/entities";
+import { expenseRepository } from "@/features/expenses/data/dexie-expense-repository";
 import { currencyRateRepository } from "@/features/finance/data/dexie-currency-rate-repository";
 import { tripBudgetRepository } from "@/features/finance/data/dexie-finance-repository";
 import { CategoryEnvelopes, MoneyDashboard } from "@/features/finance/components/money-dashboard";
@@ -30,17 +31,29 @@ vi.mock("@/features/expenses/lib/use-settlement", () => ({
   useSettlement: vi.fn(() => ({ loading: false, balances: {}, transfers: [], members: [] })),
 }));
 
-let expensesCallback: ((expenses: Expense[]) => void) | null = null;
+let expensesCallbacks: Array<(expenses: Expense[]) => void> = [];
+let sharesCallback: ((shares: ExpenseShare[]) => void) | null = null;
 let budgetCallback: ((budget: TripBudget | undefined) => void) | null = null;
+
+function publishExpenses(expenses: Expense[]) {
+  for (const callback of expensesCallbacks) callback(expenses);
+}
 
 vi.mock("@/features/expenses/data/dexie-expense-repository", () => ({
   expenseRepository: {
     watchByTrip: vi.fn((_tripId: string, cb: (expenses: Expense[]) => void) => {
-      expensesCallback = cb;
+      expensesCallbacks.push(cb);
       cb([]);
-      return () => {};
+      return () => { expensesCallbacks = expensesCallbacks.filter((callback) => callback !== cb); };
     }),
     listSharesByExpense: vi.fn().mockResolvedValue([]),
+    watchSharesByExpenses: vi.fn((_ids: string[], cb: (shares: ExpenseShare[]) => void) => {
+      sharesCallback = cb;
+      cb([]);
+      return () => {
+        if (sharesCallback === cb) sharesCallback = null;
+      };
+    }),
   },
 }));
 
@@ -132,7 +145,8 @@ function makeExpense(partial: Partial<Expense>): Expense {
 beforeEach(() => {
   vi.clearAllMocks();
   mockPreferredCurrency = null;
-  expensesCallback = null;
+  expensesCallbacks = [];
+  sharesCallback = null;
   vi.mocked(useSettlement).mockReturnValue({ loading: false, balances: {}, transfers: [], members: [] });
   budgetCallback = null;
   vi.mocked(currencyRateRepository.getRate).mockResolvedValue(undefined);
@@ -148,7 +162,7 @@ afterEach(() => cleanup());
 describe("MoneyDashboard (Budget tab)", () => {
   it("shows a no-budget warning when no budget is set", () => {
     render(<MoneyDashboard tripId={trip.id} userId="user-1" trip={trip} days={["2026-06-01"]} canEdit />);
-    expect(screen.getByText(/Trip spending/)).toBeTruthy();
+    expect(screen.getByText(/Group spent/)).toBeTruthy();
     expect(screen.getByText(/No budget set — add a total trip budget/)).toBeTruthy();
   });
 
@@ -165,12 +179,57 @@ describe("MoneyDashboard (Budget tab)", () => {
     render(<MoneyDashboard tripId={trip.id} userId="user-1" trip={trip} days={["2026-06-01", "2026-06-02"]} canEdit />);
 
     act(() => {
-      expensesCallback?.([makeExpense({})]);
+      publishExpenses([makeExpense({})]);
       budgetCallback?.(budget);
     });
 
     // 30000 USD minor spent of 100000 USD minor budget.
     expect(await screen.findByText(/of \$1,000\.00 USD/)).toBeTruthy();
+  });
+
+  it("separates personal shares, other travelers, and group total on the budget tab", async () => {
+    const traveler: TripTraveler = {
+      id: "traveler-2",
+      tripId: trip.id,
+      contactId: "contact-2",
+      displayName: "Maya",
+      travelerType: "adult",
+      createdBy: "user-1",
+      createdAt: "2026-06-01T00:00:00Z",
+      updatedAt: "2026-06-01T00:00:00Z",
+      deletedAt: null,
+    };
+    const shares: ExpenseShare[] = [
+      { id: "share-me", expenseId: "expense-1", paidBy: "user-1", userId: "user-1", shareAmountMinor: 3500n, sharePercentage: 35, splitType: "percentage", settlementStatus: "pending", settledAt: null, createdAt: "2026-06-02T12:00:00Z", updatedAt: "2026-06-02T12:00:00Z" },
+      { id: "share-maya", expenseId: "expense-1", paidBy: "user-1", userId: "traveler:traveler-2", travelerId: "traveler-2", shareAmountMinor: 6500n, sharePercentage: 65, splitType: "percentage", settlementStatus: "pending", settledAt: null, createdAt: "2026-06-02T12:00:00Z", updatedAt: "2026-06-02T12:00:00Z" },
+    ];
+    render(
+      <MoneyDashboard
+        tripId={trip.id}
+        userId="user-1"
+        trip={trip}
+        days={["2026-06-01"]}
+        canEdit
+        members={[{ id: "member-1", tripId: trip.id, userId: "user-1", role: "owner", invitedBy: null, joinedAt: "2026-06-01T00:00:00Z", roleChangedAt: null, roleChangedBy: null, removedAt: null, removedBy: null, version: 1, createdAt: "2026-06-01T00:00:00Z", updatedAt: "2026-06-01T00:00:00Z" } satisfies TripMember]}
+        memberProfiles={[{ id: "user-1", fullName: "Abimael", avatarUrl: null, avatarSeed: null, email: null } satisfies ProfileSummary]}
+        travelers={[traveler]}
+      />,
+    );
+
+    await act(async () => {
+      publishExpenses([makeExpense({ amountMinor: 10000n })]);
+      budgetCallback?.(budget);
+      await Promise.resolve();
+    });
+
+    await waitFor(() => expect(expenseRepository.watchSharesByExpenses).toHaveBeenLastCalledWith(["expense-1"], expect.any(Function)));
+    act(() => sharesCallback?.(shares));
+    const heading = await screen.findByRole("heading", { name: "Spending by traveler" });
+    const breakdown = heading.parentElement as HTMLElement;
+    expect(within(breakdown).getByText("Your spend").parentElement?.textContent).toContain("$35.00 USD");
+    expect(within(breakdown).getByText("Other travelers").parentElement?.textContent).toContain("$65.00 USD");
+    expect(within(breakdown).getByText("Group total").parentElement?.textContent).toContain("$100.00 USD");
+    expect(within(breakdown).getByText("Maya").parentElement?.textContent).toContain("$65.00 USD");
   });
 
   it("edits the total budget and persists via the repository", async () => {
@@ -230,7 +289,7 @@ describe("CategoryEnvelopes", () => {
     render(<CategoryEnvelopes tripId={trip.id} userId="user-1" baseCurrency="USD" canEdit />);
 
     act(() => {
-      expensesCallback?.([makeExpense({})]);
+      publishExpenses([makeExpense({})]);
       budgetCallback?.(budget);
     });
 
