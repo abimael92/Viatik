@@ -171,8 +171,7 @@ async function applyRemote(entityType: OutboxEntityType, store: typeof tableDefi
   if (
     entityType === "media" &&
     previous &&
-    "kind" in entity &&
-    entity.kind === "audio" &&
+    "blob" in entity &&
     entity.blob == null &&
     "blob" in previous &&
     previous.blob instanceof Blob
@@ -300,6 +299,29 @@ async function fetchTablePages(client: SupabaseClient, table: string, since: str
   }
 }
 
+async function reconcileLocalTripAccess(userId: string, remoteMembershipRows: Record<string, unknown>[], signal?: AbortSignal): Promise<void> {
+  const accessibleTripIds = new Set(remoteMembershipRows.filter((row) => String(row.user_id) === userId).map((row) => String(row.trip_id)));
+  const localMemberships = await getDb().tripMembers.where("userId").equals(userId).toArray();
+  for (const membership of localMemberships) {
+    signal?.throwIfAborted();
+    if (accessibleTripIds.has(membership.tripId)) continue;
+    const pendingMembershipMutation = await getDb().outboxMutations
+      .where("entityType")
+      .equals("tripMember")
+      .and((mutation) => mutation.entityId === membership.id)
+      .count();
+    if (pendingMembershipMutation > 0) continue;
+    await getDb().transaction("rw", [getDb().tripMembers, getDb().stagedTripMedia], async () => {
+      await getDb().tripMembers.delete(membership.id);
+      await getDb().stagedTripMedia
+        .where("tripId")
+        .equals(membership.tripId)
+        .filter((draft) => draft.createdBy === userId)
+        .delete();
+    });
+  }
+}
+
 export async function pullRemoteChanges(full = false, signal?: AbortSignal): Promise<void> {
   signal?.throwIfAborted();
   const client = getSupabaseBrowserClient();
@@ -319,7 +341,8 @@ export async function pullRemoteChanges(full = false, signal?: AbortSignal): Pro
   for (const definition of tableDefinitions) {
     signal?.throwIfAborted();
     try {
-      staged.push({ definition, rows: await fetchTablePages(client, definition.table, since, startedAt, signal), complete: true });
+      const tableCursor = definition.table === "trip_members" ? null : since;
+      staged.push({ definition, rows: await fetchTablePages(client, definition.table, tableCursor, startedAt, signal), complete: true });
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : String(cause);
       if (definition.table !== "trips" && (OPTIONAL_REMOTE_TABLES.has(definition.table) || isTransientSchemaCacheError(message))) {
@@ -359,6 +382,9 @@ export async function pullRemoteChanges(full = false, signal?: AbortSignal): Pro
     }
   }
 
+  const memberStage = staged.find(({ definition }) => definition.table === "trip_members");
+  if (memberStage?.complete && !pullError) await reconcileLocalTripAccess(auth.user.id, memberStage.rows, signal);
+
   const tripsStage = staged.find(({ definition }) => definition.table === "trips");
   const remoteTripIds = new Set((tripsStage?.complete ? tripsStage.rows : []).map((row) => String(row.id)));
   if (full && tripsStage?.complete && !pullError) {
@@ -368,10 +394,10 @@ export async function pullRemoteChanges(full = false, signal?: AbortSignal): Pro
       if (remoteTripIds.has(trip.id)) continue;
       const pending = await getDb().outboxMutations.where("tripId").equals(trip.id).count();
       if (pending > 0) continue;
-      await getDb().transaction("rw", [getDb().trips, getDb().tripMembers, getDb().activities, getDb().activityPersonalBudgets, getDb().expenses, getDb().expenseShares, getDb().tripMedia, getDb().mediaTranscripts, getDb().tripInvitations, getDb().expenseSettlements, getDb().tripTravelers, getDb().vaultEntries, getDb().tripWeatherForecasts, getDb().userWallets], async () => {
+      await getDb().transaction("rw", [getDb().trips, getDb().tripMembers, getDb().activities, getDb().activityPersonalBudgets, getDb().expenses, getDb().expenseShares, getDb().tripMedia, getDb().stagedTripMedia, getDb().mediaTranscripts, getDb().tripInvitations, getDb().expenseSettlements, getDb().tripTravelers, getDb().vaultEntries, getDb().tripWeatherForecasts, getDb().userWallets], async () => {
         const expenseIds = await getDb().expenses.where("tripId").equals(trip.id).primaryKeys();
         await getDb().expenseShares.where("expenseId").anyOf(expenseIds).delete();
-        await Promise.all([getDb().trips.delete(trip.id), getDb().tripMembers.where("tripId").equals(trip.id).delete(), getDb().activities.where("tripId").equals(trip.id).delete(), getDb().activityPersonalBudgets.where("tripId").equals(trip.id).delete(), getDb().expenses.where("tripId").equals(trip.id).delete(), getDb().tripMedia.where("tripId").equals(trip.id).delete(), getDb().mediaTranscripts.where("tripId").equals(trip.id).delete(), getDb().tripInvitations.where("tripId").equals(trip.id).delete(), getDb().expenseSettlements.where("tripId").equals(trip.id).delete(), getDb().tripTravelers.where("tripId").equals(trip.id).delete(), getDb().vaultEntries.where("tripId").equals(trip.id).delete(), getDb().tripWeatherForecasts.filter((forecast) => forecast.tripId === trip.id).delete(), getDb().userWallets.where("tripId").equals(trip.id).delete()]);
+        await Promise.all([getDb().trips.delete(trip.id), getDb().tripMembers.where("tripId").equals(trip.id).delete(), getDb().activities.where("tripId").equals(trip.id).delete(), getDb().activityPersonalBudgets.where("tripId").equals(trip.id).delete(), getDb().expenses.where("tripId").equals(trip.id).delete(), getDb().tripMedia.where("tripId").equals(trip.id).delete(), getDb().stagedTripMedia.where("tripId").equals(trip.id).delete(), getDb().mediaTranscripts.where("tripId").equals(trip.id).delete(), getDb().tripInvitations.where("tripId").equals(trip.id).delete(), getDb().expenseSettlements.where("tripId").equals(trip.id).delete(), getDb().tripTravelers.where("tripId").equals(trip.id).delete(), getDb().vaultEntries.where("tripId").equals(trip.id).delete(), getDb().tripWeatherForecasts.filter((forecast) => forecast.tripId === trip.id).delete(), getDb().userWallets.where("tripId").equals(trip.id).delete()]);
       });
     }
 
@@ -453,11 +479,24 @@ export function startRealtimeSync(): () => void {
   };
 }
 
+async function purgeRemovedMemberDrafts(tripId: string | undefined, removedUserId: string | undefined): Promise<void> {
+  const userId = getSyncUser();
+  if (!userId || removedUserId !== userId || !tripId) return;
+  await getDb().stagedTripMedia.where("tripId").equals(tripId).filter((draft) => draft.createdBy === userId).delete();
+}
+
 async function handleRealtimePayload(definition: typeof tableDefinitions[number], payload: RealtimePostgresChangesPayload<Record<string, unknown>>, client: SupabaseClient): Promise<void> {
   if (payload.eventType === "DELETE") {
     const id = String(payload.old.id);
+    if (definition.table === "trip_members" && id) {
+      const member = await getDb().tripMembers.get(id);
+      await purgeRemovedMemberDrafts(member?.tripId ?? String(payload.old.trip_id ?? ""), member?.userId ?? String(payload.old.user_id ?? ""));
+    }
     if (id) await deleteLocal(definition.store, id);
     return;
+  }
+  if (definition.table === "trip_members" && payload.new.removed_at != null) {
+    await purgeRemovedMemberDrafts(String(payload.new.trip_id ?? ""), String(payload.new.user_id ?? ""));
   }
   await applyRemote(definition.entityType, definition.store, definition.map(payload.new), client);
 }
@@ -469,29 +508,50 @@ export async function processPendingMedia(signal?: AbortSignal): Promise<void> {
   const pending = await getDb().tripMedia.where("uploadStatus").anyOf("pending", "failed", "uploading").filter((media) => media.deletedAt === null && media.blob !== null && media.createdBy === getSyncUser() && (!media.nextUploadAt || media.nextUploadAt <= new Date().toISOString())).toArray();
   for (const media of pending) {
     signal?.throwIfAborted();
+    const mediaMutation = await getDb().outboxMutations.where("entityType").equals("media").and((mutation) => mutation.entityId === media.id).first();
     try {
       await getDb().tripMedia.update(media.id, { uploadStatus: "uploading", uploadProgress: 20, uploadError: null });
       signal?.throwIfAborted();
       const { error: uploadError } = await client.storage.from("trip-media").upload(media.storagePath, media.blob!, { contentType: media.contentType, upsert: true });
       signal?.throwIfAborted();
       if (uploadError) throw new Error(uploadError.message);
+      const latest = await getDb().tripMedia.get(media.id);
+      if (!latest || latest.deletedAt !== null) {
+        await client.storage.from("trip-media").remove([media.storagePath]);
+        continue;
+      }
       await getDb().tripMedia.update(media.id, { uploadProgress: 75 });
       signal?.throwIfAborted();
-      const metadataRequest = client.rpc("sync_cas_upsert", { p_entity: "media", p_payload: mediaToRow(media), p_base_updated_at: null });
+      const metadataRequest = client.rpc("sync_cas_upsert", { p_entity: "media", p_payload: mediaToRow(media), p_base_updated_at: mediaMutation?.baseUpdatedAt ?? null });
       const { data: metadata, error: metadataError } = signal ? await metadataRequest.abortSignal(signal) : await metadataRequest;
       if (metadataError) throw new Error(metadataError.message);
       const result = metadata as { status?: string; server_updated_at?: string } | null;
       if (result?.status !== "applied" || !result.server_updated_at) throw new Error("Media metadata conflict");
       signal?.throwIfAborted();
+      const currentAfterCas = await getDb().tripMedia.get(media.id);
+      if (!currentAfterCas || currentAfterCas.deletedAt !== null) {
+        await client.storage.from("trip-media").remove([media.storagePath]);
+        continue;
+      }
       const { data } = await client.storage.from("trip-media").createSignedUrl(media.storagePath, 3600);
       signal?.throwIfAborted();
-      await getDb().tripMedia.update(media.id, { uploadStatus: "uploaded", uploadProgress: 100, uploadError: null, uploadAttempts: media.uploadAttempts, nextUploadAt: null, uploadedUrl: data?.signedUrl ?? null, signedUrlExpiresAt: new Date(Date.now() + 3600000).toISOString(), updatedAt: result.server_updated_at });
+      const current = await getDb().tripMedia.get(media.id);
+      if (!current || current.deletedAt !== null) {
+        await client.storage.from("trip-media").remove([media.storagePath]);
+        continue;
+      }
+      if (current && current.deletedAt === null) {
+        await getDb().tripMedia.update(media.id, { uploadStatus: "uploaded", uploadProgress: 100, uploadError: null, uploadAttempts: media.uploadAttempts, nextUploadAt: null, uploadedUrl: data?.signedUrl ?? null, signedUrlExpiresAt: new Date(Date.now() + 3600000).toISOString(), updatedAt: current.updatedAt === media.updatedAt ? result.server_updated_at : current.updatedAt });
+      }
       signal?.throwIfAborted();
-      await getDb().outboxMutations.where("entityType").equals("media").and((mutation) => mutation.entityId === media.id).delete();
+      const queuedMutation = await getDb().outboxMutations.where("entityType").equals("media").and((mutation) => mutation.entityId === media.id).first();
+      if (mediaMutation && queuedMutation?.revision === mediaMutation.revision) await getDb().outboxMutations.delete(mediaMutation.id);
       signal?.throwIfAborted();
     } catch (error) {
       signal?.throwIfAborted();
-      const uploadAttempts = media.uploadAttempts + 1;
+      const current = await getDb().tripMedia.get(media.id);
+      if (!current || current.deletedAt !== null) continue;
+      const uploadAttempts = current.uploadAttempts + 1;
       const nextUploadAt = new Date(Date.now() + Math.min(60000, 1000 * 2 ** uploadAttempts)).toISOString();
       await getDb().tripMedia.update(media.id, { uploadStatus: "failed", uploadProgress: 0, uploadError: error instanceof Error ? error.message : String(error), uploadAttempts, nextUploadAt });
       signal?.throwIfAborted();
@@ -523,6 +583,18 @@ export async function resetPendingMediaUploadRetries(): Promise<void> {
       getDb().tripMedia.update(media.id, { uploadAttempts: 0, nextUploadAt: null, uploadError: null })
     )
   );
+}
+
+export async function downloadRemoteMedia(storagePath: string, signal?: AbortSignal): Promise<Blob> {
+  signal?.throwIfAborted();
+  const segments = storagePath.split("/");
+  if (segments.length !== 2 || !/^[0-9a-f-]{36}$/i.test(segments[0]) || !/^[a-z0-9._-]+$/i.test(segments[1]) || segments[1].includes("..")) {
+    throw new Error("Invalid shared photo storage path.");
+  }
+  const { data, error } = await getSupabaseBrowserClient().storage.from("trip-media").download(storagePath);
+  signal?.throwIfAborted();
+  if (error || !data) throw new Error(error?.message ?? "Shared photo download failed.");
+  return data;
 }
 
 export async function deleteRemoteMedia(storagePath: string, signal?: AbortSignal): Promise<void> {

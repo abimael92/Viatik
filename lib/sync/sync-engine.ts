@@ -462,7 +462,7 @@ function resolveDeleteRequest(
   });
 }
 
-async function replayCasMutation(mutation: OutboxMutation, signal?: AbortSignal): Promise<boolean> {
+async function replayCasMutation(mutation: OutboxMutation, signal?: AbortSignal, deferAcknowledgement = false): Promise<boolean> {
   if (
     mutation.baseUpdatedAt === undefined ||
     (mutation.operation !== "insert" && mutation.baseUpdatedAt === null)
@@ -558,6 +558,29 @@ async function replayCasMutation(mutation: OutboxMutation, signal?: AbortSignal)
   }
   if (response.error) throw new Error(response.error.message);
   const result = response.data as CasResult;
+  if (result.status === "conflict" && mutation.entityType === "media" && mutation.payload?.deletedAt && result.current && result.server_updated_at) {
+    const remote = result.current;
+    const latest = await getDb().outboxMutations.get(mutation.id);
+    if (
+      remote.created_by === getSyncUser() &&
+      remote.created_by === mutation.payload.createdBy &&
+      remote.trip_id === mutation.payload.tripId &&
+      remote.storage_path === mutation.payload.storagePath &&
+      remote.kind === "photo" &&
+      latest?.payload?.deletedAt
+    ) {
+      await getDb().outboxMutations.put({
+        ...latest,
+        operation: "update",
+        baseUpdatedAt: result.server_updated_at,
+        revision: (latest.revision ?? 1) + 1,
+        attempts: 0,
+        lastError: null,
+        status: "pending",
+      });
+      return false;
+    }
+  }
   if (
     result.status === "conflict" ||
     (result.status === "not_found" && mutation.operation !== "delete")
@@ -568,7 +591,8 @@ async function replayCasMutation(mutation: OutboxMutation, signal?: AbortSignal)
   if (mutation.operation !== "delete" && !result.server_updated_at)
     throw new Error("CAS upsert did not return server_updated_at");
   signal?.throwIfAborted();
-  await acknowledgeMutation(mutation, result.server_updated_at ?? "");
+  if (deferAcknowledgement) await advanceMutationBase(mutation, result.server_updated_at ?? "");
+  else await acknowledgeMutation(mutation, result.server_updated_at ?? "");
   signal?.throwIfAborted();
   return true;
 }
@@ -577,6 +601,12 @@ const EXPENSE_SHARE_MEMBERSHIP_ERROR = "Expense share user must be an active tri
 
 function isExpenseShareMembershipError(error: unknown): error is Error {
   return error instanceof Error && error.message.includes(EXPENSE_SHARE_MEMBERSHIP_ERROR);
+}
+
+async function advanceMutationBase(mutation: OutboxMutation, serverUpdatedAt: string): Promise<void> {
+  const current = await getDb().outboxMutations.get(mutation.id);
+  if (!current || current.revision !== mutation.revision) return;
+  await getDb().outboxMutations.put({ ...current, baseUpdatedAt: serverUpdatedAt });
 }
 
 async function replayOne(mutation: OutboxMutation, signal?: AbortSignal) {
@@ -590,14 +620,13 @@ async function replayOne(mutation: OutboxMutation, signal?: AbortSignal) {
 
   try {
     const normalizedMutation = await normalizeLegacyTravelerMutation(mutation);
-    const applied = await replayCasMutation(normalizedMutation, signal);
+    const removesMediaObject = normalizedMutation.entityType === "media" && Boolean(normalizedMutation.payload?.deletedAt && normalizedMutation.payload.storagePath);
+    const applied = await replayCasMutation(normalizedMutation, signal, removesMediaObject);
     if (!applied) return;
-    if (
-      mutation.entityType === "media" &&
-      mutation.payload?.deletedAt &&
-      mutation.payload.storagePath
-    )
-      await deleteRemoteMedia(String(mutation.payload.storagePath), signal);
+    if (removesMediaObject) {
+      await deleteRemoteMedia(String(normalizedMutation.payload?.storagePath), signal);
+      await removeMutation(normalizedMutation.id);
+    }
 
     logger.debug("Mutation replayed successfully", {
       id: mutation.id,
@@ -802,6 +831,11 @@ async function syncOnce(context?: SyncExecutionContext): Promise<void> {
         skippedCount++;
         continue;
       }
+    }
+
+    if (mutation.entityType === "media" && mutation.operation !== "delete") {
+      const media = await getDb().tripMedia.get(mutation.entityId);
+      if (media && media.deletedAt === null && media.blob && media.uploadStatus !== "uploaded") continue;
     }
 
     const dependency = await voiceNoteAudioDependency(mutation);
@@ -1036,6 +1070,7 @@ export const __syncEngineInternals = {
   runCoordinatedSync,
   refreshPending,
   replayCasMutation,
+  replayOne,
   normalizeLegacyTravelerMutation,
   requeueMissingExpenseParent,
   sortPendingMutations,

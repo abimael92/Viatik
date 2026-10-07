@@ -7,6 +7,9 @@ const mocks = vi.hoisted(() => ({
   rpcAbortSignal: vi.fn(),
   conflictAdd: vi.fn(),
   mutationDelete: vi.fn(),
+  outboxGet: vi.fn(),
+  outboxPut: vi.fn(),
+  deleteRemoteMedia: vi.fn(),
   pullRemoteChanges: vi.fn(),
   listPendingMutations: vi.fn(),
   countPendingMutations: vi.fn(),
@@ -33,7 +36,7 @@ vi.mock("@/lib/db/dexie", () => ({
   getCurrentDatabase: () => ({
     name: "viatik_user-1",
     syncConflicts: { add: mocks.conflictAdd, clear: vi.fn().mockResolvedValue(undefined) },
-    outboxMutations: { delete: mocks.mutationDelete },
+    outboxMutations: { delete: mocks.mutationDelete, get: mocks.outboxGet, put: mocks.outboxPut },
     expenses: { get: mocks.expenseGet, update: mocks.expenseUpdate },
     expenseShares: { update: mocks.expenseUpdate },
     tripTravelers: { where: mocks.tripTravelersWhere },
@@ -45,7 +48,7 @@ vi.mock("@/lib/db/dexie", () => ({
   ViatikDatabase: class {},
 }));
 vi.mock("@/lib/sync/cloud-sync", () => ({
-  deleteRemoteMedia: vi.fn(),
+  deleteRemoteMedia: mocks.deleteRemoteMedia,
   processPendingMedia: mocks.processPendingMedia,
   resetPendingMediaUploadRetries: vi.fn(),
   pullRemoteChanges: mocks.pullRemoteChanges,
@@ -114,6 +117,9 @@ describe("CAS mutation replay", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.mutationDelete.mockResolvedValue(undefined);
+    mocks.outboxGet.mockResolvedValue(undefined);
+    mocks.outboxPut.mockResolvedValue(undefined);
+    mocks.deleteRemoteMedia.mockResolvedValue(undefined);
     mocks.conflictAdd.mockResolvedValue(undefined);
     mocks.pullRemoteChanges.mockResolvedValue(undefined);
     mocks.listPendingMutations.mockResolvedValue([]);
@@ -513,6 +519,31 @@ describe("CAS mutation replay", () => {
     expect(mocks.pullRemoteChanges).toHaveBeenCalledWith(true, undefined);
   });
 
+  it("rebases a contributor-owned photo tombstone instead of discarding it after a remote metadata conflict", async () => {
+    const mutation = tripMutation({
+      entityType: "media",
+      entityId: "photo-1",
+      operation: "insert",
+      baseUpdatedAt: null,
+      payload: { id: "photo-1", tripId: "trip-1", createdBy: "user-1", storagePath: "trip-1/photo-1.jpg", deletedAt: "2026-10-07T00:00:00.000Z" },
+    });
+    mocks.rpc.mockResolvedValue({
+      data: { status: "conflict", server_updated_at: "2026-10-06T00:00:00.000Z", current: { created_by: "user-1", trip_id: "trip-1", storage_path: "trip-1/photo-1.jpg", kind: "photo" } },
+      error: null,
+    });
+    mocks.outboxGet.mockResolvedValue(mutation);
+
+    await expect(__syncEngineInternals.replayCasMutation(mutation)).resolves.toBe(false);
+
+    expect(mocks.outboxPut).toHaveBeenCalledWith(expect.objectContaining({
+      operation: "update",
+      baseUpdatedAt: "2026-10-06T00:00:00.000Z",
+      payload: expect.objectContaining({ deletedAt: "2026-10-07T00:00:00.000Z" }),
+    }));
+    expect(mocks.conflictAdd).not.toHaveBeenCalled();
+    expect(mocks.mutationDelete).not.toHaveBeenCalled();
+  });
+
   it("treats a legacy mutation without a base version as a conflict without calling the RPC", async () => {
     const mutation = tripMutation({ baseUpdatedAt: undefined });
 
@@ -520,6 +551,29 @@ describe("CAS mutation replay", () => {
     expect(mocks.rpc).not.toHaveBeenCalled();
     expect(mocks.mutationDelete).toHaveBeenCalledWith(mutation.id);
     expect(mocks.pullRemoteChanges).toHaveBeenCalledWith(true, undefined);
+  });
+
+  it("keeps photo tombstones queued until their remote storage object is removed", async () => {
+    const mutation = tripMutation({
+      entityType: "media",
+      entityId: "photo-1",
+      operation: "update",
+      payload: { id: "photo-1", tripId: "trip-1", createdBy: "user-1", storagePath: "trip-1/photo-1.jpg", deletedAt: "2026-10-07T00:00:00.000Z" },
+    });
+    mocks.rpc.mockResolvedValue({ data: { status: "applied", server_updated_at: "2026-01-03T00:00:00.000Z" }, error: null });
+    mocks.outboxGet.mockResolvedValue(mutation);
+    mocks.deleteRemoteMedia.mockRejectedValueOnce(new Error("Storage temporarily unavailable"));
+
+    await expect(__syncEngineInternals.replayOne(mutation)).rejects.toThrow("Storage temporarily unavailable");
+
+    expect(mocks.outboxPut).toHaveBeenCalledWith(expect.objectContaining({ id: mutation.id, baseUpdatedAt: "2026-01-03T00:00:00.000Z" }));
+    expect(mocks.mutationDelete).not.toHaveBeenCalled();
+
+    mocks.outboxGet.mockResolvedValue({ ...mutation, baseUpdatedAt: "2026-01-03T00:00:00.000Z" });
+    await __syncEngineInternals.replayOne({ ...mutation, baseUpdatedAt: "2026-01-03T00:00:00.000Z" });
+
+    expect(mocks.deleteRemoteMedia).toHaveBeenCalledTimes(2);
+    expect(mocks.mutationDelete).toHaveBeenCalledWith(mutation.id);
   });
 
   it("leaves retry handling to the outbox when the RPC fails", async () => {

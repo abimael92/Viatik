@@ -1233,6 +1233,7 @@ export type Database = {
           exchange_rate_to_base: number | null
           expense_date: string
           id: string
+          line_items: Json
           paid_by: string | null
           paid_by_traveler_id: string | null
           restored_at: string | null
@@ -1256,6 +1257,7 @@ export type Database = {
           exchange_rate_to_base?: number | null
           expense_date?: string
           id?: string
+          line_items?: Json
           paid_by?: string | null
           paid_by_traveler_id?: string | null
           restored_at?: string | null
@@ -1279,6 +1281,7 @@ export type Database = {
           exchange_rate_to_base?: number | null
           expense_date?: string
           id?: string
+          line_items?: Json
           paid_by?: string | null
           paid_by_traveler_id?: string | null
           restored_at?: string | null
@@ -1768,6 +1771,7 @@ export type Database = {
           deleted_at: string | null
           deleted_by: string | null
           id: string
+          public_gallery: boolean | null
           restored_at: string | null
           restored_by: string | null
           storage_path: string
@@ -1786,6 +1790,7 @@ export type Database = {
           deleted_at?: string | null
           deleted_by?: string | null
           id?: string
+          public_gallery?: boolean | null
           restored_at?: string | null
           restored_by?: string | null
           storage_path: string
@@ -1804,6 +1809,7 @@ export type Database = {
           deleted_at?: string | null
           deleted_by?: string | null
           id?: string
+          public_gallery?: boolean | null
           restored_at?: string | null
           restored_by?: string | null
           storage_path?: string

@@ -76,6 +76,59 @@ describe("finance mappers", () => {
     expect(rowToExpense(row)).toEqual(expense);
   });
 
+  it("round-trips itemized receipt rows as decimal-string minor units", () => {
+    const expense: Expense = {
+      id: "expense-items",
+      tripId: "trip-1",
+      activityId: null,
+      description: "Corner store",
+      amountMinor: 100n,
+      lineItems: [
+        {
+          id: "item-1",
+          description: "Snack",
+          amountMinor: 100n,
+          splitType: "exact",
+          allocations: [
+            { userId: "user-1", shareAmountMinor: 40n },
+            { userId: "user-2", shareAmountMinor: 60n },
+          ],
+        },
+      ],
+      currency: "JPY",
+      exchangeRateToBase: null,
+      paidBy: "user-1",
+      splitType: "exact",
+      category: "shopping",
+      subcategory: null,
+      date: "2026-10-07",
+      createdBy: "user-1",
+      updatedBy: null,
+      deletedBy: null,
+      restoredAt: null,
+      restoredBy: null,
+      version: 1,
+      createdAt: timestamps.createdAt,
+      updatedAt: timestamps.updatedAt,
+      deletedAt: null,
+    };
+
+    const row = expenseToRow(expense);
+    expect(row.line_items).toEqual([
+      {
+        id: "item-1",
+        description: "Snack",
+        amountMinor: "100",
+        splitType: "exact",
+        allocations: [
+          { userId: "user-1", shareAmountMinor: "40" },
+          { userId: "user-2", shareAmountMinor: "60" },
+        ],
+      },
+    ]);
+    expect(rowToExpense(row)).toEqual(expense);
+  });
+
   it("round-trips a share with a per-share split type", () => {
     const share: ExpenseShare = {
       id: "share-1",

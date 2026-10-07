@@ -64,7 +64,18 @@ describe("collaboration mappers", () => {
   it("hydrates remote media without inventing a local blob", () => {
     const media = rowToMedia({ id: "media-1", trip_id: "trip-1", activity_id: null, caption: "View", storage_path: "trip-1/media-1.jpg", content_type: "image/jpeg", byte_size: 100, created_by: "user-1", created_at: timestamp, updated_at: timestamp, deleted_at: null });
     expect(media).toMatchObject({ blob: null, uploadStatus: "uploaded", uploadProgress: 100, storagePath: "trip-1/media-1.jpg" });
-    expect(media).toMatchObject({ kind: "photo", durationMs: null });
+    expect(media).toMatchObject({ kind: "photo", durationMs: null, publicGallery: false });
+  });
+
+  it("round-trips only explicitly public-gallery media and keeps audio private", () => {
+    const legacyPhoto = rowToMedia({ id: "legacy", trip_id: "trip-1", activity_id: null, caption: null, storage_path: "trip-1/legacy.jpg", content_type: "image/jpeg", byte_size: 100, created_by: "user-1", created_at: timestamp, updated_at: timestamp, deleted_at: null, kind: "photo", public_gallery: true });
+    const newPhoto = rowToMedia({ ...mediaToRow(legacyPhoto), public_gallery: false });
+    const audio = rowToMedia({ ...mediaToRow(legacyPhoto), kind: "audio", public_gallery: true });
+
+    expect(mediaToRow(legacyPhoto).public_gallery).toBe(true);
+    expect(newPhoto.publicGallery).toBe(false);
+    expect(audio.publicGallery).toBe(false);
+    expect(mediaToRow(audio).public_gallery).toBe(false);
   });
 
   it("maps voice clip kind and duration both ways", () => {

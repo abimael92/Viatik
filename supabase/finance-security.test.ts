@@ -9,6 +9,10 @@ const settlementRateMigration = readFileSync(
   join(process.cwd(), "supabase/migrations/00000000000067_settlement_exchange_rate_snapshot.sql"),
   "utf8",
 );
+const expenseLineItemsMigration = readFileSync(
+  join(process.cwd(), "supabase/migrations/00000000000079_expense_line_items.sql"),
+  "utf8",
+);
 
 describe("finance budgets migration (Phase 2A)", () => {
   it("adds trip-level budget and expense metadata columns", () => {
@@ -94,5 +98,27 @@ describe("settlement exchange-rate snapshot", () => {
     expect(settlementRateMigration).toContain("add column if not exists exchange_rate_to_base numeric");
     expect(settlementRateMigration).toContain("exchange_rate_to_base is null or exchange_rate_to_base > 0");
     expect(settlementRateMigration).not.toContain("update public.expense_settlements");
+  });
+});
+
+describe("itemized expense migration", () => {
+  it("adds line items additively with an empty-array default", () => {
+    expect(expenseLineItemsMigration).toContain("add column line_items jsonb not null default '[]'::jsonb");
+    expect(expenseLineItemsMigration).toContain("jsonb_typeof(line_items) = 'array'");
+  });
+
+  it("validates item totals and trip-scoped assignments at the database boundary", () => {
+    expect(expenseLineItemsMigration).toContain("create or replace function public.validate_expense_line_items()");
+    expect(expenseLineItemsMigration).toContain("v_allocated_minor <> v_item_minor");
+    expect(expenseLineItemsMigration).toContain("v_total_minor <> v_expense.amount");
+    expect(expenseLineItemsMigration).toContain("public.is_active_trip_member(v_expense.trip_id, v_identity)");
+    expect(expenseLineItemsMigration).toContain("where id = v_identity and trip_id = v_expense.trip_id and deleted_at is null");
+    expect(expenseLineItemsMigration).toContain("deferrable initially deferred");
+  });
+
+  it("preserves line items through expense CAS updates while leaving legacy payloads intact", () => {
+    expect(expenseLineItemsMigration).toContain("sync_cas_upsert_before_line_items");
+    expect(expenseLineItemsMigration).toContain("and p_payload ? 'line_items'");
+    expect(expenseLineItemsMigration).toMatch(/set line_items = p_payload -> 'line_items'/);
   });
 });
