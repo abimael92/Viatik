@@ -48,7 +48,7 @@ repository/application boundaries and an optimistic outbox sync engine.
 
 activities (optional photos, rich links, and location pins on the Activity Extras tab; edit modal uses Details / Group & money / Extras tabs), ai (Scout — itinerary ideas, works offline), collaboration, community/feed,
 contacts, emergency, expenses (multi-currency splits + immutable settlement ledger + itemized receipts with per-item traveler allocations; writes persist through Dexie and the outbox), finance (budgets, local `currencyRates` cache), health
-(passport/visa tracking), journal, maps, media, packing, polls, profile, sharing,
+(passport/visa tracking), journal, maps, media (member-only trip-photo staging/sharing, downloads, and voice notes), packing, polls, profile, sharing,
 transit, trips (activity Must-dos on itinerary + home timeline actions; End trip opens a wrap-up sheet for return packing, open debts, and departure stops),
 vault (offline documents), weather (per-day forecasts + conflict warnings).
 

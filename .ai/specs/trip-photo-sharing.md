@@ -114,11 +114,11 @@ The Architect Agent reviewed the member-only guest-link isolation design: legacy
 ### Verification
 
 - [ ] Unit, repository, sync, and component tests cover local-only, explicit sharing, all-member permissions, and individual/bulk download behavior.
-- [ ] Integration/security tests verify owner, editor, viewer, removed-member, and unauthenticated access behavior server-side.
-- [ ] Offline, retry, interruption, and duplicate-delivery cases are tested.
-- [ ] Coverage for changed and critical code is at least 90%, or an exception is documented.
-- [ ] Typecheck, lint, relevant tests, and production build pass.
-- [ ] QA Agent report and Security Agent review are attached before completion.
+- [x] Local PostgreSQL RLS tests verify viewer/editor contribution, active-member reads, removed/deleted/nonmember/anonymous denial, contributor-only changes, and invitation reactivation. CI/staging rerun remains a release condition.
+- [ ] Offline, retry, interruption, and duplicate-delivery cases are tested end-to-end.
+- [x] Coverage exception documented: the repository has no installed Vitest coverage provider, so a percentage could not be measured; changed behavior has focused regression tests.
+- [x] Typecheck, lint, relevant tests, and production build pass.
+- [x] QA Agent report and Security Agent review are recorded in Completion Notes.
 
 ## Implementation Plan
 
@@ -147,8 +147,11 @@ The Architect Agent reviewed the member-only guest-link isolation design: legacy
 
 ## Completion Notes
 
-- **Architecture review:** Completed; product decisions for sequential bulk download, per-action caps, unshare retention, and draft cleanup are recorded above.
-- **Verification commands:** Not run; implementation has not started.
-- **Verification results:** Not applicable.
-- **Bug-ledger updates:** Not applicable.
-- **Follow-up work:** TDD implementation, QA verification, and Security review.
+- **Architecture review:** Completed. Product decisions include member-only public-link isolation, local staging, contributor-only unshare, sequential bulk downloads, caps, and draft cleanup.
+- **Verification commands:** `pnpm test`; `pnpm lint`; `pnpm typecheck`; `pnpm build`; `pnpm exec vitest run supabase/trip-photo-sharing.test.ts`; `pnpm exec supabase migration up --local`; `docker exec -i supabase_db_viatik psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/trip-media-authorization.test.sql`; `git diff --check`.
+- **Verification results:** Full Vitest passed (200 files / 1,287 tests); lint, typecheck, build, focused photo-sharing tests (6 files / 37 tests), and whitespace checks passed. Local Supabase migrations through 83 were applied without reset; the transaction-scoped live authorization test passed all 16 assertion groups and rolled back its fixtures. No remote migration deployment was performed.
+- **Coverage:** No coverage provider is installed, so a percentage could not be reported. Documented exception; changed behavior has focused unit, repository, component, sync, migration, and live SQL tests.
+- **QA report:** Automated checks passed. Manual mobile/desktop viewport, assistive-technology, and complete offline/browser-download flows remain unverified.
+- **Security review:** Approved for deployment with conditions: rerun the live authorization test in CI/staging before release and track the broader stale-membership helper issue. The feature-specific media/member policies and public-link isolation were reviewed.
+- **Bug-ledger updates:** `.ai/specs/bug-ledger.md` records the media authorization invariant and invitation trigger/schema mismatch.
+- **Follow-up work:** Re-run live RLS tests in CI/staging; complete manual responsive/accessibility/offline QA; track `.ai/specs/bug-soft-removed-member-global-access.md` (non-media authorization helpers still ignore soft-removal fields).
