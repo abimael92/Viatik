@@ -26,6 +26,7 @@ import {
 } from "@/features/contacts/data/dexie-contact-repository";
 import type {
   Expense,
+  ExpenseLineItem,
   ExpenseSplitType,
   ProfileSummary,
   TripMember,
@@ -52,11 +53,61 @@ import {
 } from "@/features/finance/lib/exchange-rate-service";
 import { expenseRepository } from "@/features/expenses/data/dexie-expense-repository";
 import { calculateSplit } from "@/features/expenses/lib/expense-calculator";
+import { allocateExpenseItem, summarizeExpenseLineItems } from "@/features/expenses/lib/expense-items";
 import { useLocalProfile } from "@/features/profile/lib/use-local-profile";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
+type ExpenseEntryMode = "simple" | "itemized";
+
+type ExpenseLineItemDraft = {
+  id: string;
+  description: string;
+  amountInput: string;
+  splitType: "equal" | "exact";
+  participants: string[];
+  exactInputs: Record<string, string>;
+};
+
 const CURRENCIES = ["USD", "EUR", "GBP", "JPY", "CAD", "MXN"] as const;
+
+function emptyLineItemDraft(userId: string, id = crypto.randomUUID()): ExpenseLineItemDraft {
+  return {
+    id,
+    description: "",
+    amountInput: "",
+    splitType: "equal",
+    participants: [userId],
+    exactInputs: {},
+  };
+}
+
+function lineItemToDraft(item: ExpenseLineItem, currency: string): ExpenseLineItemDraft {
+  return {
+    id: item.id,
+    description: item.description,
+    amountInput: decimalFromMinorUnits(item.amountMinor, currency),
+    splitType: item.splitType,
+    participants: item.allocations.map((allocation) => allocation.userId),
+    exactInputs: Object.fromEntries(
+      item.allocations.map((allocation) => [
+        allocation.userId,
+        decimalFromMinorUnits(allocation.shareAmountMinor, currency),
+      ]),
+    ),
+  };
+}
+
+function totalLineItemAmounts(items: ExpenseLineItemDraft[], currency: string): bigint | null {
+  try {
+    return items.reduce(
+      (total, item) => total + (item.amountInput.trim() ? parseMinorUnits(item.amountInput, currency) : 0n),
+      0n,
+    );
+  } catch {
+    return null;
+  }
+}
 
 export type ExpenseFormInitialData = {
   activityId?: string | null;
@@ -186,6 +237,7 @@ function ExpenseFormBody({
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [amountError, setAmountError] = useState<string | null>(null);
+  const [itemError, setItemError] = useState<string | null>(null);
   const [participantError, setParticipantError] = useState<string | null>(null);
   const [resolvedRate, setResolvedRate] = useState<{
     from: string;
@@ -212,6 +264,14 @@ function ExpenseFormBody({
   const [paidBy, setPaidBy] = useState(expense?.paidBy ?? userId);
   const [amountInput, setAmountInput] = useState(
     expense ? decimalFromMinorUnits(expense.amountMinor, expense.currency) : "",
+  );
+  const [entryMode, setEntryMode] = useState<ExpenseEntryMode>(
+    expense?.lineItems?.length ? "itemized" : "simple",
+  );
+  const [lineItemDrafts, setLineItemDrafts] = useState<ExpenseLineItemDraft[]>(() =>
+    expense?.lineItems?.length
+      ? expense.lineItems.map((item) => lineItemToDraft(item, expense.currency))
+      : [emptyLineItemDraft(userId, "new-item-1")],
   );
 
   const isForeign = expenseCurrency !== currency;
@@ -254,15 +314,17 @@ function ExpenseFormBody({
       return null;
     }
   }, [amountInput, expenseCurrency]);
+  const itemizedTotalMinor = totalLineItemAmounts(lineItemDrafts, expenseCurrency);
+  const conversionAmountMinor = entryMode === "itemized" ? itemizedTotalMinor : parsedAmount;
 
   const convertedAmount = useMemo(() => {
-    if (parsedAmount === null || exchangeRateToBase === null) return null;
+    if (conversionAmountMinor === null || exchangeRateToBase === null) return null;
     try {
-      return toBaseMinorUnits(parsedAmount, expenseCurrency, exchangeRateToBase, currency);
+      return toBaseMinorUnits(conversionAmountMinor, expenseCurrency, exchangeRateToBase, currency);
     } catch {
       return null;
     }
-  }, [parsedAmount, exchangeRateToBase, expenseCurrency, currency]);
+  }, [conversionAmountMinor, exchangeRateToBase, expenseCurrency, currency]);
 
   const allTravelers = useMemo(
     () =>
@@ -282,6 +344,7 @@ function ExpenseFormBody({
       ...extraPeople,
     ]),
   );
+  const itemParticipants = Array.from(new Set([userId, ...participants]));
   const step =
     getCurrencyExponent(expenseCurrency) === 0
       ? "1"
@@ -289,12 +352,16 @@ function ExpenseFormBody({
   const effectiveSplit = splitEnabled;
   const effectiveParticipants = effectiveSplit ? participants : [userId];
   const effectiveMode = effectiveSplit ? mode : "equal";
-  const effectivePaidBy = effectiveSplit ? paidBy : userId;
+  const effectivePaidBy = entryMode === "itemized" || effectiveSplit ? paidBy : userId;
   const defaultDate = expense?.date ?? initialData?.date ?? new Date().toISOString().slice(0, 10);
 
   function nameFor(id: string): string {
     if (id === userId) return t("common.you");
     return travelerByKey.get(id)?.displayName ?? names.get(id) ?? id;
+  }
+
+  function updateLineItem(id: string, patch: Partial<ExpenseLineItemDraft>) {
+    setLineItemDrafts((items) => items.map((item) => (item.id === id ? { ...item, ...patch } : item)));
   }
 
   async function addExtraPerson() {
@@ -432,11 +499,15 @@ function ExpenseFormBody({
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    const amountIssue = validatePositiveAmount(String(data.get("amount") ?? ""));
+    const amountIssue = entryMode === "simple" ? validatePositiveAmount(String(data.get("amount") ?? "")) : null;
     const nextAmountError = amountIssue ? t(amountIssue.key, amountIssue.variables) : null;
-    const nextParticipantError = effectiveParticipants.length ? null : t("errors.participantRequired");
+    const nextParticipantError =
+      entryMode === "simple" && splitEnabled && !effectiveParticipants.length
+        ? t("errors.participantRequired")
+        : null;
     setAmountError(nextAmountError);
     setParticipantError(nextParticipantError);
+    setItemError(null);
     if (nextAmountError || nextParticipantError) return;
     setSaving(true);
     const description = String(data.get("description"));
@@ -452,75 +523,100 @@ function ExpenseFormBody({
     ) as SpendingSubcategory | null;
     const date = String(data.get("date") || defaultDate);
     try {
-      const amountMinor = parseMinorUnits(String(data.get("amount")), expenseCurrency);
-      if (amountMinor <= 0n) {
-        setAmountError(t("errors.positiveAmount"));
-        return;
+      let amountMinor: bigint;
+      let lineItems: ExpenseLineItem[] = [];
+      let shares: ReturnType<typeof calculateSplit>["shares"];
+      let splitType: ExpenseSplitType;
+      if (entryMode === "itemized") {
+        try {
+          lineItems = lineItemDrafts.map((item) =>
+            allocateExpenseItem({
+              id: item.id,
+              description: item.description,
+              amountMinor: parseMinorUnits(item.amountInput, expenseCurrency),
+              participants: item.participants,
+              mode: item.splitType,
+              exactMinor:
+                item.splitType === "exact"
+                  ? Object.fromEntries(
+                      item.participants.map((participantId) => [
+                        participantId,
+                        parseMinorUnits(item.exactInputs[participantId] ?? "", expenseCurrency),
+                      ]),
+                    )
+                  : undefined,
+            }),
+          );
+          const summary = summarizeExpenseLineItems(lineItems);
+          amountMinor = summary.amountMinor;
+          shares = summary.shares;
+          splitType = "exact";
+        } catch (cause) {
+          setItemError(localizeThrownError(cause, t, t("copy.itemAllocationError")));
+          return;
+        }
+      } else {
+        amountMinor = parseMinorUnits(String(data.get("amount")), expenseCurrency);
+        if (amountMinor <= 0n) {
+          setAmountError(t("errors.positiveAmount"));
+          return;
+        }
+        const exactMinor =
+          effectiveMode === "exact"
+            ? Object.fromEntries(
+                effectiveParticipants.map((id) => [
+                  id,
+                  parseMinorUnits(String(data.get(`share-${id}`)), expenseCurrency),
+                ]),
+              )
+            : undefined;
+        const percentages =
+          effectiveMode === "percentage"
+            ? Object.fromEntries(
+                effectiveParticipants.map((id) => [id, Number(data.get(`share-${id}`))]),
+              )
+            : undefined;
+        const shareCountsInput =
+          effectiveMode === "shares"
+            ? Object.fromEntries(
+                effectiveParticipants.map((id) => [id, Number(shareCounts[id] ?? 1)]),
+              )
+            : undefined;
+        shares = calculateSplit({
+          totalMinor: amountMinor,
+          payerId: effectivePaidBy,
+          participants: effectiveParticipants,
+          mode: effectiveMode,
+          exactMinor,
+          percentages,
+          shares: shareCountsInput,
+        }).shares;
+        splitType = effectiveMode;
       }
-      const exactMinor =
-        effectiveMode === "exact"
-          ? Object.fromEntries(
-              effectiveParticipants.map((id) => [
-                id,
-                parseMinorUnits(String(data.get(`share-${id}`)), expenseCurrency),
-              ]),
-            )
-          : undefined;
-      const percentages =
-        effectiveMode === "percentage"
-          ? Object.fromEntries(
-              effectiveParticipants.map((id) => [id, Number(data.get(`share-${id}`))]),
-            )
-          : undefined;
-      const shareCountsInput =
-        effectiveMode === "shares"
-          ? Object.fromEntries(
-              effectiveParticipants.map((id) => [id, Number(shareCounts[id] ?? 1)]),
-            )
-          : undefined;
-      const shares = calculateSplit({
-        totalMinor: amountMinor,
-        payerId: effectivePaidBy,
-        participants: effectiveParticipants,
-        mode: effectiveMode,
-        exactMinor,
-        percentages,
-        shares: shareCountsInput,
-      }).shares;
+      const expensePatch = {
+        description,
+        amountMinor,
+        lineItems,
+        currency: expenseCurrency,
+        exchangeRateToBase,
+        paidBy: effectivePaidBy,
+        paidByTravelerId: effectivePaidBy.startsWith("traveler:")
+          ? effectivePaidBy.slice("traveler:".length)
+          : null,
+        splitType,
+        category,
+        subcategory,
+        date,
+      };
       if (expense) {
-        const updated = await expenseRepository.update(expense.id, {
-          description,
-          amountMinor,
-          currency: expenseCurrency,
-          exchangeRateToBase,
-          paidBy: effectivePaidBy,
-          paidByTravelerId: effectivePaidBy.startsWith("traveler:")
-            ? effectivePaidBy.slice("traveler:".length)
-            : null,
-          splitType: effectiveMode,
-          category,
-          subcategory,
-          date,
-        });
-        await expenseRepository.replaceShares(expense.id, shares);
+        const updated = await expenseRepository.update(expense.id, expensePatch, shares);
         onSaved?.(updated);
       } else {
         const created = await expenseRepository.create({
           id: crypto.randomUUID(),
           tripId,
           activityId: initialData?.activityId ?? null,
-          description,
-          amountMinor,
-          currency: expenseCurrency,
-          exchangeRateToBase,
-          paidBy: effectivePaidBy,
-          paidByTravelerId: effectivePaidBy.startsWith("traveler:")
-            ? effectivePaidBy.slice("traveler:".length)
-            : null,
-          splitType: effectiveMode,
-          category,
-          subcategory,
-          date,
+          ...expensePatch,
           createdBy: userId,
           shares,
         });
@@ -554,30 +650,49 @@ function ExpenseFormBody({
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
           <Field
-            label={t("common.description")}
+            label={entryMode === "itemized" ? t("copy.receiptDescription") : t("common.description")}
             name="description"
             defaultValue={expense?.description ?? initialData?.description}
             required
           />
-          <Field
-            label={`${t("common.amount")} (${expenseCurrency})`}
-            name="amount"
-            type="number"
-            min={
-              getCurrencyExponent(expenseCurrency) === 0
-                ? "1"
-                : `0.${"0".repeat(getCurrencyExponent(expenseCurrency) - 1)}1`
-            }
-            step={
-              getCurrencyExponent(expenseCurrency) === 0
-                ? "1"
-                : `0.${"0".repeat(getCurrencyExponent(expenseCurrency) - 1)}1`
-            }
-            value={amountInput}
-            onChange={(event) => setAmountInput(event.target.value)}
-            required
-            error={amountError}
-          />
+          <div className="space-y-2">
+            <Label htmlFor="expense-entry-mode">{t("copy.expenseEntryType")}</Label>
+            <select
+              id="expense-entry-mode"
+              value={entryMode}
+              onChange={(event) => {
+                const next = event.target.value as ExpenseEntryMode;
+                setEntryMode(next);
+                if (next === "itemized") setSplitEnabled(false);
+                setItemError(null);
+              }}
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="simple">{t("copy.singleAmount")}</option>
+              <option value="itemized">{t("copy.itemizedReceipt")}</option>
+            </select>
+          </div>
+          {entryMode === "simple" && (
+            <Field
+              label={`${t("common.amount")} (${expenseCurrency})`}
+              name="amount"
+              type="number"
+              min={
+                getCurrencyExponent(expenseCurrency) === 0
+                  ? "1"
+                  : `0.${"0".repeat(getCurrencyExponent(expenseCurrency) - 1)}1`
+              }
+              step={
+                getCurrencyExponent(expenseCurrency) === 0
+                  ? "1"
+                  : `0.${"0".repeat(getCurrencyExponent(expenseCurrency) - 1)}1`
+              }
+              value={amountInput}
+              onChange={(event) => setAmountInput(event.target.value)}
+              required
+              error={amountError}
+            />
+          )}
           <div className="space-y-2">
             <Label htmlFor="expenseCurrency">{t("common.currency")}</Label>
             <select
@@ -603,9 +718,9 @@ function ExpenseFormBody({
                   1 {expenseCurrency} ={" "}
                   {exchangeRateToBase != null ? formatRate(exchangeRateToBase) : "—"} {currency}
                 </p>
-                {convertedAmount !== null && parsedAmount !== null ? (
+                {convertedAmount !== null && conversionAmountMinor !== null ? (
                   <p className="mt-1 text-xs font-semibold text-foreground">
-                    {formatMinorUnits(parsedAmount, expenseCurrency)} ≈{" "}
+                    {formatMinorUnits(conversionAmountMinor, expenseCurrency)} ≈{" "}
                     {formatMinorUnits(convertedAmount, currency)}
                   </p>
                 ) : (
@@ -624,6 +739,163 @@ function ExpenseFormBody({
             )}
           </div>
           <Field label={t("copy.date")} name="date" type="date" defaultValue={defaultDate} required />
+          {entryMode === "itemized" && (
+            <section className="space-y-3" aria-labelledby="expense-items-heading">
+              <h3 id="expense-items-heading" className="text-sm font-semibold">
+                {t("copy.receiptItems")}
+              </h3>
+              {lineItemDrafts.map((item, index) => (
+                <fieldset key={item.id} className="space-y-3 rounded-xl border bg-muted/20 p-3">
+                  <legend className="text-sm font-medium">{t("copy.itemDescription")} {index + 1}</legend>
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`${t("copy.removeReceiptItem")} ${index + 1}`}
+                      disabled={lineItemDrafts.length <= 1}
+                      onClick={() => setLineItemDrafts((current) => current.filter((row) => row.id !== item.id))}
+                    >
+                      <X className="size-4" aria-hidden />
+                    </Button>
+                  </div>
+                  <Field
+                    label={t("copy.itemDescription")}
+                    name={`item-${item.id}-description`}
+                    value={item.description}
+                    onChange={(event) => updateLineItem(item.id, { description: event.target.value })}
+                    maxLength={200}
+                    required
+                    aria-invalid={Boolean(itemError)}
+                    aria-describedby={itemError ? "expense-items-error" : undefined}
+                  />
+                  <Field
+                    label={`${t("common.amount")} (${expenseCurrency})`}
+                    name={`item-${item.id}-amount`}
+                    type="number"
+                    min={step}
+                    step={step}
+                    value={item.amountInput}
+                    onChange={(event) => updateLineItem(item.id, { amountInput: event.target.value })}
+                    required
+                    aria-invalid={Boolean(itemError)}
+                    aria-describedby={itemError ? "expense-items-error" : undefined}
+                  />
+                  <fieldset
+                    className="space-y-2"
+                    aria-describedby={itemError ? "expense-items-error" : undefined}
+                  >
+                    <legend className="text-sm font-medium">{t("copy.assignItemTo")}</legend>
+                    {itemParticipants.map((participantId) => {
+                      const selected = item.participants.includes(participantId);
+                      return (
+                        <label key={participantId} className="flex min-h-11 items-center gap-3 rounded-lg border px-3 py-2">
+                          <input
+                            type="checkbox"
+                            checked={selected}
+                            onChange={() => {
+                              const nextParticipants = selected
+                                ? item.participants.filter((id) => id !== participantId)
+                                : [...item.participants, participantId];
+                              updateLineItem(item.id, {
+                                participants: nextParticipants,
+                                exactInputs: Object.fromEntries(
+                                  Object.entries(item.exactInputs).filter(([id]) => nextParticipants.includes(id)),
+                                ),
+                              });
+                            }}
+                            aria-label={`${t("copy.assignItemTo")} ${nameFor(participantId)}`}
+                            className="size-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                          />
+                          <span className="text-sm">{nameFor(participantId)}</span>
+                        </label>
+                      );
+                    })}
+                  </fieldset>
+                  {item.participants.length > 1 && (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor={`item-${item.id}-split`}>{t("copy.splitItem")}</Label>
+                        <select
+                          id={`item-${item.id}-split`}
+                          value={item.splitType}
+                          onChange={(event) =>
+                            updateLineItem(item.id, { splitType: event.target.value as "equal" | "exact" })
+                          }
+                          className="h-10 w-full rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <option value="equal">{t("copy.equal")}</option>
+                          <option value="exact">{t("copy.exact")}</option>
+                        </select>
+                      </div>
+                      {item.splitType === "exact" && item.participants.map((participantId) => (
+                        <Field
+                          key={participantId}
+                          label={`${t("copy.exact")} · ${nameFor(participantId)} (${expenseCurrency})`}
+                          name={`item-${item.id}-share-${participantId}`}
+                          type="number"
+                          min="0"
+                          step={step}
+                          value={item.exactInputs[participantId] ?? ""}
+                          required
+                          onChange={(event) =>
+                            updateLineItem(item.id, {
+                              exactInputs: { ...item.exactInputs, [participantId]: event.target.value },
+                            })
+                          }
+                          aria-invalid={Boolean(itemError)}
+                          aria-describedby={itemError ? "expense-items-error" : undefined}
+                        />
+                      ))}
+                    </>
+                  )}
+                </fieldset>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11"
+                onClick={() => setLineItemDrafts((current) => [...current, emptyLineItemDraft(userId)])}
+              >
+                <Plus className="size-4" aria-hidden /> {t("copy.addReceiptItem")}
+              </Button>
+              <div className="flex items-center justify-between border-t pt-3 text-sm" aria-live="polite">
+                <span className="font-semibold">{t("copy.receiptTotal")}</span>
+                <span className="font-mono font-semibold tabular-nums">
+                  {itemizedTotalMinor === null ? "—" : `${formatMinorUnits(itemizedTotalMinor, expenseCurrency)} ${expenseCurrency}`}
+                </span>
+              </div>
+              {itemError && (
+                <p id="expense-items-error" role="alert" className="text-sm text-destructive">
+                  {itemError}
+                </p>
+              )}
+              <div className="flex items-center gap-2 rounded-lg border border-dashed p-2.5">
+                <Input
+                  aria-label={t("copy.placeholderPerson")}
+                  value={quickAddName}
+                  onChange={(event) => setQuickAddName(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      addExtraPerson();
+                    }
+                  }}
+                  placeholder={t("copy.placeholderPerson")}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-11"
+                  onClick={addExtraPerson}
+                  disabled={!quickAddName.trim()}
+                >
+                  <Plus className="size-4" aria-hidden /> {t("common.add")}
+                </Button>
+              </div>
+            </section>
+          )}
           <div className="space-y-2">
             <Label htmlFor="category">{t("common.category")}</Label>
             <select
@@ -661,49 +933,56 @@ function ExpenseFormBody({
               </select>
             </div>
           )}
-          <div className="flex items-center justify-between rounded-lg border bg-muted/40 p-3">
-            <label htmlFor="splitEnabled" className="text-sm font-semibold">
-              {t("copy.splitThisExpense")}
-            </label>
-            <input
-              id="splitEnabled"
-              type="checkbox"
-              checked={splitEnabled}
-              onChange={(event) => setSplitEnabled(event.target.checked)}
-              className="size-4"
-            />
-          </div>
+          {entryMode === "simple" && (
+            <div className="flex items-center justify-between rounded-lg border bg-muted/40 p-3">
+              <label htmlFor="splitEnabled" className="text-sm font-semibold">
+                {t("copy.splitThisExpense")}
+              </label>
+              <input
+                id="splitEnabled"
+                type="checkbox"
+                checked={splitEnabled}
+                onChange={(event) => setSplitEnabled(event.target.checked)}
+                className="size-4"
+              />
+            </div>
+          )}
 
-          {!splitEnabled && (
+          {entryMode === "simple" && !splitEnabled && (
             <p className="text-sm text-muted-foreground">{t("copy.recordedOwn")}</p>
           )}
 
-          {splitEnabled && (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="paidBy">{t("copy.paidBy")}</Label>
-                <select
-                  id="paidBy"
-                  name="paidBy"
-                  value={paidBy}
-                  onChange={(event) => setPaidBy(event.target.value)}
-                  className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-                >
-                  {members.map((member) => (
-                    <option key={member.id} value={member.userId}>
-                      {nameFor(member.userId)}
+          {(splitEnabled || entryMode === "itemized") && (
+            <div className="space-y-2">
+              <Label htmlFor="paidBy">{t("copy.paidBy")}</Label>
+              <select
+                id="paidBy"
+                name="paidBy"
+                value={paidBy}
+                onChange={(event) => setPaidBy(event.target.value)}
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {!members.some((member) => member.userId === userId) && (
+                  <option value={userId}>{nameFor(userId)}</option>
+                )}
+                {members.map((member) => (
+                  <option key={member.id} value={member.userId}>
+                    {nameFor(member.userId)}
+                  </option>
+                ))}
+                {allTravelers.map((traveler) => {
+                  const key = `traveler:${traveler.id}`;
+                  return (
+                    <option key={key} value={key}>
+                      {traveler.displayName}
                     </option>
-                  ))}
-                  {allTravelers.map((traveler) => {
-                    const key = `traveler:${traveler.id}`;
-                    return (
-                      <option key={key} value={key}>
-                        {traveler.displayName}
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
+                  );
+                })}
+              </select>
+            </div>
+          )}
+          {splitEnabled && entryMode === "simple" && (
+            <>
               <div className="space-y-2">
                 <Label htmlFor="splitType">{t("copy.splitMethod")}</Label>
                 <select

@@ -301,12 +301,26 @@ export interface ActivityPersonalBudget {
   updatedAt: string;
 }
 
+export interface ExpenseItemAllocation {
+  userId: string;
+  shareAmountMinor: MinorUnits;
+}
+
+export interface ExpenseLineItem {
+  id: string;
+  description: string;
+  amountMinor: MinorUnits;
+  splitType: "equal" | "exact";
+  allocations: ExpenseItemAllocation[];
+}
+
 export interface Expense {
   id: string;
   tripId: string;
   activityId: string | null;
   description: string;
   amountMinor: MinorUnits;
+  lineItems?: ExpenseLineItem[];
   currency: CurrencyCode;
   /** Multiplier converting 1 unit of this expense's currency to the trip's base currency. */
   exchangeRateToBase: number | null;

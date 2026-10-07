@@ -3,11 +3,13 @@ import { liveQuery } from "dexie";
 import { getCurrentDatabase, type ViatikDatabase } from "@/lib/db/dexie";
 import { TransactionContext } from "@/lib/db/transaction-context";
 import type { ProfileSummary, Trip, TripInvitation, TripMember, TripMemberRole } from "@/features/domain/entities";
+import type { StagedTripMedia } from "@/features/domain/entities-staged-media";
 import type { Notification } from "@/features/notifications/domain/notification-types";
 import type { CollaborationRepository } from "@/features/domain/repositories/collaboration-repository";
 import { append } from "@/lib/sync/outbox-transactional";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import { pullRemoteChanges } from "@/lib/sync/cloud-sync";
+import { getSyncUser } from "@/lib/sync/sync-context";
 
 function getDb(): ViatikDatabase {
   const db = getCurrentDatabase();
@@ -140,10 +142,13 @@ export class DexieCollaborationRepository implements CollaborationRepository {
 
   async removeMember(memberId: string): Promise<void> {
     const db = getDb();
-    return TransactionContext.runInTransaction([db.tripMembers], async (ctx) => {
+    return TransactionContext.runInTransaction([db.tripMembers, db.stagedTripMedia], async (ctx) => {
       const member = await ctx.table<TripMember>("tripMembers").get(memberId);
       if (!member) return;
       await ctx.table<TripMember>("tripMembers").delete(memberId);
+      if (member.userId === getSyncUser()) {
+        await ctx.table<StagedTripMedia>("stagedTripMedia").where("tripId").equals(member.tripId).filter((draft) => draft.createdBy === member.userId).delete();
+      }
       await append("tripMember", "delete", { ...member, mutatedAt: new Date().toISOString() }, { tx: ctx, baseUpdatedAt: member.updatedAt });
     });
   }

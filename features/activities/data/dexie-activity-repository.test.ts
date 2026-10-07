@@ -214,6 +214,7 @@ describe("saveActivityPlanning", () => {
       id: "media-1",
       activityId: "activity-attach-1",
       uploadStatus: "pending",
+      publicGallery: false,
       blob,
     });
     expect(await db.outboxMutations.count()).toBe(1);
