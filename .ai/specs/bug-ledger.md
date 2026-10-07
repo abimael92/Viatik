@@ -112,6 +112,8 @@ When skipping, record `None — incidental issue` in the bug report or related s
 
 || 2026-10-05 | Activity attachment cards could show broken-image icons, and the add menu's highlighted options had low contrast. [Bug report](./bug-activity-attachment-preview-contrast.md). | **Invariant:** Image previews prefer available local blobs and show an accessible localized fallback when sources fail. Attachment menu highlighted states pair readable foreground/background colors in light and dark themes. | `features/activities/components/activity-attachments.tsx`; `features/activities/components/__tests__/activity-attachments.test.tsx`; verification passed, commit pending. |
 
+|| 2026-10-06 | The Budget tab showed the full trip expense total without a personal or per-traveler share breakdown. [Bug report](./bug-budget-mixes-group-and-personal-spend.md). | **Invariant:** Budget progress uses each expense's full amount once; personal and per-traveler spend uses each person's `ExpenseShare` allocation converted to trip-base minor units. Group totals must be labeled separately and never presented as one person's spend. | `features/domain/repositories/expense-repository.ts`; `features/expenses/data/dexie-expense-repository.ts`; `features/finance/components/money-dashboard.tsx`; `features/finance/components/money-dashboard.test.tsx`; verification passed, commit pending. |
+
 ## Entry Quality Checklist
 
 - [ ] The bug was reproduced or evidence was collected.
