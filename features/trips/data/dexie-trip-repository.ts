@@ -3,6 +3,7 @@ import { liveQuery } from "dexie";
 import { getCurrentDatabase, type ViatikDatabase } from "@/lib/db/dexie";
 import { TransactionContext } from "@/lib/db/transaction-context";
 import type { Contact, Trip, TripMember, TripTraveler } from "@/features/domain/entities";
+import type { StagedTripMedia } from "@/features/domain/entities-staged-media";
 import type { NewTrip, TripRepository } from "@/features/domain/repositories/trip-repository";
 import { assertValidTripDates } from "@/features/trips/lib/trip-duration";
 import { append } from "@/lib/sync/outbox-transactional";
@@ -147,7 +148,7 @@ export class DexieTripRepository implements TripRepository {
   async remove(id: string): Promise<void> {
     const db = getDb();
     return TransactionContext.runInTransaction(
-      [db.trips, db.tripTravelers, db.contacts],
+      [db.trips, db.tripTravelers, db.contacts, db.stagedTripMedia],
       async (ctx) => {
         const trip = await ctx.table<Trip>("trips").get(id);
         if (!trip) return;
@@ -187,6 +188,7 @@ export class DexieTripRepository implements TripRepository {
           }
         }
 
+        await ctx.table<StagedTripMedia>("stagedTripMedia").where("tripId").equals(id).delete();
         await append("trip", "update", updated, { tx: ctx, baseUpdatedAt: trip.updatedAt });
         logger.debug("Trip deleted locally", { tripId: id });
       }

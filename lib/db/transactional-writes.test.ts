@@ -180,6 +180,87 @@ describe("transactional writes", () => {
     expect(mutations.filter((m) => m.entityType === "expenseShare")).toHaveLength(2);
   });
 
+  it("updates itemized expense totals, allocations, and outbox mutations atomically", async () => {
+    const expense = await expenseRepository.create({
+      id: "expense-item-update",
+      tripId: "trip-1",
+      description: "Cafe",
+      amountMinor: 1000n,
+      currency: "USD",
+      paidBy: TEST_USER,
+      splitType: "equal",
+      createdBy: TEST_USER,
+      shares: [{ userId: TEST_USER, shareAmountMinor: 1000n, sharePercentage: 100 }],
+    });
+    await db.outboxMutations.clear();
+
+    const lineItems = [
+      {
+        id: "item-1",
+        description: "Coffee",
+        amountMinor: 3000n,
+        splitType: "exact" as const,
+        allocations: [{ userId: TEST_USER, shareAmountMinor: 3000n }],
+      },
+    ];
+    await expenseRepository.update(
+      expense.id,
+      { amountMinor: 3000n, lineItems },
+      [{ userId: TEST_USER, shareAmountMinor: 3000n, sharePercentage: 100 }],
+    );
+
+    expect(await db.expenses.get(expense.id)).toEqual(expect.objectContaining({ amountMinor: 3000n, lineItems }));
+    expect(await db.expenseShares.where("expenseId").equals(expense.id).toArray()).toEqual([
+      expect.objectContaining({ userId: TEST_USER, shareAmountMinor: 3000n }),
+    ]);
+    expect(await db.outboxMutations.where("entityType").equals("expense").first()).toEqual(
+      expect.objectContaining({ payload: expect.objectContaining({ amountMinor: 3000n, lineItems }) }),
+    );
+    expect(await db.outboxMutations.where("entityType").equals("expenseShare").first()).toBeTruthy();
+  });
+
+  it("rolls back itemized expense changes when a derived share mutation fails", async () => {
+    const expense = await expenseRepository.create({
+      id: "expense-item-rollback",
+      tripId: "trip-1",
+      description: "Cafe",
+      amountMinor: 1000n,
+      currency: "USD",
+      paidBy: TEST_USER,
+      splitType: "equal",
+      createdBy: TEST_USER,
+      shares: [{ userId: TEST_USER, shareAmountMinor: 1000n, sharePercentage: 100 }],
+    });
+    await db.outboxMutations.clear();
+    const restore = stubOutboxAdd((mutation) => mutation.entityType === "expenseShare", new Error("share outbox failed"));
+
+    await expect(
+      expenseRepository.update(
+        expense.id,
+        {
+          amountMinor: 3000n,
+          lineItems: [
+            {
+              id: "item-1",
+              description: "Coffee",
+              amountMinor: 3000n,
+              splitType: "exact",
+              allocations: [{ userId: TEST_USER, shareAmountMinor: 3000n }],
+            },
+          ],
+        },
+        [{ userId: TEST_USER, shareAmountMinor: 3000n, sharePercentage: 100 }],
+      ),
+    ).rejects.toThrow("share outbox failed");
+
+    restore();
+    expect(await db.expenses.get(expense.id)).toEqual(expense);
+    expect(await db.expenseShares.where("expenseId").equals(expense.id).toArray()).toEqual([
+      expect.objectContaining({ shareAmountMinor: 1000n }),
+    ]);
+    expect(await db.outboxMutations.count()).toBe(0);
+  });
+
   it("rolls back expense and all shares when share outbox fails", async () => {
     const restore = stubOutboxAdd(
       (m) => m.entityType === "expenseShare",

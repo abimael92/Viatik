@@ -87,8 +87,10 @@ export async function loadSharedTripSnapshot(
   if (share.allowGallery) {
     const { data, error } = await client
       .from("trip_media")
-      .select("id, caption, taken_at, storage_path")
+      .select("id, kind, public_gallery, caption, taken_at, storage_path")
       .eq("trip_id", share.tripId)
+      .eq("kind", "photo")
+      .eq("public_gallery", true)
       .is("deleted_at", null)
       .order("taken_at", { ascending: true });
     if (error) throw new Error(`Failed to load gallery: ${error.message}`);
