@@ -3,7 +3,12 @@
 import { MapPin } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import { getPlaceDetails, searchDestinations, type PlaceDetails, type PlaceSuggestion } from "@/app/actions/places";
+import {
+  getPlaceDetails,
+  searchDestinations,
+  type PlaceDetails,
+  type PlaceSuggestion,
+} from "@/app/actions/places";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -27,7 +32,9 @@ export function DestinationField({
   const [internalValue, setInternalValue] = useState(defaultValue);
   const value = isControlled ? controlledValue : internalValue;
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
-  const [selectedPlaceLabel, setSelectedPlaceLabel] = useState<string | null>(controlledValue ?? null);
+  const [selectedPlaceLabel, setSelectedPlaceLabel] = useState<string | null>(
+    controlledValue ?? null
+  );
   const [configured, setConfigured] = useState(true);
   const [pendingPlaceId, setPendingPlaceId] = useState<string | null>(null);
   const searchVersion = useRef(0);
@@ -39,10 +46,16 @@ export function DestinationField({
         setSuggestions([]);
         return;
       }
-      const result = await searchDestinations(value);
-      if (version !== searchVersion.current) return;
-      setConfigured(result.configured);
-      setSuggestions(result.suggestions);
+      try {
+        const result = await searchDestinations(value);
+        if (version !== searchVersion.current) return;
+        setConfigured(result.configured);
+        setSuggestions(result.suggestions);
+      } catch {
+        if (version !== searchVersion.current) return;
+        setConfigured(false);
+        setSuggestions([]);
+      }
     }, 300);
     return () => window.clearTimeout(timer);
   }, [value, selectedPlaceLabel]);
@@ -95,19 +108,22 @@ export function DestinationField({
           aria-invalid={Boolean(error)}
           aria-describedby={error ? "destination-error" : "destination-help"}
           className={cn(
-            "pl-9",
+            "h-11 pl-9",
             error ? "border-destructive focus-visible:ring-destructive/50" : ""
           )}
         />
       </div>
       {suggestions.length > 0 && (
-        <div data-places-suggestions className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border bg-popover shadow-lg">
+        <div
+          data-places-suggestions
+          className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border bg-popover shadow-lg"
+        >
           {suggestions.map((suggestion) => (
             <button
               key={suggestion.placeId}
               type="button"
               disabled={pendingPlaceId === suggestion.placeId}
-              className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-muted disabled:opacity-60"
+              className="flex min-h-11 w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-muted disabled:opacity-60"
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => handleSelect(suggestion)}
             >

@@ -52,7 +52,10 @@ export class DexieUserWalletRepository implements UserWalletRepository {
           updatedAt: now,
         };
         await ctx.table<UserWallet>("userWallets").put(updated);
-        await append("userWallet", "update", updated, { tx: ctx, baseUpdatedAt: existing.updatedAt });
+        await append("userWallet", "update", updated, {
+          tx: ctx,
+          baseUpdatedAt: existing.updatedAt,
+        });
         logger.debug("Wallet updated locally", { walletId: updated.id });
         return updated;
       }
@@ -73,7 +76,10 @@ export class DexieUserWalletRepository implements UserWalletRepository {
     });
   }
 
-  async update(id: string, patch: Partial<Omit<UserWallet, "id" | "tripId" | "userId">>): Promise<UserWallet> {
+  async update(
+    id: string,
+    patch: Partial<Omit<UserWallet, "id" | "tripId" | "userId">>
+  ): Promise<UserWallet> {
     const db = getDb();
     return TransactionContext.runInTransaction([db.userWallets], async (ctx) => {
       const previous = await ctx.table<UserWallet>("userWallets").get(id);
@@ -93,9 +99,53 @@ export class DexieUserWalletRepository implements UserWalletRepository {
       const wallet = await ctx.table<UserWallet>("userWallets").get(id);
       if (!wallet) return;
       await ctx.table<UserWallet>("userWallets").delete(id);
-      await append("userWallet", "delete", { id, tripId: wallet.tripId, updatedAt: wallet.updatedAt }, { tx: ctx, baseUpdatedAt: wallet.updatedAt });
+      await append(
+        "userWallet",
+        "delete",
+        { id, tripId: wallet.tripId, updatedAt: wallet.updatedAt },
+        { tx: ctx, baseUpdatedAt: wallet.updatedAt }
+      );
     });
   }
+}
+
+export async function upsertTripBudgetInTransaction(
+  input: NewTripBudget,
+  ctx: TransactionContext
+): Promise<TripBudget> {
+  const now = new Date().toISOString();
+  const existing = await ctx
+    .table<TripBudget>("tripBudgets")
+    .where("tripId")
+    .equals(input.tripId)
+    .first();
+  const categoryAllocations = (input.categoryAllocations ?? []).map((allocation) =>
+    allocationToEntity(allocation, now)
+  );
+  if (existing) {
+    const updated: TripBudget = {
+      ...existing,
+      totalBudgetMinor: input.totalBudgetMinor,
+      dailyTargetMinor: input.dailyTargetMinor ?? null,
+      categoryAllocations,
+      updatedAt: now,
+    };
+    await ctx.table<TripBudget>("tripBudgets").put(updated);
+    return updated;
+  }
+  const budget: TripBudget = {
+    id: input.id,
+    tripId: input.tripId,
+    totalBudgetMinor: input.totalBudgetMinor,
+    dailyTargetMinor: input.dailyTargetMinor ?? null,
+    categoryAllocations,
+    createdBy: input.createdBy,
+    createdAt: now,
+    updatedAt: now,
+    deletedAt: null,
+  };
+  await ctx.table<TripBudget>("tripBudgets").add(budget);
+  return budget;
 }
 
 /**
@@ -115,41 +165,9 @@ export class DexieTripBudgetRepository implements TripBudgetRepository {
 
   async upsert(input: NewTripBudget): Promise<TripBudget> {
     const db = getDb();
-    return TransactionContext.runInTransaction([db.tripBudgets], async (ctx) => {
-      const now = new Date().toISOString();
-      const existing = await ctx
-        .table<TripBudget>("tripBudgets")
-        .where("tripId")
-        .equals(input.tripId)
-        .first();
-      const categoryAllocations = (input.categoryAllocations ?? []).map((allocation) =>
-        allocationToEntity(allocation, now)
-      );
-      if (existing) {
-        const updated: TripBudget = {
-          ...existing,
-          totalBudgetMinor: input.totalBudgetMinor,
-          dailyTargetMinor: input.dailyTargetMinor ?? null,
-          categoryAllocations,
-          updatedAt: now,
-        };
-        await ctx.table<TripBudget>("tripBudgets").put(updated);
-        return updated;
-      }
-      const budget: TripBudget = {
-        id: input.id,
-        tripId: input.tripId,
-        totalBudgetMinor: input.totalBudgetMinor,
-        dailyTargetMinor: input.dailyTargetMinor ?? null,
-        categoryAllocations,
-        createdBy: input.createdBy,
-        createdAt: now,
-        updatedAt: now,
-        deletedAt: null,
-      };
-      await ctx.table<TripBudget>("tripBudgets").add(budget);
-      return budget;
-    });
+    return TransactionContext.runInTransaction([db.tripBudgets], (ctx) =>
+      upsertTripBudgetInTransaction(input, ctx)
+    );
   }
 
   async update(id: string, patch: Partial<Omit<TripBudget, "id" | "tripId">>): Promise<TripBudget> {
@@ -160,7 +178,9 @@ export class DexieTripBudgetRepository implements TripBudgetRepository {
       const updatedAt = new Date().toISOString();
       const effective = { ...patch, updatedAt };
       if (effective.categoryAllocations) {
-        effective.categoryAllocations = effective.categoryAllocations.map((allocation) => allocationToEntity(allocation, updatedAt));
+        effective.categoryAllocations = effective.categoryAllocations.map((allocation) =>
+          allocationToEntity(allocation, updatedAt)
+        );
       }
       await ctx.table<TripBudget>("tripBudgets").update(id, effective);
       const budget = await ctx.table<TripBudget>("tripBudgets").get(id);

@@ -16,6 +16,16 @@ vi.mock("@/features/collaboration/data/dexie-collaboration-repository", () => ({
     }),
   },
 }));
+vi.mock("@/features/trip-planner/components/trip-planner-view", () => ({
+  TripPlannerView: ({ onBack }: { onBack: () => void }) => (
+    <section>
+      <h1>Wishlist test view</h1>
+      <button type="button" onClick={onBack}>
+        Back to trips
+      </button>
+    </section>
+  ),
+}));
 
 vi.mock("next/link", () => ({
   default: ({ children, href, ...props }: React.ComponentProps<"a">) => (
@@ -50,6 +60,18 @@ describe("TripDashboard", () => {
     render(<TripDashboard userId="user-1" />);
     expect(await screen.findByText("Your next trip starts here")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Create your first trip" })).toBeTruthy();
+  });
+
+  it("opens the local wishlist from Trips and returns to the trip list", async () => {
+    vi.mocked(tripRepository.watchAll).mockImplementation((callback) => {
+      callback([]);
+      return () => undefined;
+    });
+    render(<TripDashboard userId="user-1" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Want to go" }));
+    expect(await screen.findByRole("heading", { name: "Wishlist test view" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Back to trips" }));
+    expect(await screen.findByText("Your next trip starts here")).toBeTruthy();
   });
 
   it("keeps trip titles readable over uploaded cover images", async () => {
@@ -113,7 +135,9 @@ describe("TripDashboard", () => {
     fireEvent.click(toggle);
 
     expect(
-      screen.getByRole("button", { name: "Collapse trip setup progress" }).getAttribute("aria-expanded")
+      screen
+        .getByRole("button", { name: "Collapse trip setup progress" })
+        .getAttribute("aria-expanded")
     ).toBe("true");
     expect(screen.getByText("The Itinerary")).toBeTruthy();
   });
@@ -133,9 +157,7 @@ describe("TripDashboard", () => {
     fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Next" }));
     expect(tripRepository.create).not.toHaveBeenCalled();
     expect(screen.getByLabelText("Trip banner")).toBeTruthy();
-    fireEvent.click(
-      within(screen.getByRole("dialog")).getByRole("button", { name: "Submit" })
-    );
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Submit" }));
     await waitFor(() =>
       expect(tripRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({ ownerId: "user-1", name: "Lisbon", baseCurrency: "USD" })

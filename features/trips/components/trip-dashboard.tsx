@@ -79,6 +79,7 @@ import {
 import { collaborationRepository } from "@/features/collaboration/data/dexie-collaboration-repository";
 import { ensureMemberForLinkedContact } from "@/features/collaboration/lib/ensure-member";
 import { DestinationField } from "@/features/trips/components/destination-field";
+import { TripPlannerView } from "@/features/trip-planner/components/trip-planner-view";
 import { tripRepository } from "@/features/trips/data/dexie-trip-repository";
 import { getTripCoverGradient, isTripCoverImage } from "@/features/trips/lib/trip-cover";
 import { getMaxEndDate, getTripDurationError } from "@/features/trips/lib/trip-duration";
@@ -92,6 +93,7 @@ export function TripDashboard({ userId }: { userId: string }) {
   const [trips, setTrips] = useState<Trip[] | null>(null);
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
+  const [showTripPlanner, setShowTripPlanner] = useState(false);
   const [endTripId, setEndTripId] = useState<string | null>(null);
   const [invitations, setInvitations] = useState<TripInvitation[]>([]);
   const { toast } = useToast();
@@ -122,7 +124,7 @@ export function TripDashboard({ userId }: { userId: string }) {
       filtered
         .filter((trip) => isTripActive(trip))
         .sort((a, b) => (a.startDate ?? "9999").localeCompare(b.startDate ?? "9999")),
-    [filtered],
+    [filtered]
   );
   const upcoming = filtered
     .filter((trip) => resolveTripStatus(trip) === "planned")
@@ -173,6 +175,10 @@ export function TripDashboard({ userId }: { userId: string }) {
       );
   }
 
+  if (showTripPlanner) {
+    return <TripPlannerView userId={userId} onBack={() => setShowTripPlanner(false)} />;
+  }
+
   return (
     <div className="space-y-10">
       <header className="relative flex flex-col gap-5 overflow-hidden sm:flex-row sm:items-end sm:justify-between">
@@ -188,7 +194,10 @@ export function TripDashboard({ userId }: { userId: string }) {
           </Heading>
           <p className="mt-2 text-muted-foreground">{t("common.tripsDescription")}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" onClick={() => setShowTripPlanner(true)}>
+            Want to go
+          </Button>
           <Button variant="primary" onClick={() => setCreating(true)}>
             <Plus className="size-5" />
             {t("common.createTripAction")}
@@ -229,9 +238,7 @@ export function TripDashboard({ userId }: { userId: string }) {
                       void collaborationRepository
                         .acceptInvitation(invitation.id)
                         .catch((cause) =>
-                          setError(
-                            localizeThrownError(cause, t, "Unable to accept invitation")
-                          )
+                          setError(localizeThrownError(cause, t, "Unable to accept invitation"))
                         )
                     }
                   >
@@ -508,12 +515,16 @@ function TripCard({
           {status === "active" ? (
             onEnd ? (
               <Button variant="outline" size="sm" onClick={() => onEnd(trip.id)}>
-                <Flag className="size-4" aria-hidden />{t("common.endTrip")}</Button>
+                <Flag className="size-4" aria-hidden />
+                {t("common.endTrip")}
+              </Button>
             ) : null
           ) : readyToStart ? (
             onStart ? (
               <Button variant="primary" size="sm" onClick={() => onStart(trip.id)}>
-                <Play className="size-4" aria-hidden />{t("copy.startTrip")}</Button>
+                <Play className="size-4" aria-hidden />
+                {t("copy.startTrip")}
+              </Button>
             ) : null
           ) : null}
         </div>
@@ -590,7 +601,13 @@ function MetricsRow({
 }) {
   const { t } = useI18n();
   const days = nextTrip?.startDate ? daysUntil(nextTrip.startDate) : null;
-  const value = hasActiveTrip ? "Now" : days === null ? "—" : days === 0 ? t("common.today") : String(days);
+  const value = hasActiveTrip
+    ? "Now"
+    : days === null
+      ? "—"
+      : days === 0
+        ? t("common.today")
+        : String(days);
   const subtitle = hasActiveTrip
     ? t("common.tripInProgress")
     : nextTrip
@@ -679,7 +696,7 @@ export function TripFormDialog({
 
   const dateError = useMemo(
     () => (startDate && endDate ? getTripDurationError(startDate, endDate) : null),
-    [startDate, endDate],
+    [startDate, endDate]
   );
 
   const maxEndDate = useMemo(() => getMaxEndDate(startDate), [startDate]);
@@ -711,9 +728,11 @@ export function TripFormDialog({
       const nameIssue = validateTripName(name);
       if (nameIssue) errors.name = t(nameIssue.key, nameIssue.variables);
       const destinationIssue = validateMaxText(destination, 120);
-      if (destinationIssue) errors.destination = t(destinationIssue.key, destinationIssue.variables);
+      if (destinationIssue)
+        errors.destination = t(destinationIssue.key, destinationIssue.variables);
       const descriptionIssue = validateMaxText(description, 500);
-      if (descriptionIssue) errors.description = t(descriptionIssue.key, descriptionIssue.variables);
+      if (descriptionIssue)
+        errors.description = t(descriptionIssue.key, descriptionIssue.variables);
     }
     if (targetStep === 2) {
       if (!startDate || !endDate) {
@@ -1005,7 +1024,9 @@ export function TripFormDialog({
 
               <div className="space-y-2">
                 <Label htmlFor="baseCurrency">{t("common.tripCurrency")}</Label>
-                <p id="baseCurrency-help" className="text-xs text-muted-foreground">{t("copy.currencyForExpenses")}</p>
+                <p id="baseCurrency-help" className="text-xs text-muted-foreground">
+                  {t("copy.currencyForExpenses")}
+                </p>
                 <select
                   id="baseCurrency"
                   name="baseCurrency"
@@ -1045,10 +1066,14 @@ export function TripFormDialog({
 
           <DialogFooter>
             {step > 1 && (
-              <Button type="button" variant="outline" onClick={() => setStep((s) => s - 1)}>{t("common.back")}</Button>
+              <Button type="button" variant="outline" onClick={() => setStep((s) => s - 1)}>
+                {t("common.back")}
+              </Button>
             )}
             {step < 3 ? (
-              <Button type="button" onClick={handleNext}>{t("common.next")}</Button>
+              <Button type="button" onClick={handleNext}>
+                {t("common.next")}
+              </Button>
             ) : (
               <Button type="submit" variant="primary" disabled={saving || !visited.every(Boolean)}>
                 {uploadingCover ? "Uploading cover…" : saving ? "Saving trip…" : t("common.submit")}
@@ -1403,7 +1428,9 @@ function CoverImageField({
                 setCoverFile(null);
                 if (inputRef.current) inputRef.current.value = "";
               }}
-            >{t("copy.remove")}</Button>
+            >
+              {t("copy.remove")}
+            </Button>
           </div>
         ) : (
           <>
@@ -1632,7 +1659,9 @@ function NamedTravelersSection({
           setAdultCount((count) => Math.min(99, count + 1));
         }}
       >
-        <UserPlus />{t("common.addTravelerManually")}</Button>
+        <UserPlus />
+        {t("common.addTravelerManually")}
+      </Button>
     </fieldset>
   );
 }
@@ -1645,13 +1674,17 @@ function EmptyTrips({ onCreate, userId }: { onCreate: () => void; userId: string
         <div className="mx-auto grid size-14 place-items-center rounded-full bg-viatik-magenta/10 text-viatik-magenta">
           <Map className="size-7" />
         </div>
-        <Heading level={2} className="mt-5 text-xl font-semibold">{t("copy.yourNextTrip")}</Heading>
+        <Heading level={2} className="mt-5 text-xl font-semibold">
+          {t("copy.yourNextTrip")}
+        </Heading>
         <p className="mx-auto mt-2 max-w-md text-muted-foreground">
           Create a shared space for your itinerary, expenses, and favorite moments — or pull
           inspiration from the community below.
         </p>
         <Button className="mt-6" onClick={onCreate}>
-          <Plus className="size-5" />{t("common.createFirstTrip")}</Button>
+          <Plus className="size-5" />
+          {t("common.createFirstTrip")}
+        </Button>
       </div>
       {/* Community inspiration when there are no trips yet. */}
       <SuggestionsDrawer userId={userId} />

@@ -16,6 +16,78 @@ function getDb(): ViatikDatabase {
   return db;
 }
 
+export async function createTripInTransaction(
+  input: NewTrip,
+  ctx: TransactionContext
+): Promise<Trip> {
+  const now = new Date().toISOString();
+  const trip: Trip = {
+    id: input.id,
+    ownerId: input.ownerId,
+    name: input.name,
+    description: input.description ?? null,
+    destination: input.destination ?? null,
+    latitude: input.latitude ?? null,
+    longitude: input.longitude ?? null,
+    placeId: input.placeId ?? null,
+    timeZone: input.timeZone ?? null,
+    startDate: input.startDate ?? null,
+    endDate: input.endDate ?? null,
+    status: input.status ?? "planned",
+    startedAt: input.startedAt ?? null,
+    completedAt: input.completedAt ?? null,
+    cancelledAt: null,
+    coverImageUrl: input.coverImageUrl ?? null,
+    adultCount: input.adultCount ?? 1,
+    childCount: input.childCount ?? 0,
+    baseCurrency: input.baseCurrency ?? "USD",
+    crewConfirmed: false,
+    packingConfirmed: false,
+    personalCareConfirmed: false,
+    vaultNotNeeded: false,
+    createdBy: input.ownerId,
+    updatedBy: input.ownerId,
+    deletedBy: null,
+    restoredAt: null,
+    restoredBy: null,
+    statusChangedAt: now,
+    statusChangedBy: input.ownerId,
+    version: 1,
+    isPublic: input.isPublic ?? false,
+    shareSlug: input.shareSlug ?? null,
+    likesCount: input.likesCount ?? 0,
+    forkCount: input.forkCount ?? 0,
+    authorName: input.authorName ?? null,
+    createdAt: now,
+    updatedAt: now,
+    deletedAt: null,
+  };
+  assertValidTripDates(trip.startDate, trip.endDate);
+  await ctx.table<Trip>("trips").add(trip);
+  await append("trip", "insert", trip, { tx: ctx, baseUpdatedAt: null });
+
+  const membership: TripMember = {
+    id: crypto.randomUUID(),
+    tripId: trip.id,
+    userId: trip.ownerId,
+    role: "owner",
+    invitedBy: null,
+    joinedAt: now,
+    roleChangedAt: null,
+    roleChangedBy: null,
+    removedAt: null,
+    removedBy: null,
+    version: 1,
+    createdAt: now,
+    updatedAt: now,
+  };
+  await ctx.table<TripMember>("tripMembers").put(membership);
+  await append("tripMember", "insert", membership, { tx: ctx, baseUpdatedAt: null });
+
+  logger.debug("Trip created locally", { tripId: trip.id });
+  return trip;
+}
+
 /** Dexie-backed implementation of `TripRepository` — reads/writes IndexedDB only. */
 export class DexieTripRepository implements TripRepository {
   async list(): Promise<Trip[]> {
@@ -54,74 +126,9 @@ export class DexieTripRepository implements TripRepository {
 
   async create(input: NewTrip): Promise<Trip> {
     const db = getDb();
-    return TransactionContext.runInTransaction([db.trips, db.tripMembers], async (ctx) => {
-      const now = new Date().toISOString();
-      const trip: Trip = {
-        id: input.id,
-        ownerId: input.ownerId,
-        name: input.name,
-        description: input.description ?? null,
-        destination: input.destination ?? null,
-        latitude: input.latitude ?? null,
-        longitude: input.longitude ?? null,
-        placeId: input.placeId ?? null,
-        timeZone: input.timeZone ?? null,
-        startDate: input.startDate ?? null,
-        endDate: input.endDate ?? null,
-        status: input.status ?? "planned",
-        startedAt: input.startedAt ?? null,
-        completedAt: input.completedAt ?? null,
-        cancelledAt: null,
-        coverImageUrl: input.coverImageUrl ?? null,
-        adultCount: input.adultCount ?? 1,
-        childCount: input.childCount ?? 0,
-        baseCurrency: input.baseCurrency ?? "USD",
-        crewConfirmed: false,
-        packingConfirmed: false,
-        personalCareConfirmed: false,
-        vaultNotNeeded: false,
-        createdBy: input.ownerId,
-        updatedBy: input.ownerId,
-        deletedBy: null,
-        restoredAt: null,
-        restoredBy: null,
-        statusChangedAt: now,
-        statusChangedBy: input.ownerId,
-        version: 1,
-        isPublic: input.isPublic ?? false,
-        shareSlug: input.shareSlug ?? null,
-        likesCount: input.likesCount ?? 0,
-        forkCount: input.forkCount ?? 0,
-        authorName: input.authorName ?? null,
-        createdAt: now,
-        updatedAt: now,
-        deletedAt: null,
-      };
-      assertValidTripDates(trip.startDate, trip.endDate);
-      await ctx.table<Trip>("trips").add(trip);
-      await append("trip", "insert", trip, { tx: ctx, baseUpdatedAt: null });
-
-      const membership: TripMember = {
-        id: crypto.randomUUID(),
-        tripId: trip.id,
-        userId: trip.ownerId,
-        role: "owner",
-        invitedBy: null,
-        joinedAt: now,
-        roleChangedAt: null,
-        roleChangedBy: null,
-        removedAt: null,
-        removedBy: null,
-        version: 1,
-        createdAt: now,
-        updatedAt: now,
-      };
-      await ctx.table<TripMember>("tripMembers").put(membership);
-      await append("tripMember", "insert", membership, { tx: ctx, baseUpdatedAt: null });
-
-      logger.debug("Trip created locally", { tripId: trip.id });
-      return trip;
-    });
+    return TransactionContext.runInTransaction([db.trips, db.tripMembers], (ctx) =>
+      createTripInTransaction(input, ctx)
+    );
   }
 
   async update(id: string, patch: Partial<Omit<Trip, "id">>): Promise<Trip> {
