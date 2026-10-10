@@ -12,18 +12,22 @@ afterEach(async () => {
 });
 
 describe("voice notes migrations", () => {
-  it("retains the transcript and staged draft stores in v46", async () => {
+  it("retains the transcript and staged draft stores in v47", async () => {
     const name = `media-transcripts-${crypto.randomUUID()}`;
     databaseNames.push(name);
     const db = new ViatikDatabase(name);
 
     try {
       await db.open();
-      expect(db.verno).toBe(46);
+      expect(db.verno).toBe(47);
       expect(db.mediaTranscripts.schema.primKey.name).toBe("mediaId");
-      expect(db.mediaTranscripts.schema.indexes.map((index) => index.name)).toEqual(expect.arrayContaining(["tripId", "status", "updatedAt"]));
+      expect(db.mediaTranscripts.schema.indexes.map((index) => index.name)).toEqual(
+        expect.arrayContaining(["tripId", "status", "updatedAt"])
+      );
       expect(db.stagedTripMedia.schema.primKey.name).toBe("id");
-      expect(db.stagedTripMedia.schema.indexes.map((index) => index.name)).toEqual(expect.arrayContaining(["tripId", "createdBy", "createdAt", "[tripId+createdAt]"]));
+      expect(db.stagedTripMedia.schema.indexes.map((index) => index.name)).toEqual(
+        expect.arrayContaining(["tripId", "createdBy", "createdAt", "[tripId+createdAt]"])
+      );
     } finally {
       db.close();
     }
@@ -62,8 +66,12 @@ describe("voice notes migrations", () => {
     const db = new ViatikDatabase(name);
     try {
       await db.open();
-      expect(await db.tripMedia.get("media-1")).toEqual(expect.objectContaining({ kind: "photo", durationMs: null }));
-      expect(await db.tripNotes.get("note-1")).toEqual(expect.objectContaining({ audioMediaId: null, content: "Dinner at 8" }));
+      expect(await db.tripMedia.get("media-1")).toEqual(
+        expect.objectContaining({ kind: "photo", durationMs: null })
+      );
+      expect(await db.tripNotes.get("note-1")).toEqual(
+        expect.objectContaining({ audioMediaId: null, content: "Dinner at 8" })
+      );
       expect(await db.tripMedia.where("kind").equals("photo").count()).toBe(1);
     } finally {
       db.close();
@@ -80,12 +88,36 @@ describe("voice notes migrations", () => {
     });
     await legacy.open();
     await legacy.table("tripMedia").bulkAdd([
-      { id: "uploaded-photo", tripId: "trip-1", kind: "photo", uploadStatus: "uploaded", updatedAt: "2026-01-01", deletedAt: null },
-      { id: "pending-photo", tripId: "trip-1", kind: "photo", uploadStatus: "pending", updatedAt: "2026-01-01", deletedAt: null },
-      { id: "audio", tripId: "trip-1", kind: "audio", uploadStatus: "uploaded", updatedAt: "2026-01-01", deletedAt: null },
+      {
+        id: "uploaded-photo",
+        tripId: "trip-1",
+        kind: "photo",
+        uploadStatus: "uploaded",
+        updatedAt: "2026-01-01",
+        deletedAt: null,
+      },
+      {
+        id: "pending-photo",
+        tripId: "trip-1",
+        kind: "photo",
+        uploadStatus: "pending",
+        updatedAt: "2026-01-01",
+        deletedAt: null,
+      },
+      {
+        id: "audio",
+        tripId: "trip-1",
+        kind: "audio",
+        uploadStatus: "uploaded",
+        updatedAt: "2026-01-01",
+        deletedAt: null,
+      },
     ]);
     await legacy.table("stagedTripMedia").add({
-      id: "draft-1", tripId: "trip-1", createdBy: "user-1", createdAt: "2026-01-01",
+      id: "draft-1",
+      tripId: "trip-1",
+      createdBy: "user-1",
+      createdAt: "2026-01-01",
     });
     legacy.close();
 
