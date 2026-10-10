@@ -1,6 +1,22 @@
 import Dexie, { type EntityTable } from "dexie";
 
-import type { Activity, ActivityPersonalBudget, Contact, Decision, DecisionOption, DecisionVote, Expense, ExpenseSettlement, ExpenseShare, Trip, TripBudget, TripInvitation, TripMember, TripTraveler, UserWallet } from "@/features/domain/entities";
+import type {
+  Activity,
+  ActivityPersonalBudget,
+  Contact,
+  Decision,
+  DecisionOption,
+  DecisionVote,
+  Expense,
+  ExpenseSettlement,
+  ExpenseShare,
+  Trip,
+  TripBudget,
+  TripInvitation,
+  TripMember,
+  TripTraveler,
+  UserWallet,
+} from "@/features/domain/entities";
 import type { MediaTranscript, TripMedia } from "@/features/domain/entities-media";
 import type { StagedTripMedia } from "@/features/domain/entities-staged-media";
 import { MAX_MINOR_UNITS } from "@/features/domain/money";
@@ -20,17 +36,29 @@ import type { JournalDayEntry } from "@/features/journal/domain/journal-types";
 import type { TripNote } from "@/features/trips/domain/trip-note";
 import type { TripTask } from "@/features/trips/domain/trip-task";
 import type { DailyStepCount } from "@/features/steps/domain/step-types";
+import type { TripIdea, TripSavingsPlan } from "@/features/trip-planner/domain/trip-planner-types";
 import type { OutboxMutation, SyncConflict, SyncLease, SyncMetadata } from "@/lib/sync/types";
 
-function migrateMinorUnits(record: Record<string, unknown>, legacyField: string, minorField: string): void {
+function migrateMinorUnits(
+  record: Record<string, unknown>,
+  legacyField: string,
+  minorField: string
+): void {
   const existing = record[minorField];
   if (existing !== undefined) {
-    if (typeof existing !== "bigint" || existing < 0n || existing > MAX_MINOR_UNITS) throw new Error(`Cannot migrate invalid ${minorField} value`);
+    if (typeof existing !== "bigint" || existing < 0n || existing > MAX_MINOR_UNITS)
+      throw new Error(`Cannot migrate invalid ${minorField} value`);
     return;
   }
   const value = record[legacyField];
   if (value === undefined) return;
-  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0 || value > Number(MAX_MINOR_UNITS)) throw new Error(`Cannot migrate invalid ${legacyField} value`);
+  if (
+    typeof value !== "number" ||
+    !Number.isSafeInteger(value) ||
+    value < 0 ||
+    value > Number(MAX_MINOR_UNITS)
+  )
+    throw new Error(`Cannot migrate invalid ${legacyField} value`);
   record[minorField] = BigInt(value);
   delete record[legacyField];
 }
@@ -69,6 +97,8 @@ export class ViatikDatabase extends Dexie {
   userWallets!: EntityTable<UserWallet, "id">;
   /** Local-only unified trip budget (not synced via the outbox). */
   tripBudgets!: EntityTable<TripBudget, "id">;
+  tripIdeas!: EntityTable<TripIdea, "id">;
+  tripSavingsPlans!: EntityTable<TripSavingsPlan, "id">;
   /** Local-only mirror of the signed-in user's own profile (not synced). */
   profiles!: EntityTable<LocalProfile, "id">;
   /** Local-only dropped map pins (not synced — device-local annotations). */
@@ -116,182 +146,267 @@ export class ViatikDatabase extends Dexie {
       tripMedia: "id, tripId, activityId, updatedAt, deletedAt",
     });
 
-    this.version(4).stores({
-      tripMedia: "id, tripId, activityId, uploadStatus, updatedAt, deletedAt",
-      tripInvitations: "id, tripId, email, status, updatedAt",
-      expenseSettlements: "id, tripId, fromUserId, toUserId, updatedAt, deletedAt",
-      syncMetadata: "key",
-      syncConflicts: "id, tripId, entityType, resolvedAt",
-    }).upgrade(async (transaction) => {
-      await transaction.table("tripMedia").toCollection().modify((media) => {
-        media.storagePath ??= `${media.tripId}/${media.id}`;
-        media.contentType ??= media.blob?.type || "image/jpeg";
-        media.byteSize ??= media.blob?.size || 0;
-        media.createdBy ??= "";
-        media.uploadStatus ??= media.uploadedUrl ? "uploaded" : "pending";
-        media.uploadProgress ??= media.uploadedUrl ? 100 : 0;
-        media.uploadError ??= null;
-        media.signedUrlExpiresAt ??= null;
-        media.uploadAttempts ??= 0;
-        media.nextUploadAt ??= null;
+    this.version(4)
+      .stores({
+        tripMedia: "id, tripId, activityId, uploadStatus, updatedAt, deletedAt",
+        tripInvitations: "id, tripId, email, status, updatedAt",
+        expenseSettlements: "id, tripId, fromUserId, toUserId, updatedAt, deletedAt",
+        syncMetadata: "key",
+        syncConflicts: "id, tripId, entityType, resolvedAt",
+      })
+      .upgrade(async (transaction) => {
+        await transaction
+          .table("tripMedia")
+          .toCollection()
+          .modify((media) => {
+            media.storagePath ??= `${media.tripId}/${media.id}`;
+            media.contentType ??= media.blob?.type || "image/jpeg";
+            media.byteSize ??= media.blob?.size || 0;
+            media.createdBy ??= "";
+            media.uploadStatus ??= media.uploadedUrl ? "uploaded" : "pending";
+            media.uploadProgress ??= media.uploadedUrl ? 100 : 0;
+            media.uploadError ??= null;
+            media.signedUrlExpiresAt ??= null;
+            media.uploadAttempts ??= 0;
+            media.nextUploadAt ??= null;
+          });
       });
-    });
 
-    this.version(5).stores({
-      outboxMutations: "id, tripId, userId, entityType, createdAt",
-    }).upgrade(async (transaction) => {
-      const outbox = transaction.table("outboxMutations");
-      const mutations = await outbox.toArray();
-      for (const mutation of mutations) {
-        if (mutation.userId) continue;
-        const trip = await transaction.table("trips").get(mutation.tripId);
-        mutation.userId = trip?.ownerId ?? null;
-      }
-      await outbox.bulkPut(mutations);
-    });
-
-    this.version(6).stores({}).upgrade(async (transaction) => {
-      await transaction.table("trips").toCollection().modify((trip) => {
-        trip.adultCount ??= 1;
-        trip.childCount ??= 0;
+    this.version(5)
+      .stores({
+        outboxMutations: "id, tripId, userId, entityType, createdAt",
+      })
+      .upgrade(async (transaction) => {
+        const outbox = transaction.table("outboxMutations");
+        const mutations = await outbox.toArray();
+        for (const mutation of mutations) {
+          if (mutation.userId) continue;
+          const trip = await transaction.table("trips").get(mutation.tripId);
+          mutation.userId = trip?.ownerId ?? null;
+        }
+        await outbox.bulkPut(mutations);
       });
-    });
+
+    this.version(6)
+      .stores({})
+      .upgrade(async (transaction) => {
+        await transaction
+          .table("trips")
+          .toCollection()
+          .modify((trip) => {
+            trip.adultCount ??= 1;
+            trip.childCount ??= 0;
+          });
+      });
 
     this.version(7).stores({
       contacts: "id, ownerId, updatedAt, deletedAt",
       tripTravelers: "id, tripId, contactId, [tripId+contactId], updatedAt, deletedAt",
     });
 
-    this.version(8).stores({}).upgrade(async (transaction) => {
-      await transaction.table("contacts").toCollection().modify((contact) => {
-        contact.relationship ??= "other";
-        contact.travelerType ??= "adult";
-        contact.birthDate ??= null;
-        contact.notes ??= null;
+    this.version(8)
+      .stores({})
+      .upgrade(async (transaction) => {
+        await transaction
+          .table("contacts")
+          .toCollection()
+          .modify((contact) => {
+            contact.relationship ??= "other";
+            contact.travelerType ??= "adult";
+            contact.birthDate ??= null;
+            contact.notes ??= null;
+          });
       });
-    });
 
-    this.version(9).stores({}).upgrade(async (transaction) => {
-      await transaction.table("outboxMutations").toCollection().modify((mutation) => {
-        if (mutation.lastError?.includes("row-level security")) {
-          mutation.attempts = 0;
-          mutation.lastError = null;
-        }
+    this.version(9)
+      .stores({})
+      .upgrade(async (transaction) => {
+        await transaction
+          .table("outboxMutations")
+          .toCollection()
+          .modify((mutation) => {
+            if (mutation.lastError?.includes("row-level security")) {
+              mutation.attempts = 0;
+              mutation.lastError = null;
+            }
+          });
       });
-    });
 
-    this.version(10).stores({
-      contacts: "id, ownerId, linkedProfileId, updatedAt, deletedAt",
-    }).upgrade(async (transaction) => {
-      await transaction.table("contacts").toCollection().modify((contact) => {
-        contact.linkedAvatarUrl ??= null;
-        contact.linkedHandle ??= null;
-        contact.emergencyContactName ??= null;
-        contact.emergencyContactRelationship ??= null;
-        contact.emergencyContactPhone ??= null;
-        contact.dietaryRestrictions ??= [];
-        contact.allergies ??= [];
-        contact.passportIssuingCountry ??= null;
-        contact.passportExpiresOn ??= null;
-        contact.preferredCurrency ??= null;
-        contact.preferredLanguage ??= null;
+    this.version(10)
+      .stores({
+        contacts: "id, ownerId, linkedProfileId, updatedAt, deletedAt",
+      })
+      .upgrade(async (transaction) => {
+        await transaction
+          .table("contacts")
+          .toCollection()
+          .modify((contact) => {
+            contact.linkedAvatarUrl ??= null;
+            contact.linkedHandle ??= null;
+            contact.emergencyContactName ??= null;
+            contact.emergencyContactRelationship ??= null;
+            contact.emergencyContactPhone ??= null;
+            contact.dietaryRestrictions ??= [];
+            contact.allergies ??= [];
+            contact.passportIssuingCountry ??= null;
+            contact.passportExpiresOn ??= null;
+            contact.preferredCurrency ??= null;
+            contact.preferredLanguage ??= null;
+          });
       });
-    });
 
     this.version(11).stores({
       syncLeases: "key, expiresAt",
     });
 
-    this.version(12).stores({}).upgrade(async (transaction) => {
-      await transaction.table("expenses").toCollection().modify((expense) => migrateMinorUnits(expense, "amount", "amountMinor"));
-      await transaction.table("expenseShares").toCollection().modify((share) => migrateMinorUnits(share, "shareAmount", "shareAmountMinor"));
-      await transaction.table("expenseSettlements").toCollection().modify((settlement) => migrateMinorUnits(settlement, "amount", "amountMinor"));
-      await transaction.table("outboxMutations").toCollection().modify((mutation) => {
-        if (!mutation.payload) return;
-        if (mutation.entityType === "expense" || mutation.entityType === "settlement") migrateMinorUnits(mutation.payload, "amount", "amountMinor");
-        if (mutation.entityType === "expenseShare") migrateMinorUnits(mutation.payload, "shareAmount", "shareAmountMinor");
+    this.version(12)
+      .stores({})
+      .upgrade(async (transaction) => {
+        await transaction
+          .table("expenses")
+          .toCollection()
+          .modify((expense) => migrateMinorUnits(expense, "amount", "amountMinor"));
+        await transaction
+          .table("expenseShares")
+          .toCollection()
+          .modify((share) => migrateMinorUnits(share, "shareAmount", "shareAmountMinor"));
+        await transaction
+          .table("expenseSettlements")
+          .toCollection()
+          .modify((settlement) => migrateMinorUnits(settlement, "amount", "amountMinor"));
+        await transaction
+          .table("outboxMutations")
+          .toCollection()
+          .modify((mutation) => {
+            if (!mutation.payload) return;
+            if (mutation.entityType === "expense" || mutation.entityType === "settlement")
+              migrateMinorUnits(mutation.payload, "amount", "amountMinor");
+            if (mutation.entityType === "expenseShare")
+              migrateMinorUnits(mutation.payload, "shareAmount", "shareAmountMinor");
+          });
       });
-    });
 
     this.version(13).stores({
       vaultKeysets: "id, ownerId, updatedAt",
       vaultEntries: "id, tripId, ownerId, [tripId+ownerId], updatedAt, deletedAt",
     });
 
-    this.version(14).stores({
-      tripWeatherForecasts: "id, [tripId+locationRevision]",
-    }).upgrade(async (transaction) => {
-      await transaction.table("trips").toCollection().modify((trip: Record<string, unknown>) => {
-        trip.latitude ??= null;
-        trip.longitude ??= null;
-        trip.placeId ??= null;
-        trip.timeZone ??= null;
+    this.version(14)
+      .stores({
+        tripWeatherForecasts: "id, [tripId+locationRevision]",
+      })
+      .upgrade(async (transaction) => {
+        await transaction
+          .table("trips")
+          .toCollection()
+          .modify((trip: Record<string, unknown>) => {
+            trip.latitude ??= null;
+            trip.longitude ??= null;
+            trip.placeId ??= null;
+            trip.timeZone ??= null;
+          });
       });
-    });
 
-    this.version(15).stores({}).upgrade(async (transaction) => {
-      await transaction.table("contacts").toCollection().modify((contact: Record<string, unknown>) => {
-        contact.avatarUrl ??= null;
+    this.version(15)
+      .stores({})
+      .upgrade(async (transaction) => {
+        await transaction
+          .table("contacts")
+          .toCollection()
+          .modify((contact: Record<string, unknown>) => {
+            contact.avatarUrl ??= null;
+          });
       });
-    });
 
-    this.version(16).stores({}).upgrade(async (transaction) => {
-      await transaction.table("contacts").toCollection().modify((contact: Record<string, unknown>) => {
-        contact.avatarSeed ??= null;
+    this.version(16)
+      .stores({})
+      .upgrade(async (transaction) => {
+        await transaction
+          .table("contacts")
+          .toCollection()
+          .modify((contact: Record<string, unknown>) => {
+            contact.avatarSeed ??= null;
+          });
       });
-    });
 
     // v17: bidirectional mutual `connections` graph. Existing (unidirectional)
     // contacts become `unverified_offline` — no remote edge is implied.
-    this.version(17).stores({
-      contacts: "id, ownerId, linkedProfileId, connectionStatus, updatedAt, deletedAt",
-    }).upgrade(async (transaction) => {
-      await transaction.table("contacts").toCollection().modify((contact: Record<string, unknown>) => {
-        if (contact.connectionStatus === undefined) contact.connectionStatus = "unverified_offline";
-        if (contact.connectionId === undefined) contact.connectionId = null;
-        if (contact.connectionDirection === undefined) contact.connectionDirection = null;
+    this.version(17)
+      .stores({
+        contacts: "id, ownerId, linkedProfileId, connectionStatus, updatedAt, deletedAt",
+      })
+      .upgrade(async (transaction) => {
+        await transaction
+          .table("contacts")
+          .toCollection()
+          .modify((contact: Record<string, unknown>) => {
+            if (contact.connectionStatus === undefined)
+              contact.connectionStatus = "unverified_offline";
+            if (contact.connectionId === undefined) contact.connectionId = null;
+            if (contact.connectionDirection === undefined) contact.connectionDirection = null;
+          });
       });
-    });
 
     // v18: Phase 2A finance — new wallet/budget stores plus added expense &
     // share columns. Existing records are backfilled with safe defaults.
-    this.version(18).stores({
-      expenses: "id, tripId, activityId, date, [tripId+date], updatedAt, deletedAt",
-      expenseShares: "id, expenseId, userId, splitType, [expenseId+userId]",
-      userWallets: "id, tripId, userId, [tripId+userId], updatedAt",
-      dailyBudgetOverrides: "id, tripId, date, [tripId+date], updatedAt",
-    }).upgrade(async (transaction) => {
-      await transaction.table("trips").toCollection().modify((trip: Record<string, unknown>) => {
-        trip.totalBudgetMinor ??= null;
+    this.version(18)
+      .stores({
+        expenses: "id, tripId, activityId, date, [tripId+date], updatedAt, deletedAt",
+        expenseShares: "id, expenseId, userId, splitType, [expenseId+userId]",
+        userWallets: "id, tripId, userId, [tripId+userId], updatedAt",
+        dailyBudgetOverrides: "id, tripId, date, [tripId+date], updatedAt",
+      })
+      .upgrade(async (transaction) => {
+        await transaction
+          .table("trips")
+          .toCollection()
+          .modify((trip: Record<string, unknown>) => {
+            trip.totalBudgetMinor ??= null;
+          });
+        await transaction
+          .table("expenses")
+          .toCollection()
+          .modify((expense: Record<string, unknown>) => {
+            expense.exchangeRateToBase ??= null;
+            expense.categoryId ??= null;
+            expense.date ??= String(expense.createdAt ?? "").slice(0, 10);
+          });
+        await transaction
+          .table("expenseShares")
+          .toCollection()
+          .modify((share: Record<string, unknown>) => {
+            share.splitType ??= "equal";
+          });
       });
-      await transaction.table("expenses").toCollection().modify((expense: Record<string, unknown>) => {
-        expense.exchangeRateToBase ??= null;
-        expense.categoryId ??= null;
-        expense.date ??= String(expense.createdAt ?? "").slice(0, 10);
-      });
-      await transaction.table("expenseShares").toCollection().modify((share: Record<string, unknown>) => {
-        share.splitType ??= "equal";
-      });
-    });
 
     // v19: Phase 2B planned-budget tracking — itinerary activities gain an
     // optional estimated cost (in the trip's base currency, minor units).
-    this.version(19).stores({}).upgrade(async (transaction) => {
-      await transaction.table("activities").toCollection().modify((activity: Record<string, unknown>) => {
-        activity.estimatedCostMinor ??= null;
+    this.version(19)
+      .stores({})
+      .upgrade(async (transaction) => {
+        await transaction
+          .table("activities")
+          .toCollection()
+          .modify((activity: Record<string, unknown>) => {
+            activity.estimatedCostMinor ??= null;
+          });
       });
-    });
 
     // v20: Smart import — trip media gains a capture date (`takenAt`) so the
     // gallery can group/filter photos by the day they were taken. The index is
     // additive (inserts `takenAt`); existing rows backfill to `null`.
-    this.version(20).stores({
-      tripMedia: "id, tripId, activityId, uploadStatus, takenAt, updatedAt, deletedAt",
-    }).upgrade(async (transaction) => {
-      await transaction.table("tripMedia").toCollection().modify((media: Record<string, unknown>) => {
-        if (media.takenAt === undefined) media.takenAt = null;
+    this.version(20)
+      .stores({
+        tripMedia: "id, tripId, activityId, uploadStatus, takenAt, updatedAt, deletedAt",
+      })
+      .upgrade(async (transaction) => {
+        await transaction
+          .table("tripMedia")
+          .toCollection()
+          .modify((media: Record<string, unknown>) => {
+            if (media.takenAt === undefined) media.takenAt = null;
+          });
       });
-    });
 
     // v21: local-only `profiles` mirror so safety data (emergency contact,
     // passport) stays available offline. Not synced via the outbox.
@@ -317,7 +432,8 @@ export class ViatikDatabase extends Dexie {
     // private per-device to-dos (like `profiles`/`tripPins`), indexed by trip
     // and category so the list view can group and filter reactively.
     this.version(24).stores({
-      packingItems: "id, tripId, category, isPacked, [tripId+category], position, updatedAt, deletedAt",
+      packingItems:
+        "id, tripId, category, isPacked, [tripId+category], position, updatedAt, deletedAt",
     });
 
     // v25: local-only `travelDocuments` for the Travel Health & Document Expiry
@@ -353,7 +469,8 @@ export class ViatikDatabase extends Dexie {
     // and trains are device-local (like `packingItems`/`polls`); live status is
     // cached onto the segment. Indexed by trip, day, mode, and departure time.
     this.version(29).stores({
-      transitSegments: "id, tripId, dayDate, mode, scheduledDeparture, [tripId+dayDate], updatedAt, deletedAt",
+      transitSegments:
+        "id, tripId, dayDate, mode, scheduledDeparture, [tripId+dayDate], updatedAt, deletedAt",
     });
 
     this.version(30).stores({
@@ -366,62 +483,78 @@ export class ViatikDatabase extends Dexie {
     // target + per-category allocations), swaps the free-form `categoryId` on
     // expenses for typed `category`/`subcategory` keys, and adds explicit
     // settlement tracking (status + settledAt) to expense shares & settlements.
-    this.version(31).stores({
-      dailyBudgetOverrides: null,
-      tripBudgets: "id, tripId, updatedAt, deletedAt",
-      expenses: "id, tripId, activityId, date, category, [tripId+date], updatedAt, deletedAt",
-      expenseShares: "id, expenseId, userId, splitType, settlementStatus, [expenseId+userId]",
-      expenseSettlements: "id, tripId, fromUserId, toUserId, status, updatedAt, deletedAt",
-    }).upgrade(async (transaction) => {
-      const now = new Date().toISOString();
+    this.version(31)
+      .stores({
+        dailyBudgetOverrides: null,
+        tripBudgets: "id, tripId, updatedAt, deletedAt",
+        expenses: "id, tripId, activityId, date, category, [tripId+date], updatedAt, deletedAt",
+        expenseShares: "id, expenseId, userId, splitType, settlementStatus, [expenseId+userId]",
+        expenseSettlements: "id, tripId, fromUserId, toUserId, status, updatedAt, deletedAt",
+      })
+      .upgrade(async (transaction) => {
+        const now = new Date().toISOString();
 
-      // Fold each trip's old `totalBudgetMinor` into a `TripBudget`, then drop
-      // the legacy column. Per-day overrides have no direct analogue in the
-      // unified model (they become the single optional daily target), so the
-      // `dailyBudgetOverrides` table is removed as part of the consolidation.
-      const tripRows = await transaction.table<Record<string, unknown>, string>("trips").toArray();
-      const budgets: Array<Record<string, unknown>> = [];
-      for (const row of tripRows) {
-        const raw = row.totalBudgetMinor;
-        let totalBudgetMinor = 0n;
-        if (raw != null) {
-          if (typeof raw === "bigint" && raw >= 0n) totalBudgetMinor = raw;
-          else if (typeof raw === "number" && Number.isSafeInteger(raw) && raw >= 0) totalBudgetMinor = BigInt(raw);
+        // Fold each trip's old `totalBudgetMinor` into a `TripBudget`, then drop
+        // the legacy column. Per-day overrides have no direct analogue in the
+        // unified model (they become the single optional daily target), so the
+        // `dailyBudgetOverrides` table is removed as part of the consolidation.
+        const tripRows = await transaction
+          .table<Record<string, unknown>, string>("trips")
+          .toArray();
+        const budgets: Array<Record<string, unknown>> = [];
+        for (const row of tripRows) {
+          const raw = row.totalBudgetMinor;
+          let totalBudgetMinor = 0n;
+          if (raw != null) {
+            if (typeof raw === "bigint" && raw >= 0n) totalBudgetMinor = raw;
+            else if (typeof raw === "number" && Number.isSafeInteger(raw) && raw >= 0)
+              totalBudgetMinor = BigInt(raw);
+          }
+          delete row.totalBudgetMinor;
+          budgets.push({
+            id: crypto.randomUUID(),
+            tripId: String(row.id),
+            totalBudgetMinor,
+            dailyTargetMinor: null,
+            categoryAllocations: [],
+            createdBy: String(row.ownerId ?? ""),
+            createdAt: now,
+            updatedAt: now,
+            deletedAt: null,
+          });
         }
-        delete row.totalBudgetMinor;
-        budgets.push({
-          id: crypto.randomUUID(),
-          tripId: String(row.id),
-          totalBudgetMinor,
-          dailyTargetMinor: null,
-          categoryAllocations: [],
-          createdBy: String(row.ownerId ?? ""),
-          createdAt: now,
-          updatedAt: now,
-          deletedAt: null,
-        });
-      }
-      if (tripRows.length) await transaction.table<Record<string, unknown>, string>("trips").bulkPut(tripRows);
-      if (budgets.length) await transaction.table<Record<string, unknown>, string>("tripBudgets").bulkPut(budgets);
+        if (tripRows.length)
+          await transaction.table<Record<string, unknown>, string>("trips").bulkPut(tripRows);
+        if (budgets.length)
+          await transaction.table<Record<string, unknown>, string>("tripBudgets").bulkPut(budgets);
 
-      // Typed spending categories: legacy free-form category_id strings (e.g.
-      // "Meals") don't map cleanly onto the typed set, so they default to null
-      // and can be re-classified from the UI.
-      await transaction.table("expenses").toCollection().modify((expense: Record<string, unknown>) => {
-        if (expense.category === undefined) expense.category = null;
-        if (expense.subcategory === undefined) expense.subcategory = null;
-        if ("categoryId" in expense) delete expense.categoryId;
+        // Typed spending categories: legacy free-form category_id strings (e.g.
+        // "Meals") don't map cleanly onto the typed set, so they default to null
+        // and can be re-classified from the UI.
+        await transaction
+          .table("expenses")
+          .toCollection()
+          .modify((expense: Record<string, unknown>) => {
+            if (expense.category === undefined) expense.category = null;
+            if (expense.subcategory === undefined) expense.subcategory = null;
+            if ("categoryId" in expense) delete expense.categoryId;
+          });
+        await transaction
+          .table("expenseShares")
+          .toCollection()
+          .modify((share: Record<string, unknown>) => {
+            if (share.paidBy === undefined) share.paidBy = "";
+            if (share.settlementStatus === undefined) share.settlementStatus = "pending";
+            if (share.settledAt === undefined) share.settledAt = null;
+          });
+        await transaction
+          .table("expenseSettlements")
+          .toCollection()
+          .modify((settlement: Record<string, unknown>) => {
+            if (settlement.status === undefined) settlement.status = "pending";
+            if (settlement.settledAt === undefined) settlement.settledAt = null;
+          });
       });
-      await transaction.table("expenseShares").toCollection().modify((share: Record<string, unknown>) => {
-        if (share.paidBy === undefined) share.paidBy = "";
-        if (share.settlementStatus === undefined) share.settlementStatus = "pending";
-        if (share.settledAt === undefined) share.settledAt = null;
-      });
-      await transaction.table("expenseSettlements").toCollection().modify((settlement: Record<string, unknown>) => {
-        if (settlement.status === undefined) settlement.status = "pending";
-        if (settlement.settledAt === undefined) settlement.settledAt = null;
-      });
-    });
 
     // v32: trip lifecycle. Adds an explicit status (planned | active |
     // completed | cancelled) with optional startedAt/completedAt timestamps.
@@ -429,17 +562,24 @@ export class ViatikDatabase extends Dexie {
     // becomes "completed"; everything else stays "planned". The date-derived
     // fallback in resolveTripStatus covers in-flight nuance without ever
     // flipping the stored status automatically.
-    this.version(32).stores({}).upgrade(async (transaction) => {
-      const today = new Date().toISOString().slice(0, 10);
-      await transaction.table("trips").toCollection().modify((trip: Record<string, unknown>) => {
-        if (trip.status === undefined) {
-          trip.status =
-            trip.endDate && typeof trip.endDate === "string" && trip.endDate < today ? "completed" : "planned";
-          trip.startedAt = trip.startedAt ?? null;
-          trip.completedAt = trip.completedAt ?? null;
-        }
+    this.version(32)
+      .stores({})
+      .upgrade(async (transaction) => {
+        const today = new Date().toISOString().slice(0, 10);
+        await transaction
+          .table("trips")
+          .toCollection()
+          .modify((trip: Record<string, unknown>) => {
+            if (trip.status === undefined) {
+              trip.status =
+                trip.endDate && typeof trip.endDate === "string" && trip.endDate < today
+                  ? "completed"
+                  : "planned";
+              trip.startedAt = trip.startedAt ?? null;
+              trip.completedAt = trip.completedAt ?? null;
+            }
+          });
       });
-    });
 
     this.version(33).stores({
       activityPersonalBudgets: "id, activityId, tripId, userId, [activityId+userId], updatedAt",
@@ -465,45 +605,69 @@ export class ViatikDatabase extends Dexie {
 
     // v37: settlement ledger date. Creating a settlement is the repayment;
     // expenses stay immutable. Backfill date from createdAt.
-    this.version(37).stores({
-      expenseSettlements: "id, tripId, fromUserId, toUserId, date, updatedAt, deletedAt",
-    }).upgrade(async (transaction) => {
-      await transaction.table("expenseSettlements").toCollection().modify((settlement: Record<string, unknown>) => {
-        if (typeof settlement.date !== "string" || !settlement.date) {
-          const createdAt = typeof settlement.createdAt === "string" ? settlement.createdAt : new Date().toISOString();
-          settlement.date = createdAt.slice(0, 10);
-        }
-        if (settlement.status === "pending" && settlement.deletedAt == null) {
-          settlement.status = "settled";
-          settlement.settledAt = settlement.settledAt ?? settlement.createdAt ?? new Date().toISOString();
-        }
+    this.version(37)
+      .stores({
+        expenseSettlements: "id, tripId, fromUserId, toUserId, date, updatedAt, deletedAt",
+      })
+      .upgrade(async (transaction) => {
+        await transaction
+          .table("expenseSettlements")
+          .toCollection()
+          .modify((settlement: Record<string, unknown>) => {
+            if (typeof settlement.date !== "string" || !settlement.date) {
+              const createdAt =
+                typeof settlement.createdAt === "string"
+                  ? settlement.createdAt
+                  : new Date().toISOString();
+              settlement.date = createdAt.slice(0, 10);
+            }
+            if (settlement.status === "pending" && settlement.deletedAt == null) {
+              settlement.status = "settled";
+              settlement.settledAt =
+                settlement.settledAt ?? settlement.createdAt ?? new Date().toISOString();
+            }
+          });
       });
-    });
 
     // v38: provenance on the local-only exchange-rate cache. Expense snapshots
     // stay on `exchangeRateToBase`; this flag is not synced.
-    this.version(38).stores({}).upgrade(async (transaction) => {
-      await transaction.table("currencyRates").toCollection().modify((rate: Record<string, unknown>) => {
-        if (rate.source !== "live" && rate.source !== "manual" && rate.source !== "default") {
-          rate.source = "default";
-        }
+    this.version(38)
+      .stores({})
+      .upgrade(async (transaction) => {
+        await transaction
+          .table("currencyRates")
+          .toCollection()
+          .modify((rate: Record<string, unknown>) => {
+            if (rate.source !== "live" && rate.source !== "manual" && rate.source !== "default") {
+              rate.source = "default";
+            }
+          });
       });
-    });
 
     // v39: return-home packing checks. Local-only, and independent of outbound `isPacked`.
-    this.version(39).stores({}).upgrade(async (transaction) => {
-      await transaction.table("packingItems").toCollection().modify((item: Record<string, unknown>) => {
-        if (typeof item.packedForReturn !== "boolean") item.packedForReturn = false;
+    this.version(39)
+      .stores({})
+      .upgrade(async (transaction) => {
+        await transaction
+          .table("packingItems")
+          .toCollection()
+          .modify((item: Record<string, unknown>) => {
+            if (typeof item.packedForReturn !== "boolean") item.packedForReturn = false;
+          });
       });
-    });
 
     // v40: freeze the settlement exchange rate. Null means the row is already
     // in the trip base currency, which is how every existing settlement was logged.
-    this.version(40).stores({}).upgrade(async (transaction) => {
-      await transaction.table("expenseSettlements").toCollection().modify((settlement: Record<string, unknown>) => {
-        if (settlement.exchangeRateToBase == null) settlement.exchangeRateToBase = null;
+    this.version(40)
+      .stores({})
+      .upgrade(async (transaction) => {
+        await transaction
+          .table("expenseSettlements")
+          .toCollection()
+          .modify((settlement: Record<string, unknown>) => {
+            if (settlement.exchangeRateToBase == null) settlement.exchangeRateToBase = null;
+          });
       });
-    });
 
     // v41: shared trip notes. v40 is the settlement rate snapshot.
     this.version(41).stores({
@@ -517,37 +681,60 @@ export class ViatikDatabase extends Dexie {
 
     // v43: voice notes. Audio clips share tripMedia with photos (kind) and a
     // trip note may point at one clip.
-    this.version(43).stores({
-      tripMedia: "id, tripId, activityId, uploadStatus, takenAt, kind, updatedAt, deletedAt",
-    }).upgrade(async (transaction) => {
-      await transaction.table("tripMedia").toCollection().modify((media: Record<string, unknown>) => {
-        if (media.kind !== "photo" && media.kind !== "audio") media.kind = "photo";
-        if (typeof media.durationMs !== "number") media.durationMs = null;
+    this.version(43)
+      .stores({
+        tripMedia: "id, tripId, activityId, uploadStatus, takenAt, kind, updatedAt, deletedAt",
+      })
+      .upgrade(async (transaction) => {
+        await transaction
+          .table("tripMedia")
+          .toCollection()
+          .modify((media: Record<string, unknown>) => {
+            if (media.kind !== "photo" && media.kind !== "audio") media.kind = "photo";
+            if (typeof media.durationMs !== "number") media.durationMs = null;
+          });
+        await transaction
+          .table("tripNotes")
+          .toCollection()
+          .modify((note: Record<string, unknown>) => {
+            if (typeof note.audioMediaId !== "string") note.audioMediaId = null;
+          });
       });
-      await transaction.table("tripNotes").toCollection().modify((note: Record<string, unknown>) => {
-        if (typeof note.audioMediaId !== "string") note.audioMediaId = null;
-      });
-    });
 
     // v44: read-only local mirror of server-written crew voice-note transcripts.
     this.version(44).stores({
       mediaTranscripts: "mediaId, tripId, status, updatedAt",
     });
 
-    this.version(45).stores({
-      stagedTripMedia: "id, tripId, createdBy, createdAt, [tripId+createdAt]",
-    }).upgrade(async (transaction) => {
-      await transaction.table("expenses").toCollection().modify((expense: Record<string, unknown>) => {
-        if (!Array.isArray(expense.lineItems)) expense.lineItems = [];
+    this.version(45)
+      .stores({
+        stagedTripMedia: "id, tripId, createdBy, createdAt, [tripId+createdAt]",
+      })
+      .upgrade(async (transaction) => {
+        await transaction
+          .table("expenses")
+          .toCollection()
+          .modify((expense: Record<string, unknown>) => {
+            if (!Array.isArray(expense.lineItems)) expense.lineItems = [];
+          });
       });
-    });
 
     // v46: only photos that were already uploaded retain legacy public-gallery
     // eligibility. Pending/failed photos and every voice clip stay private.
-    this.version(46).stores({}).upgrade(async (transaction) => {
-      await transaction.table("tripMedia").toCollection().modify((media: Record<string, unknown>) => {
-        media.publicGallery = media.kind === "photo" && media.uploadStatus === "uploaded";
+    this.version(46)
+      .stores({})
+      .upgrade(async (transaction) => {
+        await transaction
+          .table("tripMedia")
+          .toCollection()
+          .modify((media: Record<string, unknown>) => {
+            media.publicGallery = media.kind === "photo" && media.uploadStatus === "uploaded";
+          });
       });
+
+    this.version(47).stores({
+      tripIdeas: "id, updatedAt, convertedToTripId",
+      tripSavingsPlans: "id, &tripIdeaId, updatedAt",
     });
   }
 }
