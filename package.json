@@ -24,6 +24,7 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@ai-sdk/openai": "4.0.86",
     "@capacitor/android": "^8.5.2",
     "@capacitor/app": "^8.1.1",
     "@capacitor/core": "^8.5.2",
@@ -41,6 +42,7 @@
     "@radix-ui/react-tabs": "1.1.21",
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.112.4",
+    "ai": "^7.0.130",
     "browser-image-compression": "^2.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
