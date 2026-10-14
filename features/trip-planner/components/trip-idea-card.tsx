@@ -18,7 +18,6 @@ import { Collapsible } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  SPENDING_CATEGORY_LABELS,
   SPENDING_CATEGORY_KEYS,
   type SpendingCategory,
 } from "@/features/domain/categories";
@@ -34,13 +33,32 @@ import {
 } from "@/features/trip-planner/domain/google-travel-links";
 import { tripSavingsPlanRepository } from "@/features/trip-planner/data/dexie-trip-planner-repository";
 import { SavingsPlanner } from "@/features/trip-planner/components/savings-planner";
+import { useI18n } from "@/lib/i18n/i18n-provider";
+import type { TranslationKey } from "@/lib/i18n/translations";
 
-function dateLabel(date: string | null): string | null {
+const CATEGORY_COPY_KEYS: Record<SpendingCategory, TranslationKey> = {
+  transport: "copy.tripPlannerCategoryTransport",
+  stay: "copy.tripPlannerCategoryStay",
+  food: "copy.tripPlannerCategoryFood",
+  activities: "copy.tripPlannerCategoryActivities",
+  shopping: "copy.tripPlannerCategoryShopping",
+  personal: "copy.tripPlannerCategoryPersonal",
+};
+
+function dateLabel(date: string | null, locale: string): string | null {
   if (!date) return null;
   const [year, month, day] = date.split("-").map(Number);
   if (!year || !month || !day) return date;
-  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeZone: "UTC" }).format(
+  return new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "UTC" }).format(
     new Date(Date.UTC(year, month - 1, day))
+  );
+}
+
+function monthLabel(month: string, locale: string): string {
+  const [year, monthNumber] = month.split("-").map(Number);
+  if (!year || !monthNumber) return month;
+  return new Intl.DateTimeFormat(locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(
+    new Date(Date.UTC(year, monthNumber - 1, 1))
   );
 }
 
@@ -75,6 +93,7 @@ export function TripIdeaCard({
   onAddPriceCheck: (input: Omit<TripIdeaPriceCheck, "id">) => Promise<void>;
   onRemovePriceCheck: (priceCheckId: string) => Promise<void>;
 }) {
+  const { t, locale } = useI18n();
   const [plan, setPlan] = useState<TripSavingsPlan>();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -95,20 +114,30 @@ export function TripIdeaCard({
   );
   const unallocated =
     idea.targetTripCostMinor == null ? null : idea.targetTripCostMinor - estimateTotal;
-  const startLabel = dateLabel(idea.startDate);
-  const endLabel = dateLabel(idea.endDate);
-  const dates =
-    startLabel && endLabel
-      ? `${startLabel} – ${endLabel}`
-      : (startLabel ?? (idea.targetMonth ? `Flexible · ${idea.targetMonth}` : "Dates flexible"));
+  const startLabel = dateLabel(idea.startDate, locale);
+  const endLabel = dateLabel(idea.endDate, locale);
+  const dates = startLabel && endLabel
+    ? `${startLabel} – ${endLabel}`
+    : startLabel ?? (idea.targetMonth
+      ? `${t("copy.tripIdeaFlexible")} · ${monthLabel(idea.targetMonth, locale)}`
+      : t("copy.tripIdeaDatesFlexible"));
 
   async function savePrice(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPriceError(null);
+    if (!priceSource.trim()) {
+      setPriceError(t("copy.tripIdeaPriceSourceRequired"));
+      return;
+    }
+    let amountMinor: bigint;
     try {
-      if (!priceSource.trim()) throw new Error("Add where you found this price.");
-      const amountMinor = parseMinorUnits(priceInput, idea.currency);
-      setSavingPrice(true);
+      amountMinor = parseMinorUnits(priceInput, idea.currency);
+    } catch {
+      setPriceError(t("copy.tripIdeaPriceInvalid", { currency: idea.currency }));
+      return;
+    }
+    setSavingPrice(true);
+    try {
       await onAddPriceCheck({
         category: priceCategory,
         amountMinor,
@@ -117,8 +146,8 @@ export function TripIdeaCard({
       });
       setPriceInput("");
       setPriceSource("");
-    } catch (cause) {
-      setPriceError(cause instanceof Error ? cause.message : "Unable to save this price.");
+    } catch {
+      setPriceError(t("copy.tripIdeaPriceSaveError"));
     } finally {
       setSavingPrice(false);
     }
@@ -129,8 +158,8 @@ export function TripIdeaCard({
     try {
       await onDelete();
       setDeleteOpen(false);
-    } catch (cause) {
-      setOperationError(cause instanceof Error ? cause.message : "Unable to remove this idea.");
+    } catch {
+      setOperationError(t("copy.tripIdeaRemoveError"));
     } finally {
       setDeleting(false);
     }
@@ -140,8 +169,8 @@ export function TripIdeaCard({
     setPriceError(null);
     try {
       await onRemovePriceCheck(priceCheckId);
-    } catch (cause) {
-      setPriceError(cause instanceof Error ? cause.message : "Unable to remove this price.");
+    } catch {
+      setPriceError(t("copy.tripIdeaPriceRemoveError"));
     }
   }
 
@@ -150,8 +179,8 @@ export function TripIdeaCard({
     setConverting(true);
     try {
       await onConvert();
-    } catch (cause) {
-      setOperationError(cause instanceof Error ? cause.message : "Unable to start this trip.");
+    } catch {
+      setOperationError(t("copy.tripIdeaConvertError"));
     } finally {
       setConverting(false);
     }
@@ -173,41 +202,48 @@ export function TripIdeaCard({
           <p className="mt-1 text-sm font-medium">{idea.destination}</p>
           <dl className="mt-3 grid gap-x-5 gap-y-1 text-sm text-muted-foreground sm:grid-cols-2">
             <div>
-              <dt className="inline">Departing from: </dt>
-              <dd className="inline">{idea.origin || "Not set"}</dd>
+              <dt className="inline">{t("copy.tripIdeaDeparting")} </dt>
+              <dd className="inline">{idea.origin || t("copy.tripIdeaNotSet")}</dd>
             </div>
             <div>
-              <dt className="inline">When: </dt>
+              <dt className="inline">{t("copy.tripIdeaWhen")} </dt>
               <dd className="inline">{dates}</dd>
             </div>
             <div>
-              <dt className="inline">Travelers: </dt>
+              <dt className="inline">{t("copy.tripIdeaTravelersLabel")} </dt>
               <dd className="inline">
-                {idea.adultCount} adults{idea.childCount ? `, ${idea.childCount} children` : ""}
+                {idea.childCount
+                  ? t("copy.tripIdeaTravelers", { adults: idea.adultCount, children: idea.childCount })
+                  : t("copy.tripIdeaTravelersAdults", { adults: idea.adultCount })}
               </dd>
             </div>
             <div>
-              <dt className="inline">Duration: </dt>
+              <dt className="inline">{t("copy.tripIdeaDuration")} </dt>
               <dd className="inline">
-                {idea.durationDays ? `${idea.durationDays} days` : "Flexible"}
+                {idea.durationDays
+                  ? t("copy.tripIdeaDurationDays", { days: idea.durationDays })
+                  : t("copy.tripIdeaFlexible")}
               </dd>
             </div>
           </dl>
           {idea.interests.length > 0 && (
             <p className="mt-2 text-sm text-muted-foreground">
-              Interests: {idea.interests.join(", ")}
+              {t("copy.tripIdeaInterests", { interests: idea.interests.join(", ") })}
             </p>
           )}
           {idea.targetTripCostMinor != null && (
             <p className="mt-3 font-semibold tabular-nums">
-              Target: {formatMinorUnits(idea.targetTripCostMinor, idea.currency)} {idea.currency}
+              {t("copy.tripIdeaTarget", {
+                amount: formatMinorUnits(idea.targetTripCostMinor, idea.currency),
+                currency: idea.currency,
+              })}
             </p>
           )}
           {idea.categoryEstimates.length > 0 && (
             <ul className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
               {idea.categoryEstimates.map((estimate) => (
                 <li key={estimate.category} className="rounded-full bg-muted px-2.5 py-1">
-                  {SPENDING_CATEGORY_LABELS[estimate.category]}{" "}
+                  {t(CATEGORY_COPY_KEYS[estimate.category])}{" "}
                   {formatMinorUnits(estimate.amountMinor, idea.currency)}
                 </li>
               ))}
@@ -215,30 +251,31 @@ export function TripIdeaCard({
           )}
           {unallocated != null && unallocated !== 0n && (
             <p className="mt-2 text-xs text-muted-foreground">
-              {unallocated > 0n ? "Unallocated" : "Over-allocated"}:{" "}
-              {formatMinorUnits(unallocated > 0n ? unallocated : -unallocated, idea.currency)}
+              {t(unallocated > 0n ? "copy.tripIdeaUnallocated" : "copy.tripIdeaOverAllocated", {
+                amount: formatMinorUnits(unallocated > 0n ? unallocated : -unallocated, idea.currency),
+              })}
             </p>
           )}
         </div>
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="outline" onClick={onEdit}>
             <Pencil aria-hidden />
-            Edit
+            {t("copy.tripIdeaEdit")}
           </Button>
           {idea.convertedToTripId ? (
             <Button asChild>
-              <Link href={`/trips/${encodeURIComponent(idea.convertedToTripId)}`}>Open trip</Link>
+              <Link href={`/trips/${encodeURIComponent(idea.convertedToTripId)}`}>{t("copy.tripIdeaOpenTrip")}</Link>
             </Button>
           ) : (
             <Button type="button" onClick={() => void convert()} disabled={converting}>
-              {converting ? "Creating…" : "Plan this trip"}
+              {converting ? t("copy.tripIdeaCreatingTrip") : t("copy.tripIdeaPlanTrip")}
             </Button>
           )}
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            aria-label={`Delete ${idea.name}`}
+            aria-label={t("copy.tripIdeaDeleteAria", { name: idea.name })}
             onClick={() => setDeleteOpen(true)}
           >
             <Trash2 aria-hidden />
@@ -246,7 +283,7 @@ export function TripIdeaCard({
         </div>
       </div>
 
-      <Collapsible title="Savings plan" id={`idea-savings-${idea.id}`}>
+      <Collapsible title={t("copy.tripIdeaSavingsSection")} id={`idea-savings-${idea.id}`}>
         <SavingsPlanner
           key={`${idea.id}-${idea.startDate}-${idea.targetTripCostMinor ?? "unset"}-${plan?.version ?? 0}`}
           idea={idea}
@@ -255,29 +292,28 @@ export function TripIdeaCard({
         />
       </Collapsible>
 
-      <Collapsible title="Search and price checks" id={`idea-prices-${idea.id}`}>
+      <Collapsible title={t("copy.tripIdeaPricesSection")} id={`idea-prices-${idea.id}`}>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            The destination, plus any route and date details included, are sent to Google only when
-            you open a search. Prices must be checked manually and are not guaranteed.
+            {t("copy.tripIdeaPriceDisclosure")}
           </p>
           <div className="flex flex-wrap gap-2">
             {providerLink(
-              "Search flights",
+              t("copy.tripIdeaSearchFlights"),
               buildGoogleFlightsUrl({
                 origin: idea.origin,
                 destination: idea.destination,
                 startDate: idea.startDate,
               })
             )}
-            {providerLink("Search hotels", buildGoogleHotelsUrl(idea.destination))}
+            {providerLink(t("copy.tripIdeaSearchHotels"), buildGoogleHotelsUrl(idea.destination))}
           </div>
           <form
             onSubmit={(event) => void savePrice(event)}
             className="grid gap-3 rounded-xl border border-border/60 bg-muted/20 p-4 sm:grid-cols-2"
           >
             <div className="space-y-1.5">
-              <Label htmlFor={`price-category-${idea.id}`}>Category</Label>
+              <Label htmlFor={`price-category-${idea.id}`}>{t("copy.tripIdeaPriceCategory")}</Label>
               <select
                 id={`price-category-${idea.id}`}
                 value={priceCategory}
@@ -286,13 +322,15 @@ export function TripIdeaCard({
               >
                 {SPENDING_CATEGORY_KEYS.map((category) => (
                   <option key={category} value={category}>
-                    {SPENDING_CATEGORY_LABELS[category]}
+                    {t(CATEGORY_COPY_KEYS[category])}
                   </option>
                 ))}
               </select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor={`price-amount-${idea.id}`}>Price found ({idea.currency})</Label>
+              <Label htmlFor={`price-amount-${idea.id}`}>
+                {t("copy.tripIdeaPriceFound", { currency: idea.currency })}
+              </Label>
               <Input
                 className="h-11"
                 id={`price-amount-${idea.id}`}
@@ -303,19 +341,19 @@ export function TripIdeaCard({
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor={`price-source-${idea.id}`}>Source</Label>
+              <Label htmlFor={`price-source-${idea.id}`}>{t("copy.tripIdeaSource")}</Label>
               <Input
                 className="h-11"
                 id={`price-source-${idea.id}`}
                 value={priceSource}
                 onChange={(event) => setPriceSource(event.target.value)}
                 maxLength={120}
-                placeholder="Google Flights, hotel site…"
+                placeholder={t("copy.tripIdeaSourcePlaceholder")}
                 required
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor={`price-date-${idea.id}`}>Checked on</Label>
+              <Label htmlFor={`price-date-${idea.id}`}>{t("copy.tripIdeaCheckedOn")}</Label>
               <Input
                 className="h-11"
                 id={`price-date-${idea.id}`}
@@ -332,12 +370,12 @@ export function TripIdeaCard({
             )}
             <div className="sm:col-span-2">
               <Button type="submit" disabled={savingPrice}>
-                {savingPrice ? "Saving…" : "Log price found"}
+                {savingPrice ? t("copy.tripIdeaSavingPrice") : t("copy.tripIdeaLogPrice")}
               </Button>
             </div>
           </form>
           {idea.priceChecks.length > 0 ? (
-            <ul className="space-y-2" aria-label="Manually checked prices">
+            <ul className="space-y-2" aria-label={t("copy.tripIdeaPriceList")}>
               {idea.priceChecks.map((check) => (
                 <li
                   key={check.id}
@@ -345,23 +383,23 @@ export function TripIdeaCard({
                 >
                   <p className="text-sm">
                     <span className="font-semibold">
-                      {SPENDING_CATEGORY_LABELS[check.category]}:
+                      {t(CATEGORY_COPY_KEYS[check.category])}:
                     </span>{" "}
                     {formatMinorUnits(check.amountMinor, idea.currency)} · {check.source} ·{" "}
-                    {check.checkedAt}
+                    {dateLabel(check.checkedAt, locale)}
                   </p>
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => void removePrice(check.id)}
                   >
-                    Remove price
+                    {t("copy.tripIdeaRemovePrice")}
                   </Button>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-muted-foreground">No prices logged yet.</p>
+            <p className="text-sm text-muted-foreground">{t("copy.tripIdeaNoPrices")}</p>
           )}
         </div>
       </Collapsible>
@@ -369,15 +407,12 @@ export function TripIdeaCard({
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete this trip idea?</DialogTitle>
-            <DialogDescription>
-              This removes the local wishlist item and its savings plan. It will not delete a trip
-              already created from it.
-            </DialogDescription>
+            <DialogTitle>{t("copy.tripIdeaDeleteTitle")}</DialogTitle>
+            <DialogDescription>{t("copy.tripIdeaDeleteDescription")}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setDeleteOpen(false)}>
-              Keep idea
+              {t("copy.tripIdeaKeep")}
             </Button>
             <Button
               type="button"
@@ -385,7 +420,7 @@ export function TripIdeaCard({
               disabled={deleting}
               onClick={() => void confirmDelete()}
             >
-              {deleting ? "Deleting…" : "Delete idea"}
+              {deleting ? t("copy.tripIdeaDeleting") : t("copy.tripIdeaDelete")}
             </Button>
           </DialogFooter>
         </DialogContent>

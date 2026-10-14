@@ -85,5 +85,11 @@ describe("I18nProvider", () => {
     expect(translate("es", "copy.vault")).toBe("Bóveda");
     expect(translate("es", "copy.travelJournal")).toBe("Diario de viaje");
     expect(translate("en", "copy.emergencyCenter")).toBe("Emergency Center");
+    expect(translate("es", "copy.tripPlannerHeading")).toBe("Quiero viajar a");
+    expect(translate("es", "copy.tripIdeaDraftButton")).toBe("Crear borrador");
+    expect(translate("es", "copy.tripIdeaAdultRange")).toBe("Indica entre 1 y 20 adultos.");
+    expect(translate("es", "copy.tripSavingsSuggestedWeekly", { amount: "$25.00" }))
+      .toBe("Aportación sugerida: $25.00 / semana");
+    expect(translate("en", "copy.tripIdeaDraftButton")).toBe("Draft idea");
   });
 });
