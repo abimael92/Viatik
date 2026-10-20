@@ -183,4 +183,15 @@ describe("TripPlannerView", () => {
       expect(mocks.push).toHaveBeenCalledWith("/trips/trip-1");
     });
   });
+
+  it("keeps manual creation available while offline and disables the Scout entry point", async () => {
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+    render(<TripPlannerView userId="user-1" onBack={vi.fn()} />);
+
+    expect(
+      await screen.findByRole("button", { name: "Let Scout help you brainstorm!" })
+    ).toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "Add trip idea" })).toHaveProperty("disabled", false);
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
+  });
 });
