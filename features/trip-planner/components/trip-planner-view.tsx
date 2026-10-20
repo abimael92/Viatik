@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -24,6 +25,7 @@ import type { NewTripIdea, TripIdea } from "@/features/trip-planner/domain/trip-
 import type { TripIdeaPatch } from "@/features/trip-planner/domain/repositories/trip-idea-repository";
 import { TripIdeaCard } from "@/features/trip-planner/components/trip-idea-card";
 import { TripIdeaForm } from "@/features/trip-planner/components/trip-idea-form";
+import { ScoutIdeaWizard } from "@/features/trip-planner/components/scout-idea-wizard";
 
 function userCurrency(preferredCurrency?: string | null): string {
   try {
@@ -71,8 +73,20 @@ export function TripPlannerView({
   const [ideas, setIdeas] = useState<TripIdea[] | null>(null);
   const [editingIdea, setEditingIdea] = useState<TripIdea | undefined>();
   const [editorOpen, setEditorOpen] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [isOnline, setIsOnline] = useState<boolean | null>(null);
 
   useEffect(() => tripIdeaRepository.watchAll((items) => setIdeas(items)), []);
+  useEffect(() => {
+    const updateOnlineStatus = () => setIsOnline(navigator.onLine);
+    updateOnlineStatus();
+    window.addEventListener("online", updateOnlineStatus);
+    window.addEventListener("offline", updateOnlineStatus);
+    return () => {
+      window.removeEventListener("online", updateOnlineStatus);
+      window.removeEventListener("offline", updateOnlineStatus);
+    };
+  }, []);
 
   function openCreate() {
     setEditingIdea(undefined);
@@ -121,9 +135,23 @@ export function TripPlannerView({
             {t("copy.tripPlannerDescription")}
           </p>
         </div>
-        <Button type="button" onClick={openCreate}>
-          {t("copy.tripPlannerAddIdea")}
-        </Button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isOnline !== true}
+            title={
+              isOnline === false ? "Scout is unavailable offline. Add an idea manually." : undefined
+            }
+            onClick={() => setWizardOpen(true)}
+          >
+            <Sparkles aria-hidden />
+            Let Scout help you brainstorm!
+          </Button>
+          <Button type="button" onClick={openCreate}>
+            Add trip idea
+          </Button>
+        </div>
       </header>
 
       {ideas === null ? (
@@ -188,6 +216,13 @@ export function TripPlannerView({
           />
         </DialogContent>
       </Dialog>
+      <ScoutIdeaWizard
+        open={wizardOpen}
+        onOpenChange={setWizardOpen}
+        onManualAdd={openCreate}
+        currency={currency}
+        isOnline={isOnline}
+      />
     </section>
   );
 }

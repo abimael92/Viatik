@@ -48,6 +48,5 @@ export const env = createEnv({
   // Allow the app to run in CI/build environments without real Supabase
   // credentials (e.g. `pnpm typecheck`/`pnpm lint`); the schema still
   // enforces correctness whenever the variables ARE provided.
-  skipValidation:
-    process.env.SKIP_ENV_VALIDATION === "true" || process.env.NODE_ENV === "test",
+  skipValidation: process.env.SKIP_ENV_VALIDATION === "true" || process.env.NODE_ENV === "test",
 });
