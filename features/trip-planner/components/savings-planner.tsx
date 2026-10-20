@@ -11,6 +11,7 @@ import type { MinorUnits } from "@/features/domain/money";
 import { decimalFromMinorUnits, formatMinorUnits, parseMinorUnits } from "@/features/domain/money";
 import type { TripIdea, TripSavingsPlan } from "@/features/trip-planner/domain/trip-planner-types";
 import { calculateSavingsSuggestion } from "@/features/trip-planner/domain/savings-calculator";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 export function SavingsPlanner({
   idea,
@@ -24,6 +25,7 @@ export function SavingsPlanner({
     cadence: TripSavingsPlan["cadence"];
   }) => Promise<void>;
 }) {
+  const { t } = useI18n();
   const [currentInput, setCurrentInput] = useState(
     decimalFromMinorUnits(plan?.currentSavingsMinor ?? 0n, idea.currency)
   );
@@ -50,7 +52,7 @@ export function SavingsPlanner({
   try {
     currentSavingsMinor = currentInput.trim() ? parseMinorUnits(currentInput, idea.currency) : 0n;
   } catch {
-    inputError = "Enter a valid amount in the trip currency.";
+    inputError = t("copy.tripSavingsInvalidAmount");
   }
 
   const suggestion = inputError
@@ -67,8 +69,8 @@ export function SavingsPlanner({
       const value = currentInput.trim() ? parseMinorUnits(currentInput, idea.currency) : 0n;
       setSaving(true);
       await onSave({ currentSavingsMinor: value, cadence });
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to save the savings plan.");
+    } catch {
+      setError(t("copy.tripSavingsSaveError"));
     } finally {
       setSaving(false);
     }
@@ -78,26 +80,28 @@ export function SavingsPlanner({
     <Card className="space-y-4 p-5" aria-labelledby={`savings-heading-${idea.id}`}>
       <div>
         <h3 id={`savings-heading-${idea.id}`} className="text-base font-semibold">
-          Savings plan
+          {t("copy.tripSavingsHeading")}
         </h3>
-        <p className="mt-1 text-sm text-muted-foreground">A private plan for this device.</p>
+        <p className="mt-1 text-sm text-muted-foreground">{t("copy.tripSavingsDisclosure")}</p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <p id={`savings-goal-label-${idea.id}`} className="text-sm font-semibold">
-            Trip target ({idea.currency})
+            {t("copy.tripSavingsTarget", { currency: idea.currency })}
           </p>
           <output
             aria-labelledby={`savings-goal-label-${idea.id}`}
             className="flex min-h-11 items-center rounded-md border border-border/60 bg-muted/40 px-3 font-semibold tabular-nums"
           >
             {idea.targetTripCostMinor == null
-              ? "Add a target cost"
+              ? t("copy.tripSavingsAddTarget")
               : formatMinorUnits(idea.targetTripCostMinor, idea.currency)}
           </output>
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor={`current-savings-${idea.id}`}>Current savings ({idea.currency})</Label>
+          <Label htmlFor={`current-savings-${idea.id}`}>
+            {t("copy.tripSavingsCurrent", { currency: idea.currency })}
+          </Label>
           <Input
             id={`current-savings-${idea.id}`}
             className="h-11"
@@ -110,14 +114,14 @@ export function SavingsPlanner({
         </div>
       </div>
       {isNearTerm && (
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Contribution cadence">
+        <div className="flex flex-wrap gap-2" role="group" aria-label={t("copy.tripSavingsCadence")}>
           <Button
             type="button"
             variant={cadence === "weekly" ? "default" : "outline"}
             aria-pressed={cadence !== "once"}
             onClick={() => setCadence("weekly")}
           >
-            Weekly
+            {t("copy.tripSavingsWeekly")}
           </Button>
           <Button
             type="button"
@@ -125,7 +129,7 @@ export function SavingsPlanner({
             aria-pressed={cadence === "once"}
             onClick={() => setCadence("once")}
           >
-            One-time
+            {t("copy.tripSavingsOneTime")}
           </Button>
         </div>
       )}
@@ -140,11 +144,23 @@ export function SavingsPlanner({
           aria-live="polite"
           className="rounded-xl bg-muted/40 p-3 text-sm"
         >
-          {suggestion?.status === "missing-input"
-            ? "Add an exact trip start date and target trip cost to see a contribution schedule."
-            : suggestion?.status === "due-now"
-              ? `Remaining goal due now: ${formatMinorUnits(suggestion.amountMinor, idea.currency)}`
-              : `Suggested contribution: ${formatMinorUnits(suggestion!.contributionMinor, idea.currency)}${suggestion!.cadence === "once" ? " one-time" : ` / ${suggestion!.cadence === "monthly" ? "month" : "week"}`}`}
+          {suggestion?.status === "due-now"
+            ? t("copy.tripSavingsDueNow", {
+                amount: formatMinorUnits(suggestion.amountMinor, idea.currency),
+              })
+            : suggestion?.status === "scheduled" && suggestion.cadence === "once"
+              ? t("copy.tripSavingsSuggestedOneTime", {
+                  amount: formatMinorUnits(suggestion.contributionMinor, idea.currency),
+                })
+              : suggestion?.status === "scheduled" && suggestion.cadence === "monthly"
+                ? t("copy.tripSavingsSuggestedMonthly", {
+                    amount: formatMinorUnits(suggestion.contributionMinor, idea.currency),
+                  })
+                : suggestion?.status === "scheduled"
+                  ? t("copy.tripSavingsSuggestedWeekly", {
+                      amount: formatMinorUnits(suggestion.contributionMinor, idea.currency),
+                    })
+                  : t("copy.tripSavingsNeedDateAndTarget")}
         </p>
       )}
       {error && (
@@ -157,7 +173,7 @@ export function SavingsPlanner({
         onClick={() => void handleSave()}
         disabled={saving || Boolean(inputError)}
       >
-        {saving ? "Saving…" : "Save savings plan"}
+        {saving ? t("copy.tripSavingsSaving") : t("copy.tripSavingsSave")}
       </Button>
     </Card>
   );
