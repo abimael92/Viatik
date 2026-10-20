@@ -19,6 +19,7 @@ export const env = createEnv({
     // the deterministic offline heuristic engine.
     AI_SCOUT_ENDPOINT: z.string().url().optional(),
     AI_SCOUT_API_KEY: z.string().optional(),
+    OPENAI_API_KEY: z.string().min(1).optional(),
     // Signs the short-lived QR connection tokens. Must be >= 32 bytes.
     QR_SIGNING_SECRET: z.string().min(32).optional(),
     // WhatsApp trip-start notifications (Twilio). When unset, nothing is sent.
@@ -36,6 +37,7 @@ export const env = createEnv({
     GOOGLE_MAPS_API_KEY: process.env.GOOGLE_MAPS_API_KEY,
     AI_SCOUT_ENDPOINT: process.env.AI_SCOUT_ENDPOINT,
     AI_SCOUT_API_KEY: process.env.AI_SCOUT_API_KEY,
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     QR_SIGNING_SECRET: process.env.QR_SIGNING_SECRET,
     TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID,
     TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN,
@@ -46,6 +48,5 @@ export const env = createEnv({
   // Allow the app to run in CI/build environments without real Supabase
   // credentials (e.g. `pnpm typecheck`/`pnpm lint`); the schema still
   // enforces correctness whenever the variables ARE provided.
-  skipValidation:
-    process.env.SKIP_ENV_VALIDATION === "true" || process.env.NODE_ENV === "test",
+  skipValidation: process.env.SKIP_ENV_VALIDATION === "true" || process.env.NODE_ENV === "test",
 });

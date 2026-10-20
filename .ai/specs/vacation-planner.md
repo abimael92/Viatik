@@ -2,10 +2,10 @@
 
 **Project:** Viatik  
 **Owner:** TBD  
-**Status:** Ready for QA  
+**Status:** Ready for QA
 **Created:** 2026-10-09  
-**Updated:** 2026-10-10  
-**Related work:** Existing trip workspace, local-only `TripBudget`, destination lookup, and activity/transit planning. The former AI Trip Builder spec is superseded; this feature does not restore its whole-trip AI generation flow. See [`ai-trip-builder.md`](./ai-trip-builder.md), [`ai-activity-scout.md`](./ai-activity-scout.md), and [`bug-budget-mixes-group-and-personal-spend.md`](./bug-budget-mixes-group-and-personal-spend.md).
+**Updated:** 2026-10-19
+**Related work:** Existing trip workspace, local-only `TripBudget`, destination lookup, and activity/transit planning. The former AI Trip Builder spec is superseded; this feature does not restore its whole-trip AI generation flow. Scout destination brainstorming is separately scoped in [`scout-idea-wizard.md`](./scout-idea-wizard.md). See [`ai-trip-builder.md`](./ai-trip-builder.md), [`ai-activity-scout.md`](./ai-activity-scout.md), and [`bug-budget-mixes-group-and-personal-spend.md`](./bug-budget-mixes-group-and-personal-spend.md).
 
 > This specification incorporates the approved Phase 1 product and architecture decisions. Implementation may begin with the repository's required Red → Green → Refactor workflow. Any deviation from the local-only, single-currency, no-income, and provider-link boundaries below requires an explicit spec update.
 
@@ -41,6 +41,7 @@ The feature must keep planned costs distinct from confirmed bookings and actual 
 - Manual category estimates and user-entered price checks (including transport and lodging) in the idea's single currency, with source/provider label and checked-on date. Provider URLs are generated from validated fields at click time and are not user-supplied or persisted.
 - Validated outbound Google Travel search links for flights and hotels using URL-encoded natural-language queries. The user explicitly initiates external navigation.
 - A private `TripSavingsPlan` with current savings and contribution cadence; the goal comes from the idea's target trip cost. No salary, income, bank account, or transaction connection is requested or stored.
+- Optional Scout destination brainstorming creates reviewed draft ideas through the separate [Scout Idea Wizard spec](./scout-idea-wizard.md); it does not replace manual creation or generate itineraries.
 - Conversion of a wishlist idea into a regular Viatik trip through the transaction-aware, idempotent use case defined below.
 - A responsive wishlist/planner UI with empty, loading, validation, offline, error, and converted states.
 - Dexie persistence through a feature repository/application boundary, local schema migration, and automated tests.
@@ -55,7 +56,7 @@ The feature must keep planned costs distinct from confirmed bookings and actual 
 - Asking for or storing salary, income, financial accounts, bank connections, or transactions.
 - Automated regional pricing/cost-of-living matrices or region-specific origin validation.
 - Multi-currency estimates, FX conversion, and live exchange rates. Each idea uses one supported profile/default currency; any currency-domain expansion requires separate finance review.
-- AI-generated whole-trip plans. Existing AI Activity Scout remains a separate optional itinerary tool after a regular trip exists.
+- AI-generated whole-trip itineraries. Scout destination brainstorming is separately scoped in `scout-idea-wizard.md`; AI Activity Scout remains the optional itinerary tool after a regular trip exists.
 - Replacing the current trip budget, expense ledger, or actual-spend calculations.
 - Booking import, calendar synchronization, price alerts, and cross-device backup; potential follow-up only after product validation.
 
