@@ -6,7 +6,14 @@ import { DestinationField } from "@/features/trips/components/destination-field"
 const mocks = vi.hoisted(() => ({ searchDestinations: vi.fn(), getPlaceDetails: vi.fn() }));
 
 vi.mock("@/app/actions/places", () => mocks);
-vi.mock("@/lib/i18n/i18n-provider", () => ({ useI18n: () => ({ t: (key: string) => key }) }));
+vi.mock("@/lib/i18n/i18n-provider", () => ({
+  useI18n: () => ({
+    t: (key: string) =>
+      key === "copy.destinationSearchUnavailable"
+        ? "Location search is temporarily unavailable."
+        : key,
+  }),
+}));
 
 describe("DestinationField", () => {
   beforeEach(() => vi.clearAllMocks());

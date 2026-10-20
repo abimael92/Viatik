@@ -73,7 +73,8 @@ supabase db reset   # recreate local DB + apply migrations
 ## Verification gate
 
 A change isn't done until `pnpm lint`, `pnpm typecheck`, relevant `pnpm test`, and
-(where applicable) `pnpm build` pass. Full suite: 664 tests across 90 files.
+(where applicable) `pnpm build` pass. Last verified 2026-10-15: 1,312 tests across
+206 files.
 
 ## Where to look
 

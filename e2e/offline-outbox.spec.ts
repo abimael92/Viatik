@@ -3,10 +3,12 @@ import { test, expect } from "@playwright/test";
 test.describe("offline outbox", () => {
   test("creating an activity while offline inserts a mutation into the outbox", async ({ page, context }) => {
     await page.goto("/e2e");
+    const createTripButton = page.getByRole("button", { name: "Create trip" });
+    await expect(createTripButton).toBeEnabled();
     await context.setOffline(true);
 
     // Create a trip so the activity has a valid tripId.
-    await page.getByRole("button", { name: "Create trip" }).click();
+    await createTripButton.click();
     await expect(page.getByTestId("trip-id")).not.toHaveText("none", { timeout: 5000 });
 
     // Verify the trip and owner membership were queued together.

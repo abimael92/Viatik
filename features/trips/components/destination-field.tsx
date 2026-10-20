@@ -1,7 +1,7 @@
 "use client";
 
 import { MapPin } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type Ref } from "react";
 
 import {
   getPlaceDetails,
@@ -20,12 +20,14 @@ export function DestinationField({
   onPlaceSelect,
   defaultValue = "",
   error,
+  inputRef,
 }: {
   value?: string;
   onChange?: (value: string) => void;
   onPlaceSelect?: (details: PlaceDetails) => void;
   defaultValue?: string;
   error?: string;
+  inputRef?: Ref<HTMLInputElement>;
 }) {
   const { t } = useI18n();
   const isControlled = controlledValue !== undefined;
@@ -89,14 +91,13 @@ export function DestinationField({
       <Label htmlFor="destination">{t("copy.destination")}</Label>
       {!error && (
         <p id="destination-help" className="text-xs text-muted-foreground">
-          {configured
-            ? "Search for a city and select a result to set its weather location."
-            : "Location search is temporarily unavailable."}
+          {configured ? t("copy.destinationSearchHelp") : t("copy.destinationSearchUnavailable")}
         </p>
       )}
       <div className="relative">
         <MapPin className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
         <Input
+          ref={inputRef}
           id="destination"
           name="destination"
           value={value}

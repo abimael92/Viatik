@@ -16,6 +16,7 @@ import {
 import { Heading } from "@/components/ui/heading";
 import { normalizeCurrencyCode } from "@/features/domain/money";
 import { useLocalProfile } from "@/features/profile/lib/use-local-profile";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import {
   tripIdeaRepository,
   tripSavingsPlanRepository,
@@ -66,6 +67,7 @@ export function TripPlannerView({
   onTripCreated?: (ideaId: string, tripId: string) => void;
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   const profile = useLocalProfile(userId);
   const currency = userCurrency(profile?.preferredCurrency);
   const [ideas, setIdeas] = useState<TripIdea[] | null>(null);
@@ -119,19 +121,18 @@ export function TripPlannerView({
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <Button type="button" variant="ghost" className="mb-2 -ml-3" onClick={onBack}>
-            Back to trips
+            {t("copy.tripPlannerBackToTrips")}
           </Button>
-          <p className="text-sm font-semibold text-viatik-magenta">Plan what comes next</p>
+          <p className="text-sm font-semibold text-viatik-magenta">{t("copy.tripPlannerEyebrow")}</p>
           <Heading
             level={1}
             id="trip-planner-heading"
             className="mt-1 text-3xl font-bold sm:text-4xl"
           >
-            Want to go
+            {t("copy.tripPlannerHeading")}
           </Heading>
           <p className="mt-2 max-w-2xl text-muted-foreground">
-            Save destinations, record prices you find, and make a private plan. Ideas are stored
-            only on this device.
+            {t("copy.tripPlannerDescription")}
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -155,18 +156,18 @@ export function TripPlannerView({
 
       {ideas === null ? (
         <Card className="p-6 text-sm text-muted-foreground" aria-live="polite">
-          Loading your local wishlist…
+          {t("copy.tripPlannerLoading")}
         </Card>
       ) : ideas.length === 0 ? (
         <Card className="border-dashed p-8 text-center">
           <Heading level={2} className="text-lg font-semibold">
-            Your wishlist is ready
+            {t("copy.tripPlannerEmptyHeading")}
           </Heading>
           <p className="mt-2 text-sm text-muted-foreground">
-            Save a destination to start comparing your own estimates.
+            {t("copy.tripPlannerEmptyDescription")}
           </p>
           <Button type="button" className="mt-5" onClick={openCreate}>
-            Add your first idea
+            {t("copy.tripPlannerAddFirst")}
           </Button>
         </Card>
       ) : (
@@ -197,10 +198,13 @@ export function TripPlannerView({
       <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
         <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{editingIdea ? "Edit trip idea" : "Save a trip idea"}</DialogTitle>
+            <DialogTitle>
+              {editingIdea ? t("copy.tripPlannerEditTitle") : t("copy.tripPlannerCreateTitle")}
+            </DialogTitle>
             <DialogDescription>
-              Enter preferences and estimates in {editingIdea?.currency ?? currency}. This plan
-              stays on this device.
+              {t("copy.tripPlannerDialogDescription", {
+                currency: editingIdea?.currency ?? currency,
+              })}
             </DialogDescription>
           </DialogHeader>
           <TripIdeaForm
