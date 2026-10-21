@@ -16,7 +16,8 @@ export const env = createEnv({
     SMS_PROVIDER_API_KEY: z.string().optional(),
     GOOGLE_MAPS_API_KEY: z.string().min(1).optional(),
     // Optional AI Activity Scout LLM endpoint + key. When unset, the scout uses
-    // the deterministic offline heuristic engine.
+    // GEMINI_API_KEY if configured, or falls back to the deterministic offline
+    // heuristic engine.
     AI_SCOUT_ENDPOINT: z.string().url().optional(),
     AI_SCOUT_API_KEY: z.string().optional(),
     OPENAI_API_KEY: z.string().min(1).optional(),
