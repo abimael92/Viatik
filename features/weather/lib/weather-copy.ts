@@ -1,17 +1,5 @@
-import type { WeatherWarningType } from "@/features/weather/domain/weather-types";
+import type { WeatherConditionKey, WeatherWarningType } from "@/features/weather/domain/weather-types";
 import type { TranslationKey } from "@/lib/i18n/translations";
-
-export type WeatherConditionKey =
-  | "clear"
-  | "partlyCloudy"
-  | "fog"
-  | "drizzle"
-  | "rain"
-  | "snow"
-  | "showers"
-  | "snowShowers"
-  | "thunderstorm"
-  | "unknown";
 
 export const WEATHER_CONDITION_KEYS: Record<WeatherConditionKey, TranslationKey> = {
   clear: "copy.weatherClear",

@@ -33,6 +33,18 @@ export interface TripWeatherForecast {
   deletedAt: string | null;
 }
 
+export type WeatherConditionKey =
+  | "clear"
+  | "partlyCloudy"
+  | "fog"
+  | "drizzle"
+  | "rain"
+  | "snow"
+  | "showers"
+  | "snowShowers"
+  | "thunderstorm"
+  | "unknown";
+
 export type WeatherWarningType = "extremeHeat" | "freezing" | "heavyRain" | "highWind";
 
 export interface WeatherWarning {

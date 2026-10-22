@@ -1,5 +1,9 @@
-import type { DailyForecast, WeatherWarning, WeatherWarningType } from "@/features/weather/domain/weather-types";
-import type { WeatherConditionKey } from "@/features/weather/lib/weather-copy";
+import type {
+  DailyForecast,
+  WeatherConditionKey,
+  WeatherWarning,
+  WeatherWarningType,
+} from "@/features/weather/domain/weather-types";
 
 export interface WarningThresholds {
   extremeHeat: number; // °C, max temperature
