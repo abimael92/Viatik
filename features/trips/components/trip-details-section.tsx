@@ -173,7 +173,7 @@ export function TripDetailsSection({
         <div>
           <Heading level={3} className="text-base font-semibold">{t("copy.tripDetails")}</Heading>
           <p className="mt-1 text-sm text-muted-foreground">
-            {editing ? "Update the essentials for everyone on this trip." : "Read-only summary. Changes are kept for everyone."}
+            {editing ? t("copy.tripDetailsEditingHelp") : t("copy.tripDetailsReadOnlyHelp")}
           </p>
         </div>
         {canEdit && !editing && (
@@ -273,7 +273,7 @@ export function TripDetailsSection({
                 <SwatchBook className="size-4" /> {t("copy.chooseGradient")}
               </Button>
               <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border border-border/60 px-4 text-sm font-semibold transition-colors hover:bg-muted">
-                <Camera className="size-5" /> {coverFile ? "Change photo" : t("copy.uploadPhoto")}
+                <Camera className="size-5" /> {coverFile ? t("copy.changePhoto") : t("copy.uploadPhoto")}
                 <input
                   id="td-cover"
                   type="file"
@@ -307,7 +307,7 @@ export function TripDetailsSection({
               {t("common.cancel")}
             </Button>
             <Button type="submit" variant="primary" disabled={saving}>
-              {saving ? "Saving…" : t("common.saveChanges")}
+              {saving ? t("copy.savingNow") : t("common.saveChanges")}
             </Button>
           </div>
         </form>

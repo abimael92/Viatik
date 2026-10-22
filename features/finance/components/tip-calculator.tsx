@@ -15,6 +15,7 @@ import {
   getTipCustoms,
   parseAmount,
 } from "@/features/finance/lib/currency-converter";
+import { tipCustomsCopy } from "@/features/finance/lib/tip-customs-copy";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
@@ -166,14 +167,14 @@ export function TipSplitCalculator({ trip }: { trip: Trip }) {
               />
               {breakdown.taxPercent > 0 && (
                 <BreakdownRow
-                  label={`Tax (${breakdown.taxPercent}%)`}
+                  label={t("copy.taxPercentLabel", { percent: breakdown.taxPercent })}
                   value={formatAmount(breakdown.taxMinor, currency)}
                 />
               )}
               <div className="mt-2 border-t pt-2">
                 <BreakdownRow label={t("copy.total")} value={formatAmount(breakdown.totalMinor, currency)} strong />
                 <p className="mt-1 text-right text-xs text-muted-foreground">
-                  ≈ {formatAmount(breakdown.perPersonMinor, currency)} per person
+                  ≈ {formatAmount(breakdown.perPersonMinor, currency)} {t("copy.perPerson")}
                 </p>
               </div>
             </div>
@@ -189,20 +190,20 @@ export function TipSplitCalculator({ trip }: { trip: Trip }) {
       <div className="rounded-2xl border bg-card p-5">
         <div className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
           <span className="text-lg leading-none" aria-hidden>{customs.flag}</span>
-          Tipping etiquette — {customs.destination}
+          {t("copy.tippingEtiquette", { destination: t(tipCustomsCopy(customs.destination).destination) })}
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Badge variant="default">Expected: {customs.expectedTip}</Badge>
+          <Badge variant="default">{t("copy.expectedTip", { tip: customs.expectedTip })}</Badge>
           <Badge variant={customs.serviceIncluded ? "success" : "muted"}>
-            {customs.serviceIncluded ? "Service included" : "Service not included"}
+            {customs.serviceIncluded ? t("copy.serviceIncluded") : t("copy.serviceNotIncluded")}
           </Badge>
         </div>
-        <p className="mt-3 text-sm text-card-foreground">{customs.tipGuide}</p>
+        <p className="mt-3 text-sm text-card-foreground">{t(tipCustomsCopy(customs.destination).guide)}</p>
         <p className="mt-2 text-sm text-muted-foreground">
-          <span className="font-semibold text-card-foreground">{t("copy.taxes")}</span> {customs.taxNote}
+          <span className="font-semibold text-card-foreground">{t("copy.taxes")}</span> {t(tipCustomsCopy(customs.destination).tax)}
         </p>
         <p className="mt-2 text-sm text-muted-foreground">
-          <span className="font-semibold text-card-foreground">{t("copy.paying")}</span> {customs.roundingNote}
+          <span className="font-semibold text-card-foreground">{t("copy.paying")}</span> {t(tipCustomsCopy(customs.destination).rounding)}
         </p>
       </div>
     </div>

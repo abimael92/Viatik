@@ -472,7 +472,7 @@ export function TripWorkspace({
 
   if (trip === undefined || hydrating)
     return (
-      <div className="space-y-4" aria-label="Loading trip">
+      <div className="space-y-4" aria-label={t("copy.loadingTrip")}>
         {hydrating && (
           <p role="status" aria-live="polite" className="text-sm text-muted-foreground">
             {t("copy.hydratingTrip")}
@@ -486,11 +486,11 @@ export function TripWorkspace({
     return (
       <div className="rounded-2xl border border-dashed p-12 text-center">
         <Heading level={1} className="text-xl font-semibold">
-          Trip not found
+          {t("copy.tripNotFound")}
         </Heading>
-        <p className="mt-2 text-muted-foreground">It may have been removed on this device.</p>
+        <p className="mt-2 text-muted-foreground">{t("copy.tripRemoved")}</p>
         <Button className="mt-5" onClick={() => router.replace("/trips")}>
-          Back to trips
+          {t("copy.backToTrips")}
         </Button>
       </div>
     );
@@ -508,10 +508,8 @@ export function TripWorkspace({
         >
           <Eye className="size-5 shrink-0 text-muted-foreground" />
           <div>
-            <p className="font-semibold">View-only access</p>
-            <p className="text-sm text-muted-foreground">
-              You can view the itinerary, expenses, and gallery, but you cannot make changes.
-            </p>
+            <p className="font-semibold">{t("copy.viewOnlyAccess")}</p>
+            <p className="text-sm text-muted-foreground">{t("copy.viewOnlyBody")}</p>
           </div>
         </div>
       )}
@@ -609,7 +607,7 @@ export function TripWorkspace({
           {(trip.latitude == null || trip.longitude == null) && (
             <div
               className="mt-4 rounded-2xl border bg-card p-4"
-              aria-label="Trip weather and dates"
+              aria-label={t("copy.tripWeatherDates")}
             >
               <SetLocationCard trip={trip} canEdit={canEdit} />
             </div>
@@ -656,7 +654,7 @@ export function TripWorkspace({
             onClick={handleUndo}
           >
             <Undo2 className="size-5" />
-            Undo
+            {t("common.undo")}
           </button>
         </div>
       )}
@@ -759,7 +757,7 @@ export function TripWorkspace({
                 </select>
                 {itineraryView === "board" && (
                   <select
-                    aria-label="Filter by category"
+                    aria-label={t("copy.filterCategory")}
                     value={category}
                     onChange={(event) => setCategory(event.target.value)}
                     className="h-11 min-w-60 rounded-xl border border-border/70 bg-background px-3 text-sm shadow-xs"
@@ -818,8 +816,8 @@ export function TripWorkspace({
                     size="icon"
                     variant={itineraryEditMode ? "default" : "outline"}
                     className="size-11 rounded-xl"
-                    aria-label={itineraryEditMode ? "Editing itinerary" : "View itinerary only"}
-                    title={itineraryEditMode ? "Editing itinerary" : "View itinerary only"}
+                    aria-label={itineraryEditMode ? t("copy.editingItinerary") : t("copy.viewItineraryOnly")}
+                    title={itineraryEditMode ? t("copy.editingItinerary") : t("copy.viewItineraryOnly")}
                     onClick={() => setItineraryEditMode((editing) => !editing)}
                   >
                     {itineraryEditMode ? (
@@ -958,14 +956,14 @@ export function TripWorkspace({
               variant={journalView === "journal" ? "default" : "ghost"}
               onClick={() => setJournalView("journal")}
             >
-              Journal
+              {t("common.journal")}
             </Button>
             <Button
               size="sm"
               variant={journalView === "feed" ? "default" : "ghost"}
               onClick={() => setJournalView("feed")}
             >
-              Activity
+              {t("common.activity")}
             </Button>
           </div>
           {journalView === "journal" ? (
@@ -986,9 +984,9 @@ export function TripWorkspace({
         <section className="space-y-6">
           <div>
             <Heading level={2} className="text-2xl font-bold">
-              Trip settings
+              {t("common.tripSettings")}
             </Heading>
-            <p className="text-muted-foreground">Manage trip details, budget, and access.</p>
+            <p className="text-muted-foreground">{t("common.manageTrip")}</p>
           </div>
           <TripDetailsSection
             key={`${trip.id}-${editIntent}`}
@@ -1001,18 +999,16 @@ export function TripWorkspace({
           {isOwner && (
             <div className="rounded-2xl border border-destructive/30 bg-card p-5">
               <Heading level={3} className="text-base font-semibold text-destructive">
-                Delete trip
+                {t("common.deleteTrip")}
               </Heading>
-              <p className="mt-1 text-sm text-muted-foreground">
-                The trip is soft-deleted locally and queued for sync.
-              </p>
+              <p className="mt-1 text-sm text-muted-foreground">{t("common.softDeleted")}</p>
               <Button
                 className="mt-4"
                 variant="destructive"
                 onClick={() => setDeleteTripOpen(true)}
               >
                 <Trash2 className="size-5" />
-                Delete trip
+                {t("common.deleteTrip")}
               </Button>
             </div>
           )}
@@ -1039,9 +1035,9 @@ export function TripWorkspace({
       <ConfirmDialog
         open={deleteTripOpen}
         onOpenChange={setDeleteTripOpen}
-        title="Delete this trip?"
-        description={`Delete ${trip.name}? This cannot be undone from the app.`}
-        confirmLabel="Delete trip"
+        title={t("copy.deleteThisTrip")}
+        description={t("common.deleteTripConfirm", { name: trip.name })}
+        confirmLabel={t("common.deleteTrip")}
         onConfirm={() => {
           setDeleteTripOpen(false);
           void tripRepository
@@ -1319,24 +1315,21 @@ function Overview({
 }
 
 function SetLocationCard({ trip, canEdit }: { trip: Trip; canEdit: boolean }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   if (!canEdit) {
     return (
-      <p className="text-sm text-muted-foreground">
-        This trip has no destination coordinates set, so weather can’t be loaded.
-      </p>
+      <p className="text-sm text-muted-foreground">{t("copy.noCoordinates")}</p>
     );
   }
   if (!open) {
     return (
       <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">
-          Set a destination with coordinates to load the weather forecast.
-        </p>
+        <p className="text-sm text-muted-foreground">{t("copy.setCoordinates")}</p>
         <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
           <MapPin className="size-4" />
-          Set location
+          {t("copy.setLocation")}
         </Button>
       </div>
     );
@@ -1353,7 +1346,7 @@ function SetLocationCard({ trip, canEdit }: { trip: Trip; canEdit: boolean }) {
       });
       setOpen(false);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to save location.");
+      setError(cause instanceof Error ? cause.message : t("copy.unableSaveLocation"));
     }
   }
   return (
@@ -1364,7 +1357,7 @@ function SetLocationCard({ trip, canEdit }: { trip: Trip; canEdit: boolean }) {
       />
       {error && <p className="text-xs text-destructive">{error}</p>}
       <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
-        Cancel
+        {t("common.cancel")}
       </Button>
     </div>
   );
@@ -1614,7 +1607,7 @@ function ActivityDialog({
       setCloneOpen(false);
       onClose();
     } catch (cause) {
-      onError(cause instanceof Error ? cause.message : "Unable to clone activity.");
+      onError(cause instanceof Error ? cause.message : t("copy.unableCloneActivity"));
     } finally {
       setCloning(false);
     }
@@ -1625,7 +1618,7 @@ function ActivityDialog({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{activity.title}</DialogTitle>
-            <DialogDescription className="sr-only">Activity details</DialogDescription>
+            <DialogDescription className="sr-only">{t("copy.activityDetails")}</DialogDescription>
           </DialogHeader>
           <dl className="space-y-3 text-sm">
             <div className="flex justify-between gap-4">

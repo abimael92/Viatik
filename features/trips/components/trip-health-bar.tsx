@@ -58,21 +58,21 @@ export function TripHealthBar({
     <div className="flex flex-wrap items-center gap-2" aria-label={t("copy.tripHealthSummary")}>
       <HealthPill
         icon={CalendarClock}
-        label="Dates"
+        label={t("copy.dates")}
         tone={datesSet ? "good" : "warn"}
-        detail={datesSet ? "Set" : "Missing"}
+        detail={datesSet ? t("copy.statusSet") : t("copy.statusMissing")}
       />
       <HealthPill
         icon={ListChecks}
-        label="Itinerary"
+        label={t("common.itinerary")}
         tone={activityCount > 0 ? "good" : "neutral"}
-        detail={activityCount === 1 ? "1 activity" : `${activityCount} activities`}
+        detail={activityCount === 1 ? t("copy.activityCountOne") : t("copy.activityCountMany", { count: activityCount })}
       />
       <HealthPill
         icon={CloudSun}
-        label="Weather"
+        label={t("copy.weather")}
         tone={maxSeverity === "high" ? "bad" : maxSeverity === "medium" ? "warn" : "good"}
-        detail={weatherWarnings?.length ? `${weatherWarnings.length} advisory${weatherWarnings.length === 1 ? "" : "s"}` : "Clear"}
+        detail={weatherWarnings?.length ? (weatherWarnings.length === 1 ? t("copy.advisoryOne") : t("copy.advisoryMany", { count: weatherWarnings.length })) : t("copy.weatherClearStatus")}
       />
     </div>
   );

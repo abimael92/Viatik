@@ -161,8 +161,8 @@ export function TripDashboard({ userId }: { userId: string }) {
       .endTrip(id)
       .then(() =>
         toast({
-          title: "Trip ended",
-          description: "It has been moved to Past Trips.",
+          title: t("copy.tripEnded"),
+          description: t("copy.tripMovedPast"),
           variant: "success",
         })
       )
@@ -196,7 +196,7 @@ export function TripDashboard({ userId }: { userId: string }) {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" onClick={() => setShowTripPlanner(true)}>
-            Want to go
+            {t("copy.wantToGo")}
           </Button>
           <Button variant="primary" onClick={() => setCreating(true)}>
             <Plus className="size-5" />
@@ -503,7 +503,7 @@ function TripCard({
                 title={readiness.label}
               >
                 <span className={cn("size-2 rounded-full", readinessDot)} aria-hidden />
-                {readiness.score}% ready
+                {t("copy.percentReady", { score: readiness.score })}
               </p>
             )}
           </div>
@@ -622,7 +622,7 @@ function MetricsRow({
             <p className="text-sm text-muted-foreground">{t("common.daysToNext")}</p>
             <p className="mt-1 text-3xl font-bold tracking-tight">{value}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {subtitle} · {upcomingCount} upcoming · {pastCount} in the past
+              {subtitle} · {t("copy.upcomingCount", { count: upcomingCount })} · {t("copy.inThePast", { count: pastCount })}
             </p>
           </div>
           <CalendarClock className="size-6 shrink-0 text-viatik-blue" aria-hidden />
@@ -917,7 +917,7 @@ export function TripFormDialog({
           <DialogTitle>{trip ? t("common.editTripDetails") : t("common.whereHeaded")}</DialogTitle>
           <DialogDescription>
             {trip
-              ? "Keep the essentials accurate for everyone on this trip."
+              ? t("copy.keepEssentialsAccurate")
               : t("common.sharedHomeDescription")}
           </DialogDescription>
         </DialogHeader>
@@ -936,7 +936,7 @@ export function TripFormDialog({
           {step === 1 && (
             <div className="space-y-5">
               <InputField
-                label="Trip name"
+                label={t("copy.tripName")}
                 name="name"
                 required
                 helper="Choose something your travel group will recognize."
@@ -953,7 +953,7 @@ export function TripFormDialog({
                 error={fieldErrors.destination}
               />
               <TextareaField
-                label="Description"
+                label={t("copy.description")}
                 name="description"
                 helper="Add context for everyone joining the trip."
                 placeholder={t("copy.whatCelebrating")}
@@ -971,7 +971,7 @@ export function TripFormDialog({
               <legend className="sr-only">{t("common.travelDates")}</legend>
               <div className="grid gap-4 sm:grid-cols-2">
                 <InputField
-                  label="Starts"
+                  label={t("copy.starts")}
                   name="startDate"
                   type="date"
                   required
@@ -980,7 +980,7 @@ export function TripFormDialog({
                   error={fieldErrors.startDate}
                 />
                 <InputField
-                  label="Ends"
+                  label={t("copy.ends")}
                   name="endDate"
                   type="date"
                   required
@@ -999,7 +999,7 @@ export function TripFormDialog({
             <div className="space-y-5">
               <div className="grid gap-4 sm:grid-cols-2">
                 <StepperField
-                  label="Adults"
+                  label={t("copy.adults")}
                   name="adultCount"
                   required
                   helper="Minimum 1 adult."
@@ -1010,7 +1010,7 @@ export function TripFormDialog({
                   error={fieldErrors.adultCount}
                 />
                 <StepperField
-                  label="Children"
+                  label={t("copy.children")}
                   name="childCount"
                   required
                   helper="Ages 0–17."
@@ -1076,7 +1076,7 @@ export function TripFormDialog({
               </Button>
             ) : (
               <Button type="submit" variant="primary" disabled={saving || !visited.every(Boolean)}>
-                {uploadingCover ? "Uploading cover…" : saving ? "Saving trip…" : t("common.submit")}
+                {uploadingCover ? t("copy.uploadingCover") : saving ? t("copy.savingTrip") : t("common.submit")}
               </Button>
             )}
           </DialogFooter>
@@ -1105,13 +1105,11 @@ function StepHeader({
         type="button"
         aria-expanded={open}
         aria-controls={progressId}
-        aria-label={`${open ? "Collapse" : "Expand"} trip setup progress`}
+        aria-label={open ? t("copy.collapseTripSetupProgress") : t("copy.expandTripSetupProgress")}
         onClick={() => setOpen((value) => !value)}
         className="flex min-h-11 w-full items-center justify-between gap-3 rounded-md px-1 text-left text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <span>
-          Step {step} of {steps.length}: {activeTitle}
-        </span>
+        <span>{t("copy.stepOfTotal", { step, total: steps.length, title: activeTitle })}</span>
         <ChevronDown
           aria-hidden
           className={cn("size-5 transition-transform duration-200", open && "rotate-180")}
@@ -1131,7 +1129,7 @@ function StepHeader({
                     type="button"
                     onClick={() => onStepClick(number)}
                     aria-current={active ? "step" : undefined}
-                    aria-label={`${title}${completed ? " (completed)" : ""}`}
+                    aria-label={`${title}${completed ? t("copy.completedSuffix") : ""}`}
                     className="group flex min-h-11 w-full flex-col justify-center gap-2 rounded-md px-0.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <span
@@ -1290,6 +1288,7 @@ function StepperField({
   max: number;
   required?: boolean;
 }) {
+  const { t } = useI18n();
   function adjust(delta: number) {
     onChange(Math.min(max, Math.max(min, value + delta)));
   }
@@ -1303,7 +1302,7 @@ function StepperField({
           className="size-8 rounded-md"
           disabled={value <= min}
           onClick={() => adjust(-1)}
-          aria-label={`Decrease ${label.toLowerCase()}`}
+          aria-label={t("copy.decreaseLabel", { label: label.toLowerCase() })}
         >
           <Minus className="size-5" />
         </Button>
@@ -1321,7 +1320,7 @@ function StepperField({
           className="size-8 rounded-md"
           disabled={value >= max}
           onClick={() => adjust(1)}
-          aria-label={`Increase ${label.toLowerCase()}`}
+          aria-label={t("copy.increaseLabel", { label: label.toLowerCase() })}
         >
           <Plus className="size-5" />
         </Button>
@@ -1356,7 +1355,7 @@ function CoverImageField({
 
   return (
     <FormField
-      label="Trip banner"
+      label={t("copy.tripBanner")}
       name="coverImage"
       helper="Choose a JPG, PNG, or WebP up to 5 MB. It will appear as the trip banner after you save."
       error={error}
@@ -1506,13 +1505,13 @@ function NamedTravelersSection({
         <div className="rounded-lg border border-dashed bg-muted/30 p-4 text-center">
           <p className="text-sm font-semibold">
             {contacts.length
-              ? "All saved contacts are already on this trip"
-              : "No saved contacts yet"}
+              ? t("copy.allContactsOnTrip")
+              : t("copy.noSavedContactsYet")}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             {contacts.length
-              ? "Manage the current roster in the People section after saving."
-              : "Create reusable friends and family contacts, then select them when planning trips."}
+              ? t("copy.rosterManageHint")
+              : t("copy.contactsReusableHint")}
           </p>
           <Button asChild type="button" variant="outline" size="sm" className="mt-3">
             <Link href="/contacts">{t("copy.openContacts")}</Link>
@@ -1531,7 +1530,7 @@ function NamedTravelersSection({
             <div key={contact.id} className="flex items-center gap-3 rounded-lg bg-muted/50 p-2">
               <input
                 type="checkbox"
-                aria-label={`Add ${contact.fullName}`}
+                aria-label={t("copy.addNamed", { name: contact.fullName })}
                 checked={contact.id in selectedContacts}
                 onChange={(event) => {
                   const added = event.target.checked;
@@ -1558,13 +1557,13 @@ function NamedTravelersSection({
       {manualTravelers.map((traveler, index) => (
         <div key={traveler.id} className="space-y-2 rounded-lg bg-muted/50 p-3">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold">New traveler {index + 1}</p>
+            <p className="text-xs font-semibold">{t("copy.newTravelerIndexed", { index: index + 1 })}</p>
             <Button
               type="button"
               size="icon"
               variant="ghost"
               className="size-8"
-              aria-label={`Remove traveler ${index + 1}`}
+              aria-label={t("copy.removeTravelerIndexed", { index: index + 1 })}
               onClick={() => {
                 setManualTravelers((items) => items.filter((item) => item.id !== traveler.id));
                 if (traveler.travelerType === "adult")
@@ -1577,7 +1576,7 @@ function NamedTravelersSection({
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
             <Input
-              aria-label={`Traveler ${index + 1} full name`}
+              aria-label={t("copy.travelerFullNameIndexed", { index: index + 1 })}
               placeholder={t("common.fullName")}
               value={traveler.fullName}
               onChange={(event) =>
@@ -1589,7 +1588,7 @@ function NamedTravelersSection({
               }
             />
             <select
-              aria-label={`Traveler ${index + 1} type`}
+              aria-label={t("copy.travelerTypeIndexed", { index: index + 1 })}
               value={traveler.travelerType}
               onChange={(event) => {
                 const nextType = event.target.value as TravelerType;
@@ -1614,7 +1613,7 @@ function NamedTravelersSection({
               <option value="child">{t("copy.child")}</option>
             </select>
             <Input
-              aria-label={`Traveler ${index + 1} email`}
+              aria-label={t("copy.travelerEmailIndexed", { index: index + 1 })}
               type="email"
               placeholder={t("copy.placeholderEmailOptional")}
               value={traveler.email}
@@ -1627,7 +1626,7 @@ function NamedTravelersSection({
               }
             />
             <Input
-              aria-label={`Traveler ${index + 1} phone`}
+              aria-label={t("copy.travelerPhoneIndexed", { index: index + 1 })}
               type="tel"
               placeholder={t("copy.placeholderPhoneOptional")}
               value={traveler.phone}
@@ -1678,8 +1677,7 @@ function EmptyTrips({ onCreate, userId }: { onCreate: () => void; userId: string
           {t("copy.yourNextTrip")}
         </Heading>
         <p className="mx-auto mt-2 max-w-md text-muted-foreground">
-          Create a shared space for your itinerary, expenses, and favorite moments — or pull
-          inspiration from the community below.
+          {t("copy.emptyTripsBody")}
         </p>
         <Button className="mt-6" onClick={onCreate}>
           <Plus className="size-5" />
