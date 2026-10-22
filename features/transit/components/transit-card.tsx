@@ -17,6 +17,7 @@ import {
   type TransitSegment,
   type TransitStatusState,
 } from "@/features/transit/domain/transit-types";
+import { TRANSIT_MODE_COPY, TRANSIT_STATUS_COPY } from "@/features/transit/lib/transit-copy";
 import { deriveStatusState } from "@/features/transit/lib/transit-service";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
@@ -54,7 +55,7 @@ export function TransitCard({ segment, onSelect, onRefresh, interactive = true }
   const cancelled = state === "cancelled";
 
   const identifier = [segment.carrierCode, segment.number].filter(Boolean).join(" ");
-  const modeLabel = transitModeLabel(segment.mode);
+  const modeLabel = t(TRANSIT_MODE_COPY[segment.mode]);
   const departureTime = segment.estimatedDeparture ?? segment.scheduledDeparture;
   const arrivalTime = segment.estimatedArrival ?? segment.scheduledArrival;
   const duration = arrivalTimeDuration(departureTime, arrivalTime);
@@ -87,7 +88,7 @@ export function TransitCard({ segment, onSelect, onRefresh, interactive = true }
             </p>
           </div>
         </div>
-        <Badge variant={meta.tone}>{meta.label}</Badge>
+        <Badge variant={meta.tone}>{t(TRANSIT_STATUS_COPY[state])}</Badge>
       </header>
 
       {(delayed || cancelled) && (
@@ -102,8 +103,8 @@ export function TransitCard({ segment, onSelect, onRefresh, interactive = true }
         >
           <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden />
           {cancelled
-            ? "This leg has been cancelled."
-            : `Delayed by ${segment.delayMinutes} min`}
+            ? t("copy.legCancelledBody")
+            : t("copy.delayedBy", { minutes: segment.delayMinutes ?? 0 })}
         </p>
       )}
 
@@ -126,11 +127,15 @@ export function TransitCard({ segment, onSelect, onRefresh, interactive = true }
             </span>
           </span>
         )}
-        {duration !== null && <span className="font-semibold text-foreground">{formatDuration(duration)} travel</span>}
+        {duration !== null && <span className="font-semibold text-foreground">{t("copy.travelDuration", { duration: formatDuration(duration) })}</span>}
         {station && (
           <span className="flex items-center gap-1 font-semibold text-foreground">
             <MapPin className="size-3.5" aria-hidden />
-            {segment.gate ? `Gate ${station}` : segment.platform ? `Platform ${station}` : `Terminal ${station}`}
+            {segment.gate
+              ? t("copy.gateLabel", { value: station })
+              : segment.platform
+                ? t("copy.platformLabel", { value: station })
+                : t("copy.terminalLabel", { value: station })}
           </span>
         )}
       </div>
@@ -140,7 +145,7 @@ export function TransitCard({ segment, onSelect, onRefresh, interactive = true }
           type="button"
           onClick={() => onRefresh(segment)}
           className="mt-2 flex items-center gap-1 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label={`Refresh status for ${identifier || segment.carrier}`}
+          aria-label={t("copy.refreshStatusFor", { name: identifier || segment.carrier })}
         >
           <RefreshCw className="size-3.5" aria-hidden /> {t("copy.refreshStatus")}
         </button>
@@ -153,22 +158,6 @@ function formatTime(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "—";
   return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-}
-
-function transitModeLabel(mode: TransitSegment["mode"]): string {
-  return {
-    flight: "Plane",
-    train: "Train",
-    car: "Car",
-    carpool: "Carpool",
-    taxi: "Taxi",
-    rideshare: "Uber / rideshare",
-    bus: "Bus",
-    ship: "Ship",
-    ferry: "Ferry",
-    bike: "Bike",
-    walk: "Walk",
-  }[mode];
 }
 
 function arrivalTimeDuration(departure: string, arrival: string | null): number | null {

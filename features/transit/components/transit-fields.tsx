@@ -8,21 +8,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { TransitMode, TransitSegment } from "@/features/transit/domain/transit-types";
+import { TRANSIT_MODE_COPY } from "@/features/transit/lib/transit-copy";
 import { parseTicketText } from "@/features/transit/lib/ticket-parser";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 
-const TRANSIT_MODE_OPTIONS: Array<{ value: TransitMode; label: string }> = [
-  { value: "flight", label: "Plane" },
-  { value: "train", label: "Train" },
-  { value: "car", label: "Car" },
-  { value: "carpool", label: "Carpool" },
-  { value: "taxi", label: "Taxi" },
-  { value: "rideshare", label: "Uber / rideshare" },
-  { value: "bus", label: "Bus" },
-  { value: "ship", label: "Ship" },
-  { value: "ferry", label: "Ferry" },
-  { value: "bike", label: "Bike" },
-  { value: "walk", label: "Walk" },
+const TRANSIT_MODE_OPTIONS: TransitMode[] = [
+  "flight",
+  "train",
+  "car",
+  "carpool",
+  "taxi",
+  "rideshare",
+  "bus",
+  "ship",
+  "ferry",
+  "bike",
+  "walk",
 ];
 
 export interface TransitFormValues {
@@ -127,7 +128,7 @@ export function TransitFields({
     }
   }
 
-  const selectedMode = TRANSIT_MODE_OPTIONS.find((option) => option.value === mode)?.label ?? mode;
+  const selectedMode = t(TRANSIT_MODE_COPY[mode]);
   const ticketMode = mode === "flight" || mode === "train" || mode === "ship" || mode === "ferry";
   const arrivalDuration = durationBetween(departureTime, arrivalTime);
 
@@ -152,28 +153,28 @@ export function TransitFields({
         </div>
         <input ref={cameraRef} name="ticketCamera" type="file" accept="image/*" capture="environment" className="sr-only" onChange={(event) => { void handleTicketImage(event.target.files?.[0] ?? null); event.target.value = ""; }} />
         <input ref={uploadRef} name="ticketUpload" type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => { void handleTicketImage(event.target.files?.[0] ?? null); event.target.value = ""; }} />
-        {scanning && <div className="mt-3"><div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="size-3.5 animate-spin" aria-hidden />Reading ticket... {scanProgress}%</div><div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{ width: `${scanProgress}%` }} /></div></div>}
+        {scanning && <div className="mt-3"><div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="size-3.5 animate-spin" aria-hidden />{t("copy.readingTicket")} {scanProgress}%</div><div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all" style={{ width: `${scanProgress}%` }} /></div></div>}
         {scanError && <p className="mt-2 text-xs text-destructive">{scanError}</p>}
-        {ticketPreview && <div className="mt-3 flex items-center gap-3 rounded-lg border bg-background p-2"><Image src={ticketPreview} alt={ticketImageName ?? "Ticket preview"} width={64} height={64} unoptimized className="h-16 w-16 rounded object-cover" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{ticketImageName ?? "Ticket"}</p><p className="flex items-center gap-1 text-xs text-muted-foreground"><ScanText className="size-3.5" aria-hidden />{t("copy.savedWithLeg")}</p></div><Button type="button" variant="ghost" size="sm" disabled={scanning} onClick={() => { setTicketImage(null); setTicketImageName(null); onTicketChange(null); }}>{t("copy.remove")}</Button></div>}
+        {ticketPreview && <div className="mt-3 flex items-center gap-3 rounded-lg border bg-background p-2"><Image src={ticketPreview} alt={ticketImageName ?? t("copy.ticketPreviewAlt")} width={64} height={64} unoptimized className="h-16 w-16 rounded object-cover" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{ticketImageName ?? t("copy.ticketFileName")}</p><p className="flex items-center gap-1 text-xs text-muted-foreground"><ScanText className="size-3.5" aria-hidden />{t("copy.savedWithLeg")}</p></div><Button type="button" variant="ghost" size="sm" disabled={scanning} onClick={() => { setTicketImage(null); setTicketImageName(null); onTicketChange(null); }}>{t("copy.remove")}</Button></div>}
       </div>
       )}
 
       <div className="space-y-2">
         <Label htmlFor="transit-mode">{t("copy.travelMode")}</Label>
         <select id="transit-mode" value={mode} onChange={(event) => setMode(event.target.value as TransitMode)} className="flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
-          {TRANSIT_MODE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          {TRANSIT_MODE_OPTIONS.map((option) => <option key={option} value={option}>{t(TRANSIT_MODE_COPY[option])}</option>)}
         </select>
         <p className="text-xs text-muted-foreground">{t("copy.scheduleJourney")}</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <TransitField name="carrier" label={ticketMode ? "Carrier / provider" : "Provider (optional)"} value={carrier} onChange={setCarrier} placeholder={selectedMode} required={ticketMode} />
-        <TransitField name="transitNumber" label={ticketMode ? "Trip number" : "Vehicle / trip no. (optional)"} value={number} onChange={setNumber} placeholder={ticketMode ? "e.g. 1284" : "Optional"} required={ticketMode} />
+        <TransitField name="carrier" label={ticketMode ? t("copy.transitCarrierProvider") : t("copy.transitProviderOptional")} value={carrier} onChange={setCarrier} placeholder={selectedMode} required={ticketMode} />
+        <TransitField name="transitNumber" label={ticketMode ? t("copy.transitTripNumber") : t("copy.transitVehicleOptional")} value={number} onChange={setNumber} placeholder={ticketMode ? t("copy.transitPlaceholderTripNumber") : t("copy.transitOptionalPlaceholder")} required={ticketMode} />
       </div>
-      {ticketMode && <TransitField name="carrierCode" label={t("copy.carrierCodeOptional")} value={carrierCode} onChange={setCarrierCode} placeholder={mode === "flight" ? "e.g. DL" : "e.g. AM"} />}
+      {ticketMode && <TransitField name="carrierCode" label={t("copy.carrierCodeOptional")} value={carrierCode} onChange={setCarrierCode} placeholder={mode === "flight" ? t("copy.transitPlaceholderAirlineCode") : t("copy.transitPlaceholderAirlineCodeAlt")} />}
       <div className="grid grid-cols-2 gap-3">
         <TransitField name="origin" label={t("copy.from")} value={origin} onChange={setOrigin} placeholder={t("copy.placeholderJfk")} />
-        <TransitField name="destination" label="To" value={destination} onChange={setDestination} placeholder={t("copy.placeholderCdg")} />
+        <TransitField name="destination" label={t("copy.to")} value={destination} onChange={setDestination} placeholder={t("copy.placeholderCdg")} />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <TransitField name="transitDayDate" label={t("common.day")} type="date" value={dayDate} onChange={setDayDate} required />
@@ -181,7 +182,7 @@ export function TransitFields({
       </div>
       <div className="grid grid-cols-2 gap-3">
         <TransitField name="arrivalTime" label={t("copy.arrivalTimeOptional")} type="time" value={arrivalTime} onChange={(value) => { setArrivalTime(value); setArrivalTimeEdited(Boolean(value)); }} />
-        {(ticketMode || mode === "bus") && <TransitField name="station" label={mode === "flight" ? "Gate / terminal (optional)" : mode === "train" ? "Platform (optional)" : "Terminal / dock (optional)"} value={station} onChange={setStation} placeholder={mode === "flight" ? "e.g. B12" : mode === "train" ? "e.g. 9" : "Optional"} />}
+        {(ticketMode || mode === "bus") && <TransitField name="station" label={mode === "flight" ? t("copy.transitGateOptional") : mode === "train" ? t("copy.transitPlatformOptional") : t("copy.transitTerminalOptional")} value={station} onChange={setStation} placeholder={mode === "flight" ? t("copy.transitGatePlaceholder") : mode === "train" ? t("copy.transitPlatformPlaceholder") : t("copy.transitOptionalPlaceholder")} />}
       </div>
       {arrivalDuration !== null && <p className="rounded-lg bg-primary/5 px-3 py-2 text-sm text-muted-foreground"><span className="font-semibold text-foreground">{t("copy.estimatedTravel")}</span> {formatDuration(arrivalDuration)}</p>}
     </div>
