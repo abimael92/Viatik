@@ -12,7 +12,8 @@ import type { DailyForecast, WeatherWarning } from "@/features/weather/domain/we
 import type { WeatherConflict } from "@/features/weather/domain/weather-conflict-types";
 import { WeatherDayBadge } from "@/features/weather/components/weather-day-badge";
 import { useTransitSegments } from "@/features/transit/components/use-transit";
-import { TRANSIT_STATUS_META, type TransitSegment } from "@/features/transit/domain/transit-types";
+import type { TransitSegment } from "@/features/transit/domain/transit-types";
+import { TRANSIT_STATUS_COPY } from "@/features/transit/lib/transit-copy";
 import { deriveStatusState } from "@/features/transit/lib/transit-service";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
@@ -262,8 +263,8 @@ export function WeekCalendar({
 }
 
 function TransitBlock({ segment, split, onClick }: { segment: TransitSegment; split: boolean; onClick: () => void }) {
+  const { t } = useI18n();
   const state = deriveStatusState(segment);
-  const meta = TRANSIT_STATUS_META[state];
   const Icon = segment.mode === "flight" ? Plane : TrainFront;
   const label = [segment.carrierCode, segment.number].filter(Boolean).join(" ") || segment.carrier;
   const delayed = state === "delayed" || state === "boarding";
@@ -295,8 +296,8 @@ function TransitBlock({ segment, split, onClick }: { segment: TransitSegment; sp
             : "border-accent bg-accent/15"
       )}
       style={{ top, height }}
-      aria-label={`Open ${label} details, ${meta.label}`}
-      title={`${label} · ${meta.label} · ${route}`}
+      aria-label={t("copy.openTransitDetails", { label, status: t(TRANSIT_STATUS_COPY[state]) })}
+      title={`${label} · ${t(TRANSIT_STATUS_COPY[state])} · ${route}`}
     >
       <span className="flex items-center gap-1 font-semibold">
         <Icon className="size-3.5 shrink-0" aria-hidden />
@@ -339,15 +340,15 @@ function TransitDetailsDialog({ segment, canEdit, onClose, onEdit, onDelete }: {
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Icon className="size-5" />{label}</DialogTitle>
-          <DialogDescription>{segment.carrier} · {TRANSIT_STATUS_META[deriveStatusState(segment)].label}</DialogDescription>
+          <DialogDescription>{segment.carrier} · {t(TRANSIT_STATUS_COPY[deriveStatusState(segment)])}</DialogDescription>
         </DialogHeader>
-        {segment.ticketImage && <TicketImage image={segment.ticketImage} name={segment.ticketImageName ?? "Ticket"} />}
+        {segment.ticketImage && <TicketImage image={segment.ticketImage} name={segment.ticketImageName ?? t("copy.ticketFileName")} />}
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 text-sm">
           <dt className="text-muted-foreground">{t("copy.route")}</dt><dd className="font-medium">{segment.origin ?? "—"} → {segment.destination ?? "—"}</dd>
           <dt className="text-muted-foreground">{t("copy.departure")}</dt><dd>{departure.toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</dd>
           <dt className="text-muted-foreground">{t("copy.arrival")}</dt><dd>{arrival ? arrival.toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : t("common.notSet")}</dd>
           {segment.bookingReference && <><dt className="text-muted-foreground">{t("copy.bookingReference")}</dt><dd className="font-mono">{segment.bookingReference}</dd></>}
-          <dt className="text-muted-foreground">{segment.mode === "flight" ? "Gate" : "Platform"}</dt><dd>{segment.mode === "flight" ? segment.gate ?? "—" : segment.platform ?? "—"}</dd>
+          <dt className="text-muted-foreground">{segment.mode === "flight" ? t("copy.gate") : t("copy.platform")}</dt><dd>{segment.mode === "flight" ? segment.gate ?? "—" : segment.platform ?? "—"}</dd>
           {segment.statusMessage && <><dt className="text-muted-foreground">{t("copy.status")}</dt><dd>{segment.statusMessage}</dd></>}
         </dl>
         <DialogFooter>

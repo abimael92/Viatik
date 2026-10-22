@@ -67,6 +67,83 @@ function normalizeDraft(value: unknown): TripIdeaDraft | null {
   };
 }
 
+const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"] as const;
+
+const geminiDraftResponseSchema = z.object({
+  candidates: z
+    .array(
+      z.object({
+        content: z
+          .object({
+            parts: z.array(z.object({ text: z.string().optional() }).passthrough()).optional(),
+          })
+          .optional(),
+      })
+    )
+    .optional(),
+});
+
+const geminiTripIdeaDraftSchema = {
+  type: "OBJECT",
+  properties: {
+    destination: { type: "STRING", nullable: true },
+    start_date: { type: "STRING", nullable: true, description: "YYYY-MM-DD if explicitly stated, else null" },
+    end_date: { type: "STRING", nullable: true, description: "YYYY-MM-DD if explicitly stated, else null" },
+    target_month: { type: "STRING", nullable: true, description: "YYYY-MM if month and year explicitly stated, else null" },
+    duration: { type: "INTEGER", nullable: true, description: "Number of days (1-60) if stated, else null" },
+    travelers: {
+      type: "OBJECT",
+      properties: {
+        adults: { type: "INTEGER", nullable: true },
+        children: { type: "INTEGER", nullable: true },
+      },
+      required: ["adults", "children"],
+    },
+    notes: { type: "STRING", description: "Non-financial preferences from the sentence, or empty string" },
+  },
+  required: ["destination", "start_date", "end_date", "target_month", "duration", "travelers", "notes"],
+} as const;
+
+const DRAFT_PROMPT_PREFIX =
+  "Extract only trip details explicitly stated in this sentence. Do not infer or invent a year, exact dates, traveler counts, destination details, or notes. If a month has no explicit year, leave target_month null. Keep absent or ambiguous values null. Notes may only restate non-financial preferences from the sentence. Never return prices, budgets, costs, savings, financial estimates, or currency.\n\nSentence: ";
+
+async function draftWithGemini(apiKey: string, sentence: string): Promise< unknown > {
+  for (const model of GEMINI_MODELS) {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
+        },
+        signal: AbortSignal.timeout(20_000),
+        cache: "no-store",
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: `${DRAFT_PROMPT_PREFIX}${sentence}` }] }],
+          generationConfig: {
+            maxOutputTokens: 700,
+            responseMimeType: "application/json",
+            responseSchema: geminiTripIdeaDraftSchema,
+          },
+        }),
+      }
+    );
+    if (response.status === 404) continue;
+    if (!response.ok) throw new Error(`Gemini responded with ${response.status}`);
+
+    const parsed = geminiDraftResponseSchema.parse(await response.json());
+    const text =
+      parsed.candidates?.[0]?.content?.parts
+        ?.map((part) => part.text ?? "")
+        .join("")
+        .trim() ?? "";
+    const stripped = text.replace(/^```(?:json)?\s*|\s*```$/gi, "").trim();
+    return JSON.parse(stripped);
+  }
+  throw new Error("No Gemini model available");
+}
+
 export async function draftTripIdea(sentence: string): Promise<DraftTripIdeaResult> {
   const parsedSentence = sentenceSchema.safeParse(sentence);
   if (!parsedSentence.success) return { success: false, reason: "invalid-input" };
@@ -79,14 +156,26 @@ export async function draftTripIdea(sentence: string): Promise<DraftTripIdeaResu
     return { success: false, reason: "authentication" };
   }
 
-  if (!env.OPENAI_API_KEY) return { success: false, reason: "unconfigured" };
+  if (!env.GEMINI_API_KEY && !env.OPENAI_API_KEY) {
+    return { success: false, reason: "unconfigured" };
+  }
+
+  if (env.GEMINI_API_KEY) {
+    try {
+      const output = await draftWithGemini(env.GEMINI_API_KEY, parsedSentence.data);
+      const draft = normalizeDraft(output);
+      return draft ? { success: true, draft } : { success: false, reason: "invalid-output" };
+    } catch {
+      if (!env.OPENAI_API_KEY) return { success: false, reason: "unavailable" };
+    }
+  }
 
   try {
-    const openai = createOpenAI({ apiKey: env.OPENAI_API_KEY });
+    const openai = createOpenAI({ apiKey: env.OPENAI_API_KEY! });
     const { output } = await generateText({
-      model: openai("gpt-6.1-sol"),
+      model: openai("gpt-4o-mini"),
       output: Output.object({ schema: tripIdeaDraftSchema }),
-      prompt: `Extract only trip details explicitly stated in this sentence. Do not infer or invent a year, exact dates, traveler counts, destination details, or notes. If a month has no explicit year, leave target_month null. Keep absent or ambiguous values null. Notes may only restate non-financial preferences from the sentence. Never return prices, budgets, costs, savings, financial estimates, or currency.\n\nSentence: ${parsedSentence.data}`,
+      prompt: `${DRAFT_PROMPT_PREFIX}${parsedSentence.data}`,
       maxOutputTokens: 700,
       abortSignal: AbortSignal.timeout(20_000),
     });
