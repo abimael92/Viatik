@@ -199,7 +199,7 @@ export function AiScoutSidebar({
         <div>
           <h2 className="font-semibold">{t("common.scout")}</h2>
           <p className="text-sm text-muted-foreground">
-            Ideas for {trip.destination || "your trip"}
+            {trip.destination ? t("copy.ideasFor", { destination: trip.destination }) : t("copy.ideasForYourTrip")}
             {dateLabel ? ` · ${dateLabel}` : ""}
           </p>
         </div>
@@ -426,7 +426,7 @@ function SuggestionCard({
                         value={value}
                         disabled={added}
                         onChange={(event) => setTimes((prev) => ({ ...prev, [dayDate]: event.target.value }))}
-                        aria-label={`Start time on ${formatDay(dayDate)}`}
+                        aria-label={t("copy.startTimeOn", { day: formatDay(dayDate) })}
                         className="h-9 min-w-0 flex-1 rounded-md border border-input bg-card px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       />
                       <Button

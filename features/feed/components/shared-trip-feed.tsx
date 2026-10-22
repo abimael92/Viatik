@@ -85,7 +85,7 @@ export function SharedTripFeed({
             size="sm"
             aria-expanded={isExpanded}
             aria-controls={contentId}
-            aria-label={`${isExpanded ? "Collapse" : "Expand"} trip feed`}
+            aria-label={isExpanded ? t("copy.collapseTripFeed") : t("copy.expandTripFeed")}
             onClick={() => setIsExpanded((expanded) => !expanded)}
           >
             {isExpanded ? <ChevronUp aria-hidden /> : <ChevronDown aria-hidden />}

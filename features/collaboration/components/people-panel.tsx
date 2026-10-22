@@ -200,7 +200,7 @@ export function PeoplePanel({ tripId, userId, canEdit }: { tripId: string; userI
                 <Button
                   variant="ghost"
                   size="icon"
-                  aria-label={`${isViatik ? "Edit relationship" : "Edit traveler"} for ${traveler.displayName}`}
+                  aria-label={isViatik ? t("copy.editRelationshipFor", { name: traveler.displayName }) : t("copy.editTravelerFor", { name: traveler.displayName })}
                   onClick={() => setEditing(contact)}
                 >
                   <Pencil className="size-5" />

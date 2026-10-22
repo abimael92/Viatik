@@ -44,7 +44,6 @@ import { Label } from "@/components/ui/label";
 import {
   SPENDING_CATEGORIES,
   SPENDING_CATEGORY_KEYS,
-  SPENDING_CATEGORY_LABELS,
   type SpendingCategory,
 } from "@/features/domain/categories";
 import type { Expense, ExpenseShare, ProfileSummary, Trip, TripBudget, TripMember, TripTraveler } from "@/features/domain/entities";
@@ -54,6 +53,8 @@ import {
   parseMinorUnits,
   type MinorUnits,
 } from "@/features/domain/money";
+import { SPENDING_CATEGORY_COPY } from "@/features/expenses/lib/spending-copy";
+import { tipCustomsCopy } from "@/features/finance/lib/tip-customs-copy";
 import { ExpensePanel } from "@/features/expenses/components/expense-panel";
 import { SettlementView } from "@/features/expenses/components/settlement-view";
 import { useSettlement } from "@/features/expenses/lib/use-settlement";
@@ -697,8 +698,8 @@ function FinancialHero({
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
             {totalBudget !== null
-              ? `of ${formatMoney(convertBudget(totalBudget, baseCurrency, displayCurrency), displayCurrency)} budget`
-              : "(no budget set)"}
+              ? t("copy.ofBudget", { amount: formatMoney(convertBudget(totalBudget, baseCurrency, displayCurrency), displayCurrency) })
+              : t("copy.noBudgetSetShort")}
           </p>
         </div>
         {canEdit && !editing && (
@@ -708,7 +709,7 @@ function FinancialHero({
             className="border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
             onClick={beginEdit}
           >
-            <Pencil className="size-4" /> {totalBudget !== null ? "Edit budget" : t("common.setBudget")}
+            <Pencil className="size-4" /> {totalBudget !== null ? t("copy.editBudget") : t("common.setBudget")}
           </Button>
         )}
       </div>
@@ -721,14 +722,14 @@ function FinancialHero({
       </div>
       <div className="relative mt-1.5 flex flex-col gap-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
         <span className="flex items-center gap-2">
-          {pct !== null ? `${pct}% used` : "No budget set"}
+          {pct !== null ? t("copy.percentUsed", { percent: pct }) : t("copy.noBudgetSet")}
           <span className={cn("rounded-full px-2.5 py-1 font-semibold", TONE_PILL[tone])}>
             {budgetStatus}
           </span>
         </span>
         {remaining !== null && (
           <span className={cn("font-semibold", TONE_TEXT[tone])}>
-            {remaining >= 0n ? "Left: " : "Over: "}
+            {remaining >= 0n ? t("copy.leftLabel") : t("copy.overLabel")}
             {formatMoney(remaining < 0n ? -remaining : remaining, baseCurrency)}
           </span>
         )}
@@ -752,7 +753,7 @@ function FinancialHero({
           }
         />
         <HeroStat
-          label={dailyTarget !== null ? t("common.dailyTarget") : "Trip days"}
+          label={dailyTarget !== null ? t("common.dailyTarget") : t("copy.tripDays")}
           value={
             dailyTarget !== null
               ? `${formatMoney(dailyTarget, baseCurrency)}${t("copy.perDay")}`
@@ -770,7 +771,7 @@ function FinancialHero({
               inputMode="decimal"
               value={totalInput}
               onChange={(event) => setTotalInput(event.target.value)}
-              placeholder="e.g. 2000.00"
+              placeholder={t("copy.placeholderBudgetTotal")}
             />
             {usesUserCurrency && totalInput.trim() && totalInput.trim() !== "." && (
               <BudgetConversion input={totalInput} from={userCurrency} to={baseCurrency} />
@@ -783,7 +784,7 @@ function FinancialHero({
               inputMode="decimal"
               value={dailyInput}
               onChange={(event) => setDailyInput(event.target.value)}
-              placeholder="e.g. 150.00"
+              placeholder={t("copy.placeholderDailyTarget")}
             />
             <p className="text-xs text-muted-foreground">
               {t("common.blankToPace")}
@@ -792,8 +793,11 @@ function FinancialHero({
               <p className="text-xs text-primary">
                 {t("common.recommended")}:{" "}
                 <span className="font-semibold">{formatMoney(recommendedDaily, baseCurrency)}</span>
-                {t("copy.perDay")} — keeps ~10% of your {formatMoney(totalBudget!, baseCurrency)} budget as a
-                buffer over {dayCount} day{dayCount === 1 ? "" : "s"}.
+                {t("copy.perDay")}{" "}
+                {t("copy.recommendedBufferNote", {
+                  total: formatMoney(totalBudget!, baseCurrency),
+                  days: dayCount === 1 ? t("copy.dayOne") : t("copy.dayMany", { count: dayCount }),
+                })}
               </p>
             ) : (
               <p className="text-xs text-muted-foreground">
@@ -954,10 +958,10 @@ export function CurrencyCard({ trip, baseCurrency }: { trip: Trip; baseCurrency:
           </p>
           <p className="text-sm text-muted-foreground">
             {nativeCurrency === baseCurrency.toUpperCase() ? (
-              "Local currency matches your home base"
+              t("copy.localMatchesHome")
             ) : (
               <>
-                1 {nativeCurrency} <span className="text-muted-foreground">(local)</span> ={" "}
+                1 {nativeCurrency} <span className="text-muted-foreground">{t("copy.localCurrencyTag")}</span> ={" "}
                 <span className="font-mono font-semibold text-foreground tabular-nums">
                   {rate !== null ? formatRate(rate) : "—"}
                 </span>{" "}
@@ -971,13 +975,13 @@ export function CurrencyCard({ trip, baseCurrency }: { trip: Trip; baseCurrency:
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <Badge variant="default">
-          Tip in {trip.destination || customs.destination}: {customs.expectedTip}
+          {t("copy.tipInDestination", { destination: trip.destination || t(tipCustomsCopy(customs.destination).destination), tip: customs.expectedTip })}
         </Badge>
         <Badge variant={customs.serviceIncluded ? "success" : "muted"}>
-          {customs.serviceIncluded ? "Service included" : "Service not included"}
+          {customs.serviceIncluded ? t("copy.serviceIncluded") : t("copy.serviceNotIncluded")}
         </Badge>
       </div>
-      <p className="mt-3 text-sm text-card-foreground">{customs.tipGuide}</p>
+      <p className="mt-3 text-sm text-card-foreground">{t(tipCustomsCopy(customs.destination).guide)}</p>
     </div>
   );
 }
@@ -1082,7 +1086,7 @@ function CategoryEnvelope({
             <Icon className="size-5" aria-hidden />
           </span>
           <div>
-            <p className="text-sm font-semibold">{SPENDING_CATEGORY_LABELS[category]}</p>
+            <p className="text-sm font-semibold">{t(SPENDING_CATEGORY_COPY[category])}</p>
             <p className="font-mono text-sm font-bold tabular-nums">
               {formatMoney(spent, baseCurrency)}
               <span className="font-normal text-muted-foreground">
@@ -1095,7 +1099,7 @@ function CategoryEnvelope({
           <Button
             variant="ghost"
             size="icon"
-            aria-label={`Set ${SPENDING_CATEGORY_LABELS[category]} cap`}
+            aria-label={t("copy.setCategoryCap", { category: t(SPENDING_CATEGORY_COPY[category]) })}
             onClick={beginEdit}
           >
             <Pencil className="size-4" />
@@ -1117,16 +1121,16 @@ function CategoryEnvelope({
         )}
       >
         {allocated === null
-          ? "No cap set"
+          ? t("copy.noCapSet")
           : usage !== null && usage >= 1
-            ? "Cap exceeded"
-            : `${SPENDING_CATEGORIES[category].length} subcategories`}
+            ? t("copy.capExceeded")
+            : t("copy.subcategoryCount", { count: SPENDING_CATEGORIES[category].length })}
       </p>
 
       {editing && (
         <div className="mt-3 space-y-2 border-t pt-3">
           <div className="space-y-1">
-            <Label htmlFor={`cap-${category}`}>Cap ({baseCurrency})</Label>
+            <Label htmlFor={`cap-${category}`}>{t("copy.capLabel", { currency: baseCurrency })}</Label>
             <Input
               id={`cap-${category}`}
               inputMode="decimal"

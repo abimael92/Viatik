@@ -322,7 +322,7 @@ function PollCard({
           {schedulable && (
             <Button size="sm" variant="primary" onClick={() => onSchedule(poll)} disabled={busy}>
               {busy ? <Loader2 className="size-4 animate-spin" /> : <CalendarCheck className="size-4" />}
-              Auto-schedule winner
+              {t("copy.autoScheduleWinner")}
             </Button>
           )}
           {active && (
@@ -427,15 +427,15 @@ function CreatePollModal({
                   <Input
                     value={option}
                     onChange={(event) => updateOption(index, event.target.value)}
-                    placeholder={`Option ${index + 1}`}
-                    aria-label={`Option ${index + 1}`}
+                    placeholder={t("copy.optionIndexed", { index: index + 1 })}
+                    aria-label={t("copy.optionIndexed", { index: index + 1 })}
                   />
                   {options.length > 2 && (
                     <button
                       type="button"
                       onClick={() => removeOption(index)}
                       className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      aria-label={`Remove option ${index + 1}`}
+                      aria-label={t("copy.removeOptionIndexed", { index: index + 1 })}
                     >
                       <X className="size-4" />
                     </button>
@@ -495,7 +495,7 @@ function CreatePollModal({
             </Button>
             <Button type="submit" variant="primary" disabled={saving || !canSubmit}>
               {saving ? <Loader2 className="size-4 animate-spin" /> : <Vote className="size-4" />}
-              Create poll
+              {t("copy.createPollAction")}
             </Button>
           </DialogFooter>
         </form>
