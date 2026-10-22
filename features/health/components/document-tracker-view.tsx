@@ -25,11 +25,10 @@ import {
   type TravelDocumentType,
 } from "@/features/health/domain/health-types";
 import {
-  formatCountdown,
   validateDocument,
   type DocumentValidationResult,
 } from "@/features/health/lib/document-validator";
-import { documentValidationMessage } from "@/features/health/lib/document-copy";
+import { countdownLabel, documentValidationMessage } from "@/features/health/lib/document-copy";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import type { TranslationKey } from "@/lib/i18n/translations";
 import { cn } from "@/lib/utils";
@@ -178,7 +177,7 @@ export function DocumentTrackerView({
                 <div className="mt-3 space-y-1 text-sm text-muted-foreground">
                   <p className={cn("flex items-center gap-2 font-semibold", result.status !== "valid" && "text-foreground")}>
                     <span className={cn("size-2 rounded-full", style.dot)} aria-hidden />
-                    {formatCountdown(result.daysRemaining)}
+                    {countdownLabel(result.daysRemaining, t)}
                   </p>
                   <p className="text-xs">{documentValidationMessage(result, t)}</p>
                   <p className="text-xs">{t("copy.expiresOn", { date: document.expiryDate })}</p>

@@ -24,6 +24,7 @@ import { getMaxEndDate, getTripDurationError } from "@/features/trips/lib/trip-d
 import type { Trip } from "@/features/domain/entities";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import { cn } from "@/lib/utils";
+import { localizeUserError } from "@/lib/i18n/localize-error";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import type { TranslationKey } from "@/lib/i18n/translations";
 
@@ -121,7 +122,7 @@ export function TripDetailsSection({
     }
     const dateError = getTripDurationError(startDate, endDate);
     if (dateError) {
-      setError(dateError);
+      setError(localizeUserError(dateError, t, "errors.invalidDates"));
       return;
     }
     if (!Number.isInteger(adultCount) || adultCount < 1 || adultCount > 99) {
