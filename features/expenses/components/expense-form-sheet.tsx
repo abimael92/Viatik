@@ -1,5 +1,6 @@
 "use client";
 
+import { SPENDING_CATEGORY_COPY, SPENDING_SUBCATEGORY_COPY } from "@/features/expenses/lib/spending-copy";
 import { localizeThrownError } from "@/lib/i18n/localize-error";
 import { validatePositiveAmount } from "@/lib/validation/common";
 
@@ -34,9 +35,7 @@ import type {
 } from "@/features/domain/entities";
 import {
   SPENDING_CATEGORIES,
-  SPENDING_CATEGORY_LABELS,
   SPENDING_CATEGORY_KEYS,
-  SPENDING_SUBCATEGORY_LABELS,
   type SpendingCategory,
   type SpendingSubcategory,
 } from "@/features/domain/categories";
@@ -428,7 +427,7 @@ function ExpenseFormBody({
             }
             className="h-9 w-24 rounded-md border bg-background px-2 text-right text-sm"
             disabled={disabled}
-            aria-label={`Share amount for ${nameFor(id)}`}
+            aria-label={t("copy.shareAmountFor", { name: nameFor(id) })}
           />
           <span className="text-sm text-muted-foreground">{expenseCurrency}</span>
         </>
@@ -449,7 +448,7 @@ function ExpenseFormBody({
             }
             className="h-9 w-24 rounded-md border bg-background px-2 text-right text-sm"
             disabled={disabled}
-            aria-label={`Share percent for ${nameFor(id)}`}
+            aria-label={t("copy.sharePercentFor", { name: nameFor(id) })}
           />
           <span className="text-sm text-muted-foreground">%</span>
         </>
@@ -469,9 +468,9 @@ function ExpenseFormBody({
             }
             className="h-9 w-20 rounded-md border bg-background px-2 text-right text-sm"
             disabled={disabled}
-            aria-label={`Share count for ${nameFor(id)}`}
+            aria-label={t("copy.shareCountFor", { name: nameFor(id) })}
           />
-          <span className="text-sm text-muted-foreground">shares</span>
+          <span className="text-sm text-muted-foreground">{t("copy.sharesUnit")}</span>
         </>
       );
     }
@@ -725,7 +724,7 @@ function ExpenseFormBody({
                   </p>
                 ) : (
                   <p className="mt-1 text-xs text-muted-foreground">
-                    That&rsquo;s how much {expenseCurrency} equals in {currency}.
+                    {t("copy.conversionEquals", { from: expenseCurrency, to: currency })}
                   </p>
                 )}
                 {rateNotice && (
@@ -910,7 +909,7 @@ function ExpenseFormBody({
               <option value="">{t("common.none")}</option>
               {SPENDING_CATEGORY_KEYS.map((category) => (
                 <option key={category} value={category}>
-                  {SPENDING_CATEGORY_LABELS[category]}
+                  {t(SPENDING_CATEGORY_COPY[category])}
                 </option>
               ))}
             </select>
@@ -927,7 +926,7 @@ function ExpenseFormBody({
                 <option value="">{t("common.none")}</option>
                 {SPENDING_CATEGORIES[selectedCategory].map((subcategory) => (
                   <option key={subcategory} value={subcategory}>
-                    {SPENDING_SUBCATEGORY_LABELS[subcategory]}
+                    {t(SPENDING_SUBCATEGORY_COPY[subcategory])}
                   </option>
                 ))}
               </select>
@@ -1022,7 +1021,7 @@ function ExpenseFormBody({
                               : [...(current ?? participants), member.userId],
                           )
                         }
-                        aria-label={`Include ${nameFor(member.userId)}`}
+                        aria-label={t("copy.includeNamed", { name: nameFor(member.userId) })}
                       />
                       <span className="min-w-0 flex-1 truncate text-sm">
                         {nameFor(member.userId)}
@@ -1050,7 +1049,7 @@ function ExpenseFormBody({
                               : [...(current ?? participants), key],
                           )
                         }
-                        aria-label={`Include ${traveler.displayName}`}
+                        aria-label={t("copy.includeNamed", { name: traveler.displayName })}
                       />
                       <span className="min-w-0 flex-1 truncate text-sm font-medium">
                         {traveler.displayName}
@@ -1075,7 +1074,7 @@ function ExpenseFormBody({
                         type="button"
                         variant="ghost"
                         size="icon"
-                        aria-label={`Remove ${nameFor(key)}`}
+                        aria-label={t("copy.removeNamed", { name: nameFor(key) })}
                         onClick={() => removeExtraPerson(key)}
                       >
                         <X className="size-4" />

@@ -29,7 +29,6 @@ import type {
   TripTraveler,
 } from "@/features/domain/entities";
 import {
-  SPENDING_CATEGORY_LABELS,
   type SpendingCategory,
 } from "@/features/domain/categories";
 import {
@@ -40,6 +39,7 @@ import { ExpenseFormSheet } from "@/features/expenses/components/expense-form-sh
 import { expenseRepository } from "@/features/expenses/data/dexie-expense-repository";
 import { tripTravelerRepository } from "@/features/contacts/data/dexie-contact-repository";
 import { calculateBalances } from "@/features/expenses/lib/expense-calculator";
+import { SPENDING_CATEGORY_COPY } from "@/features/expenses/lib/spending-copy";
 import { useLocalProfile } from "@/features/profile/lib/use-local-profile";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 
@@ -264,7 +264,7 @@ export function ExpensePanel({
               <div key={memberId} className="flex justify-between text-sm">
                 <span>{memberId === userId ? t("common.you") : (names.get(memberId) ?? memberId)}</span>
                 <span className={balance >= 0n ? "text-success" : "text-destructive"}>
-                  {balance >= 0n ? "receives" : t("copy.owes")}{" "}
+                  {balance >= 0n ? t("copy.receives") : t("copy.owes")}{" "}
                   <span className="font-mono tracking-tight tabular-nums">
                     {formatMinorUnits(balance < 0n ? -balance : balance, currency)}
                   </span>
@@ -284,15 +284,15 @@ export function ExpensePanel({
           </span>
           <Heading level={3} className="text-lg font-semibold">
             {hasFilter && (expenses ?? []).length > 0
-              ? "Nothing in this category yet"
-              : "No shared expenses yet"}
+              ? t("copy.nothingInCategory")
+              : t("copy.noSharedExpenses")}
           </Heading>
           <p className="max-w-xs text-sm text-muted-foreground">
             {hasFilter && (expenses ?? []).length > 0
-              ? `Add a ${SPENDING_CATEGORY_LABELS[filter].toLowerCase()} cost to start tracking it here.`
+              ? t("copy.addCategoryCost", { category: t(SPENDING_CATEGORY_COPY[filter]).toLowerCase() })
               : canEdit
-                ? "Add the first shared cost to start tracking your trip spending."
-                : "No shared costs have been added yet."}
+                ? t("copy.addFirstSharedCost")
+                : t("copy.noSharedCostsYet")}
           </p>
           {canEdit && !hasFilter && (
             <Button variant="primary" onClick={() => setDialog("new")} className="mt-2">
@@ -326,7 +326,7 @@ export function ExpensePanel({
                       <p className="truncate text-xs text-muted-foreground">
                         {expense.category ? (
                           <span className="mr-1.5 inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                            {SPENDING_CATEGORY_LABELS[expense.category]}
+                            {t(SPENDING_CATEGORY_COPY[expense.category])}
                           </span>
                         ) : null}
                         <span className="inline-flex items-center gap-1.5 align-middle">
@@ -372,8 +372,10 @@ export function ExpensePanel({
                       <div>
                         <p className="text-xs text-muted-foreground">{t("copy.splitDetails")}</p>
                         <p className="font-medium">
-                          {splitLabel(expense.splitType, t)} · {shares.length || 1} traveler
-                          {shares.length === 1 ? "" : "s"}
+                          {splitLabel(expense.splitType, t)} ·{" "}
+                          {shares.length === 1
+                            ? t("copy.travelerOne")
+                            : t("copy.travelerMany", { count: shares.length || 1 })}
                         </p>
                       </div>
                       <div>
@@ -393,7 +395,7 @@ export function ExpensePanel({
                         <p className="font-mono font-semibold tabular-nums">
                           {convertedAmount !== null
                             ? formatMoney(convertedAmount, currency)
-                            : "Conversion unavailable"}
+                            : t("copy.conversionUnavailable")}
                         </p>
                       </div>
                     </div>
@@ -426,7 +428,7 @@ export function ExpensePanel({
                     ) : null}
                     {shares.length > 0 && (
                       <div className="mt-4 space-y-2">
-                        <p className="text-xs text-muted-foreground">Traveler shares</p>
+                        <p className="text-xs text-muted-foreground">{t("copy.travelerShares")}</p>
                         {shares.map((share) => {
                           const person = identityFor(share.userId);
                           return (
