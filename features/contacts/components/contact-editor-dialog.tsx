@@ -842,7 +842,7 @@ function StepHeader({
                 type="button"
                 onClick={() => onNavigate(number)}
                 aria-current={active ? "step" : undefined}
-                aria-label={`Go to step: ${title}`}
+                aria-label={t("copy.goToStep", { title })}
                 className="group flex min-h-11 flex-col gap-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <div

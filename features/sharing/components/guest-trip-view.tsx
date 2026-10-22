@@ -65,7 +65,7 @@ export function GuestTripView({ snapshot }: { snapshot: SharedTripSnapshot }) {
 
       <main className="mx-auto w-full max-w-5xl px-4 py-6">
         {tabs.filter((t) => t.enabled).length > 0 && (
-          <nav aria-label="Sections" className="flex gap-1 overflow-x-auto border-b">
+          <nav aria-label={t("copy.sections")} className="flex gap-1 overflow-x-auto border-b">
             {tabs
               .filter((t) => t.enabled)
               .map(({ key, label }) => (

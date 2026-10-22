@@ -177,7 +177,7 @@ export function AvatarPicker({
                   key={option.seed}
                   type="button"
                   onClick={() => select(option)}
-                  aria-label={`Use ${option.label} avatar`}
+                  aria-label={t("copy.useAvatar", { name: option.label })}
                   aria-pressed={seed === option.seed}
                   className={cn(
                     "relative aspect-square overflow-hidden rounded-2xl transition",

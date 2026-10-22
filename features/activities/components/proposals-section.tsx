@@ -89,7 +89,7 @@ export function ProposalsSection({
                 type="button"
                 onClick={() => onSelect(activity)}
                 className="block w-full truncate text-left font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label={`Open proposal ${activity.title}`}
+                aria-label={t("copy.openProposal", { title: activity.title })}
               >
                 {activity.title}
               </button>
