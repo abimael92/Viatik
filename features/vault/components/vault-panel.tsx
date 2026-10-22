@@ -153,7 +153,7 @@ export function VaultPanel({ tripId, userId }: { tripId: string; userId: string 
     setDeleteEntry(null);
     try {
       await vaultRepository.removeEntry(entry.id, userId);
-      toast({ title: "Vault entry deleted", variant: "success" });
+      toast({ title: t("copy.vaultEntryDeleted"), variant: "success" });
     } catch (cause) {
       toast({ title: t("copy.unableDeleteEntry"), description: localizeThrownError(cause, t, "Please try again."), variant: "error" });
     }
@@ -163,8 +163,8 @@ export function VaultPanel({ tripId, userId }: { tripId: string; userId: string 
     async (text: string, label: string) => {
       try {
         await navigator.clipboard.writeText(text);
-        setCopyToast(`Copied ${label}`);
-        window.setTimeout(() => setCopyToast((current) => (current === `Copied ${label}` ? null : current)), 2000);
+        setCopyToast(t("copy.copiedLabel", { label }));
+        window.setTimeout(() => setCopyToast((current) => (current === t("copy.copiedLabel", { label }) ? null : current)), 2000);
       } catch {
         setError(t("copy.clipboardDenied"));
       }
@@ -212,10 +212,10 @@ export function VaultPanel({ tripId, userId }: { tripId: string; userId: string 
           <Heading level={3} className="mt-4 text-base font-semibold">{t("copy.vaultLocked")}</Heading>
           <p className="mt-1 text-sm text-muted-foreground">
             {keyset === undefined
-              ? "Checking vault status…"
+              ? t("copy.checkingVault")
               : keyset === null
-                ? "Create a passphrase to start storing encrypted entries."
-                : "Unlock with your passphrase to view your private entries."}
+                ? t("copy.vaultCreateHelp")
+                : t("copy.vaultUnlockHelp")}
           </p>
           <div className="mt-5 flex flex-wrap justify-center gap-2">
             <Button
@@ -224,7 +224,7 @@ export function VaultPanel({ tripId, userId }: { tripId: string; userId: string 
               disabled={keyset === undefined}
             >
               <Unlock className="size-5" />
-              {keyset ? t("copy.unlockVault") : "Create vault"}
+              {keyset ? t("copy.unlockVault") : t("copy.createVault")}
             </Button>
             {!keyset && keyset !== undefined && (
               <Button

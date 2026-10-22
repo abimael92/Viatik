@@ -21,6 +21,10 @@ export function DestinationField({
   defaultValue = "",
   error,
   inputRef,
+  id = "destination",
+  label,
+  placeholder,
+  helpText,
 }: {
   value?: string;
   onChange?: (value: string) => void;
@@ -28,8 +32,15 @@ export function DestinationField({
   defaultValue?: string;
   error?: string;
   inputRef?: Ref<HTMLInputElement>;
+  /** Unique field id — required when more than one field is on screen. */
+  id?: string;
+  label?: string;
+  placeholder?: string;
+  helpText?: string;
 }) {
   const { t } = useI18n();
+  const helpId = `${id}-help`;
+  const errorId = `${id}-error`;
   const isControlled = controlledValue !== undefined;
   const [internalValue, setInternalValue] = useState(defaultValue);
   const value = isControlled ? controlledValue : internalValue;
@@ -88,26 +99,27 @@ export function DestinationField({
 
   return (
     <div className="relative space-y-2">
-      <Label htmlFor="destination">{t("copy.destination")}</Label>
+      <Label htmlFor={id}>{label ?? t("copy.destination")}</Label>
       {!error && (
-        <p id="destination-help" className="text-xs text-muted-foreground">
-          {configured ? t("copy.destinationSearchHelp") : t("copy.destinationSearchUnavailable")}
+        <p id={helpId} className="text-xs text-muted-foreground">
+          {helpText ??
+            (configured ? t("copy.destinationSearchHelp") : t("copy.destinationSearchUnavailable"))}
         </p>
       )}
       <div className="relative">
         <MapPin className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
         <Input
           ref={inputRef}
-          id="destination"
-          name="destination"
+          id={id}
+          name={id}
           value={value}
           onChange={(event) => setValue(event.target.value)}
-          placeholder={t("copy.placeholderTokyo")}
+          placeholder={placeholder ?? t("copy.placeholderTokyo")}
           maxLength={120}
           autoComplete="off"
           disabled={pendingPlaceId !== null}
           aria-invalid={Boolean(error)}
-          aria-describedby={error ? "destination-error" : "destination-help"}
+          aria-describedby={error ? errorId : helpId}
           className={cn(
             "h-11 pl-9",
             error ? "border-destructive focus-visible:ring-destructive/50" : ""
@@ -135,7 +147,7 @@ export function DestinationField({
         </div>
       )}
       {error && (
-        <p id="destination-error" role="alert" className="text-xs font-semibold text-destructive">
+        <p id={errorId} role="alert" className="text-xs font-semibold text-destructive">
           {error}
         </p>
       )}

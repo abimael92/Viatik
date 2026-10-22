@@ -77,7 +77,7 @@ export function VaultEntryDialog({
     <Dialog open={open} onOpenChange={(value) => !pending && onOpenChange(value)}>
       <DialogContent className="max-h-[90dvh] max-w-xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{values ? "Edit vault entry" : "Add vault entry"}</DialogTitle>
+          <DialogTitle>{values ? t("copy.editVaultEntry") : t("copy.addVaultEntry")}</DialogTitle>
           <DialogDescription>
             {t("copy.vaultEncrypted")}
           </DialogDescription>
@@ -145,7 +145,7 @@ export function VaultEntryDialog({
                 type="button"
                 onClick={() => setShowSecret((value) => !value)}
                 aria-pressed={showSecret}
-                aria-label={showSecret ? "Hide secret" : "Show secret"}
+                aria-label={showSecret ? t("copy.hideSecret") : t("copy.showSecret")}
                 className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {showSecret ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
@@ -177,7 +177,7 @@ export function VaultEntryDialog({
               {t("common.cancel")}
             </Button>
             <Button type="submit" variant="primary" disabled={pending}>
-              {pending ? "Saving…" : values ? "Update entry" : t("copy.addEntry")}
+              {pending ? t("copy.savingNow") : values ? t("copy.updateEntry") : t("copy.addEntry")}
             </Button>
           </DialogFooter>
         </form>

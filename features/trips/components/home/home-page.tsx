@@ -88,7 +88,7 @@ export function HomePage({ userId }: { userId: string }) {
     setConfirmEnd(false);
     setPending(true);
     void tripRepository.endTrip(primaryTrip.id)
-      .then(() => toast({ title: "Trip ended", description: "It has been moved to Past Trips.", variant: "success" }))
+      .then(() => toast({ title: t("copy.tripEnded"), description: t("copy.tripMovedPast"), variant: "success" }))
       .catch((cause) => toast({ title: t("copy.unableEndTrip"), description: localizeThrownError(cause, t, "Please try again."), variant: "error" }))
       .finally(() => setPending(false));
   }
@@ -104,7 +104,7 @@ export function HomePage({ userId }: { userId: string }) {
     setPending(true);
     void tripRepository
       .cancelTrip(primaryTrip.id)
-      .then(() => toast({ title: "Trip cancelled", description: "It has been moved to Past Trips.", variant: "success" }))
+      .then(() => toast({ title: t("copy.tripCancelled"), description: t("copy.tripMovedPast"), variant: "success" }))
       .finally(() => setPending(false));
   }
 

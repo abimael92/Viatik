@@ -955,7 +955,7 @@ export function TripFormDialog({
               <TextareaField
                 label={t("copy.description")}
                 name="description"
-                helper="Add context for everyone joining the trip."
+                helper={t("copy.addContextHelper")}
                 placeholder={t("copy.whatCelebrating")}
                 maxLength={500}
                 rows={3}
@@ -1357,7 +1357,7 @@ function CoverImageField({
     <FormField
       label={t("copy.tripBanner")}
       name="coverImage"
-      helper="Choose a JPG, PNG, or WebP up to 5 MB. It will appear as the trip banner after you save."
+      helper={t("copy.tripBannerHelp")}
       error={error}
     >
       <div

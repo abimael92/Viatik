@@ -51,6 +51,7 @@ import { useLocalProfile } from "@/features/profile/lib/use-local-profile";
 import type { ChecklistFeedAction } from "@/features/feed/lib/feed-builder";
 import { weatherRepository } from "@/features/weather/data/dexie-weather-repository";
 import { weatherCodeSummary } from "@/features/weather/domain/weather-warnings";
+import { WEATHER_CONDITION_KEYS } from "@/features/weather/lib/weather-copy";
 import { loadTripWeatherForecast } from "@/features/weather/lib/load-trip-weather-forecast";
 import type { DailyForecast, TripWeatherForecast } from "@/features/weather/domain/weather-types";
 
@@ -256,7 +257,7 @@ export function LiveTimelineHud({
           className={cn("size-3.5 transition-transform", (expanded || position === "top") && "rotate-180")}
           aria-hidden
         />
-        {expanded ? "Show less" : "Show more"}
+        {expanded ? t("copy.showLess") : t("copy.showMore")}
       </Button>
     );
   }
@@ -306,7 +307,7 @@ export function LiveTimelineHud({
   }
 
   return (
-    <section className="rounded-2xl border bg-card p-5" aria-label={active ? "Live timeline" : "Upcoming itinerary"}>
+    <section className="rounded-2xl border bg-card p-5" aria-label={active ? t("copy.liveTimeline") : t("copy.upcomingItinerary")}>
       <div className="mb-4">
         {coverUrl ? (
           <div className="relative -m-5 mb-4 h-28 overflow-hidden rounded-t-2xl">
@@ -336,12 +337,12 @@ export function LiveTimelineHud({
 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-base font-semibold">
-          {active ? "Today at a glance" : `Up next in ${label}`}
+          {active ? t("copy.todayAtAGlance") : t("copy.upNextIn", { label })}
         </h2>
         {timeUntilNext && (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-viatik-magenta/10 px-3 py-1 text-sm font-semibold text-viatik-magenta dark:bg-viatik-magenta/20">
             <Clock3 className="size-3.5" aria-hidden />
-            Next in {timeUntilNext}
+            {t("copy.nextIn", { time: timeUntilNext })}
           </span>
         )}
       </div>
@@ -370,11 +371,11 @@ export function LiveTimelineHud({
           <div className="py-8 text-center">
             <Clock3 className="mx-auto size-12 text-muted-foreground/30" aria-hidden />
             <p className="mt-2 text-sm text-muted-foreground">
-              {active ? "Nothing scheduled today — enjoy a slow morning." : "No activities planned yet."}
+              {active ? t("copy.nothingScheduledToday") : t("copy.noActivitiesPlanned")}
             </p>
             <Button className="mt-4" size="sm" onClick={() => { window.location.href = tripTabPath(trip.id, "itinerary"); }}>
               <Plus className="mr-1.5 size-4" aria-hidden />
-              Add activity
+              {t("copy.addActivity")}
             </Button>
           </div>
         )}
@@ -392,7 +393,7 @@ export function LiveTimelineHud({
           className="h-auto shrink-0 px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-transparent hover:text-foreground hover:opacity-70"
         >
           <Link href={tripTabPath(trip.id, "itinerary")}>
-            Go to itinerary <ArrowRight className="size-4" aria-hidden />
+            {t("copy.goToItinerary")} <ArrowRight className="size-4" aria-hidden />
           </Link>
         </Button>
       </footer>
@@ -500,10 +501,11 @@ function CurrentWeather({
   loading: boolean;
   tone?: "light" | "dark";
 }) {
+  const { t } = useI18n();
   if (loading) {
     return (
       <span className={cn("animate-pulse text-sm", tone === "dark" ? "text-white/80" : "text-foreground/70")}>
-        Loading weather…
+        {t("copy.loadingWeather")}
       </span>
     );
   }
@@ -531,13 +533,13 @@ function CurrentWeather({
         "flex items-center gap-2 rounded-full border px-3 py-2 shadow-sm backdrop-blur-md",
         tone === "dark" ? "border-white/25 bg-black/35" : "border-border bg-background/95",
       )}
-      aria-label={`${condition.label}, ${temperature}`}
+      aria-label={`${t(WEATHER_CONDITION_KEYS[condition.condition])}, ${temperature}`}
     >
       <IconComponent className={cn("size-7 shrink-0 stroke-[2.5]", iconColor)} aria-hidden />
       <span className={cn("flex flex-col leading-tight", tone === "dark" ? "text-white" : "text-foreground")}>
         <span className="text-lg font-bold tabular-nums">{temperature}</span>
         <span className={cn("text-xs font-semibold", tone === "dark" ? "text-white/75" : "text-muted-foreground")}>
-          {condition.label}
+          {t(WEATHER_CONDITION_KEYS[condition.condition])}
         </span>
       </span>
       {current && current.precipitation > 0 && (
@@ -603,6 +605,7 @@ function TimelineCard({
   onClick: () => void;
 }) {
   const { formattedTime, state, title, location, checklist, startsIn } = item;
+  const { t } = useI18n();
 
   return (
     <motion.li
@@ -672,7 +675,7 @@ function TimelineCard({
               )}
               {state === "past" && (
                 <span className="inline-flex items-center rounded-full bg-black/5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground/70 dark:bg-white/10">
-                  Ended
+                  {t("common.ended")}
                 </span>
               )}
               {state === "current" && (
@@ -684,13 +687,13 @@ function TimelineCard({
                       transition={LIVE_DOT_ANIMATION.transition}
                     />
                   )}
-                  Active
+                  {t("copy.active")}
                 </span>
               )}
               {state === "future" && startsIn && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-viatik-magenta/10 px-2 py-0.5 text-[10px] font-semibold text-viatik-magenta dark:bg-viatik-magenta/20">
                   <Clock3 className="size-3" aria-hidden />
-                  Starts in {startsIn}
+                  {t("copy.startsIn", { time: startsIn })}
                 </span>
               )}
             </div>
@@ -790,14 +793,14 @@ function ActivityDetailModal({
       })
     : "";
   const whatsappHref = `https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`;
-  const timeLabel = activity.formattedTime ?? "All day";
+  const timeLabel = activity.formattedTime ?? t("common.activityAllDay");
   const statusLabel =
     activity.state === "past"
-      ? "Ended"
+      ? t("common.ended")
       : activity.state === "current"
-        ? "Active"
+        ? t("copy.active")
         : activity.startsIn
-          ? `Starts in ${activity.startsIn}`
+          ? t("copy.startsIn", { time: activity.startsIn })
           : null;
 
   return (
@@ -868,18 +871,18 @@ function ActivityDetailModal({
               <div className="flex flex-wrap items-center gap-2">
                 {activity.state === "past" && (
                   <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                    Ended
+                    {t("common.ended")}
                   </span>
                 )}
                 {activity.state === "current" && (
                   <span className="rounded-full bg-viatik-magenta/15 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-viatik-magenta">
-                    Active
+                    {t("copy.active")}
                   </span>
                 )}
                 {activity.state === "future" && activity.startsIn && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-viatik-magenta/10 px-2.5 py-0.5 text-xs font-semibold text-viatik-magenta dark:bg-viatik-magenta/20">
                     <Clock3 className="size-3.5" aria-hidden />
-                    Starts in {activity.startsIn}
+                    {t("copy.startsIn", { time: activity.startsIn })}
                   </span>
                 )}
                 <ActivityChecklistProgressPill checklist={checklist} />
@@ -917,7 +920,7 @@ function ActivityDetailModal({
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onClose}>
-            Close
+            {t("copy.close")}
           </Button>
         </DialogFooter>
       </DialogContent>

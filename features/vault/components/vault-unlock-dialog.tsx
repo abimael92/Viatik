@@ -110,7 +110,7 @@ export function VaultUnlockDialog({
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="vault-passphrase">
-              {mode === "create" ? "Passphrase" : "Passphrase"}
+              {t("copy.passphrase")}
             </Label>
             <div className="relative">
               <Input
@@ -129,7 +129,7 @@ export function VaultUnlockDialog({
                 type="button"
                 onClick={() => setShowPassphrase((value) => !value)}
                 aria-pressed={showPassphrase}
-                aria-label={showPassphrase ? "Hide passphrase" : "Show passphrase"}
+                aria-label={showPassphrase ? t("copy.hidePassphrase") : t("copy.showPassphrase")}
                 className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {showPassphrase ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
@@ -182,7 +182,7 @@ export function VaultUnlockDialog({
                   type="button"
                   onClick={() => setShowConfirm((value) => !value)}
                   aria-pressed={showConfirm}
-                  aria-label={showConfirm ? "Hide confirm passphrase" : "Show confirm passphrase"}
+                  aria-label={showConfirm ? t("copy.hideConfirmPassphrase") : t("copy.showConfirmPassphrase")}
                   className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   {showConfirm ? <EyeOff className="size-5" /> : <Eye className="size-5" />}

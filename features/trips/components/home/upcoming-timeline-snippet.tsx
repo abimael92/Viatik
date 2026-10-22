@@ -31,7 +31,7 @@ export function UpcomingTimelineSnippet({
   const gradient = getTripCoverGradient(trip.coverImageUrl);
   const label = trip.destination ?? trip.name;
   return (
-    <section className="rounded-2xl border bg-card p-5" aria-label={active ? "Today at a glance" : "Upcoming itinerary"}>
+    <section className="rounded-2xl border bg-card p-5" aria-label={active ? t("copy.todayAtAGlance") : t("copy.upcomingItinerary")}>
       {coverUrl ? (
         <div className="relative -m-5 mb-4 h-28 overflow-hidden rounded-t-2xl">
           <Image src={coverUrl} alt={label} fill sizes="(max-width: 768px) 100vw, 50vw" unoptimized className="object-cover" />
@@ -49,7 +49,7 @@ export function UpcomingTimelineSnippet({
       )}
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold">
-          {active ? "Today at a glance" : `Up next in ${trip.destination ?? trip.name}`}
+          {active ? t("copy.todayAtAGlance") : t("copy.upNextIn", { label: trip.destination ?? trip.name })}
         </h2>
         <Link
           href={tripTabPath(trip.id, "itinerary")}
@@ -61,7 +61,7 @@ export function UpcomingTimelineSnippet({
 
       {items.length === 0 ? (
         <p className="mt-4 text-sm text-muted-foreground">
-          {active ? "Nothing scheduled today — enjoy a slow morning." : "No activities planned yet."}
+          {active ? t("copy.nothingScheduledToday") : t("copy.noActivitiesPlanned")}
         </p>
       ) : (
         <ol className="mt-4 space-y-2">
