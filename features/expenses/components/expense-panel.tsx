@@ -193,16 +193,16 @@ export function ExpensePanel({
   );
   const names = useMemo(() => {
     const next = new Map(
-      profiles.map((profile) => [profile.id, profile.fullName?.trim() || "Traveler"])
+      profiles.map((profile) => [profile.id, profile.fullName?.trim() || t("copy.traveler")])
     );
-    if (localProfile) next.set(userId, localProfile.fullName?.trim() || "Traveler");
+    if (localProfile) next.set(userId, localProfile.fullName?.trim() || t("copy.traveler"));
     for (const traveler of travelers) next.set(`traveler:${traveler.id}`, traveler.displayName);
     return next;
-  }, [localProfile, profiles, travelers, userId]);
+  }, [localProfile, profiles, travelers, userId, t]);
   const identityFor = (id: string) => {
     if (id === userId && localProfile) {
       return {
-        name: localProfile.fullName?.trim() || "Traveler",
+        name: localProfile.fullName?.trim() || t("copy.traveler"),
         avatarUrl: localProfile.avatarUrl,
         avatarSeed: localProfile.avatarSeed,
       };

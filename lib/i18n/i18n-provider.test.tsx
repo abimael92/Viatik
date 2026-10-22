@@ -93,6 +93,29 @@ describe("I18nProvider", () => {
     expect(translate("en", "copy.tripIdeaDraftButton")).toBe("Draft idea");
   });
 
+  it("localizes the latest screens (Gemini, vault, weather, transit, health) into Spanish", () => {
+    expect(translate("en", "copy.geminiAskTitle")).toBe("Ask Gemini");
+    expect(translate("es", "copy.geminiAskTitle")).toBe("Pregunta a Gemini");
+    expect(translate("es", "copy.geminiPageEyebrow")).toBe("Laboratorio de IA");
+    expect(translate("es", "errors.geminiFailed")).toBe("Gemini no pudo responder ahora. Inténtalo de nuevo.");
+    expect(translate("es", "copy.vaultUnlockHelp")).toBe(
+      "Desbloquea con tu frase de contraseña para ver tus entradas privadas."
+    );
+    expect(translate("es", "copy.warningExtremeHeat")).toBe("Calor extremo");
+    expect(translate("es", "copy.warningExtremeHeatMessage", { value: 36, unit: "°C" })).toBe(
+      "Se esperan máximas de 36°C. Mantente hidratado y limita la actividad intensa al aire libre."
+    );
+    expect(translate("es", "copy.transitModeRideshare")).toBe("Uber o app de transporte");
+    expect(translate("es", "copy.transitStatusBoarding")).toBe("Embarcando");
+    expect(translate("es", "copy.readinessAlmostReady")).toBe("Casi listo");
+    expect(translate("es", "copy.docTypePassport")).toBe("Pasaporte");
+    expect(translate("es", "copy.passportBoardingDenied", { rule: "válido 6 meses después del viaje" })).toBe(
+      "Podrían denegarte el embarque: el pasaporte debe ser válido 6 meses después del viaje."
+    );
+    expect(translate("es", "copy.travelerMany", { count: 3 })).toBe("3 viajeros");
+    expect(translate("en", "copy.travelerMany", { count: 3 })).toBe("3 travelers");
+  });
+
   it("localizes every Scout wizard and idea-detail string into Spanish", () => {
     expect(translate("en", "copy.scoutWizardTrigger")).toBe("Let Scout help you brainstorm!");
     expect(translate("es", "copy.scoutWizardTrigger")).toBe("¡Deja que Scout te ayude a pensar!");

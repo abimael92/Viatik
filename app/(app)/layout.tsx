@@ -25,7 +25,7 @@ export default async function AuthenticatedLayout({ children }: { children: Reac
         <ToastProvider>
           <AppShell
             userId={data.user.id}
-            userName={profile.full_name || data.user.email || "Traveler"}
+            userName={profile.full_name || data.user.email || ""}
             userEmail={data.user.email ?? undefined}
             avatarSeed={profile.avatar_seed ?? undefined}
             avatarUrl={profile.avatar_url ?? undefined}

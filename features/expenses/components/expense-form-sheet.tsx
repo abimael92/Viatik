@@ -140,6 +140,7 @@ export function ExpenseFormSheet({
   onError: (message: string) => void;
   onSaved?: (expense: Expense) => void;
 }) {
+  const { t } = useI18n();
   const localProfile = useLocalProfile(userId);
   const [members, setMembers] = useState<TripMember[]>([]);
   const [travelers, setTravelers] = useState<TripTraveler[]>([]);
@@ -175,11 +176,11 @@ export function ExpenseFormSheet({
 
   const names = useMemo(() => {
     const next = new Map(
-      profiles.map((profile) => [profile.id, profile.fullName?.trim() || "Traveler"]),
+      profiles.map((profile) => [profile.id, profile.fullName?.trim() || t("copy.traveler")]),
     );
-    if (localProfile) next.set(userId, localProfile.fullName?.trim() || "Traveler");
+    if (localProfile) next.set(userId, localProfile.fullName?.trim() || t("copy.traveler"));
     return next;
-  }, [localProfile, profiles, userId]);
+  }, [localProfile, profiles, userId, t]);
 
   return (
     <ExpenseFormBody
@@ -644,7 +645,7 @@ function ExpenseFormBody({
         )}
       >
         <DialogHeader>
-          <DialogTitle>{expense ? "Edit expense" : t("common.addExpense")}</DialogTitle>
+          <DialogTitle>{expense ? t("copy.editExpense") : t("common.addExpense")}</DialogTitle>
           <DialogDescription>{t("copy.choosePayer")}</DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">

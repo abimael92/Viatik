@@ -42,6 +42,7 @@ import {
 import { buildAirbnbSearchUrl } from "@/features/trip-planner/domain/stay-links";
 import { DestinationField } from "@/features/trips/components/destination-field";
 import { useI18n } from "@/lib/i18n/i18n-provider";
+import { localizeUserError } from "@/lib/i18n/localize-error";
 import type { TranslationKey } from "@/lib/i18n/translations";
 import { cn } from "@/lib/utils";
 
@@ -813,14 +814,14 @@ export function ScoutIdeaWizard({
         fineTune,
       });
       if (!result.success) {
-        setError(result.error);
+        setError(localizeUserError(result.error, t, "errors.unexpected"));
         return;
       }
       setSavingsCapacityMinor(parsedSavings);
       setSuggestions(result.suggestions.ideas);
       setExpandedIndex(0);
     } catch {
-      setError("Scout couldn't connect just now. You can still add an idea manually.");
+      setError(t("copy.scoutOfflineError"));
     } finally {
       setLoading(false);
     }
@@ -837,14 +838,14 @@ export function ScoutIdeaWizard({
         fineTune: { tripLength, comfort, stayStyle, nonstopOnly, constraints },
       });
       if (!result.success) {
-        setError(result.error);
+        setError(localizeUserError(result.error, t, "errors.unexpected"));
         return;
       }
       const fresh = result.suggestions.ideas;
       if (fresh.length < SCOUT_MORE_IDEA_COUNT) setExhausted(true);
       setSuggestions((current) => [...current, ...fresh]);
     } catch {
-      setError("Scout couldn't connect just now. You can still add an idea manually.");
+      setError(t("copy.scoutOfflineError"));
     } finally {
       setAddingMore(false);
     }

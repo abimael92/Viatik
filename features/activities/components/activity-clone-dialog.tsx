@@ -108,7 +108,7 @@ export function ActivityCloneDialog({
           <DialogFooter>
             <Button type="button" variant="outline" disabled={cloning} onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
             <Button type="submit" variant="primary" disabled={cloning || !dayDate}>
-              <CopyPlus aria-hidden />{cloning ? "Cloning..." : t("copy.cloneActivity")}
+              <CopyPlus aria-hidden />{cloning ? t("copy.cloningEllipsis") : t("copy.cloneActivity")}
             </Button>
           </DialogFooter>
         </form>

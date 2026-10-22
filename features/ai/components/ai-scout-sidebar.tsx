@@ -122,7 +122,7 @@ export function AiScoutSidebar({
         const result = await scoutActivitySuggestions(query, context);
         setSuggestions(result.suggestions);
         if (result.suggestions.length === 0) {
-          setError("No suggestions came back for this destination and date range. Try again.");
+          setError(t("copy.noSuggestionsRange"));
         }
       } catch {
         // Server action unavailable (e.g. offline) → use the local heuristic.
@@ -131,7 +131,7 @@ export function AiScoutSidebar({
         setLoading(false);
       }
     },
-    [context, loading],
+    [context, loading, t],
   );
 
   // Run the structured query automatically each time the drawer opens.

@@ -467,7 +467,7 @@ function ProfileEditForm({
       </div>
       {message && <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive sm:col-span-2">{message}</p>}
       <div className="flex gap-2 sm:col-span-2">
-        <Button type="submit" variant="primary" disabled={pending}>{pending ? "Saving…" : "Save profile"}</Button>
+        <Button type="submit" variant="primary" disabled={pending}>{pending ? t("settings.saving") : t("settings.saveProfile")}</Button>
         <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>{t("common.cancel")}</Button>
       </div>
     </form>

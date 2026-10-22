@@ -348,8 +348,10 @@ export function TripMapView({
           <h2 className="text-2xl font-bold">{t("common.map")}</h2>
           <p className="text-muted-foreground">
             {markers.length === 0
-              ? "Plot your itinerary and drop pins to see everything on one offline map."
-              : `${markers.length} location${markers.length === 1 ? "" : "s"} plotted — works offline.`}
+              ? t("copy.plotItineraryHelp")
+              : markers.length === 1
+                ? t("copy.locationsPlotted", { count: markers.length })
+                : t("copy.locationsPlottedMany", { count: markers.length })}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

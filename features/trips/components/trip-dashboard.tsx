@@ -422,11 +422,13 @@ function TripCard({
   const readyToStart = trip.startDate != null && trip.startDate <= todayKey(new Date());
   const readiness = tripReadinessSummary(trip);
   const readinessDot =
-    readiness.label === "Ready"
-      ? "bg-emerald-500"
-      : readiness.label === "Almost ready"
-        ? "bg-amber-500"
-        : "bg-red-500";
+    readiness.score >= 80 ? "bg-emerald-500" : readiness.score >= 40 ? "bg-amber-500" : "bg-red-500";
+  const readinessLabel =
+    readiness.score >= 80
+      ? t("copy.readinessReady")
+      : readiness.score >= 40
+        ? t("copy.readinessAlmostReady")
+        : t("copy.readinessNeedsAttention");
 
   return (
     <div
@@ -500,7 +502,7 @@ function TripCard({
             {!ended && (
               <p
                 className="flex items-center gap-1.5 text-xs text-muted-foreground"
-                title={readiness.label}
+                title={readinessLabel}
               >
                 <span className={cn("size-2 rounded-full", readinessDot)} aria-hidden />
                 {t("copy.percentReady", { score: readiness.score })}

@@ -103,7 +103,7 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
   }
   const [digits, setDigits] = useState<string[]>(() => Array.from({ length: OTP_LENGTH }, () => ""));
   const [sent, setSent] = useState(false);
-  const [message, setMessage] = useState<string | null>(initialError ?? null);
+  const [message, setMessage] = useState<string | null>(initialError ? localizeUserError(initialError, t, "errors.unexpected") : null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);

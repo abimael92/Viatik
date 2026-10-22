@@ -110,6 +110,7 @@ import type { TripWeatherForecast } from "@/features/weather/domain/weather-type
 import type { PlaceDetails } from "@/app/actions/places";
 import { nextPosition } from "@/lib/ordering";
 import { useI18n } from "@/lib/i18n/i18n-provider";
+import { localizeUserError } from "@/lib/i18n/localize-error";
 import { useSyncStatus } from "@/lib/sync/use-sync-status";
 import { cn } from "@/lib/utils";
 import { downloadActivitiesIcs } from "@/features/itinerary/lib/export-ics";
@@ -372,12 +373,12 @@ export function TripWorkspace({
           setWeatherError(null);
         } else {
           setForecast(undefined);
-          setWeatherError(result.error);
+          setWeatherError(localizeUserError(result.error, t, "errors.weatherUnavailable"));
         }
       })
       .catch(() => {
         if (cancelled) return;
-        setWeatherError("Unable to load weather.");
+        setWeatherError(t("errors.weatherUnavailable"));
       })
       .finally(() => {
         if (!cancelled) setWeatherLoading(false);
@@ -385,7 +386,7 @@ export function TripWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [trip, userId, canEdit]);
+  }, [trip, userId, canEdit, t]);
 
   const handleAddExpense = useCallback(() => {
     if (canEdit) {
@@ -1045,7 +1046,7 @@ export function TripWorkspace({
             .then(() => router.replace("/trips"))
             .catch((cause) =>
               notify({
-                title: "Unable to delete trip",
+                title: t("copy.unableDeleteTrip"),
                 description: cause instanceof Error ? cause.message : "Please try again.",
                 variant: "error",
               })

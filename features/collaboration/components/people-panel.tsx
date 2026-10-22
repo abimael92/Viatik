@@ -155,7 +155,7 @@ export function PeoplePanel({ tripId, userId, canEdit }: { tripId: string; userI
           <div>
             <p className="font-semibold">{t("copy.crewStatus")}</p>
             <p className="text-sm text-muted-foreground">
-              {crewConfirmed ? "The current roster is confirmed." : "Review the roster before confirming your crew."}
+              {crewConfirmed ? t("copy.rosterConfirmed") : t("copy.reviewRoster")}
             </p>
           </div>
           {canEdit && (
@@ -164,7 +164,7 @@ export function PeoplePanel({ tripId, userId, canEdit }: { tripId: string; userI
               variant={crewConfirmed ? "outline" : "primary"}
               onClick={() => void setCrewConfirmed(!crewConfirmed)}
             >
-              {crewConfirmed ? "Wait, I forgot someone" : "Set as crew confirmed"}
+              {crewConfirmed ? t("copy.forgotSomeone") : t("copy.setCrewConfirmed")}
             </Button>
           )}
         </div>
@@ -347,7 +347,7 @@ function AdminToggle({ checked, onChange }: { checked: boolean; onChange: (value
       <span className={cn("relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200", checked ? "bg-primary" : "bg-muted")}>
         <span className={cn("inline-block size-4 rounded-full bg-background shadow transition-transform duration-200", checked ? "translate-x-6" : "translate-x-1")} />
       </span>
-      <span className="text-xs font-semibold">{checked ? t("copy.admin") : "Member"}</span>
+      <span className="text-xs font-semibold">{checked ? t("copy.admin") : t("copy.member")}</span>
     </button>
   );
 }

@@ -25,6 +25,7 @@ import type { Trip } from "@/features/domain/entities";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/i18n-provider";
+import type { TranslationKey } from "@/lib/i18n/translations";
 
 const CURRENCIES = ["USD", "EUR", "GBP", "CAD", "MXN", "JPY"] as const;
 
@@ -38,6 +39,15 @@ function formatDate(date: string): string {
  * trip Settings tab. `initialEditing` lets shortcuts ("Edit trip", "Set dates")
  * open the form directly; the parent remounts via a changing `key` to reset it.
  */
+const COVER_GRADIENT_KEYS: Record<TripCoverGradientId, TranslationKey> = {
+  ocean: "copy.coverOcean",
+  sunset: "copy.coverSunset",
+  aurora: "copy.coverAurora",
+  violet: "copy.coverViolet",
+  ember: "copy.coverEmber",
+  midnight: "copy.coverMidnight",
+};
+
 export function TripDetailsSection({
   trip,
   userId,
@@ -392,7 +402,7 @@ function GradientPickerModal({
               )}
             >
               <span className="absolute inset-x-2 bottom-2 truncate text-left text-xs font-bold text-white drop-shadow-sm">
-                {gradient.label}
+                {t(COVER_GRADIENT_KEYS[gradient.id])}
               </span>
             </button>
           ))}
