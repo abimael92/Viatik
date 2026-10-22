@@ -92,4 +92,71 @@ describe("I18nProvider", () => {
       .toBe("Aportación sugerida: $25.00 / semana");
     expect(translate("en", "copy.tripIdeaDraftButton")).toBe("Draft idea");
   });
+
+  it("localizes every Scout wizard and idea-detail string into Spanish", () => {
+    expect(translate("en", "copy.scoutWizardTrigger")).toBe("Let Scout help you brainstorm!");
+    expect(translate("es", "copy.scoutWizardTrigger")).toBe("¡Deja que Scout te ayude a pensar!");
+    expect(translate("es", "copy.scoutWizardVibeQuestion")).toBe(
+      "¡Hola! ¿Qué tipo de viaje te apetece?"
+    );
+    expect(translate("es", "copy.scoutWizardFind")).toBe("Buscar ideas de viaje");
+    expect(translate("es", "copy.scoutWizardCrewPartner")).toBe("Con mi pareja");
+    expect(translate("es", "copy.scoutWizardSavingsLabel", { currency: "MXN" })).toBe(
+      "Cantidad cómoda de ahorro (MXN)"
+    );
+    expect(translate("es", "copy.scoutIdeaViewDetails")).toBe("Ver detalles");
+    expect(
+      translate("es", "copy.scoutIdeaBudgetDailyDetail", {
+        amount: "$10.00",
+        days: 7,
+        travelers: 2,
+      })
+    ).toBe("$10.00 × 7 días × 2 viajeros");
+    expect(translate("es", "copy.scoutIdeaStayHeading")).toBe("Hotel o Airbnb");
+    expect(translate("es", "copy.scoutWizardBestMatch")).toBe("Mejor opción");
+    expect(translate("es", "copy.scoutWizardOptionsHeading", { count: 7 })).toBe(
+      "Tus 7 opciones más cercanas"
+    );
+    expect(translate("es", "copy.scoutWizardAddMore")).toBe("Añadir 2 opciones más");
+    expect(translate("es", "copy.scoutWizardNoMore")).toBe(
+      "Son todas las opciones que Scout conoce para este estilo."
+    );
+    expect(translate("es", "copy.scoutIdeaRank", { rank: 3 })).toBe("Opción 3");
+    expect(translate("en", "copy.scoutIdeaBadgeEasiest")).toBe("Easiest to reach");
+    expect(translate("es", "copy.scoutIdeaBadgeEasiest")).toBe("Más fácil de alcanzar");
+    expect(translate("es", "copy.scoutWizardOriginQuestion")).toBe("¿Desde dónde viajas?");
+    expect(translate("es", "copy.scoutWizardOriginLabel")).toBe(
+      "Ciudad o aeropuerto de salida"
+    );
+    expect(translate("es", "copy.scoutWizardTimingCheapest")).toBe("Cuando sea más barato");
+    expect(translate("es", "copy.scoutWizardFineTuneTitle")).toBe("Ajustar detalles (opcional)");
+    expect(translate("es", "copy.scoutWizardComfortPremium")).toBe("Darse un gusto");
+    expect(translate("es", "copy.scoutWizardStayRental")).toBe("Alquiler");
+    expect(translate("es", "copy.scoutWizardSkip")).toBe("Omitir");
+    expect(translate("en", "copy.scoutWizardNonstop")).toBe("Nonstop only");
+    expect(
+      translate("en", "copy.scoutWizardFewerResults", { count: 3, expected: 5 })
+    ).toBe("Scout found 3 of 5 matches for this vibe.");
+    expect(translate("es", "copy.scoutIdeaFromOrigin", { origin: "Madrid" })).toBe(
+      "Desde Madrid"
+    );
+    expect(translate("es", "copy.scoutIdeaSearchHeading")).toBe("Tu búsqueda");
+    expect(translate("es", "copy.scoutIdeaSearchCabinEconomy")).toBe("Económica");
+    expect(translate("es", "copy.scoutIdeaSearchStopsNonstop")).toBe("Solo directos");
+    expect(translate("es", "copy.scoutIdeaSearchFlightsCta")).toBe("Buscar estos vuelos");
+    expect(translate("en", "copy.scoutIdeaSearchStayCta")).toBe("Search these stays");
+    expect(translate("es", "copy.scoutIdeaWhyHeading")).toBe("Por qué esta opción");
+    expect(translate("es", "copy.scoutIdeaFlightsHeading")).toBe(
+      "Mejor momento para reservar vuelos"
+    );
+    expect(
+      translate("es", "copy.scoutIdeaSummaryWeekly", {
+        periods: 23,
+        ready: "1 jul 2027",
+        bookBy: "6 may 2027",
+      })
+    ).toBe(
+      "Unas 23 semanas de ahorro · listo el 1 jul 2027 · reserva vuelos antes del 6 may 2027"
+    );
+  });
 });

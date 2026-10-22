@@ -105,6 +105,11 @@ export const errorCopy = {
     taskTitleTooLong: "Keep the title under 120 characters.",
     resolutionRequired: "Write how this was resolved.",
     participantRequired: "Select at least one participant.",
+    geminiPromptRange: "Enter a prompt of 1 to 4,000 characters.",
+    geminiSignIn: "Sign in again to use Gemini.",
+    geminiNotConfigured: "Gemini is not configured on this server.",
+    geminiFailed: "Gemini couldn't respond right now. Please try again.",
+    geminiEmpty: "Gemini returned no text. Please try again.",
   },
   es: {
     unexpected: "Algo salió mal. Inténtalo de nuevo.",
@@ -211,5 +216,10 @@ export const errorCopy = {
     taskTitleTooLong: "El título debe tener menos de 120 caracteres.",
     resolutionRequired: "Escribe cómo se resolvió.",
     participantRequired: "Selecciona al menos un participante.",
+    geminiPromptRange: "Escribe un mensaje de 1 a 4000 caracteres.",
+    geminiSignIn: "Vuelve a iniciar sesión para usar Gemini.",
+    geminiNotConfigured: "Gemini no está configurado en este servidor.",
+    geminiFailed: "Gemini no pudo responder ahora. Inténtalo de nuevo.",
+    geminiEmpty: "Gemini no devolvió texto. Inténtalo de nuevo.",
   },
 } as const;
