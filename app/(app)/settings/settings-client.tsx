@@ -435,7 +435,7 @@ function ProfileEditForm({
       </div>
       <label className="flex items-center gap-3 rounded-xl border p-3 text-sm sm:col-span-2">
         <input type="checkbox" checked={values.muteTripNotifications} onChange={(event) => setValues((current) => ({ ...current, muteTripNotifications: event.target.checked }))} />
-        <span><span className="block font-semibold">{t("copy.muteTripNotifications")}</span><span className="text-xs text-muted-foreground">10 PM – 8 AM</span></span>
+        <span><span className="block font-semibold">{t("copy.muteTripNotifications")}</span><span className="text-xs text-muted-foreground">{t("copy.quietHours")}</span></span>
       </label>
       <div className="space-y-2">
         <Label htmlFor="settings-dietaryRestrictions">{t("common.dietaryRestrictions")}</Label>
@@ -467,7 +467,7 @@ function ProfileEditForm({
       </div>
       {message && <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive sm:col-span-2">{message}</p>}
       <div className="flex gap-2 sm:col-span-2">
-        <Button type="submit" variant="primary" disabled={pending}>{pending ? "Saving…" : "Save profile"}</Button>
+        <Button type="submit" variant="primary" disabled={pending}>{pending ? t("settings.saving") : t("settings.saveProfile")}</Button>
         <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>{t("common.cancel")}</Button>
       </div>
     </form>

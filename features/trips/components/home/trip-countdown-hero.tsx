@@ -134,7 +134,7 @@ export function TripCountdownHero({
         <div className="min-w-0">
           <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-viatik-magenta">
             {active ? <Flag className="size-4" aria-hidden /> : <CalendarDays className="size-4" aria-hidden />}
-            {active ? (dayLabel ? `Active · ${dayLabel}` : "Active") : countdown}
+            {active ? (dayLabel ? t("copy.activeWithDay", { label: dayLabel }) : t("copy.active")) : countdown}
           </p>
           <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">{destination}</h1>
           <p className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">

@@ -5,7 +5,7 @@ import { z } from "zod";
 import { env } from "@/env.mjs";
 import { createClient } from "@/lib/supabase/server-client";
 
-const GEMINI_MODEL = "gemini-1.5-flash";
+const GEMINI_MODELS = ["gemini-1.5-flash", "gemini-2.5-flash", "gemini-2.0-flash"] as const;
 const promptSchema = z.string().trim().min(1).max(4000);
 const geminiResponseSchema = z.object({
   candidates: z
@@ -42,24 +42,28 @@ export async function generateGeminiText(input: unknown): Promise<GeminiTextResu
       return { success: false, error: "Gemini is not configured on this server." };
     }
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": env.GEMINI_API_KEY,
-        },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: parsedPrompt.data }] }],
-          generationConfig: { maxOutputTokens: 1024 },
-        }),
-        signal: AbortSignal.timeout(30_000),
-        cache: "no-store",
-      }
-    );
+    let response: Response | null = null;
+    for (const model of GEMINI_MODELS) {
+      response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": env.GEMINI_API_KEY,
+          },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: parsedPrompt.data }] }],
+            generationConfig: { maxOutputTokens: 1024 },
+          }),
+          signal: AbortSignal.timeout(30_000),
+          cache: "no-store",
+        }
+      );
+      if (response.status !== 404) break;
+    }
 
-    if (!response.ok) {
+    if (!response || !response.ok) {
       return {
         success: false,
         error: "Gemini couldn't respond right now. Please try again.",

@@ -12,12 +12,22 @@ import type { DailyForecast, WeatherWarning } from "@/features/weather/domain/we
 import type { WeatherConflict } from "@/features/weather/domain/weather-conflict-types";
 import { WeatherDayBadge } from "@/features/weather/components/weather-day-badge";
 import { useTransitSegments } from "@/features/transit/components/use-transit";
-import { TRANSIT_STATUS_META, type TransitSegment } from "@/features/transit/domain/transit-types";
+import type { TransitSegment } from "@/features/transit/domain/transit-types";
+import { TRANSIT_STATUS_COPY } from "@/features/transit/lib/transit-copy";
 import { deriveStatusState } from "@/features/transit/lib/transit-service";
+import { conflictReason } from "@/features/weather/lib/weather-conflict-copy";
 import { useI18n } from "@/lib/i18n/i18n-provider";
+import type { TranslationKey } from "@/lib/i18n/translations";
 import { cn } from "@/lib/utils";
 import { getActivityCategoryColors, isUserAttending } from "@/features/trips/lib/activity-category-colors";
 import { activityTimeMinutes, formatActivityTime } from "@/features/activities/lib/activity-time";
+
+const FLEXIBLE_PERIOD_KEYS: Record<string, TranslationKey> = {
+  morning: "copy.morning",
+  afternoon: "copy.afternoon",
+  evening: "copy.evening",
+  night: "copy.night",
+};
 
 const START_HOUR = 0;
 const END_HOUR = 24;
@@ -113,14 +123,14 @@ export function WeekCalendar({
   return (
     <>
     <section className="overflow-hidden rounded-2xl border bg-card">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-sky-300 bg-gradient-to-b from-sky-200 to-teal-300 p-3 text-sky-950 sm:p-4 dark:border-teal-700 dark:from-sky-800 dark:to-teal-900 dark:text-sky-50"><div><h3 className="font-semibold">{title}</h3><p className="text-xs text-teal-800 dark:text-teal-200">{t("common.clickOpenTime")}</p></div><div className="flex flex-wrap items-center gap-2"><div className="flex flex-wrap gap-1.5"><button type="button" data-active={view === "today"} className={`${VIEW_FILTER} border-sky-400 bg-sky-100 text-sky-950 data-[active=true]:bg-gradient-to-b data-[active=true]:from-sky-400 data-[active=true]:to-sky-600 dark:border-sky-600 dark:bg-sky-950 dark:text-sky-50`} onClick={() => setView("today")}>{t("common.today")}</button><button type="button" data-active={view === "range"} className={`${VIEW_FILTER} border-teal-400 bg-teal-100 text-teal-950 data-[active=true]:bg-gradient-to-b data-[active=true]:from-teal-400 data-[active=true]:to-teal-700 dark:border-teal-600 dark:bg-teal-950 dark:text-teal-50`} onClick={() => setView("range")}>{t("common.range")}</button><button type="button" data-active={view === "all"} className={`${VIEW_FILTER} border-cyan-400 bg-cyan-100 text-cyan-950 data-[active=true]:bg-gradient-to-b data-[active=true]:from-cyan-400 data-[active=true]:to-cyan-600 dark:border-cyan-600 dark:bg-cyan-950 dark:text-cyan-50`} onClick={() => setView("all")}>{t("common.all")}</button></div>{view === "range" && (<div className="flex flex-wrap items-center gap-1 rounded-xl border border-teal-400 bg-gradient-to-b from-sky-100 to-teal-200 p-1 dark:border-teal-600 dark:from-sky-900 dark:to-teal-800"><Button type="button" size="icon" variant="ghost" className={RANGE_SHIFT} aria-label={t("common.shiftEarlier")} disabled={!rangeStart || rangeStart === days[0]} onClick={() => shiftRange(-1)}><ChevronLeft /></Button><input type="date" value={rangeStart} min={days[0]} max={rangeEnd} onChange={(event) => setRangeStart(event.target.value)} className={`${RANGE_DATE} border-sky-400 bg-sky-100 text-sky-950 dark:border-sky-600 dark:bg-sky-950 dark:text-sky-50`} aria-label={t("common.rangeStart")} /><span className="px-1 text-xs font-semibold text-teal-800 dark:text-teal-200">to</span><input type="date" value={rangeEnd} min={rangeStart} max={days.at(-1)} onChange={(event) => setRangeEnd(event.target.value)} className={`${RANGE_DATE} border-teal-400 bg-teal-100 text-teal-950 dark:border-teal-600 dark:bg-teal-950 dark:text-teal-50`} aria-label={t("common.rangeEnd")} /><Button type="button" size="icon" variant="ghost" className={RANGE_SHIFT} aria-label={t("common.shiftLater")} disabled={!rangeEnd || rangeEnd === days.at(-1)} onClick={() => shiftRange(1)}><ChevronRight /></Button></div>)}</div></header>
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-sky-300 bg-gradient-to-b from-sky-200 to-teal-300 p-3 text-sky-950 sm:p-4 dark:border-teal-700 dark:from-sky-800 dark:to-teal-900 dark:text-sky-50"><div><h3 className="font-semibold">{title}</h3><p className="text-xs text-teal-800 dark:text-teal-200">{t("common.clickOpenTime")}</p></div><div className="flex flex-wrap items-center gap-2"><div className="flex flex-wrap gap-1.5"><button type="button" data-active={view === "today"} className={`${VIEW_FILTER} border-sky-400 bg-sky-100 text-sky-950 data-[active=true]:bg-gradient-to-b data-[active=true]:from-sky-400 data-[active=true]:to-sky-600 dark:border-sky-600 dark:bg-sky-950 dark:text-sky-50`} onClick={() => setView("today")}>{t("common.today")}</button><button type="button" data-active={view === "range"} className={`${VIEW_FILTER} border-teal-400 bg-teal-100 text-teal-950 data-[active=true]:bg-gradient-to-b data-[active=true]:from-teal-400 data-[active=true]:to-teal-700 dark:border-teal-600 dark:bg-teal-950 dark:text-teal-50`} onClick={() => setView("range")}>{t("common.range")}</button><button type="button" data-active={view === "all"} className={`${VIEW_FILTER} border-cyan-400 bg-cyan-100 text-cyan-950 data-[active=true]:bg-gradient-to-b data-[active=true]:from-cyan-400 data-[active=true]:to-cyan-600 dark:border-cyan-600 dark:bg-cyan-950 dark:text-cyan-50`} onClick={() => setView("all")}>{t("common.all")}</button></div>{view === "range" && (<div className="flex flex-wrap items-center gap-1 rounded-xl border border-teal-400 bg-gradient-to-b from-sky-100 to-teal-200 p-1 dark:border-teal-600 dark:from-sky-900 dark:to-teal-800"><Button type="button" size="icon" variant="ghost" className={RANGE_SHIFT} aria-label={t("common.shiftEarlier")} disabled={!rangeStart || rangeStart === days[0]} onClick={() => shiftRange(-1)}><ChevronLeft /></Button><input type="date" value={rangeStart} min={days[0]} max={rangeEnd} onChange={(event) => setRangeStart(event.target.value)} className={`${RANGE_DATE} border-sky-400 bg-sky-100 text-sky-950 dark:border-sky-600 dark:bg-sky-950 dark:text-sky-50`} aria-label={t("common.rangeStart")} /><span className="px-1 text-xs font-semibold text-teal-800 dark:text-teal-200">{t("copy.rangeTo")}</span><input type="date" value={rangeEnd} min={rangeStart} max={days.at(-1)} onChange={(event) => setRangeEnd(event.target.value)} className={`${RANGE_DATE} border-teal-400 bg-teal-100 text-teal-950 dark:border-teal-600 dark:bg-teal-950 dark:text-teal-50`} aria-label={t("common.rangeEnd")} /><Button type="button" size="icon" variant="ghost" className={RANGE_SHIFT} aria-label={t("common.shiftLater")} disabled={!rangeEnd || rangeEnd === days.at(-1)} onClick={() => shiftRange(1)}><ChevronRight /></Button></div>)}</div></header>
       <div className="overflow-x-auto overscroll-x-contain">
         <div className="min-w-215">
           <div className="isolate grid" style={{ gridTemplateColumns: `5rem repeat(${visibleDays.length}, minmax(7rem, 1fr))` }}>
             <div className="sticky left-0 top-0 z-40 border-b border-r border-teal-400 bg-teal-300 p-3 text-xs font-medium text-teal-950 shadow-[2px_0_4px_-2px_var(--color-border)] dark:border-teal-600 dark:bg-teal-700 dark:text-teal-50">{t("common.localTime")}</div>
             {visibleDays.map((day, index) => (
-              <div key={day} aria-label={`Day ${index + 1}, ${formatHeader(day)}`} className="sticky top-0 z-30 border-b border-r border-sky-400 bg-sky-300 p-3 text-center text-sky-950 last:border-r-0 dark:border-sky-600 dark:bg-sky-700 dark:text-sky-50">
-                <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-sky-800 dark:text-sky-100 sm:hidden">Day {index + 1}</p>
+              <div key={day} aria-label={t("copy.dayNumberWithDate", { number: index + 1, date: formatHeader(day) })} className="sticky top-0 z-30 border-b border-r border-sky-400 bg-sky-300 p-3 text-center text-sky-950 last:border-r-0 dark:border-sky-600 dark:bg-sky-700 dark:text-sky-50">
+                <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-sky-800 dark:text-sky-100 sm:hidden">{t("copy.dayNumber", { number: index + 1 })}</p>
                 <p className="text-xs uppercase text-sky-800 dark:text-sky-100">
                   {new Date(`${day}T12:00:00`).toLocaleDateString(undefined, { weekday: "short" })}
                 </p>
@@ -212,7 +222,7 @@ export function WeekCalendar({
                           muted && "opacity-50 [&>*]:grayscale"
                         )}
                         style={{ top, height }}
-                        aria-label={`${activeActivityId === activity.id ? t("common.edit") : "View"} ${activity.title}${conflict ? ` (weather warning)` : ""}`}
+                        aria-label={`${activeActivityId === activity.id ? t("common.edit") : t("copy.view")} ${activity.title}${conflict ? t("copy.weatherWarningSuffix") : ""}`}
                         data-activity-id={activity.id}
                       >
                         <strong className="flex items-center justify-between gap-1 truncate">
@@ -221,8 +231,8 @@ export function WeekCalendar({
                         </strong>
                         <span className="text-muted-foreground capitalize">
                           {activity.timingSpecificity === "flexible"
-                            ? (activity.flexiblePeriod ?? "Anytime")
-                            : formatActivityTime(activity.startTime) ?? "Time not set"}
+                            ? (activity.flexiblePeriod ? t(FLEXIBLE_PERIOD_KEYS[activity.flexiblePeriod] ?? "copy.anytime") : t("copy.anytime"))
+                            : formatActivityTime(activity.startTime) ?? t("copy.timeNotSet")}
                         </span>
                         {voting && (
                           <span className="mt-0.5 flex items-center gap-1 font-medium">
@@ -232,8 +242,8 @@ export function WeekCalendar({
                           <span
                             className="mt-0.5 inline-flex items-center gap-1 text-destructive"
                             role="img"
-                            aria-label={conflict.reason}
-                            title={conflict.reason}
+                            aria-label={conflictReason(conflict, t)}
+                            title={conflictReason(conflict, t)}
                           >
                             <CloudRain className="size-3" />{t("copy.weather")}</span>
                         )}
@@ -262,8 +272,8 @@ export function WeekCalendar({
 }
 
 function TransitBlock({ segment, split, onClick }: { segment: TransitSegment; split: boolean; onClick: () => void }) {
+  const { t } = useI18n();
   const state = deriveStatusState(segment);
-  const meta = TRANSIT_STATUS_META[state];
   const Icon = segment.mode === "flight" ? Plane : TrainFront;
   const label = [segment.carrierCode, segment.number].filter(Boolean).join(" ") || segment.carrier;
   const delayed = state === "delayed" || state === "boarding";
@@ -295,8 +305,8 @@ function TransitBlock({ segment, split, onClick }: { segment: TransitSegment; sp
             : "border-accent bg-accent/15"
       )}
       style={{ top, height }}
-      aria-label={`Open ${label} details, ${meta.label}`}
-      title={`${label} · ${meta.label} · ${route}`}
+      aria-label={t("copy.openTransitDetails", { label, status: t(TRANSIT_STATUS_COPY[state]) })}
+      title={`${label} · ${t(TRANSIT_STATUS_COPY[state])} · ${route}`}
     >
       <span className="flex items-center gap-1 font-semibold">
         <Icon className="size-3.5 shrink-0" aria-hidden />
@@ -339,15 +349,15 @@ function TransitDetailsDialog({ segment, canEdit, onClose, onEdit, onDelete }: {
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Icon className="size-5" />{label}</DialogTitle>
-          <DialogDescription>{segment.carrier} · {TRANSIT_STATUS_META[deriveStatusState(segment)].label}</DialogDescription>
+          <DialogDescription>{segment.carrier} · {t(TRANSIT_STATUS_COPY[deriveStatusState(segment)])}</DialogDescription>
         </DialogHeader>
-        {segment.ticketImage && <TicketImage image={segment.ticketImage} name={segment.ticketImageName ?? "Ticket"} />}
+        {segment.ticketImage && <TicketImage image={segment.ticketImage} name={segment.ticketImageName ?? t("copy.ticketFileName")} />}
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 text-sm">
           <dt className="text-muted-foreground">{t("copy.route")}</dt><dd className="font-medium">{segment.origin ?? "—"} → {segment.destination ?? "—"}</dd>
           <dt className="text-muted-foreground">{t("copy.departure")}</dt><dd>{departure.toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</dd>
           <dt className="text-muted-foreground">{t("copy.arrival")}</dt><dd>{arrival ? arrival.toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : t("common.notSet")}</dd>
           {segment.bookingReference && <><dt className="text-muted-foreground">{t("copy.bookingReference")}</dt><dd className="font-mono">{segment.bookingReference}</dd></>}
-          <dt className="text-muted-foreground">{segment.mode === "flight" ? "Gate" : "Platform"}</dt><dd>{segment.mode === "flight" ? segment.gate ?? "—" : segment.platform ?? "—"}</dd>
+          <dt className="text-muted-foreground">{segment.mode === "flight" ? t("copy.gate") : t("copy.platform")}</dt><dd>{segment.mode === "flight" ? segment.gate ?? "—" : segment.platform ?? "—"}</dd>
           {segment.statusMessage && <><dt className="text-muted-foreground">{t("copy.status")}</dt><dd>{segment.statusMessage}</dd></>}
         </dl>
         <DialogFooter>

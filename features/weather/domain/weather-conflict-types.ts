@@ -45,11 +45,17 @@ export interface WeatherConflict {
   id: string;
   tripId: string;
   activityId: string;
+  /** Title of the affected activity, for localized explanations. */
+  activityTitle?: string;
   dayDate: string;
   hazard: WeatherHazardType;
   severity: ConflictSeverity;
   /** Human-readable explanation shown in the UI. */
   reason: string;
+  /** Measured value that triggered the hazard, in `hazardUnit`. */
+  hazardValue?: number;
+  /** Unit for `hazardValue`, e.g. "mm", "km/h", "°C". */
+  hazardUnit?: string;
   resolution: ConflictResolutionKind;
 }
 
@@ -71,6 +77,8 @@ export interface RescheduleSuggestion {
 
 /** A suggested indoor replacement for an outdoor activity. */
 export interface IndoorSwapSuggestion {
+  /** Stable id used to localize the suggestion. */
+  id?: string;
   title: string;
   category: string;
   description: string | null;

@@ -36,17 +36,23 @@ function DialogContent({
   className,
   children,
   headerActions,
+  overlayClassName,
+  nested = false,
   onInteractOutside,
   onPointerDownOutside,
   onFocusOutside,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   headerActions?: React.ReactNode;
+  /** Overrides the default `bg-black/50` backdrop, e.g. for nested dialogs. */
+  overlayClassName?: string;
+  /** Marks the content so a parent dialog ignores outside clicks on it. */
+  nested?: boolean;
 }) {
   const { t } = useI18n();
   return (
     <DialogPortal>
-        <DialogOverlay />
+        <DialogOverlay className={overlayClassName} />
         <DialogPrimitive.Content
           asChild
           onInteractOutside={(event) => {
@@ -74,7 +80,13 @@ function DialogContent({
             exit={{ opacity: 0, scale: 0.96 }}
             transition={{ duration: 0.15 }}
           >
-            {children}
+            {nested ? (
+              <div data-nested-dialog className="contents">
+                {children}
+              </div>
+            ) : (
+              children
+            )}
             {headerActions ? (
               <div className="absolute right-16 top-3 z-10 flex items-center">{headerActions}</div>
             ) : null}

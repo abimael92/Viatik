@@ -232,9 +232,9 @@ function PersonalView({
       <div className="rounded-2xl border bg-card p-4 text-sm text-muted-foreground sm:col-span-2 xl:col-span-4">
         <p className="font-semibold text-foreground">{t("copy.whatYouSee")}</p>
         <p className="mt-1">
-          <span className="font-medium text-foreground">{t("common.startingBalance")}</span> is the cash you set aside for this trip.{" "}
-          <span className="font-medium text-foreground">{t("common.actualsSettled")}</span> is your share of expenses already recorded.{" "}
-          <span className="font-medium text-foreground">{t("common.plannedEstimates")}</span> is your equal share of upcoming itinerary costs.{" "}
+          <span className="font-medium text-foreground">{t("common.startingBalance")}</span> {t("copy.startingBalanceExplain")}{" "}
+          <span className="font-medium text-foreground">{t("common.actualsSettled")}</span> {t("copy.actualsExplain")}{" "}
+          <span className="font-medium text-foreground">{t("common.plannedEstimates")}</span> {t("copy.plannedExplain")}{" "}
           <span className="font-medium text-foreground">{t("copy.trueLeftover")}</span> = {t("copy.trueLeftoverHelp")}
         </p>
       </div>
@@ -267,7 +267,7 @@ function PersonalView({
 
       <FinanceCard icon={Wallet} label={t("common.wallet")} accent>
         <p className="font-mono text-2xl font-bold tabular-nums">{formatMinorUnits(walletAmount, walletCurrency)}</p>
-        <p className="text-xs text-muted-foreground">{walletCurrency} starting balance</p>
+        <p className="text-xs text-muted-foreground">{t("copy.walletStartingBalance", { currency: walletCurrency })}</p>
         {canEdit && (
           <Button variant="outline" size="sm" className="mt-3 border-yellow-300 bg-yellow-50 text-yellow-700 hover:bg-yellow-100" onClick={() => setEditing((v) => !v)}>
             {hasWallet ? t("common.editBalance") : t("common.setBalance")}
@@ -409,7 +409,7 @@ function PacingRow({
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-semibold">{formatDate(pacing.date)}</span>
           <span className="block text-xs text-muted-foreground">
-            {formatMinorUnits(pacing.spent, pacing.currency)} spent of {formatMinorUnits(pacing.budget, pacing.currency)}
+            {t("copy.spentOf", { spent: formatMinorUnits(pacing.spent, pacing.currency), budget: formatMinorUnits(pacing.budget, pacing.currency) })}
           </span>
         </span>
         <span className={cn("rounded-full px-2.5 py-1 text-xs font-semibold", statusStyles[pacing.status])}>{statusLabel[pacing.status]}</span>

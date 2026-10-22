@@ -153,7 +153,7 @@ export default function Home() {
         <p>© {new Date().getFullYear()} Viatik. {t("common.footerPlan")}</p>
         <div className="flex gap-5">
           <Link href="/login" className="hover:text-foreground">
-            Sign in
+            {t("auth.signIn")}
           </Link>
           <Link href="/register" className="hover:text-foreground">
             {t("auth.createAnAccount")}

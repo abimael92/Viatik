@@ -136,12 +136,13 @@ export function AppShell({
   );
 
   // Static user profile card — not clickable, no icon, carries the sync status.
+  const displayName = userName || t("copy.traveler");
   const userCard = (
     <div className="rounded-xl border border-side-border bg-side-hover p-3">
       <div className="flex min-w-0 items-center gap-3">
-        <UserAvatar seed={avatarSeed} src={avatarUrl} name={userName} size="md" />
+        <UserAvatar seed={avatarSeed} src={avatarUrl} name={displayName} size="md" />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[15px] font-semibold leading-tight text-side-fg" title={userName}>{userName}</span>
+          <span className="block truncate text-[15px] font-semibold leading-tight text-side-fg" title={displayName}>{displayName}</span>
           {userEmail && (
             <span className="mt-1 block truncate text-[13px] leading-tight text-side-muted" title={userEmail}>{userEmail}</span>
           )}

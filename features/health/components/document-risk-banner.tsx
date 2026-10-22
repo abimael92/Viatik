@@ -3,15 +3,16 @@
 import { FileWarning } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import { TRAVEL_DOCUMENT_TYPE_LABELS } from "@/features/health/domain/health-types";
+import { TRAVEL_DOCUMENT_TYPE_KEYS } from "@/features/health/domain/health-types";
 import type { TravelDocument } from "@/features/health/domain/health-types";
 import { healthRepository } from "@/features/health/data/dexie-health-repository";
 import {
-  formatCountdown,
   summarizeDocuments,
   validateDocument,
 } from "@/features/health/lib/document-validator";
+import { countdownLabel } from "@/features/health/lib/document-copy";
 import { useI18n } from "@/lib/i18n/i18n-provider";
+import type { TranslationKey } from "@/lib/i18n/translations";
 import { cn } from "@/lib/utils";
 
 /**
@@ -70,7 +71,7 @@ export function DocumentRiskBanner({
             const result = validateDocument(document, { destination, travelDate });
             return (
               <li key={document.id}>
-                {TRAVEL_DOCUMENT_TYPE_LABELS[document.type]} · {formatCountdown(result.daysRemaining)}
+                {t(TRAVEL_DOCUMENT_TYPE_KEYS[document.type] as TranslationKey)} · {countdownLabel(result.daysRemaining, t)}
               </li>
             );
           })}

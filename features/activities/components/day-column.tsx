@@ -136,7 +136,7 @@ export function DayColumn({
         items={activities.map((a) => a.id)}
         strategy={verticalListSortingStrategy}
       >
-        <ul className="flex flex-col gap-2" role="list" aria-label={`Activities for ${dayLabel}`}>
+        <ul className="flex flex-col gap-2" role="list" aria-label={t("copy.activitiesForDay", { day: dayLabel })}>
           {activities.map((activity) => (
             <ActivityCard
               key={activity.id}

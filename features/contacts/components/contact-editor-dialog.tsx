@@ -407,8 +407,8 @@ function ContactForm({
                   disabled={isLinkedToViatik}
                   helper={
                     isLinkedToViatik
-                      ? "Managed by Viatik account · read-only."
-                      : "Required · shown to trip collaborators."
+                      ? t("copy.managedByViatik")
+                      : t("copy.requiredShownToCollaborators")
                   }
                   required
                   autoFocus={!isLinkedToViatik}
@@ -738,7 +738,7 @@ function ContactForm({
       )}
       {error && <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
       <DialogFooter>
-        <Button type="submit" variant="primary" disabled={pending}>{pending ? t("settings.saving") : "Save relationship"}</Button>
+        <Button type="submit" variant="primary" disabled={pending}>{pending ? t("settings.saving") : t("copy.saveRelationship")}</Button>
       </DialogFooter>
     </form>
   );
@@ -842,7 +842,7 @@ function StepHeader({
                 type="button"
                 onClick={() => onNavigate(number)}
                 aria-current={active ? "step" : undefined}
-                aria-label={`Go to step: ${title}`}
+                aria-label={t("copy.goToStep", { title })}
                 className="group flex min-h-11 flex-col gap-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <div

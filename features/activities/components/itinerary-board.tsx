@@ -69,6 +69,7 @@ export function ItineraryBoard({
   tripOwnerId,
   activeActivityId,
 }: ItineraryBoardProps) {
+  const { t } = useI18n();
   const db = useDatabase();
   const activities = useLiveQuery(
     () =>
@@ -189,12 +190,12 @@ export function ItineraryBoard({
           <CalendarDays className="size-6" aria-hidden />
         </span>
         <h3 className="mt-4 font-semibold">
-          {category === "all" ? "No activities yet" : "No matching activities"}
+          {category === "all" ? t("copy.noActivitiesYet") : t("copy.noMatchingActivities")}
         </h3>
         <p className="mt-1 text-sm text-muted-foreground">
           {category === "all"
-            ? "The itinerary is empty."
-            : "Try a different category filter."}
+            ? t("copy.itineraryEmpty")
+            : t("copy.tryDifferentFilter")}
         </p>
       </div>
     );

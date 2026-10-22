@@ -17,6 +17,7 @@ import { useLocalProfile } from "@/features/profile/lib/use-local-profile";
 import type { WeatherConflict } from "@/features/weather/domain/weather-conflict-types";
 import { getActivityCategoryColors, isUserAttending } from "@/features/trips/lib/activity-category-colors";
 import { cn } from "@/lib/utils";
+import { conflictReason } from "@/features/weather/lib/weather-conflict-copy";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 
 interface ActivityCardProps {
@@ -83,7 +84,7 @@ export function ActivityCard({ activity, onSelect, onEdit, draggable = true, con
             {...attributes}
             {...listeners}
             className="mt-0.5 cursor-grab rounded-sm text-muted-foreground active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            aria-label={`Move ${activity.title}`}
+            aria-label={t("copy.moveNamed", { name: activity.title })}
           >
             <GripVertical className="size-5" />
           </button>
@@ -94,7 +95,7 @@ export function ActivityCard({ activity, onSelect, onEdit, draggable = true, con
               type="button"
               onClick={() => onSelect?.(activity)}
               className={cn("min-w-0 flex-1 truncate rounded-sm text-left font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", colors.text)}
-              aria-label={`Open details for ${activity.title}`}
+              aria-label={t("copy.openDetailsFor", { name: activity.title })}
               data-activity-id={activity.id}
             >
               {activity.title}
@@ -108,7 +109,7 @@ export function ActivityCard({ activity, onSelect, onEdit, draggable = true, con
                   ? "bg-primary/15 text-primary opacity-100 ring-1 ring-primary/25 hover:bg-primary/25 focus-visible:ring-primary"
                   : "bg-primary/10 text-primary opacity-100 ring-1 ring-primary/20 hover:bg-primary/15 hover:ring-primary/30"
               )}
-              aria-label={`${active ? t("common.edit") : "View"} ${activity.title}`}
+              aria-label={`${active ? t("common.edit") : t("copy.view")} ${activity.title}`}
             >
               {active ? <Pencil className="size-4" strokeWidth={2.5} aria-hidden /> : <Eye className="size-4" strokeWidth={2.5} aria-hidden />}
             </button>
@@ -120,7 +121,7 @@ export function ActivityCard({ activity, onSelect, onEdit, draggable = true, con
             <UserAvatar
               seed={activity.createdBy === currentUserId ? localProfile?.avatarSeed : creatorProfile?.avatarSeed}
               src={activity.createdBy === currentUserId ? localProfile?.avatarUrl : creatorProfile?.avatarUrl}
-              name={activity.createdBy === currentUserId ? localProfile?.fullName ?? creatorProfile?.fullName : creatorProfile?.fullName ?? "Collaborator"}
+              name={activity.createdBy === currentUserId ? localProfile?.fullName ?? creatorProfile?.fullName : creatorProfile?.fullName ?? t("copy.collaborator")}
               size="sm"
             />
             {activity.startTime && (
@@ -142,8 +143,8 @@ export function ActivityCard({ activity, onSelect, onEdit, draggable = true, con
               <span
                 className="inline-flex items-center gap-1 text-destructive"
                 role="img"
-                aria-label={`Weather warning: ${conflict.reason}`}
-                title={conflict.reason}
+                aria-label={t("copy.weatherWarningReason", { reason: conflictReason(conflict, t) })}
+                title={conflictReason(conflict, t)}
               >
                 <CloudRain className="size-3.5" />
                 {t("copy.weather")}

@@ -6,10 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { generateGeminiText } from "@/app/actions/gemini-prompt";
+import { useI18n } from "@/lib/i18n/i18n-provider";
+import { localizeThrownError, localizeUserError } from "@/lib/i18n/localize-error";
 
 const MAX_PROMPT_LENGTH = 4000;
 
 export function GeminiPromptPlayground() {
+  const { t } = useI18n();
   const [prompt, setPrompt] = useState("");
   const [response, setResponse] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -25,9 +28,9 @@ export function GeminiPromptPlayground() {
     try {
       const result = await generateGeminiText(prompt);
       if (result.success) setResponse(result.text);
-      else setError(result.error);
-    } catch {
-      setError("Gemini couldn't respond right now. Please try again.");
+      else setError(localizeUserError(result.error, t, "errors.geminiFailed"));
+    } catch (cause) {
+      setError(localizeThrownError(cause, t, "errors.geminiFailed"));
     } finally {
       setLoading(false);
     }
@@ -36,23 +39,20 @@ export function GeminiPromptPlayground() {
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>Ask Gemini</CardTitle>
-        <CardDescription>
-          Enter a prompt to generate a response. Your prompt is sent to Google and is not saved by
-          this page.
-        </CardDescription>
+        <CardTitle>{t("copy.geminiAskTitle")}</CardTitle>
+        <CardDescription>{t("copy.geminiAskDescription")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="space-y-2">
-            <Label htmlFor="gemini-prompt">Your prompt</Label>
+            <Label htmlFor="gemini-prompt">{t("copy.geminiPromptLabel")}</Label>
             <textarea
               id="gemini-prompt"
               className="min-h-36 w-full resize-y rounded-lg border border-input bg-background px-3 py-3 text-sm leading-6 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
               maxLength={MAX_PROMPT_LENGTH}
-              placeholder="What would you like help with?"
+              placeholder={t("copy.geminiPromptPlaceholder")}
               aria-describedby="gemini-prompt-count"
               required
             />
@@ -66,13 +66,13 @@ export function GeminiPromptPlayground() {
             disabled={loading || !prompt.trim()}
             aria-busy={loading}
           >
-            {loading ? "Generating..." : "Generate response"}
+            {loading ? t("copy.geminiGenerating") : t("copy.geminiGenerate")}
           </Button>
         </form>
 
         {loading ? (
           <p className="mt-5 text-sm text-muted-foreground" role="status" aria-live="polite">
-            Gemini is thinking...
+            {t("copy.geminiThinking")}
           </p>
         ) : null}
         {error ? (
@@ -82,7 +82,7 @@ export function GeminiPromptPlayground() {
         ) : null}
         {response ? (
           <section className="mt-5 rounded-xl border border-border bg-muted/40 p-4">
-            <h2 className="mb-2 text-sm font-semibold">Response</h2>
+            <h2 className="mb-2 text-sm font-semibold">{t("copy.geminiResponseHeading")}</h2>
             <p className="whitespace-pre-wrap text-sm leading-6" role="status" aria-live="polite">
               {response}
             </p>

@@ -24,7 +24,9 @@ import { getMaxEndDate, getTripDurationError } from "@/features/trips/lib/trip-d
 import type { Trip } from "@/features/domain/entities";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import { cn } from "@/lib/utils";
+import { localizeUserError } from "@/lib/i18n/localize-error";
 import { useI18n } from "@/lib/i18n/i18n-provider";
+import type { TranslationKey } from "@/lib/i18n/translations";
 
 const CURRENCIES = ["USD", "EUR", "GBP", "CAD", "MXN", "JPY"] as const;
 
@@ -38,6 +40,15 @@ function formatDate(date: string): string {
  * trip Settings tab. `initialEditing` lets shortcuts ("Edit trip", "Set dates")
  * open the form directly; the parent remounts via a changing `key` to reset it.
  */
+const COVER_GRADIENT_KEYS: Record<TripCoverGradientId, TranslationKey> = {
+  ocean: "copy.coverOcean",
+  sunset: "copy.coverSunset",
+  aurora: "copy.coverAurora",
+  violet: "copy.coverViolet",
+  ember: "copy.coverEmber",
+  midnight: "copy.coverMidnight",
+};
+
 export function TripDetailsSection({
   trip,
   userId,
@@ -111,7 +122,7 @@ export function TripDetailsSection({
     }
     const dateError = getTripDurationError(startDate, endDate);
     if (dateError) {
-      setError(dateError);
+      setError(localizeUserError(dateError, t, "errors.invalidDates"));
       return;
     }
     if (!Number.isInteger(adultCount) || adultCount < 1 || adultCount > 99) {
@@ -173,7 +184,7 @@ export function TripDetailsSection({
         <div>
           <Heading level={3} className="text-base font-semibold">{t("copy.tripDetails")}</Heading>
           <p className="mt-1 text-sm text-muted-foreground">
-            {editing ? "Update the essentials for everyone on this trip." : "Read-only summary. Changes are kept for everyone."}
+            {editing ? t("copy.tripDetailsEditingHelp") : t("copy.tripDetailsReadOnlyHelp")}
           </p>
         </div>
         {canEdit && !editing && (
@@ -273,7 +284,7 @@ export function TripDetailsSection({
                 <SwatchBook className="size-4" /> {t("copy.chooseGradient")}
               </Button>
               <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border border-border/60 px-4 text-sm font-semibold transition-colors hover:bg-muted">
-                <Camera className="size-5" /> {coverFile ? "Change photo" : t("copy.uploadPhoto")}
+                <Camera className="size-5" /> {coverFile ? t("copy.changePhoto") : t("copy.uploadPhoto")}
                 <input
                   id="td-cover"
                   type="file"
@@ -307,7 +318,7 @@ export function TripDetailsSection({
               {t("common.cancel")}
             </Button>
             <Button type="submit" variant="primary" disabled={saving}>
-              {saving ? "Saving…" : t("common.saveChanges")}
+              {saving ? t("copy.savingNow") : t("common.saveChanges")}
             </Button>
           </div>
         </form>
@@ -392,7 +403,7 @@ function GradientPickerModal({
               )}
             >
               <span className="absolute inset-x-2 bottom-2 truncate text-left text-xs font-bold text-white drop-shadow-sm">
-                {gradient.label}
+                {t(COVER_GRADIENT_KEYS[gradient.id])}
               </span>
             </button>
           ))}

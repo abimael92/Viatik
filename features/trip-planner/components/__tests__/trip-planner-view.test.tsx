@@ -120,7 +120,7 @@ describe("TripPlannerView", () => {
     fireEvent.click(screen.getByRole("button", { name: "Search and price checks" }));
     expect(screen.getByText("Montréal")).toBeTruthy();
     expect(screen.getByRole("link", { name: /Search flights/ }).getAttribute("href")).toContain(
-      "Flights+to+Kyoto"
+      "Flights+from+Montr%C3%A9al+to+Kyoto%2C+Japan"
     );
     expect(
       screen.getByText(/destination, plus any route and date details included, are sent to Google/)

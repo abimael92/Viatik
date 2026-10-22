@@ -26,6 +26,7 @@ import {
 import type { Activity, Trip } from "@/features/domain/entities";
 import { isAccommodationCategory } from "@/features/maps/domain/map-types";
 import { useI18n } from "@/lib/i18n/i18n-provider";
+import type { TranslationKey } from "@/lib/i18n/translations";
 import { cn } from "@/lib/utils";
 
 type MarkerKind = "activity" | "accommodation" | "pin";
@@ -62,12 +63,12 @@ const PIN_STYLES: Record<TripPinCategory, MarkerStyle> = {
   note: { container: "bg-slate-500 text-white", dot: "bg-slate-500", icon: NotebookPen },
 };
 
-const PIN_CATEGORY_LABELS: Record<TripPinCategory, string> = {
-  place: "Place",
-  food: "Food",
-  lodging: "Lodging",
-  transport: "Transport",
-  note: "Note",
+const PIN_CATEGORY_LABELS: Record<TripPinCategory, TranslationKey> = {
+  place: "copy.pinCategoryPlace",
+  food: "copy.pinCategoryFood",
+  lodging: "copy.pinCategoryLodging",
+  transport: "copy.pinCategoryTransport",
+  note: "copy.pinCategoryNote",
 };
 
 function markerStyle(kind: MarkerKind, category: string): MarkerStyle {
@@ -132,12 +133,12 @@ export function TripMapView({
       latitude: pin.latitude,
       longitude: pin.longitude,
       title: pin.title,
-      subtitle: PIN_CATEGORY_LABELS[pin.category] ?? pin.category,
+      subtitle: t(PIN_CATEGORY_LABELS[pin.category]),
       description: pin.description ?? null,
       category: pin.category,
     }));
     return [...activityMarkers, ...pinMarkers];
-  }, [activities, pins]);
+  }, [activities, pins, t]);
 
   // Measure the surface so auto-zoom can fit markers exactly.
   useEffect(() => {
@@ -347,19 +348,21 @@ export function TripMapView({
           <h2 className="text-2xl font-bold">{t("common.map")}</h2>
           <p className="text-muted-foreground">
             {markers.length === 0
-              ? "Plot your itinerary and drop pins to see everything on one offline map."
-              : `${markers.length} location${markers.length === 1 ? "" : "s"} plotted — works offline.`}
+              ? t("copy.plotItineraryHelp")
+              : markers.length === 1
+                ? t("copy.locationsPlotted", { count: markers.length })
+                : t("copy.locationsPlottedMany", { count: markers.length })}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           {canEdit && (
             <Button variant={pinMode ? "default" : "outline"} onClick={() => setPinMode((value) => !value)}>
               <MapPin className="size-5" />
-              {pinMode ? "Cancel pin" : "Drop a pin"}
+              {pinMode ? t("copy.cancelPin") : t("copy.dropPin")}
             </Button>
           )}
           <Button variant="outline" onClick={fitToMarkers}>
-            <LocateFixed className="size-5" />Fit all
+            <LocateFixed className="size-5" />{t("copy.fitAll")}
           </Button>
         </div>
       </div>
@@ -397,7 +400,7 @@ export function TripMapView({
                   event.stopPropagation();
                   setSelected(isSelected ? null : marker);
                 }}
-                aria-label={`${marker.title} (${marker.subtitle ?? "location"})`}
+                aria-label={`${marker.title} (${marker.subtitle ?? t("copy.markerLocationFallback")})`}
                 className={cn(
                   "pointer-events-auto absolute -translate-x-1/2 -translate-y-full cursor-pointer rounded-lg p-1 transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   isSelected && "scale-110 ring-2 ring-ring"
@@ -419,7 +422,7 @@ export function TripMapView({
               <MapPin className="mx-auto size-7 text-slate-300" />
               <p className="mt-2 font-semibold">{t("common.noLocations")}</p>
               <p className="mt-1 text-sm text-slate-300">
-                Add coordinates to your itinerary or{canEdit ? " drop a pin" : ""} to start plotting on this map.
+                {canEdit ? t("copy.mapEmptyHelp") : t("copy.mapEmptyHelpReadOnly")}
               </p>
             </div>
           </div>
@@ -437,10 +440,10 @@ export function TripMapView({
                   id="pin-title"
                   value={pinTitle}
                   onChange={(event) => setPinTitle(event.target.value)}
-                  placeholder="e.g. Sunset viewpoint"
+                  placeholder={t("copy.placeholderViewpoint")}
                   autoFocus
                 />
-                <Label htmlFor="pin-category">Category</Label>
+                <Label htmlFor="pin-category">{t("copy.category")}</Label>
                 <select
                   id="pin-category"
                   value={pinCategory}
@@ -449,7 +452,7 @@ export function TripMapView({
                 >
                   {(Object.keys(PIN_CATEGORY_LABELS) as TripPinCategory[]).map((category) => (
                     <option key={category} value={category}>
-                      {PIN_CATEGORY_LABELS[category]}
+                      {t(PIN_CATEGORY_LABELS[category])}
                     </option>
                   ))}
                 </select>
@@ -457,7 +460,7 @@ export function TripMapView({
               <div className="mt-4 flex justify-end gap-2">
                 <Button type="button" variant="ghost" onClick={() => setDropPoint(null)}>{t("common.cancel")}</Button>
                 <Button type="button" variant="primary" disabled={saving || !pinTitle.trim()} onClick={() => void confirmDrop()}>
-                  {saving ? "Saving…" : "Save pin"}
+                  {saving ? t("copy.savingNow") : t("copy.savePin")}
                 </Button>
               </div>
             </div>
@@ -466,15 +469,15 @@ export function TripMapView({
 
         {/* Legend */}
         <div className="absolute left-3 top-3 flex flex-col gap-1.5 rounded-xl bg-slate-900/85 px-3 py-2 text-xs text-slate-200">
-          <LegendRow style={MARKER_STYLES.activity} label="Activity" />
-          <LegendRow style={MARKER_STYLES.accommodation} label="Accommodation" />
-          <LegendRow style={MARKER_STYLES.pin} label="Dropped pin" />
+          <LegendRow style={MARKER_STYLES.activity} label={t("common.activity")} />
+          <LegendRow style={MARKER_STYLES.accommodation} label={t("copy.legendAccommodation")} />
+          <LegendRow style={MARKER_STYLES.pin} label={t("copy.droppedPin")} />
         </div>
 
         {/* Zoom controls */}
         <div className="absolute right-3 top-3 flex flex-col gap-1.5">
-          <ZoomButton onClick={() => setZoom((value) => clampZoom(value + 1))} ariaLabel="Zoom in"><Plus className="size-5" /></ZoomButton>
-          <ZoomButton onClick={() => setZoom((value) => clampZoom(value - 1))} ariaLabel="Zoom out"><Minus className="size-5" /></ZoomButton>
+          <ZoomButton onClick={() => setZoom((value) => clampZoom(value + 1))} ariaLabel={t("copy.zoomIn")}><Plus className="size-5" /></ZoomButton>
+          <ZoomButton onClick={() => setZoom((value) => clampZoom(value - 1))} ariaLabel={t("copy.zoomOut")}><Minus className="size-5" /></ZoomButton>
         </div>
 
         {/* Selected marker card */}
@@ -490,7 +493,7 @@ export function TripMapView({
                 <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{formatLatLng(selected)}</p>
                 {selected.description && <p className="mt-1 text-sm text-muted-foreground">{selected.description}</p>}
                 {selectedDistance != null && selectedDistance < 200_000 && (
-                  <p className="mt-1 text-xs text-muted-foreground">~{formatDistance(selectedDistance)} from view center</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{t("copy.distanceFromCenter", { distance: formatDistance(selectedDistance) })}</p>
                 )}
               </div>
               {selected.kind === "pin" && canEdit && (

@@ -52,7 +52,7 @@ export function VaultEntryCard({
             variant="ghost"
             size="icon"
             aria-pressed={revealed}
-            aria-label={revealed ? "Hide secret" : "Show secret"}
+            aria-label={revealed ? t("copy.hideSecret") : t("copy.showSecret")}
             onClick={() => setRevealed((value) => !value)}
             className="size-10"
           >
@@ -61,8 +61,8 @@ export function VaultEntryCard({
           <Button
             variant="ghost"
             size="icon"
-            aria-label={`Copy secret for ${values.title}`}
-            onClick={() => onCopy(values.secret, `secret for ${values.title}`)}
+            aria-label={t("copy.copySecretFor", { name: values.title })}
+            onClick={() => onCopy(values.secret, t("copy.secretForName", { name: values.title }))}
             className="size-10"
           >
             <Copy className="size-5" />
@@ -70,7 +70,7 @@ export function VaultEntryCard({
           <Button
             variant="ghost"
             size="icon"
-            aria-label={`Edit ${values.title}`}
+            aria-label={`${t("common.edit")} ${values.title}`}
             onClick={onEdit}
             className="size-10"
           >
@@ -79,7 +79,7 @@ export function VaultEntryCard({
           <Button
             variant="ghost"
             size="icon"
-            aria-label={`Delete ${values.title}`}
+            aria-label={`${t("copy.delete")} ${values.title}`}
             onClick={onDelete}
             className="size-10"
           >
@@ -92,7 +92,7 @@ export function VaultEntryCard({
         <span
           className="min-w-0 flex-1 font-mono text-sm break-all"
           aria-live="polite"
-          aria-label={revealed ? "Secret revealed" : "Secret hidden"}
+          aria-label={revealed ? t("copy.secretRevealed") : t("copy.secretHidden")}
         >
           {revealed ? values.secret : masked}
         </span>

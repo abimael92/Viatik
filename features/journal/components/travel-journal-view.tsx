@@ -118,7 +118,7 @@ function TripReplayCard({
   }
 
   const stats = [
-    { icon: CalendarDays, label: "Days", value: String(summary.totalDays) },
+    { icon: CalendarDays, label: t("copy.daysStat"), value: String(summary.totalDays) },
     { icon: Camera, label: t("common.photos"), value: String(summary.totalPhotos) },
     { icon: Footprints, label: t("common.activities"), value: String(summary.totalActivities) },
     { icon: CircleDollarSign, label: t("common.spent"), value: formatMinorUnits(summary.totalSpentMinor, baseCurrency) },
@@ -138,9 +138,11 @@ function TripReplayCard({
           </Heading>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
-          {summary.totalDays === 1 ? "1 day" : `${summary.totalDays} days`} of {summary.totalPhotos}{" "}
-          {summary.totalPhotos === 1 ? "photo" : "photos"} and {summary.totalActivities}{" "}
-          {summary.totalActivities === 1 ? "activity" : "activities"} captured so far.
+          {t("copy.journalSummary", {
+            days: summary.totalDays === 1 ? t("copy.dayOne") : t("copy.dayMany", { count: summary.totalDays }),
+            photos: summary.totalPhotos === 1 ? t("common.photo") : t("common.photos"),
+            activities: summary.totalActivities === 1 ? t("copy.activityCountOne") : t("copy.activityCountMany", { count: summary.totalActivities }),
+          })}
         </p>
         <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {stats.map((stat) => (
@@ -244,7 +246,7 @@ function DayExperience({ value, dayDate, editing, onSave }: { value: string; day
     <div className="mt-4 space-y-1.5">
       <div className="flex items-center justify-between gap-3">
         <label htmlFor={`journal-experience-${dayDate}`} className="text-sm font-semibold">{t("copy.journalPrompt")}</label>
-        <span className="text-xs text-muted-foreground" aria-live="polite">{saved ? t("common.offlineSaved") : "Unsaved"}</span>
+        <span className="text-xs text-muted-foreground" aria-live="polite">{saved ? t("common.offlineSaved") : t("copy.unsaved")}</span>
       </div>
       <textarea id={`journal-experience-${dayDate}`} value={text} onChange={(event) => { setText(event.target.value); setSaved(false); }} onBlur={() => { if (!saved) void onSave(text).then(() => setSaved(true)); }} rows={4} maxLength={4000} placeholder={t("copy.journalPlaceholder")} className="w-full resize-y rounded-lg border bg-background px-3 py-2 text-sm outline-none transition focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring" />
     </div>
@@ -320,7 +322,7 @@ function AddPhotoControl({ tripId, userId, day }: { tripId: string; userId: stri
   return (
     <div>
       <label className="inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-md border border-border/60 px-3 text-sm font-semibold transition-colors hover:bg-muted">
-        <Camera className="size-4" /> {saving ? t("common.adding") : "Add photo"}
+        <Camera className="size-4" /> {saving ? t("common.adding") : t("copy.addPhoto")}
         <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={saving} onChange={(event) => { void handleFile(event.target.files?.[0] ?? null); event.target.value = ""; }} />
       </label>
       {error && <p className="text-xs text-destructive">{error}</p>}
@@ -376,7 +378,7 @@ function DayPhotoGallery({ photos, dayDate }: { photos: TripMedia[]; dayDate: st
       <div className="flex items-center justify-between gap-3">
         <Button type="button" variant="ghost" size="sm" onClick={() => setExpanded((value) => !value)} aria-expanded={expanded}>
           {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-          {expanded ? "Hide photos" : `Show photos (${photos.length})`}
+          {expanded ? t("copy.hidePhotos") : t("copy.showPhotosCount", { count: photos.length })}
         </Button>
         <Button type="button" variant="outline" size="sm" onClick={() => setModalOpen(true)}>
           <Expand className="size-4" />{t("common.viewAll")}
@@ -391,8 +393,8 @@ function DayPhotoGallery({ photos, dayDate }: { photos: TripMedia[]; dayDate: st
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Photos from {formatJournalDate(dayDate)}</DialogTitle>
-            <DialogDescription>{photos.length} {photos.length === 1 ? t("common.photo") : "photos"} uploaded for this day.</DialogDescription>
+            <DialogTitle>{t("copy.photosFromDay", { date: formatJournalDate(dayDate) })}</DialogTitle>
+            <DialogDescription>{t("copy.photosUploadedForDay", { count: photos.length === 1 ? t("common.photo") : t("common.photos") })}</DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {photos.map((photo) => <PhotoThumb key={photo.id} photo={photo} />)}

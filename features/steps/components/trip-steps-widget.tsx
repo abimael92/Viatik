@@ -136,13 +136,13 @@ export function TripStepsWidget({
           <div className="min-w-0">
             <Heading level={2} className="text-base font-semibold">{t("copy.walkingSteps")}</Heading>
             <p className="text-xs text-emerald-950/70 dark:text-emerald-100/70" aria-live="polite">
-              {syncing ? "Syncing health data…" : todayRecord ? "Synced from HealthKit or Health Connect" : "Native Health access required"}
+              {syncing ? t("copy.syncingHealthData") : todayRecord ? t("copy.syncedFromHealth") : t("copy.nativeHealthRequired")}
             </p>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <p className="text-right text-xl font-bold tabular-nums">
-            {todayRecord ? `${todayRecord.steps.toLocaleString()} steps` : "—"}
+            {todayRecord ? t("copy.stepsCount", { count: todayRecord.steps.toLocaleString() }) : "—"}
             <span className="block text-xs font-normal text-emerald-950/70 dark:text-emerald-100/70">{t("copy.today")}</span>
           </p>
           {!compact && (
@@ -152,7 +152,7 @@ export function TripStepsWidget({
               size="icon"
               aria-expanded={open}
               aria-controls="trip-steps-content"
-              aria-label={`${open ? "Collapse" : "Expand"} walking steps`}
+              aria-label={open ? t("copy.collapseWalkingSteps") : t("copy.expandWalkingSteps")}
               onClick={() => setOpen((value) => !value)}
             >
               <ChevronDown aria-hidden className={`size-5 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
@@ -164,11 +164,11 @@ export function TripStepsWidget({
       {!todayRecord && (
         <div className="mt-2 space-y-2">
           <p className="text-sm text-emerald-950/70 dark:text-emerald-100/70">
-            {nativeUnavailable ? "Automatic tracking requires the Viatik iOS or Android app." : "Enable HealthKit or Health Connect to track steps automatically."}
+            {nativeUnavailable ? t("copy.healthNativeUnavailable") : t("copy.enableHealthTracking")}
           </p>
           {!nativeUnavailable && (
             <Button type="button" variant="primary" onClick={() => void connectHealth()} disabled={connecting || syncing}>
-              {connecting ? "Connecting…" : "Connect Health Data"}
+              {connecting ? t("copy.connecting") : t("copy.connectHealthData")}
             </Button>
           )}
         </div>
@@ -182,7 +182,7 @@ export function TripStepsWidget({
               const record = records.find((item) => item.dayDate === day);
               const height = record ? Math.max(12, Math.round((record.steps / maxSteps) * 72)) : 8;
               return (
-                <div key={day} className="flex min-w-0 flex-1 flex-col items-center gap-1" title={`${day}: ${record?.steps.toLocaleString() ?? 0} steps`}>
+                <div key={day} className="flex min-w-0 flex-1 flex-col items-center gap-1" title={t("copy.dayStepsTitle", { day, count: record?.steps.toLocaleString() ?? 0 })}>
                   <div className="flex h-20 items-end">
                     <div className={record ? "w-full min-w-2 rounded-t bg-primary" : "w-full min-w-2 rounded-t bg-muted"} style={{ height }} aria-hidden />
                   </div>

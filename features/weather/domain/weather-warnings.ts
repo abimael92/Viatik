@@ -1,4 +1,9 @@
-import type { DailyForecast, WeatherWarning, WeatherWarningType } from "@/features/weather/domain/weather-types";
+import type {
+  DailyForecast,
+  WeatherConditionKey,
+  WeatherWarning,
+  WeatherWarningType,
+} from "@/features/weather/domain/weather-types";
 
 export interface WarningThresholds {
   extremeHeat: number; // °C, max temperature
@@ -14,17 +19,21 @@ export const DEFAULT_THRESHOLDS: WarningThresholds = {
   highWind: 50,
 };
 
-export function weatherCodeSummary(code: number): { label: string; icon: "sun" | "cloud" | "rain" | "snow" | "wind" | "storm" | "fog" } {
-  if (code <= 1) return { label: "Clear", icon: "sun" };
-  if (code <= 3) return { label: "Partly cloudy", icon: "cloud" };
-  if (code === 45 || code === 48) return { label: "Fog", icon: "fog" };
-  if (code <= 55 || code === 56 || code === 57) return { label: "Drizzle", icon: "rain" };
-  if (code <= 67) return { label: "Rain", icon: "rain" };
-  if (code <= 77) return { label: "Snow", icon: "snow" };
-  if (code <= 82) return { label: "Showers", icon: "rain" };
-  if (code <= 86) return { label: "Snow showers", icon: "snow" };
-  if (code <= 99) return { label: "Thunderstorm", icon: "storm" };
-  return { label: "Unknown", icon: "cloud" };
+export function weatherCodeSummary(code: number): {
+  label: string;
+  condition: WeatherConditionKey;
+  icon: "sun" | "cloud" | "rain" | "snow" | "wind" | "storm" | "fog";
+} {
+  if (code <= 1) return { label: "Clear", condition: "clear", icon: "sun" };
+  if (code <= 3) return { label: "Partly cloudy", condition: "partlyCloudy", icon: "cloud" };
+  if (code === 45 || code === 48) return { label: "Fog", condition: "fog", icon: "fog" };
+  if (code <= 55 || code === 56 || code === 57) return { label: "Drizzle", condition: "drizzle", icon: "rain" };
+  if (code <= 67) return { label: "Rain", condition: "rain", icon: "rain" };
+  if (code <= 77) return { label: "Snow", condition: "snow", icon: "snow" };
+  if (code <= 82) return { label: "Showers", condition: "showers", icon: "rain" };
+  if (code <= 86) return { label: "Snow showers", condition: "snowShowers", icon: "snow" };
+  if (code <= 99) return { label: "Thunderstorm", condition: "thunderstorm", icon: "storm" };
+  return { label: "Unknown", condition: "unknown", icon: "cloud" };
 }
 
 export function deriveWeatherWarnings(
@@ -67,6 +76,8 @@ function buildWarning(
         type,
         severity: "high",
         dayDate,
+        value,
+        unit,
         title: "Extreme heat",
         message: `High of ${Math.round(value)}${unit} expected. Stay hydrated and limit strenuous outdoor activity.`,
       };
@@ -75,6 +86,8 @@ function buildWarning(
         type,
         severity: "medium",
         dayDate,
+        value,
+        unit,
         title: "Freezing temperatures",
         message: `Low of ${Math.round(value)}${unit} expected. Pack warm layers and watch for icy conditions.`,
       };
@@ -83,6 +96,8 @@ function buildWarning(
         type,
         severity: value > 40 ? "high" : "medium",
         dayDate,
+        value,
+        unit,
         title: "Heavy rain",
         message: `Up to ${Math.round(value)}${unit} of rain expected. Plan covered or indoor activities.`,
       };
@@ -91,6 +106,8 @@ function buildWarning(
         type,
         severity: value > 80 ? "high" : "medium",
         dayDate,
+        value,
+        unit,
         title: "High wind",
         message: `Gusts up to ${Math.round(value)}${unit} expected. Secure loose items and check transport schedules.`,
       };

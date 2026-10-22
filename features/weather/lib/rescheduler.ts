@@ -103,6 +103,7 @@ const INDOOR_SWAP_CATALOG: Array<{ match: RegExp; suggestion: IndoorSwapSuggesti
   {
     match: /hiking|trek|mountain|climb|camp|outdoor|adventure|safari|expedition/i,
     suggestion: {
+      id: "climbingGym",
       title: "Indoor climbing gym",
       category: "indoor",
       description: "Keep the adventure going without the weather.",
@@ -112,6 +113,7 @@ const INDOOR_SWAP_CATALOG: Array<{ match: RegExp; suggestion: IndoorSwapSuggesti
   {
     match: /beach|swim|snorkel|dive|surf|sail|kayak|paddle|boat|cruise|water|pool/i,
     suggestion: {
+      id: "aquarium",
       title: "Aquarium visit",
       category: "indoor",
       description: "See marine life up close, rain or shine.",
@@ -121,6 +123,7 @@ const INDOOR_SWAP_CATALOG: Array<{ match: RegExp; suggestion: IndoorSwapSuggesti
   {
     match: /sightsee|walk|tour|park|garden|excursion/i,
     suggestion: {
+      id: "museum",
       title: "Museum visit",
       category: "indoor",
       description: "A weatherproof way to explore the local history.",
@@ -130,6 +133,7 @@ const INDOOR_SWAP_CATALOG: Array<{ match: RegExp; suggestion: IndoorSwapSuggesti
   {
     match: /cycl|bike|run|jog|sport|golf|tennis|football|soccer|baseball|hockey/i,
     suggestion: {
+      id: "sportsCenter",
       title: "Indoor sports center",
       category: "indoor",
       description: "Stay active with covered courts and facilities.",
@@ -139,6 +143,7 @@ const INDOOR_SWAP_CATALOG: Array<{ match: RegExp; suggestion: IndoorSwapSuggesti
   {
     match: /family|kids|children|zoo|theme park|amuse/i,
     suggestion: {
+      id: "playCenter",
       title: "Indoor play center",
       category: "indoor",
       description: "Plenty of room for the family to run around indoors.",
@@ -148,6 +153,7 @@ const INDOOR_SWAP_CATALOG: Array<{ match: RegExp; suggestion: IndoorSwapSuggesti
   {
     match: /nature|wildlife|picnic|botanical/i,
     suggestion: {
+      id: "artGallery",
       title: "Art gallery",
       category: "indoor",
       description: "A calming indoor alternative to the outdoors.",
@@ -163,6 +169,7 @@ export function suggestIndoorSwap(activity: Pick<Activity, "category" | "title">
     if (rule.match.test(haystack)) return rule.suggestion;
   }
   return {
+    id: "museum",
     title: "Museum visit",
     category: "indoor",
     description: "A weatherproof way to spend the afternoon.",

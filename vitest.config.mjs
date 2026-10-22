@@ -11,6 +11,7 @@ export default defineConfig({
     environment: "jsdom",
     environmentOptions: { jsdom: { url: "http://localhost/" } },
     globals: true,
+    setupFiles: ["./vitest.setup.mjs"],
     exclude: ["node_modules", ".next", ".worktrees", "e2e", "features/trips/lib/home-trips-temporal.test.ts", "features/trips/components/home/home-page.test.tsx"],
   },
   resolve: {

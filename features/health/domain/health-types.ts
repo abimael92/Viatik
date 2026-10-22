@@ -13,6 +13,13 @@ export const TRAVEL_DOCUMENT_TYPES: TravelDocumentType[] = [
   "vaccination",
 ];
 
+export const TRAVEL_DOCUMENT_TYPE_KEYS: Record<TravelDocumentType, string> = {
+  passport: "copy.docTypePassport",
+  visa: "copy.docTypeVisa",
+  insurance: "copy.docTypeInsurance",
+  vaccination: "copy.docTypeVaccination",
+};
+
 export const TRAVEL_DOCUMENT_TYPE_LABELS: Record<TravelDocumentType, string> = {
   passport: "Passport",
   visa: "Visa",

@@ -65,18 +65,18 @@ export function SettlementView({
       const authorizedProfile = profileById.get(memberId);
       if (memberId === userId && localProfile) {
         return {
-          name: localProfile.fullName?.trim() || authorizedProfile?.fullName?.trim() || "Traveler",
+          name: localProfile.fullName?.trim() || authorizedProfile?.fullName?.trim() || t("copy.traveler"),
           avatarUrl: localProfile.avatarUrl,
           avatarSeed: localProfile.avatarSeed,
         };
       }
       return {
-        name: authorizedProfile?.fullName?.trim() || "Traveler",
+        name: authorizedProfile?.fullName?.trim() || t("copy.traveler"),
         avatarUrl: authorizedProfile?.avatarUrl ?? null,
         avatarSeed: authorizedProfile?.avatarSeed ?? null,
       };
     };
-  }, [authorizedProfiles, localProfile, memberIds, userId]);
+  }, [authorizedProfiles, localProfile, memberIds, userId, t]);
 
   return (
     <section aria-labelledby="settlement-heading" className="space-y-4">

@@ -121,7 +121,7 @@ export function CurrencyConverter({ trip }: { trip: Trip }) {
               value={converted !== null ? formatAmount(converted, to) : ""}
               readOnly
               className="flex-1 font-mono font-semibold"
-              aria-label={`Converted amount in ${to}`}
+              aria-label={t("copy.convertedAmountIn", { currency: to })}
             />
             <CurrencySelect value={to} onChange={setTo} label={t("common.toCurrency")} />
           </div>

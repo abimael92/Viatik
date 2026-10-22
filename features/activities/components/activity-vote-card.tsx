@@ -128,7 +128,7 @@ export function ActivityVoteCard({ activity, currentUserId, eligibleViaticUsers 
         {activity.votingEndsAt && (
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
             <Clock3 className="size-3.5" aria-hidden />
-            Ends {new Date(activity.votingEndsAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
+            {t("copy.endsAt", { date: new Date(activity.votingEndsAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) })}
           </span>
         )}
       </div>

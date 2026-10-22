@@ -33,12 +33,28 @@ export interface TripWeatherForecast {
   deletedAt: string | null;
 }
 
+export type WeatherConditionKey =
+  | "clear"
+  | "partlyCloudy"
+  | "fog"
+  | "drizzle"
+  | "rain"
+  | "snow"
+  | "showers"
+  | "snowShowers"
+  | "thunderstorm"
+  | "unknown";
+
 export type WeatherWarningType = "extremeHeat" | "freezing" | "heavyRain" | "highWind";
 
 export interface WeatherWarning {
   type: WeatherWarningType;
   severity: "low" | "medium" | "high";
   dayDate: string;
+  /** Measured value that triggered the warning, in `unit`. */
+  value?: number;
+  /** Unit for `value`, e.g. "°C", "mm", "km/h". */
+  unit?: string;
   title: string;
   message: string;
 }

@@ -19,17 +19,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { healthRepository } from "@/features/health/data/dexie-health-repository";
 import {
-  TRAVEL_DOCUMENT_TYPE_LABELS,
+  TRAVEL_DOCUMENT_TYPE_KEYS,
   TRAVEL_DOCUMENT_TYPES,
   type TravelDocument,
   type TravelDocumentType,
 } from "@/features/health/domain/health-types";
 import {
-  formatCountdown,
   validateDocument,
   type DocumentValidationResult,
 } from "@/features/health/lib/document-validator";
+import { countdownLabel, documentValidationMessage } from "@/features/health/lib/document-copy";
 import { useI18n } from "@/lib/i18n/i18n-provider";
+import type { TranslationKey } from "@/lib/i18n/translations";
 import { cn } from "@/lib/utils";
 
 type StatusStyle = { badge: string; dot: string; icon: typeof FileText };
@@ -162,7 +163,7 @@ export function DocumentTrackerView({
                       <Icon className="size-4" aria-hidden />
                     </span>
                     <div>
-                      <p className="text-sm font-semibold">{TRAVEL_DOCUMENT_TYPE_LABELS[document.type]}</p>
+                      <p className="text-sm font-semibold">{t(TRAVEL_DOCUMENT_TYPE_KEYS[document.type] as TranslationKey)}</p>
                       {document.documentNumber && (
                         <p className="text-xs text-muted-foreground font-mono">{document.documentNumber}</p>
                       )}
@@ -176,10 +177,10 @@ export function DocumentTrackerView({
                 <div className="mt-3 space-y-1 text-sm text-muted-foreground">
                   <p className={cn("flex items-center gap-2 font-semibold", result.status !== "valid" && "text-foreground")}>
                     <span className={cn("size-2 rounded-full", style.dot)} aria-hidden />
-                    {formatCountdown(result.daysRemaining)}
+                    {countdownLabel(result.daysRemaining, t)}
                   </p>
-                  <p className="text-xs">{result.message}</p>
-                  <p className="text-xs">Expires {document.expiryDate}</p>
+                  <p className="text-xs">{documentValidationMessage(result, t)}</p>
+                  <p className="text-xs">{t("copy.expiresOn", { date: document.expiryDate })}</p>
                 </div>
 
                 <div className="mt-4 flex gap-2">
@@ -318,13 +319,13 @@ function DocumentFormDialog({
   return (
     <DialogContent className="max-h-[90dvh] overflow-y-auto">
       <DialogHeader>
-        <DialogTitle>{initial ? "Edit document" : "Add a document"}</DialogTitle>
+        <DialogTitle>{initial ? t("copy.editDocument") : t("copy.addADocument")}</DialogTitle>
         <DialogDescription>
           {initial
-            ? "Update this document’s details."
+            ? t("copy.docEditHelp")
             : destination
-              ? "Checked against this trip’s entry rules."
-              : "Enter the details to track it against your trips."}
+              ? t("copy.docCheckedHelp")
+              : t("copy.docEnterDetailsHelp")}
         </DialogDescription>
       </DialogHeader>
 
@@ -340,7 +341,7 @@ function DocumentFormDialog({
             >
               {TRAVEL_DOCUMENT_TYPES.map((type) => (
                 <option key={type} value={type}>
-                  {TRAVEL_DOCUMENT_TYPE_LABELS[type]}
+                  {t(TRAVEL_DOCUMENT_TYPE_KEYS[type] as TranslationKey)}
                 </option>
               ))}
             </select>
@@ -351,7 +352,7 @@ function DocumentFormDialog({
               id="doc-number"
               value={form.documentNumber}
               onChange={(event) => set("documentNumber", event.target.value)}
-              placeholder="e.g. AB1234567"
+              placeholder={t("copy.documentNumberPlaceholder")}
             />
           </div>
         </div>

@@ -11,6 +11,7 @@ import { contactRepository } from "@/features/contacts/data/dexie-contact-reposi
 import { profileToConnectionSnapshot, type CurrentPublicProfile } from "@/features/contacts/lib/profile-directory";
 import type { ViatikProfileLookup } from "@/features/domain/entities";
 import { useI18n } from "@/lib/i18n/i18n-provider";
+import { localizeUserError } from "@/lib/i18n/localize-error";
 import { cn } from "@/lib/utils";
 
 interface BarcodeDetectorLike {
@@ -109,8 +110,8 @@ export function QRScannerModal({
       stopScanner();
       setError(
         cause instanceof Error && cause.name === "NotAllowedError"
-          ? "Camera access was denied. Allow access or enter the Viatik ID instead."
-          : "The camera could not be started. Enter the Viatik ID instead."
+          ? t("copy.cameraDenied")
+          : t("copy.cameraStartFailed")
       );
     }
   }
@@ -118,7 +119,7 @@ export function QRScannerModal({
   async function handleScan(value: string) {
     const res = await processScannedConnectionToken(value);
     if (!res.success) {
-      setError(res.error);
+      setError(localizeUserError(res.error, t, "errors.unexpected"));
       return;
     }
     hapticFeedback();
@@ -159,7 +160,7 @@ export function QRScannerModal({
     const payload = await getConnectionQrPayload();
     setQrLoading(false);
     if (!payload.success) {
-      setQrError(payload.error);
+      setQrError(localizeUserError(payload.error, t, "errors.unexpected"));
       return;
     }
     setQrValue(payload.qrValue);

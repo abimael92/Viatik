@@ -132,6 +132,19 @@ export function sensitivityAffected(
   return HAZARD_SENSITIVITY[hazard].includes(sensitivity);
 }
 
+function hazardMeasurement(hazard: WeatherHazardType, condition: WeatherCondition): { value: number; unit: string } {
+  switch (hazard) {
+    case "heavyRain":
+      return { value: Math.round(condition.precipitationMm), unit: "mm" };
+    case "highWind":
+      return { value: Math.round(condition.windSpeedKmh), unit: "km/h" };
+    case "extremeHeat":
+      return { value: Math.round(condition.maxTempC ?? 0), unit: "°C" };
+    case "freezing":
+      return { value: Math.round(condition.minTempC ?? 0), unit: "°C" };
+  }
+}
+
 function describeHazard(hazard: WeatherHazardType, condition: WeatherCondition): string {
   switch (hazard) {
     case "heavyRain":
@@ -176,10 +189,13 @@ export function detectConflicts(
         id: conflictId(activity.id, hazard),
         tripId: activity.tripId,
         activityId: activity.id,
+        activityTitle: activity.title,
         dayDate: activity.dayDate,
         hazard,
         severity,
         reason: buildReason(activity.title, hazard, condition),
+        hazardValue: hazardMeasurement(hazard, condition).value,
+        hazardUnit: hazardMeasurement(hazard, condition).unit,
         resolution,
       });
     }

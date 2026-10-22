@@ -140,16 +140,14 @@ export function TripPlannerView({
             type="button"
             variant="outline"
             disabled={isOnline !== true}
-            title={
-              isOnline === false ? "Scout is unavailable offline. Add an idea manually." : undefined
-            }
+            title={isOnline === false ? t("copy.scoutWizardNeedsConnection") : undefined}
             onClick={() => setWizardOpen(true)}
           >
             <Sparkles aria-hidden />
-            Let Scout help you brainstorm!
+            {t("copy.scoutWizardTrigger")}
           </Button>
           <Button type="button" onClick={openCreate}>
-            Add trip idea
+            {t("copy.addTripIdea")}
           </Button>
         </div>
       </header>
@@ -222,6 +220,7 @@ export function TripPlannerView({
         onManualAdd={openCreate}
         currency={currency}
         isOnline={isOnline}
+        defaultOrigin={ideas?.find((idea) => idea.origin.trim())?.origin ?? ""}
       />
     </section>
   );

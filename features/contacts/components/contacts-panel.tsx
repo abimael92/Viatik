@@ -51,8 +51,8 @@ export function ContactsPanel({
           contact.connectionDirection === null
         ) {
           toast({
-            title: "Connection accepted",
-            description: `${contact.fullName} accepted your request. You're now connected.`,
+            title: t("copy.connectionAccepted"),
+            description: t("copy.contactAcceptedBody", { name: contact.fullName }),
             variant: "success",
           });
         }
@@ -61,7 +61,7 @@ export function ContactsPanel({
       setContacts(newContacts);
     });
     return unsub;
-  }, [userId, toast]);
+  }, [userId, toast, t]);
 
   async function remove(contact: Contact) {
     setError(null);

@@ -406,10 +406,7 @@ function SuggestionForm({
     <>
       <DialogHeader>
         <DialogTitle>{t("copy.addThisTrip")}</DialogTitle>
-        <DialogDescription>
-          Start from “{template.name}” — set your dates and adjust anything before adding it to
-          your trips.
-        </DialogDescription>
+        <DialogDescription>{t("copy.startFromTemplate", { name: template.name })}</DialogDescription>
       </DialogHeader>
 
       <div className="space-y-4">
@@ -518,10 +515,12 @@ function SuggestionForm({
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
-              Suggested length: {suggestedDays} days. The end date updates when you choose a start date.
+              {t("copy.suggestedLength", { days: suggestedDays === 1 ? t("copy.dayOne") : t("copy.dayMany", { count: suggestedDays }) })}
               {endDateManuallySet && dayDifference !== 0 && (
                 <span className="ml-1 font-semibold text-amber-600">
-                  {dayDifference > 0 ? `${dayDifference} day${dayDifference === 1 ? "" : "s"} added.` : `${Math.abs(dayDifference)} day${dayDifference === -1 ? "" : "s"} removed.`}
+                  {dayDifference > 0
+                    ? (dayDifference === 1 ? t("copy.daysAddedOne") : t("copy.daysAddedMany", { count: dayDifference }))
+                    : (dayDifference === -1 ? t("copy.daysRemovedOne") : t("copy.daysRemovedMany", { count: Math.abs(dayDifference) }))}
                 </span>
               )}
             </p>
@@ -563,7 +562,8 @@ function SuggestionForm({
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              {dayDates.length} day{dayDates.length === 1 ? "" : "s"} • {previewActivities.length} activit{previewActivities.length === 1 ? "y" : "ies"}
+              {dayDates.length === 1 ? t("copy.dayOne") : t("copy.dayMany", { count: dayDates.length })} •{" "}
+              {previewActivities.length === 1 ? t("copy.activityCountOne") : t("copy.activityCountMany", { count: previewActivities.length })}
             </p>
           </div>
         )}
@@ -652,16 +652,16 @@ function SuggestionForm({
               {manualTravelers.map((traveler, index) => (
                 <div key={traveler.id} className="space-y-2 rounded-lg bg-muted/50 p-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold">New traveler {index + 1}</p>
-                    <Button type="button" size="icon" variant="ghost" className="size-8" aria-label={`Remove traveler ${index + 1}`} onClick={() => {
+                    <p className="text-xs font-semibold">{t("copy.newTravelerIndexed", { index: index + 1 })}</p>
+                    <Button type="button" size="icon" variant="ghost" className="size-8" aria-label={t("copy.removeTravelerIndexed", { index: index + 1 })} onClick={() => {
                       setManualTravelers((items) => items.filter((item) => item.id !== traveler.id));
                       if (traveler.travelerType === "adult") setAdultCount((count) => Math.max(1, count - 1));
                       else setChildCount((count) => Math.max(0, count - 1));
                     }}><X /></Button>
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2">
-                    <Input aria-label={`Traveler ${index + 1} full name`} placeholder={t("common.fullName")} value={traveler.fullName} onChange={(event) => setManualTravelers((items) => items.map((item) => item.id === traveler.id ? { ...item, fullName: event.target.value } : item))} />
-                    <select aria-label={`Traveler ${index + 1} type`} value={traveler.travelerType} onChange={(event) => {
+                    <Input aria-label={t("copy.travelerFullNameIndexed", { index: index + 1 })} placeholder={t("common.fullName")} value={traveler.fullName} onChange={(event) => setManualTravelers((items) => items.map((item) => item.id === traveler.id ? { ...item, fullName: event.target.value } : item))} />
+                    <select aria-label={t("copy.travelerTypeIndexed", { index: index + 1 })} value={traveler.travelerType} onChange={(event) => {
                       const travelerType = event.target.value as TravelerType;
                       if (travelerType !== traveler.travelerType) {
                         if (travelerType === "adult") { setAdultCount((count) => Math.min(99, count + 1)); setChildCount((count) => Math.max(0, count - 1)); }
@@ -669,8 +669,8 @@ function SuggestionForm({
                       }
                       setManualTravelers((items) => items.map((item) => item.id === traveler.id ? { ...item, travelerType } : item));
                     }} className="h-10 rounded-md border bg-background px-3 text-sm"><option value="adult">{t("copy.adult")}</option><option value="child">{t("copy.child")}</option></select>
-                    <Input aria-label={`Traveler ${index + 1} email`} type="email" placeholder={t("copy.placeholderEmailOptional")} value={traveler.email} onChange={(event) => setManualTravelers((items) => items.map((item) => item.id === traveler.id ? { ...item, email: event.target.value } : item))} />
-                    <Input aria-label={`Traveler ${index + 1} phone`} type="tel" placeholder={t("copy.placeholderPhoneOptional")} value={traveler.phone} onChange={(event) => setManualTravelers((items) => items.map((item) => item.id === traveler.id ? { ...item, phone: event.target.value } : item))} />
+                    <Input aria-label={t("copy.travelerEmailIndexed", { index: index + 1 })} type="email" placeholder={t("copy.placeholderEmailOptional")} value={traveler.email} onChange={(event) => setManualTravelers((items) => items.map((item) => item.id === traveler.id ? { ...item, email: event.target.value } : item))} />
+                    <Input aria-label={t("copy.travelerPhoneIndexed", { index: index + 1 })} type="tel" placeholder={t("copy.placeholderPhoneOptional")} value={traveler.phone} onChange={(event) => setManualTravelers((items) => items.map((item) => item.id === traveler.id ? { ...item, phone: event.target.value } : item))} />
                   </div>
                 </div>
               ))}

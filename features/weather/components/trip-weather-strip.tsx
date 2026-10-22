@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { weatherCodeSummary } from "@/features/weather/domain/weather-warnings";
 import type { DailyForecast, TripWeatherForecast, WeatherWarning } from "@/features/weather/domain/weather-types";
+import { WEATHER_CONDITION_KEYS, WEATHER_WARNING_MESSAGE_KEYS, WEATHER_WARNING_TITLE_KEYS } from "@/features/weather/lib/weather-copy";
 import { getDayWeather, weatherIconName } from "@/features/weather/lib/weather-helpers";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
@@ -91,7 +92,7 @@ export function TripWeatherStrip({
             <div className="space-y-4">
               <div className="flex items-center gap-4 rounded-xl border bg-muted/30 p-4">
                 <WeatherIcon icon={weatherIconName(day.summary.icon)} className="size-12 text-primary" />
-                <div><p className="text-xl font-bold">{day.summary.label}</p><p className="text-sm text-muted-foreground">High {day.maxTemp !== null ? `${Math.round(day.maxTemp)}°C` : "—"} · Low {day.minTemp !== null ? `${Math.round(day.minTemp)}°C` : "—"}</p></div>
+                <div><p className="text-xl font-bold">{t(WEATHER_CONDITION_KEYS[day.summary.condition])}</p><p className="text-sm text-muted-foreground">{t("copy.weatherHighLow", { high: day.maxTemp !== null ? `${Math.round(day.maxTemp)}°C` : "—", low: day.minTemp !== null ? `${Math.round(day.minTemp)}°C` : "—" })}</p></div>
               </div>
               <dl className="grid grid-cols-2 gap-3">
                 <WeatherMetric label={t("common.highTemperature")} value={day.maxTemp !== null ? `${Math.round(day.maxTemp)}°C` : "—"} />
@@ -99,7 +100,7 @@ export function TripWeatherStrip({
                 <WeatherMetric label={t("common.precipitation")} value={`${Math.round(day.precipitation)} mm`} />
                 <WeatherMetric label={t("common.maximumWind")} value={`${Math.round(day.windSpeed)} km/h`} />
               </dl>
-              {day.warnings.length > 0 && <div className="space-y-2"><p className="text-sm font-semibold">{t("common.weatherWarnings")}</p>{day.warnings.map((warning) => <div key={warning.type} className="rounded-lg border border-warning/50 bg-warning/10 p-3"><p className="text-sm font-semibold">{warning.title}</p><p className="text-xs text-muted-foreground">{warning.message}</p></div>)}</div>}
+              {day.warnings.length > 0 && <div className="space-y-2"><p className="text-sm font-semibold">{t("common.weatherWarnings")}</p>{day.warnings.map((warning) => <div key={warning.type} className="rounded-lg border border-warning/50 bg-warning/10 p-3"><p className="text-sm font-semibold">{t(WEATHER_WARNING_TITLE_KEYS[warning.type])}</p><p className="text-xs text-muted-foreground">{t(WEATHER_WARNING_MESSAGE_KEYS[warning.type], { value: warning.value ?? 0, unit: warning.unit ?? "" })}</p></div>)}</div>}
               {hourlyRows.length > 0 && (
                 <div className="border-t pt-3">
                   <Button type="button" variant="ghost" className="w-full justify-between" onClick={() => setHourlyOpen((open) => !open)} aria-expanded={hourlyOpen}>
@@ -136,7 +137,7 @@ function WeatherDayCard({
         "flex h-32 w-48 flex-col items-start rounded-2xl border bg-card/95 p-3 text-left shadow-lg backdrop-blur",
         day?.warnings.length ? "border-warning/50" : "border-border"
       )}
-      aria-label={day ? weatherLabel(day) : `No weather for ${formatDay(dayDate)}`}
+      aria-label={day ? weatherLabel(day, t) : t("copy.noWeatherForDay", { day: formatDay(dayDate) })}
     >
       {day ? (
         <>
@@ -151,7 +152,7 @@ function WeatherDayCard({
                 {day.maxTemp !== null ? `${Math.round(day.maxTemp)}°` : "–"}
                 <span className="ml-1 text-sm font-medium text-muted-foreground">/ {day.minTemp !== null ? `${Math.round(day.minTemp)}°` : "–"}</span>
               </p>
-              <p className="mt-1 text-xs text-muted-foreground">{day.summary.label}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{t(WEATHER_CONDITION_KEYS[day.summary.condition])}</p>
             </div>
           </div>
         </>
@@ -180,11 +181,12 @@ function getHourlyRows(forecast: DailyForecast, dayDate: string): HourlyWeather[
 }
 
 function HourlyWeatherRow({ hour }: { hour: HourlyWeather }) {
+  const { t } = useI18n();
   const summary = weatherCodeSummary(hour.weatherCode);
   return (
     <div className="grid grid-cols-[4.5rem_1fr_auto] items-center gap-3 px-3 py-2.5 text-sm">
       <span className="font-medium tabular-nums">{new Date(hour.time).toLocaleTimeString([], { hour: "numeric" })}</span>
-      <span className="flex min-w-0 items-center gap-2"><WeatherIcon icon={weatherIconName(summary.icon)} className="size-5 shrink-0 text-primary" /><span className="truncate text-muted-foreground">{summary.label}</span></span>
+      <span className="flex min-w-0 items-center gap-2"><WeatherIcon icon={weatherIconName(summary.icon)} className="size-5 shrink-0 text-primary" /><span className="truncate text-muted-foreground">{t(WEATHER_CONDITION_KEYS[summary.condition])}</span></span>
       <span className="text-right"><strong>{Number.isFinite(hour.temperature) ? `${Math.round(hour.temperature)}°` : "—"}</strong><span className="ml-2 text-xs text-blue-600">{Math.round(hour.precipitationProbability)}%</span><span className="ml-2 hidden text-xs text-muted-foreground sm:inline">{Math.round(hour.windSpeed)} km/h</span></span>
     </div>
   );
@@ -194,13 +196,18 @@ function WeatherMetric({ label, value }: { label: string; value: string }) {
   return <div className="rounded-lg border bg-card p-3"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 text-sm font-semibold">{value}</dd></div>;
 }
 
-function weatherLabel(day: NonNullable<ReturnType<typeof getDayWeather>>): string {
+function weatherLabel(
+  day: NonNullable<ReturnType<typeof getDayWeather>>,
+  t: ReturnType<typeof useI18n>["t"]
+): string {
   const parts = [
-    `${day.summary.label}`,
-    day.maxTemp !== null ? `high ${Math.round(day.maxTemp)}°C` : "",
-    day.minTemp !== null ? `low ${Math.round(day.minTemp)}°C` : "",
-    day.precipitation > 0 ? `${Math.round(day.precipitation)} mm rain` : "",
-    day.warnings.length ? `warning: ${day.warnings.map((w) => w.title).join(", ")}` : "",
+    t(WEATHER_CONDITION_KEYS[day.summary.condition]),
+    day.maxTemp !== null ? t("copy.weatherAriaHigh", { value: `${Math.round(day.maxTemp)}°C` }) : "",
+    day.minTemp !== null ? t("copy.weatherAriaLow", { value: `${Math.round(day.minTemp)}°C` }) : "",
+    day.precipitation > 0 ? t("copy.weatherAriaRain", { value: `${Math.round(day.precipitation)} mm` }) : "",
+    day.warnings.length
+      ? t("copy.weatherAriaWarning", { list: day.warnings.map((w) => t(WEATHER_WARNING_TITLE_KEYS[w.type])).join(", ") })
+      : "",
   ];
   return parts.filter(Boolean).join(", ");
 }

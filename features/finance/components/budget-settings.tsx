@@ -135,7 +135,7 @@ export function BudgetSettings({
               inputMode="decimal"
               value={totalInput}
               onChange={(event) => setTotalInput(event.target.value)}
-              placeholder="e.g. 2000.00"
+              placeholder={t("copy.placeholderBudgetTotal")}
             />
             {usesUserCurrency && totalInput.trim() && totalInput.trim() !== "." && (
               <BudgetConversionText input={totalInput} from={userCurrency} to={baseCurrency} />
@@ -148,7 +148,7 @@ export function BudgetSettings({
               inputMode="decimal"
               value={dailyInput}
               onChange={(event) => setDailyInput(event.target.value)}
-              placeholder="e.g. 150.00"
+              placeholder={t("copy.placeholderDailyTarget")}
             />
             <p className="text-xs text-muted-foreground">
               {t("common.blankToPace")}
@@ -156,7 +156,10 @@ export function BudgetSettings({
             {recommendedDaily !== null ? (
               <p className="text-xs text-primary">
                 {t("common.recommended")}: <span className="font-semibold">{formatMinorUnits(recommendedDaily, baseCurrency)}</span>{t("copy.perDay")}
-                {" "}— keeps ~10% of your {formatMinorUnits(totalBudget!, baseCurrency)} budget as a buffer over {dayCount} day{dayCount === 1 ? "" : "s"}.
+                {" "}{t("copy.recommendedBufferNote", {
+                  total: formatMinorUnits(totalBudget!, baseCurrency),
+                  days: dayCount === 1 ? t("copy.dayOne") : t("copy.dayMany", { count: dayCount }),
+                })}
               </p>
             ) : (
               <p className="text-xs text-muted-foreground">
@@ -236,7 +239,7 @@ function ReadOnlyConversion({ trip, baseCurrency }: { trip: Trip; baseCurrency: 
       <Wallet className="size-4 shrink-0 text-muted-foreground" aria-hidden />
       {same ? (
         <span>
-          Local currency ({nativeCurrency}) matches your home currency ({baseCurrency.toUpperCase()}).
+          {t("copy.localMatchesHomeCurrency", { local: nativeCurrency, base: baseCurrency.toUpperCase() })}
         </span>
       ) : (
         <span className="flex flex-wrap items-center gap-1.5">

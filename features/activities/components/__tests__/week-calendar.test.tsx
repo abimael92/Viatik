@@ -5,8 +5,8 @@ import { WeekCalendar } from "@/features/activities/components/week-calendar";
 
 vi.mock("@/lib/i18n/i18n-provider", () => ({
   useI18n: () => ({
-    t: (key: string) =>
-      ({
+    t: (key: string, variables?: Record<string, string | number>) => {
+      const copy: Record<string, string> = {
         "common.tripCalendar": "Trip calendar",
         "common.clickOpenTime": "Click to open a time",
         "common.localTime": "Local time",
@@ -15,7 +15,11 @@ vi.mock("@/lib/i18n/i18n-provider", () => ({
         "common.all": "All",
         "common.rangeStart": "Range start date",
         "common.rangeEnd": "Range end date",
-      })[key] ?? key,
+        "copy.dayNumber": "Day {{number}}",
+        "copy.dayNumberWithDate": "Day {{number}}, {{date}}",
+      };
+      return (copy[key] ?? key).replace(/{{(\w+)}}/g, (_, name: string) => String(variables?.[name] ?? ""));
+    },
   }),
 }));
 
