@@ -39,6 +39,10 @@ export interface WeatherWarning {
   type: WeatherWarningType;
   severity: "low" | "medium" | "high";
   dayDate: string;
+  /** Measured value that triggered the warning, in `unit`. */
+  value?: number;
+  /** Unit for `value`, e.g. "°C", "mm", "km/h". */
+  unit?: string;
   title: string;
   message: string;
 }

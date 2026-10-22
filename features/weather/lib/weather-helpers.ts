@@ -8,7 +8,7 @@ export interface DayWeather {
   precipitation: number;
   weatherCode: number;
   windSpeed: number;
-  summary: { label: string; icon: ReturnType<typeof weatherCodeSummary>["icon"] };
+  summary: ReturnType<typeof weatherCodeSummary>;
   warnings: WeatherWarning[];
 }
 
