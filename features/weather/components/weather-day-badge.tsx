@@ -3,7 +3,9 @@
 import { Cloud, CloudFog, CloudLightning, CloudRain, Loader2, Snowflake, Sun, Wind } from "lucide-react";
 
 import type { DailyForecast, WeatherWarning } from "@/features/weather/domain/weather-types";
+import { WEATHER_CONDITION_KEYS, WEATHER_WARNING_MESSAGE_KEYS, WEATHER_WARNING_TITLE_KEYS } from "@/features/weather/lib/weather-copy";
 import { getDayWeather, weatherIconName } from "@/features/weather/lib/weather-helpers";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 function WeatherIcon({ icon, className }: { icon: ReturnType<typeof weatherIconName>; className?: string }) {
@@ -36,9 +38,10 @@ export function WeatherDayBadge({
   warnings?: WeatherWarning[];
   loading?: boolean;
 }) {
+  const { t } = useI18n();
   if (loading) {
     return (
-      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" aria-label="Loading weather">
+      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" aria-label={t("copy.loadingWeatherShort")}>
         <Loader2 className="size-3 animate-spin" />
       </span>
     );
@@ -57,20 +60,27 @@ export function WeatherDayBadge({
           ? "border-destructive/30 bg-destructive/5 text-destructive"
           : "border-border bg-muted text-foreground"
       )}
-      aria-label={weatherLabel(day)}
-      title={day.warnings.map((w) => w.message).join(" ")}
+      aria-label={weatherLabel(day, t)}
+      title={day.warnings
+        .map((w) => t(WEATHER_WARNING_MESSAGE_KEYS[w.type], { value: w.value ?? 0, unit: w.unit ?? "" }))
+        .join(" ")}
     >
       <WeatherIcon icon={weatherIconName(day.summary.icon)} className="size-3" />
       {day.maxTemp !== null ? `${Math.round(day.maxTemp)}°` : "–"}
-      {hasWarning && <span className="sr-only">{day.warnings.map((w) => w.title).join(", ")}</span>}
+      {hasWarning && <span className="sr-only">{day.warnings.map((w) => t(WEATHER_WARNING_TITLE_KEYS[w.type])).join(", ")}</span>}
     </span>
   );
 }
 
-function weatherLabel(day: NonNullable<ReturnType<typeof getDayWeather>>): string {
-  const parts = [day.summary.label];
-  if (day.maxTemp !== null) parts.push(`high ${Math.round(day.maxTemp)}°C`);
-  if (day.minTemp !== null) parts.push(`low ${Math.round(day.minTemp)}°C`);
-  if (day.warnings.length) parts.push(`warning: ${day.warnings.map((w) => w.title).join(", ")}`);
+function weatherLabel(
+  day: NonNullable<ReturnType<typeof getDayWeather>>,
+  t: ReturnType<typeof useI18n>["t"]
+): string {
+  const parts = [t(WEATHER_CONDITION_KEYS[day.summary.condition])];
+  if (day.maxTemp !== null) parts.push(t("copy.weatherAriaHigh", { value: `${Math.round(day.maxTemp)}°C` }));
+  if (day.minTemp !== null) parts.push(t("copy.weatherAriaLow", { value: `${Math.round(day.minTemp)}°C` }));
+  if (day.warnings.length) {
+    parts.push(t("copy.weatherAriaWarning", { list: day.warnings.map((w) => t(WEATHER_WARNING_TITLE_KEYS[w.type])).join(", ") }));
+  }
   return parts.join(", ");
 }

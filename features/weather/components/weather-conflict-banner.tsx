@@ -14,7 +14,6 @@ import type { ConflictSeverity, WeatherConflict } from "@/features/weather/domai
 import {
   DEFAULT_CONFLICT_THRESHOLDS,
   conflictsByActivityId,
-  hazardLabel,
   impactedActivityCount,
 } from "@/features/weather/lib/weather-conflict";
 import {
@@ -25,8 +24,16 @@ import {
   suggestReschedule,
   swapActivityIndoor,
 } from "@/features/weather/lib/rescheduler";
+import { conflictReason, indoorSwapTitleKey } from "@/features/weather/lib/weather-conflict-copy";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
+
+const HAZARD_SHORT_KEYS = {
+  heavyRain: "copy.hazardRain",
+  highWind: "copy.hazardWind",
+  extremeHeat: "copy.hazardHeat",
+  freezing: "copy.hazardFreezing",
+} as const;
 
 /**
  * Compact overview banner shown on the trip overview when weather may disrupt
@@ -160,7 +167,7 @@ export function WeatherConflictModal({
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate font-semibold">{activity.title}</p>
-                    <p className="mt-0.5 text-sm text-muted-foreground">{conflict.reason}</p>
+                    <p className="mt-0.5 text-sm text-muted-foreground">{conflictReason(conflict, t)}</p>
                   </div>
                   <span
                     className={cn(
@@ -168,7 +175,7 @@ export function WeatherConflictModal({
                       SEVERITY_CLASSES[conflict.severity],
                     )}
                   >
-                    {hazardLabel(conflict.hazard)}
+                    {t(HAZARD_SHORT_KEYS[conflict.hazard])}
                   </span>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -189,7 +196,7 @@ export function WeatherConflictModal({
                     onClick={() => void applySwap(activity)}
                   >
                     {busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <RefreshCw className="size-4" aria-hidden />}
-                    {t("common.swapIndoor", { title: swap.title })}
+                    {t("common.swapIndoor", { title: t(indoorSwapTitleKey(swap.id)) })}
                   </Button>
                 </div>
               </div>
