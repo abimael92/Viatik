@@ -1,6 +1,17 @@
 import { z } from "zod";
 
 export const SCOUT_SUPPORTED_CURRENCIES = ["CAD", "EUR", "GBP", "JPY", "MXN", "USD"] as const;
+export const SCOUT_SUPPORTED_LOCALES = ["en", "es"] as const;
+export const SCOUT_TIMINGS = ["asap", "month", "cheapest"] as const;
+export const SCOUT_TRIP_LENGTHS = ["any", "weekend", "week", "two-weeks"] as const;
+export const SCOUT_COMFORT_LEVELS = ["budget", "balanced", "premium"] as const;
+export const SCOUT_STAY_STYLES = ["hotel", "rental", "either"] as const;
+
+/** Number of ideas a first run returns. */
+export const SCOUT_INITIAL_IDEA_COUNT = 5;
+/** Number of ideas each "add more" run returns. */
+export const SCOUT_MORE_IDEA_COUNT = 2;
+export const SCOUT_MAX_IDEA_COUNT = SCOUT_INITIAL_IDEA_COUNT + SCOUT_MORE_IDEA_COUNT;
 
 export const scoutTripIdeasInputSchema = z.object({
   vibe: z.string().trim().min(2).max(240),
@@ -9,6 +20,23 @@ export const scoutTripIdeasInputSchema = z.object({
   savingsCadence: z.enum(["weekly", "monthly"]),
   currency: z.enum(SCOUT_SUPPORTED_CURRENCIES),
   consentToAI: z.literal(true),
+  locale: z.enum(SCOUT_SUPPORTED_LOCALES).default("en"),
+  count: z.number().int().min(1).max(SCOUT_MAX_IDEA_COUNT).default(SCOUT_INITIAL_IDEA_COUNT),
+  excludeDestinations: z.array(z.string().trim().min(3).max(120)).max(20).default([]),
+  /** Departure city or airport; empty when the traveler skipped the step. */
+  originCity: z.string().trim().max(120).default(""),
+  timing: z.enum(SCOUT_TIMINGS).default("asap"),
+  /** `YYYY-MM`, only meaningful when `timing` is `"month"`. */
+  targetMonth: z
+    .string()
+    .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+    .nullable()
+    .default(null),
+  tripLength: z.enum(SCOUT_TRIP_LENGTHS).default("any"),
+  comfort: z.enum(SCOUT_COMFORT_LEVELS).default("balanced"),
+  stayStyle: z.enum(SCOUT_STAY_STYLES).default("either"),
+  nonstopOnly: z.boolean().default(false),
+  constraints: z.string().trim().max(200).default(""),
 });
 
 const scoutPitchSchema = z
@@ -60,7 +88,23 @@ export const scoutTripIdeaSchema = z
       .min(1)
       .max(100_000_000)
       .describe(
-        "Estimated daily cost per person for food, lodging, and activities in standard whole currency units (e.g., 150 for $150). Do not output minor units."
+        "Estimated daily cost per person for meals, local transport, and activities in standard whole currency units (e.g., 150 for $150), excluding lodging. Do not output minor units."
+      ),
+    estimated_hotel_per_night: z
+      .number()
+      .int()
+      .min(1)
+      .max(100_000_000)
+      .describe(
+        "Estimated hotel rate per night for the whole group in standard whole currency units (e.g., 180 for $180), one room. Do not output minor units."
+      ),
+    estimated_alt_stay_per_night: z
+      .number()
+      .int()
+      .min(1)
+      .max(100_000_000)
+      .describe(
+        "Estimated vacation-rental (Airbnb-style) rate per night for the whole group in standard whole currency units (e.g., 140 for $140). Do not output minor units."
       ),
     scout_pitch: scoutPitchSchema,
   })
@@ -68,9 +112,7 @@ export const scoutTripIdeaSchema = z
 
 export const scoutTripIdeasResponseSchema = z
   .object({
-    idea_one: scoutTripIdeaSchema,
-    idea_two: scoutTripIdeaSchema,
-    idea_three: scoutTripIdeaSchema,
+    ideas: z.array(scoutTripIdeaSchema).min(1).max(SCOUT_MAX_IDEA_COUNT),
   })
   .strict();
 
