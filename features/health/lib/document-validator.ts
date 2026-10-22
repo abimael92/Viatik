@@ -37,6 +37,10 @@ export interface DocumentValidationResult {
   requiredValidityDays?: number;
   /** Human-readable explanation surfaced in the UI. */
   message: string;
+  /** Localized message key, preferred over `message` when present. */
+  messageKey?: string;
+  /** Variables for `messageKey`. */
+  messageVars?: Record<string, string | number>;
 }
 
 export const DAYS_PER_MONTH = 30;
@@ -141,6 +145,10 @@ function validatePassport(
         daysRemaining <= 0
           ? "This passport has expired."
           : "This passport will be expired before you travel.",
+      messageKey:
+        daysRemaining <= 0
+          ? "copy.passportExpired"
+          : "copy.passportExpiresBeforeTravel",
     };
   }
   if (validityAtTravel < requiredValidityDays) {
@@ -151,6 +159,15 @@ function validatePassport(
       rule,
       requiredValidityDays,
       message: `May be denied boarding — a passport must be ${ruleLabel(rule)}.`,
+      messageKey: "copy.passportBoardingDenied",
+      messageVars: {
+        rule:
+          rule === "sixMonth"
+            ? "copy.passportRuleSixMonth"
+            : rule === "threeMonth"
+              ? "copy.passportRuleThreeMonth"
+              : "copy.passportRuleDuration",
+      },
     };
   }
   // Proactive renewal nudge: expiring within the rule's warning horizon
@@ -163,6 +180,8 @@ function validatePassport(
       rule,
       requiredValidityDays,
       message: `This passport expires within ${formatWarningMonths(rule)}. Consider renewing soon.`,
+      messageKey: "copy.passportExpiresWithin",
+      messageVars: { months: rule === "sixMonth" ? "copy.monthsSix" : "copy.monthsThree" },
     };
   }
   return {
@@ -172,6 +191,7 @@ function validatePassport(
     rule,
     requiredValidityDays,
     message: "This passport meets destination validity requirements.",
+    messageKey: "copy.passportValidRule",
   };
 }
 
@@ -197,6 +217,7 @@ function validateExpiringDocument(
       daysRemaining,
       daysUntilTravel,
       message: daysRemaining <= 0 ? "This document has expired." : "This document will expire before you travel.",
+      messageKey: daysRemaining <= 0 ? "copy.docExpired" : "copy.docExpiresBeforeTravel",
     };
   }
   if (daysRemaining < DEFAULT_WARNING_DAYS) {
@@ -205,6 +226,7 @@ function validateExpiringDocument(
       daysRemaining,
       daysUntilTravel,
       message: "This document expires within 6 months. Consider renewing soon.",
+      messageKey: "copy.docExpiresWithinSixMonths",
     };
   }
   return {
@@ -212,6 +234,7 @@ function validateExpiringDocument(
     daysRemaining,
     daysUntilTravel,
     message: "This document will be valid for the trip.",
+    messageKey: "copy.docValidForTrip",
   };
 }
 

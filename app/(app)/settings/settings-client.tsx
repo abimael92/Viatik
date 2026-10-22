@@ -435,7 +435,7 @@ function ProfileEditForm({
       </div>
       <label className="flex items-center gap-3 rounded-xl border p-3 text-sm sm:col-span-2">
         <input type="checkbox" checked={values.muteTripNotifications} onChange={(event) => setValues((current) => ({ ...current, muteTripNotifications: event.target.checked }))} />
-        <span><span className="block font-semibold">{t("copy.muteTripNotifications")}</span><span className="text-xs text-muted-foreground">10 PM – 8 AM</span></span>
+        <span><span className="block font-semibold">{t("copy.muteTripNotifications")}</span><span className="text-xs text-muted-foreground">{t("copy.quietHours")}</span></span>
       </label>
       <div className="space-y-2">
         <Label htmlFor="settings-dietaryRestrictions">{t("common.dietaryRestrictions")}</Label>

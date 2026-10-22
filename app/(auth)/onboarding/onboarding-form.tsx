@@ -207,7 +207,7 @@ export function OnboardingForm({ email, next, initialName = "" }: { email: strin
             autoFocus
           />
           <Field
-            label="Phone"
+            label={t("copy.phone")}
             name="phone"
             type="tel"
             inputMode="tel"
@@ -266,8 +266,8 @@ export function OnboardingForm({ email, next, initialName = "" }: { email: strin
             </SelectField>
             <Field label={t("common.dietaryRestrictions")} name="dietaryRestrictions" value={values.dietaryRestrictions} onChange={(event) => setField("dietaryRestrictions", event.target.value)} placeholder={t("copy.placeholderDiet")} helper={t("common.separateComma")} />
             <Field label={t("common.allergies")} name="allergies" value={values.allergies} onChange={(event) => setField("allergies", event.target.value)} placeholder={t("copy.placeholderAllergies")} helper={t("common.separateComma")} />
-            <Field label="Passport issuing country" name="passportIssuingCountry" value={values.passportIssuingCountry} onChange={(event) => setField("passportIssuingCountry", event.target.value)} placeholder="US" minLength={2} maxLength={2} helper="Two-letter country code only." />
-            <Field label="Passport expiration" name="passportExpiresOn" type="date" value={values.passportExpiresOn} onChange={(event) => setField("passportExpiresOn", event.target.value)} helper="No passport number is stored." />
+            <Field label={t("copy.passportIssuingCountry")} name="passportIssuingCountry" value={values.passportIssuingCountry} onChange={(event) => setField("passportIssuingCountry", event.target.value)} placeholder="US" minLength={2} maxLength={2} helper={t("copy.passportCountryHelper")} />
+            <Field label={t("copy.passportExpiration")} name="passportExpiresOn" type="date" value={values.passportExpiresOn} onChange={(event) => setField("passportExpiresOn", event.target.value)} helper={t("copy.noPassportStored")} />
           </div>
         </section>
       )}
@@ -276,7 +276,7 @@ export function OnboardingForm({ email, next, initialName = "" }: { email: strin
       {notice && <p className="text-xs text-muted-foreground">{notice}</p>}
 
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">Signed in as {email}</p>
+        <p className="text-sm text-muted-foreground">{t("copy.signedInAs", { email })}</p>
         <div className="flex items-center gap-2">
           {step > 1 && (
             <Button type="button" variant="outline" disabled={pending} onClick={() => goToStep(step - 1)}>
@@ -317,7 +317,7 @@ function StepHeader({
                 type="button"
                 onClick={() => onNavigate(number)}
                 aria-current={active ? "step" : undefined}
-                aria-label={`Go to step: ${title}`}
+                aria-label={t("copy.goToStep", { title })}
                 className="group flex min-h-11 flex-col gap-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <div className={cn("h-1.5 rounded-full transition-colors", active ? "bg-primary" : completed ? "bg-primary/40" : "bg-muted group-hover:bg-primary/20")} />
