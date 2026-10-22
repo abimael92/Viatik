@@ -1,0 +1,24 @@
+---
+description: Offline-first persistence, outbox, and sync rules
+globs: lib/db/**,lib/sync/**,features/**/data/**,lib/supabase/**
+alwaysApply: false
+---
+
+# Persistence & sync rules
+
+- Dexie is the source of truth. Read the schema in `lib/db/dexie.ts` before adding
+  a table; migrations are additive and need an `.upgrade()` backfill.
+- Write path: `TransactionContext.runInTransaction([...tables], async (ctx) => { ... })`
+  → `ctx.table<T>("name").put(row)` → `append(entityType, op, row, { tx: ctx, baseUpdatedAt })`.
+  Never call `db.outboxMutations.add(...)` directly.
+- Local-only tables (`tripBudgets`, `packingItems`, `currencyRates`, `transitSegments`,
+  `journalDayEntries`, `dailyStepCounts`, `tripPins`, `feedItems`, `travelDocuments`,
+  `polls`, `pollVotes`, `profiles`, `stagedTripMedia`) must not append outbox entries.
+- New synced entity requires: Dexie table + Supabase migration + RLS + mapper in
+  `lib/supabase/mappers.ts` + `SYNC_TABLE_DEFINITIONS` in `lib/sync/cloud-sync.ts` +
+  `OutboxEntityType` in `lib/sync/types.ts`.
+- Money fields are `bigint` minor units; validate with `features/domain/money.ts`.
+- BigInt is not JSON-serializable — outbox payloads are structured-cloned only.
+- `watch*` repository methods return a disposer; hooks must unsubscribe.
+- Invitation accept/reject is remote-first (`accept_trip_invitation` RPC) — document
+  any other remote-first exception in `memory/MEMORY.md`.
