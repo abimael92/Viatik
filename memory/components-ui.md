@@ -1,0 +1,200 @@
+# Viatik UI, Design System & Client/Server Split
+
+> **Authoritative runtime source:** [`app/globals.css`](../app/globals.css) (tokens) and
+> [`components/ui/`](../components/ui/) (primitives). The written spec is
+> [`.ai/specs/design-system.md`](../.ai/specs/design-system.md); the build protocol is
+> [`.ai/skills/ui-component-generator.md`](../.ai/skills/ui-component-generator.md)
+> (`READ → SCAN → ASSEMBLE → TEST`). If this document and the code disagree, **the code wins**.
+>
+> Last audited: 2026-10-22.
+
+## 1. Stack facts
+
+| Concern | Implementation |
+|---|---|
+| Framework | Next.js **16.3.3** App Router, React **19.2.8**, TypeScript strict |
+| Styling | Tailwind CSS **v4** via `@import "tailwindcss"` + `@theme inline` in `app/globals.css` |
+| Config | **No `tailwind.config.ts`** — tokens flow through `@theme`. PostCSS: `@tailwindcss/postcss` |
+| Primitives | Radix UI (`dialog`, `dropdown-menu`, `tabs`, `label`, `slot`) + `class-variance-authority` |
+| Class merging | `cn()` in [`lib/utils.ts`](../lib/utils.ts) = `twMerge(clsx(...))` |
+| Icons | `lucide-react` (global `stroke-width: 1.75`) |
+| Motion | `motion/react` + `framer-motion`, always gated by `useReducedMotion()` |
+| Drag & drop | `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities` |
+| Fonts | Geist Sans / Geist Mono via `next/font/google` → `--font-geist-sans` / `--font-geist-mono` |
+| Images | `next/image` with `images.unoptimized: true` (Capacitor/offline friendly) |
+| Mobile | Capacitor 8 (`capacitor.config.ts`, `ios/`, `android/`); `pnpm cap:sync` |
+| i18n | `lib/i18n/` — `useI18n().t(key, vars)`, `en` + `es`, enforced by `i18n-coverage.test.ts` |
+
+## 2. Design tokens (`app/globals.css`)
+
+OKLCH tokens on `:root`, overridden on `[data-theme="dark"]` and mirrored for
+`prefers-color-scheme`. Key tokens:
+
+| Token | Light | Dark | Use |
+|---|---|---|---|
+| `--background` | `oklch(0.985 0.004 260)` | `#090a0f` | App canvas |
+| `--foreground` | `oklch(0.18 0.02 264)` | `oklch(0.95 0.005 264)` | Text |
+| `--card` | `oklch(1 0 0)` | `oklch(0.2 0.015 264)` | Cards/popovers |
+| `--primary` | `#a855f7` | `#a855f7` | Brand magenta (default fill, links) |
+| `--muted` / `--muted-foreground` | — | — | Secondary surfaces/text |
+| `--destructive` | `oklch(0.58 0.22 27)` | `oklch(0.55 0.2 27)` | Danger |
+| `--success` | `oklch(0.65 0.16 150)` | `oklch(0.58 0.15 150)` | Success |
+| `--border` / `--input` / `--ring` | — | — | Hairlines, inputs, focus |
+| `--side*` (`--side`, `--side-active`, …) | — | — | Sidebar chrome |
+
+Brand palette (registered as Tailwind colors):
+
+- `viatik-blue` `#0ea5e9` — structural depth
+- `viatik-magenta` `#a855f7` — primary brand / focus
+- `viatik-red` `#f43f5e` — **reserved for primary CTAs & critical actions**
+- `surface-dark` `#090a0f`
+
+Helpers: `.bg-viatik-gradient` (blue→magenta→red, 135deg), `.glow-viatik`,
+`.glow-magenta`.
+
+Radii: `--radius: 0.75rem`; `rounded-lg` = default for buttons/inputs,
+`rounded-2xl` = default for cards/dialogs/panels.
+
+## 3. Component inventory (`components/ui/`)
+
+| Component | Notes |
+|---|---|
+| `Button` | `variant`: `primary` (magenta→red CTA gradient), `default`, `secondary`, `ai` (blue tint), `destructive`, `outline`, `ghost`, `link`. `size`: `default`/`lg` (`h-11`), `sm` (`h-9`), `icon` (`size-11`). Supports `asChild`. |
+| `Card` | `CardHeader/CardTitle/CardDescription/CardContent`; `glass` prop toggles translucent blurred surface. `p-5` gutters. |
+| `Dialog` | Radix wrapper: `Dialog`, `DialogTrigger`, `DialogClose`, `DialogContent/Header/Footer/Title/Description`. |
+| `DropdownMenu` | Radix wrapper (see exports in file). |
+| `Tabs` | Radix: `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent`. |
+| `Badge` / `StatusBadge` | CVA badge variants; `StatusBadge` is a lightweight pill. |
+| `Heading` | Semantic heading levels + `headingVariants`. |
+| `Input` / `Label` | Base form controls. |
+| `IconTile` | Square icon container used by the shell/nav. |
+| `UserAvatar` | DiceBear avatars: `parseAvatarSeed`, `randomAvatarSeed`, `avatarDataUri`, `AvatarStyle`, presence status. |
+| `AvatarPicker` | Seed/upload avatar selection; `fileToDataUrl` helper. |
+| `ConfirmDialog` | Destructive-action confirmation. |
+| `Collapsible` | Disclosure primitive. |
+| `Toast` | `ToastProvider`, `Toaster`, `useToast()` (mounted in `app/(app)/layout.tsx`). |
+| `dialog-dismiss.ts` | `isDialogDismissExempt()` keeps portaled place results, Radix popper menus and nested dialogs from dismissing the parent dialog. Reuse it instead of ad-hoc event hacks. |
+
+`components/app-shell/`: `app-shell.tsx` (sidebar + mobile bottom nav + skip link),
+`sync-status-pill.tsx`, `sync-error-banner.tsx`, `theme-toggle.tsx`,
+`language-switcher.tsx`. `components/pro/command-palette.tsx` is the ⌘K palette.
+`components/error-boundary.tsx` wraps the app.
+
+## 4. Layout hierarchy
+
+```
+app/layout.tsx                       SERVER  <html> fonts, ThemeInitScript, I18nProvider,
+                                             RecoveryLinkCatcher, ErrorBoundary
+├── app/(auth)/…                     login | register | forgot-password | reset-password | onboarding
+├── app/(app)/layout.tsx             SERVER  auth guard (redirect /login), profile guard
+│                                    (redirect /onboarding), then:
+│                                    DatabaseProvider → SyncProvider → ToastProvider → AppShell
+├── app/(app)/home                   dashboard / timeline
+├── app/(app)/trips, trips/[tripId]  trip list + trip workspace
+│                                    tabs: overview · itinerary · tasks · map · money ·
+│                                          photos · people · journal · settings
+│                                    (overview also hosts packing / health / polls / vault tools)
+├── app/(app)/contacts, /community, /notifications, /settings, /gemini
+├── app/share/[slug]                 PUBLIC guest view (no auth)
+└── app/auth/confirm                 password-recovery link landing
+```
+
+Nav links (desktop sidebar + mobile bottom bar): `/home`, `/trips`, `/contacts`,
+`/community` (marked *coming soon*, disabled), `/settings`. Root `proxy.ts`
+(Next 16's renamed middleware) refreshes the Supabase session and redirects
+unauthenticated users away from protected paths.
+
+## 5. Client/server split — the hard rules
+
+`'use client'` is required for **anything that touches** Dexie, `liveQuery`,
+Zustand (`lib/store/ui-store.ts`), `window`/`localStorage`, Radix portals, DnD,
+media capture, or `useSyncStatus`. 115 files currently declare it.
+
+| Layer | Kind | Rule |
+|---|---|---|
+| `app/**/layout.tsx`, `app/**/page.tsx` | Server by default | May call Supabase **server** client (`lib/supabase/server-client.ts`) for auth/profile gating only. No Dexie. |
+| `app/actions/*.ts` | Server Actions | Auth, profile, places, weather, exchange rates, Scout/Gemini generation. Never import Dexie. |
+| `app/(app)/**/*-client.tsx`, `app/(auth)/**/*-form.tsx` | Client | Interactive shells; may use Dexie via repositories. |
+| `features/**/components/*.tsx` | Client | Nearly all feature UI is client (they read live data). |
+| `features/**/data/dexie-*.ts` | Client-only module | Repositories; must not be imported by server components. |
+| `features/**/lib/*.ts` (pure) | Isomorphic | Money math, ordering, status resolution — no browser APIs. |
+| `lib/sync/*`, `lib/db/*` | Client | Outbox/engine/provider. `lib/db/database-provider.tsx` instantiates the DB inside `useEffect` so it never runs during SSR. |
+
+Practical rule: a page is a thin server component that renders one client
+workspace component. If you need Dexie data during render, do it in a hook
+inside the client tree, never in the server component.
+
+## 6. Data-access hooks
+
+Repositories expose `watch*` methods built on `dexie`'s `liveQuery`; hooks
+subscribe in `useEffect` and return the disposer. There is **no generic `useTrip`
+hook** — the trip workspace uses `tripRepository.watchById`.
+
+| Hook | File | Purpose |
+|---|---|---|
+| `useDatabase()` | `lib/db/database-provider.tsx` | Current namespaced Dexie instance |
+| `useSyncStatus()` | `lib/sync/use-sync-status.ts` | status, pending/retryable counts, conflicts, online state |
+| `useSyncRetryCountdown()` | `lib/sync/use-sync-status.ts` | retry countdown + manual retry |
+| `useI18n()` | `lib/i18n/i18n-provider.tsx` | `locale`, `setLocale`, `t()` |
+| `useToast()` | `components/ui/toast.tsx` | transient notifications |
+| `useHomeData()` | `features/trips/components/home/use-home-data.ts` | home timeline aggregation |
+| `useTripBalances()` / `useSettlement()` | `features/expenses/lib/` | ledger + pairwise debts + transfers |
+| `useTripSpending()` | `features/finance/lib/use-trip-spending.ts` | budget pacing |
+| `useTravelJournal()` | `features/journal/lib/use-travel-journal.ts` | journal entries |
+| `useSharedTripFeed()` / `useRecentActivity()` | `features/feed/lib/` | collaborative feed |
+| `useEmergencyCenterData()` | `features/emergency/lib/` | emergency center |
+| `useTransitSegments()` | `features/transit/components/use-transit.ts` | flights/trains |
+| `useLocalProfile()` | `features/profile/lib/use-local-profile.ts` | offline profile mirror |
+| `useTripCrew()` | `features/trips/components/trip-task-dialog.tsx` | task assignee roster |
+| `useAudioRecorder()` | `features/media/lib/use-audio-recorder.ts` | voice notes |
+
+Canonical hook shape:
+
+```tsx
+const [trips, setTrips] = useState<Trip[] | null>(null);
+useEffect(() => tripRepository.watchAll(setTrips), []);
+```
+
+## 7. Interaction & accessibility conventions
+
+- **44×44px minimum touch target** (`h-11`, `size-11`). `sm` (`h-9`) only in dense toolbars.
+- Focus: `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`.
+- Radix owns keyboard/focus-trap/Esc — do not reimplement.
+- Use `aria-expanded`/`aria-controls` for disclosure, `role="region"` + `aria-labelledby`
+  for panels, `role="alert"`/`aria-live` for status, `aria-label` on icon-only buttons.
+- Motion tokens: surfaces `duration-300 ease-[cubic-bezier(0.23,1,0.32,1)]`; overlays
+  `0.15s` opacity+scale; interactive `duration-200 ease-out active:scale-[0.98]`.
+  `prefers-reduced-motion` is handled globally in `globals.css`.
+- Mobile-first: stack, then `sm:`/`md:`; `DialogFooter` is `flex-col-reverse sm:flex-row`.
+
+## 8. Copy & localization
+
+All user-facing strings go through `t("...")` with keys in
+`lib/i18n/translations.ts` (and `lib/i18n/frontend-copy.ts` for larger copy blocks).
+`lib/i18n/i18n-coverage.test.ts` fails when a key is missing from either locale.
+Errors surfaced to users use `lib/i18n/localize-error.ts` (`localizeThrownError`)
+and `lib/i18n/error-copy.ts`. Locale persists in `localStorage["viatik-language"]`
+(`en` | `es`); theme persists in `localStorage["viatik-theme"]`.
+
+## 9. Testing UI
+
+- Vitest + jsdom + Testing Library (`vitest.config.mjs`, `vitest.setup.mjs`),
+  `fake-indexeddb` for repository tests.
+- Tests are colocated: `component.test.tsx`, `repository.test.ts`.
+- Two files are intentionally excluded from Vitest:
+  `features/trips/lib/home-trips-temporal.test.ts` and
+  `features/trips/components/home/home-page.test.tsx` (see `exclude` in `vitest.config.mjs`).
+- E2E: Playwright (`e2e/`, `pnpm test:e2e`), plus a smoke route at `/e2e`.
+
+## 10. UI gotchas
+
+- **Hydration:** theme/language are read from `localStorage` only after mount.
+  `ThemeInitScript` re-applies preferences in `useLayoutEffect` before paint, and
+  `I18nProvider` starts at `"en"` to match server HTML. Never read
+  `localStorage` during render.
+- `suppressHydrationWarning` on `<html>` is intentional (theme attribute).
+- Server components must never import a repository — it will pull Dexie into the
+  server bundle and fail at build/runtime.
+- `next/image` is `unoptimized`; remote images need explicit sizing to avoid CLS.
+- Radix portaled content inside dialogs needs `isDialogDismissExempt()` guards.
+- `lucide-react` icons inherit `size-5` from `Button`; pass `aria-hidden` when decorative.

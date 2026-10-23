@@ -1,0 +1,27 @@
+---
+description: Viatik UI, design tokens, client/server split, i18n
+globs: app/**/*.tsx,components/**,features/**/components/**
+alwaysApply: false
+---
+
+# UI rules
+
+- Tokens live in `app/globals.css` (`@theme inline`). There is **no**
+  `tailwind.config.ts`. Read `.ai/specs/design-system.md` before styling.
+- Reuse `components/ui/*` (Button, Card, Dialog, Tabs, Badge, Heading, Input,
+  Label, IconTile, StatusBadge, UserAvatar, AvatarPicker, ConfirmDialog,
+  Collapsible, Toast). Merge classes with `cn()`.
+- `variant="primary"` is the magenta→red CTA gradient — reserved for primary CTAs
+  and critical actions.
+- `'use client'` is required for Dexie/liveQuery, Zustand, browser APIs, Radix
+  portals, DnD, and media capture. Server components must never import a
+  repository or `lib/db`/`lib/sync`.
+- Data access goes through hooks: `useDatabase`, `useSyncStatus`, feature
+  `use-*` hooks, or repository `watch*` methods inside `useEffect`.
+- All copy via `useI18n().t()`; keys must exist in both `en` and `es`
+  (`lib/i18n/i18n-coverage.test.ts` enforces parity).
+- 44×44px touch targets (`h-11`/`size-11`); visible focus rings; Radix handles
+  keyboard/focus/Esc.
+- Portaled content inside dialogs needs `isDialogDismissExempt()`.
+- Hydration: never read `localStorage` during render (theme/language are applied
+  post-mount).

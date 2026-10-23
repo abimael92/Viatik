@@ -1,0 +1,34 @@
+---
+description: Viatik context, invariants, and mandatory memory loop
+globs:
+alwaysApply: true
+---
+
+# Viatik — read this first
+
+Viatik is an **offline-first** travel workspace. Dexie (IndexedDB) is the domain
+source of truth; Supabase is the sync and authorization target.
+
+Before planning or editing:
+
+1. Read `.ai/llms.txt`, `.ai/constitution.md`, `.ai/AGENTS.md`.
+2. Read `AGENTS.md` and `memory/MEMORY.md`.
+3. Read the topic file that matches the work: `memory/data-models.md`,
+   `memory/components-ui.md`, `memory/roles-abilities.md`.
+
+Hard rules:
+
+- Never query/write Supabase domain tables from UI or features.
+- Every domain write goes through `features/*/data/dexie-*-repository.ts` and a
+  `TransactionContext.runInTransaction(...)` + `append()` outbox mutation.
+- Money is `bigint` minor units. No floats.
+- Dexie schema changes are additive (`this.version(N)`), with a matching Supabase
+  migration, RLS policy, mapper, and sync table entry.
+- Authorization is enforced by RLS; `canEdit` in the UI is UX only.
+- Spec first: `.ai/specs/<feature>.md` or `.ai/specs/bug-<slug>.md`.
+
+Verification gate: `pnpm lint`, `pnpm typecheck`, relevant `pnpm test`, and
+`pnpm build` for routing/server changes.
+
+At the end of every task, append a dated entry to `memory/MEMORY.md` and update the
+relevant topic file.
