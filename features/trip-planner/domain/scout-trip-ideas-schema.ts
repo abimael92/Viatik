@@ -33,6 +33,8 @@ export const scoutTripIdeasInputSchema = z.object({
     .nullable()
     .default(null),
   tripLength: z.enum(SCOUT_TRIP_LENGTHS).default("any"),
+  /** Exact trip length the traveler typed; wins over the `tripLength` preset. */
+  durationDays: z.number().int().min(1).max(60).nullable().default(null),
   comfort: z.enum(SCOUT_COMFORT_LEVELS).default("balanced"),
   stayStyle: z.enum(SCOUT_STAY_STYLES).default("either"),
   nonstopOnly: z.boolean().default(false),

@@ -60,10 +60,28 @@ describe("Scout trip idea contracts", () => {
     expect(parsed.timing).toBe("asap");
     expect(parsed.targetMonth).toBeNull();
     expect(parsed.tripLength).toBe("any");
+    expect(parsed.durationDays).toBeNull();
     expect(parsed.comfort).toBe("balanced");
     expect(parsed.stayStyle).toBe("either");
     expect(parsed.nonstopOnly).toBe(false);
     expect(parsed.constraints).toBe("");
+  });
+
+  it("accepts an exact trip length between 1 and 60 days", () => {
+    expect(
+      scoutTripIdeasInputSchema.safeParse({ ...baseInput, consentToAI: true, durationDays: 1 })
+        .success
+    ).toBe(true);
+    expect(
+      scoutTripIdeasInputSchema.safeParse({ ...baseInput, consentToAI: true, durationDays: 60 })
+        .success
+    ).toBe(true);
+    for (const durationDays of [0, 61, 2.5]) {
+      expect(
+        scoutTripIdeasInputSchema.safeParse({ ...baseInput, consentToAI: true, durationDays })
+          .success
+      ).toBe(false);
+    }
   });
 
   it("rejects malformed planning inputs", () => {

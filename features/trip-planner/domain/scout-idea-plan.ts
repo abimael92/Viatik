@@ -35,6 +35,8 @@ export type ScoutIdeaPlan = ScoutIdeaBudget & {
   savings: {
     cadence: "weekly" | "monthly";
     contributionMinor: MinorUnits;
+    /** False when the traveler has not set a savings pace yet. */
+    hasPace: boolean;
     periods: number;
     readyOn: string;
     /** False when the goal needs more than `MAX_SAVINGS_PERIODS` contributions. */
@@ -135,16 +137,23 @@ export function buildScoutIdeaPlan({
 
   const budget = buildScoutIdeaBudget({ suggestion, crewSize, currency });
 
-  const rawPeriods =
-    savingsCapacityMinor > 0n
-      ? ceilDivide(budget.grandTotalMinor, savingsCapacityMinor)
-      : BigInt(MAX_SAVINGS_PERIODS + 1);
-  const withinReach = rawPeriods <= BigInt(MAX_SAVINGS_PERIODS);
-  const periods = Number(withinReach ? rawPeriods : BigInt(MAX_SAVINGS_PERIODS));
+  // Without a savings pace there is nothing to project, so the trip is treated
+  // as leaving whenever the traveler is ready rather than inventing a date.
+  const hasPace = savingsCapacityMinor > 0n;
+  const rawPeriods = hasPace
+    ? ceilDivide(budget.grandTotalMinor, savingsCapacityMinor)
+    : 0n;
+  const withinReach = hasPace && rawPeriods <= BigInt(MAX_SAVINGS_PERIODS);
+  const periods = Number(
+    withinReach ? rawPeriods : hasPace ? BigInt(MAX_SAVINGS_PERIODS) : 0n
+  );
 
   const start = startOfDay(today);
-  const readyFromSavings =
-    savingsCadence === "weekly" ? addWeeks(start, periods) : addMonths(start, periods);
+  const readyFromSavings = hasPace
+    ? savingsCadence === "weekly"
+      ? addWeeks(start, periods)
+      : addMonths(start, periods)
+    : start;
 
   // A traveler who pinned a month leaves in that month, but never before the
   // savings goal is actually reached.
@@ -171,6 +180,7 @@ export function buildScoutIdeaPlan({
     savings: {
       cadence: savingsCadence,
       contributionMinor: savingsCapacityMinor,
+      hasPace,
       periods,
       readyOn: isoDate(ready),
       withinReach,
