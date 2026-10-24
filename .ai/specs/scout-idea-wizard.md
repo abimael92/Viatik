@@ -4,7 +4,7 @@
 **Owner:** Abimael Garcia
 **Status:** Ready for QA
 **Created:** 2026-10-19
-**Updated:** 2026-10-21
+**Updated:** 2026-10-23
 **Related work:** [Vacation Planner](./vacation-planner.md), [AI Activity Scout](./ai-activity-scout.md)
 
 ## What & Why
@@ -27,18 +27,41 @@ book travel, or provide financial advice.
 
 ## In Scope
 
-- A keyboard-accessible, responsive wizard with **five required question
-  screens** — vibe, crew size, savings pace, departure city, and timing — plus
-  one skippable **Fine-tune** screen. One question is visible at a time, with
-  answer chips/free text, loading/error states, a manual-add fallback action,
-  and consent before answers are sent to the AI provider.
+- A keyboard-accessible, responsive wizard with **five question screens** —
+  vibe, crew size, savings pace, departure city, and timing. One question is
+  visible at a time, with answer chips/free text, loading/error states, a
+  manual-add fallback action, and consent before answers are sent to the AI
+  provider.
 - **Departure city** uses the existing Places autocomplete and is pre-filled
   from the most recent saved idea so the traveler rarely types it.
+- **Use my current location** is a one-tap quick action on the departure screen.
+  It asks the browser for a single coarse position, reverse-geocodes it through a
+  server action, and fills the departure field with the resulting city label. It
+  is optional, cancellable, and never blocks manual typing. Denied, unavailable,
+  timed-out, and offline states each explain themselves and keep the field
+  editable.
+- A **five-segment progress rail** names every screen the wizard shows — vibe,
+  crew, budget, departure, timing — so the counter and the rail always match the
+  flow.
 - **Timing** is one of *as soon as I've saved enough*, *a specific month*, or
   *whenever it's cheapest*. A pinned month defers the recommended departure to
   that month but never earlier than the savings goal.
-- **Fine-tune** bundles trip length, pace/comfort, stay style, a nonstop
-  preference, and one free-text constraint line. Skipping it sends the defaults.
+- **Duration** is a preset (no preference / long weekend / about a week / two
+  weeks or more) plus an optional **exact day count** (1–60). The exact count
+  wins over the preset and constrains every suggestion.
+- The timing screen also collects one optional free-text line for anything the
+  plan must respect (dietary needs, mobility, school calendar).
+- **Savings is optional.** Leaving the amount empty lets the traveler brainstorm
+  without a pace: the savings timeline, ready date, and book-by date are hidden
+  and replaced with "Add a savings pace to see when you could go", while the
+  trip-goal and fare estimates still render. Scout ranks by lowest all-in cost
+  when no pace is set.
+- **Consent lives on the final screen, directly above "Find my trip ideas"** —
+  the moment answers are actually sent — not on the budget screen.
+- The wizard does **not** ask for pace/comfort, stay style, or a nonstop
+  preference. Those are per-idea decisions the traveler makes later; the wizard
+  uses `balanced`, `either`, and any-stops defaults so the estimates stay
+  neutral.
 - The wizard never asks for a budget ceiling, age, or gender.
 - An authenticated Server Action with input validation, enriched per-traveler
   savings horizon benchmarks, and strict Zod output validation using Google
@@ -71,6 +94,16 @@ book travel, or provide financial advice.
   `useReducedMotion()`.
 - Compact, expandable result rows (horizontal snap-scroll on mobile), a single
   consolidated disclaimer, and a dashed "add more" card at the end of the list.
+- An expanded detail surface that reads as a summary rather than a document:
+  - a **highlight strip** with the trip goal, the per-traveler fare, and the
+    ready-to-book date as three labelled stat tiles;
+  - a **savings timeline** drawn from today → goal reached → book by, with a
+    progress rail and the existing one-line savings summary;
+  - a **segmented tab panel** (Budget · Savings · Flights · Stay) so only one
+    detail block is open at a time instead of a long scroll, with the tab
+    underline animating under the active label;
+  - the two provider shortcuts (Flight details, Stay details) remain one tap
+    away in the always-visible footer next to the primary save action.
 
 ## Out of Scope
 
@@ -104,11 +137,14 @@ book travel, or provide financial advice.
 - **Plan derivation:** The savings timeline, ready date, booking window, and
   stay comparison are derived locally by `buildScoutIdeaPlan` from the
   user's inputs and Scout's estimates. The model never returns dates, so it
-  cannot invent a calendar. Nights are `max(1, durationDays - 1)`.
+  cannot invent a calendar. Nights are `max(1, durationDays - 1)`. With no
+  savings pace (`savingsCapacityMinor === 0n`) the plan reports
+  `savings.hasPace = false`, uses zero periods, and anchors the departure and
+  booking dates to today so no invented far-future date is shown.
 - **Flight timing:** The earliest feasible departure is the day the savings
-  goal is reached. The recommended booking window is 12 weeks for long-haul
-  fares (per-traveler flight ≥ 700 whole units) and 8 weeks otherwise, and the
-  book-by date is never earlier than today.
+  goal is reached (today when no pace is set). The recommended booking window is
+  12 weeks for long-haul fares (per-traveler flight ≥ 700 whole units) and 8
+  weeks otherwise, and the book-by date is never earlier than today.
 - **Provider links:** Google Flights parses `q` as a search-box query, so two
   things silently drop the whole search to the marketing homepage:
   1. **Word order.** `Flights from {origin} to {destination} on {depart}
@@ -121,11 +157,23 @@ book travel, or provide financial advice.
 
   With no origin, Google starts from the viewer's location and the UI says so.
   Airbnb needs a hyphenated slug (`Kyoto--Japan`), not a percent-encoded comma.
-- **Privacy/security:** Before generation, disclose and obtain consent to send
-  only the user's vibe, crew size, savings capacity/cadence, and supported
-  currency to the configured AI provider. Do not send account identifiers or
-  saved wishlist data. Authenticate and validate the Server Action input; never
-  return or log the API key or sensitive answers.
+- **Privacy/security:** Consent is collected on the final screen, immediately
+  before generation, and discloses that only the user's vibe, crew size, any
+  savings amount and cadence entered, and supported currency are sent to the
+  configured AI provider. Do not send account identifiers or saved wishlist
+  data. Authenticate and validate the Server Action input; never return or log
+  the API key or sensitive answers. A zero savings amount is valid and is sent
+  as `"0"`, never as a guess.
+- **Device location:** The quick action is opt-in and only runs on an explicit
+  tap. It requests one coarse position with a 10s timeout and no watch, and
+  sends only `latitude`/`longitude` to the server action — never an account id.
+  The action validates bounds, resolves the city label server-side (Google
+  Geocoding when `GOOGLE_MAPS_API_KEY` is configured, the keyless BigDataCloud
+  reverse-geocode endpoint otherwise), and returns a city label only. The
+  precise coordinates are never stored, synced, logged, or sent to the AI
+  provider; only the resulting city label becomes `originCity`. Geolocation is
+  unavailable offline, on insecure origins, and when the browser denies
+  permission — all three degrade to typing the city by hand.
 - **Estimates:** The model must frame amounts as historical baselines, never
   promises. Display estimates as per-person flight and daily costs plus a
   group nightly stay rate; calculate the whole-crew savings goal locally from
@@ -179,20 +227,36 @@ book travel, or provide financial advice.
       its primary action opens Airbnb pre-filtered with those dates and guests.
 - [x] All wizard copy, including the trigger and every detail section, renders
       in English and Spanish through `lib/i18n`.
-- [x] The wizard runs five required screens plus one skippable Fine-tune screen
-      and never asks for a budget ceiling, age, or gender.
+- [x] The wizard runs five screens and never asks for a budget ceiling, age, or
+      gender.
 - [x] A departure city is collected through Places autocomplete and pre-filled
       when a previous idea already has one.
 - [x] A pinned travel month defers the recommended departure but never precedes
       the savings goal.
-- [x] Fine-tune choices change the estimates: trip length bends duration,
-      comfort shifts stay/daily costs, and a rental preference makes the rental
-      rate the savings goal.
+- [x] Trip length is a preset plus an optional exact day count (1–60); the exact
+      count overrides the preset and rejects out-of-range values before calling
+      the action.
+- [x] Leaving the savings amount empty is allowed: the wizard still generates
+      ideas, sends `"0"`, hides savings-derived dates, and explains how to add a
+      pace.
+- [x] Pace/comfort, stay style, and nonstop are no longer asked in the wizard;
+      the action receives neutral defaults and the flight search defaults to any
+      stops.
+- [x] Consent appears only on the final screen, next to "Find my trip ideas",
+      and generation is blocked until it is checked.
 - [x] Result rows collapse to destination, trip goal, one tag, and a chevron;
       only one row expands at a time, and only the first question types itself
       out.
 - [x] Loading renders skeleton placeholders, and a short result set explains
       itself instead of silently showing fewer cards.
+- [x] The departure screen offers **Use my current location**, fills the field
+      with the reverse-geocoded city on success, and shows a localized,
+      non-blocking explanation when the browser denies or cannot resolve it.
+- [x] The progress rail and counter list all five screens and match the flow
+      exactly.
+- [x] The expanded idea detail shows the goal, fare, and book-by date as stat
+      tiles, a today → book-by → goal-reached timeline, and
+      Budget/Savings/Flights/Stay tabs where only one panel renders at a time.
 
 ## Verification
 
@@ -201,37 +265,51 @@ Record actual results and known limitations in Completion Notes before release.
 
 ## Completion Notes
 
-- **Verification results:** Full suite `pnpm test` — 216 files / 1,393 tests
+- **Verification results:** Full suite `pnpm test` — 218 files / 1,418 tests
   passed. `pnpm typecheck`, `pnpm lint`, `pnpm build`, and `git diff --check`
   passed. Provider links were also exercised against the live sites: Google
   Flights populated origin, destination, both dates, passenger count, and the
   Nonstop filter in both `hl=en` and `hl=es`; Airbnb resolved the slug to
   "Homes in Kyoto" with the correct dates and guest count. Focused coverage includes `scout-idea-plan.test.ts` (budget math,
   savings timeline, booking window, pinned month, stay check-in/check-out,
-  return date, zero-decimal currency), `google-travel-links.test.ts` and
+  return date, zero-decimal currency, unset savings pace), `google-travel-links.test.ts` and
   `stay-links.test.ts` (pre-filtered provider URLs and input bounds),
-  `scout-idea-wizard.test.tsx` (five-step flow, origin, pinned month, fine-tune
-  and Skip, skeletons, expand/collapse, add-two-more, exhaustion, pre-filtered
-  flight/stay submodals with the reason for the pick, save handoff, offline
-  gating), `scout-trip-ideas.test.ts` (ranked ideas array, provider schemas,
-  prompt payload, trip-length and comfort effects, rental goal, duplicate
-  filtering, Spanish fallback, malformed responses),
-  `scout-trip-ideas-schema.test.ts` (input defaults and bounds), and
-  `i18n-provider.test.tsx` (English/Spanish Scout copy and placeholders).
+  `scout-idea-wizard.test.tsx` (five-screen flow, origin, pinned month, exact
+  day count and its bounds, optional savings, consent gating, skeletons,
+  expand/collapse, add-two-more, exhaustion, pre-filtered flight/stay submodals
+  with the reason for the pick, save handoff, offline gating, five-segment
+  progress rail, current-location success and denial, and
+  one-detail-panel-at-a-time tabs), `places.test.ts` (reverse-geocode bounds,
+  Google primary path, keyless fallback, label dedupe, and failure handling),
+  `scout-trip-ideas.test.ts` (ranked ideas array, provider schemas,
+  prompt payload, no-pace prompt, exact-day override, trip-length and comfort
+  effects, rental goal, duplicate filtering, Spanish fallback, malformed
+  responses), `scout-trip-ideas-schema.test.ts` (input defaults, duration bounds,
+  and payload bounds), `destination-field.test.tsx` (offline autocomplete and
+  `autoSearch={false}`), and `i18n-provider.test.tsx` (English/Spanish Scout copy
+  and placeholders). The 2026-10-23 pass additionally verified the departure
+  quick action against the live reverse-geocode endpoint and reviewed the
+  redesigned detail surface and the new timing screen in a real browser at
+  430px and 900px in light and dark themes.
 - **Security review:** Server Action authentication, input/output validation,
   consent, server-only key handling (`GEMINI_API_KEY` primary, `OPENAI_API_KEY`
   fallback), and data minimization reviewed during implementation. The exclusion
   list only ever carries destination names the user already saw. Outbound
   searches send only the destination and locally computed dates, and the UI
-  discloses that before navigation. Independent Security Agent review remains
-  pending.
+  discloses that before navigation. The location action validates coordinate
+  bounds, resolves the label server-side, and never persists, logs, or forwards
+  the coordinates. Independent Security Agent review remains pending.
+  Residual risk: like the existing places autocomplete, the reverse-geocode
+  action has no per-user rate limit; add one before public launch.
 - **Known limitations:** Stay costs, flight windows, and savings timelines are
   deterministic estimates, not live availability or fares. Airbnb and hotel
   rates come from Scout's own figures plus outbound search links; no pricing
   API is called. The booking window is a planning heuristic (12 weeks for
   long-haul fares, 8 weeks otherwise). Live-provider prose follows the requested
   language through the prompt but is not schema-enforced; the deterministic
-  fallback is fully localized.
+  fallback is fully localized. Device location needs a secure origin and a
+  connection, and the keyless reverse-geocode provider can return a city-level
+  label without the airport name; the traveler can still edit or replace it.
 - **Follow-up work:** Configure `GEMINI_API_KEY` (and optional `OPENAI_API_KEY`
   fallback) in deployment and manually QA the animated wizard, the Spanish
   copy, and the Google/Airbnb links with a configured provider.

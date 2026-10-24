@@ -4,7 +4,7 @@
 > before exploring the codebase; update it before ending a task.
 > **Companions:** [`data-models.md`](data-models.md) ·
 > [`components-ui.md`](components-ui.md) · [`roles-abilities.md`](roles-abilities.md)
-> **Last updated:** 2026-10-22 · schema v47 · 217 test files / 1,399 tests
+> **Last updated:** 2026-10-23 · schema v47 · 218 test files / 1,418 tests
 
 ---
 
@@ -178,6 +178,46 @@ Also update the topic file whose subject changed:
 ---
 
 ## 7. Session log (newest first)
+
+### 2026-10-23 — Scout wizard: five screens, optional savings, exact days
+- **Changed:** the wizard is now exactly five screens (vibe · crew · budget ·
+  departure · timing). The fine-tune screen is gone: pace/comfort, stay style,
+  and nonstop are no longer asked (the action receives `balanced` / `either` /
+  `false`). Duration is a preset plus an optional exact day count (1–60), and
+  the free-text constraint moved onto the timing screen. The AI consent moved
+  from the budget screen to the final screen, directly above "Find my trip
+  ideas". Savings is optional — an empty amount sends `"0"` and the UI hides
+  savings-derived dates. `buildScoutIdeaPlan` now reports `savings.hasPace` and
+  anchors a pace-less plan to today instead of a far-future date. The provider
+  prompt drops savings/horizons when no pace is set and accepts
+  `exactDurationDays`.
+- **Schema:** none (Dexie v47 unchanged). Contract change only:
+  `scoutTripIdeasInputSchema.durationDays` (1–60, nullable, default null) and
+  `savingsCapacityMinor` now accepts `"0"`.
+- **Verification:** `pnpm typecheck` ✅ · `pnpm lint` ✅ (no warnings) ·
+  `pnpm test` ✅ 218 files / 1,418 tests · `pnpm build` ✅ (21 routes). Budget and
+  timing screens reviewed in a real browser at 430px in light mode.
+- **Gotchas:** `savingsCapacityMinor === 0n` means "no pace", not "zero money" —
+  check `plan.savings.hasPace` before rendering any savings date. The action
+  still rejects amounts above `MAX_MINOR_UNITS`.
+
+### 2026-10-23 — Scout wizard: current location, honest step count, detail redesign
+- **Changed:** `features/trip-planner/components/scout-idea-wizard.tsx`
+  (new `WizardProgress` rail covering all 6 screens, "Use my current location"
+  quick action, expanded detail rebuilt as stat tiles + timeline + Budget/Savings/
+  Flights/Stay tabs), `app/actions/places.ts` (`reverseGeocodeDestination`),
+  `features/trips/components/destination-field.tsx` (new `autoSearch` prop),
+  `lib/i18n/frontend-copy.ts` (EN/ES copy), `.ai/specs/scout-idea-wizard.md`.
+- **Schema:** none. No Dexie version bump, no Supabase migration, no outbox change.
+- **Verification:** `pnpm typecheck` ✅ · `pnpm lint` ✅ (no warnings) ·
+  `pnpm test` ✅ 218 files / 1,411 tests · `pnpm build` ✅ (21 routes). The location
+  flow and both detail themes were also exercised in a real browser (430px and
+  900px, light + dark).
+- **Gotchas:** geolocation needs a secure origin (localhost is fine) and is
+  unavailable offline; the reverse-geocode action returns a city label only and
+  never logs coordinates. Without `GOOGLE_MAPS_API_KEY` it falls back to the
+  keyless BigDataCloud endpoint. Radix `Tabs` activates on `mousedown`/focus, so
+  component tests must not rely on `click` alone.
 
 ### 2026-10-22 — Initialize agent context & persistent memory
 - **Changed:** added `memory/MEMORY.md`, `memory/data-models.md`,

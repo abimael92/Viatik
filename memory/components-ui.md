@@ -6,7 +6,7 @@
 > [`.ai/skills/ui-component-generator.md`](../.ai/skills/ui-component-generator.md)
 > (`READ → SCAN → ASSEMBLE → TEST`). If this document and the code disagree, **the code wins**.
 >
-> Last audited: 2026-10-22.
+> Last audited: 2026-10-23.
 
 ## 1. Stack facts
 
@@ -198,3 +198,32 @@ and `lib/i18n/error-copy.ts`. Locale persists in `localStorage["viatik-language"
 - `next/image` is `unoptimized`; remote images need explicit sizing to avoid CLS.
 - Radix portaled content inside dialogs needs `isDialogDismissExempt()` guards.
 - `lucide-react` icons inherit `size-5` from `Button`; pass `aria-hidden` when decorative.
+- Radix `Tabs` activates on **focus/mousedown**, not `click`; tests must use
+  `fireEvent.mouseDown(tab, { button: 0 })`. Inactive `TabsContent` unmounts, so
+  keep always-visible actions (e.g. provider links) outside the tab panels.
+- `DestinationField` (`features/trips/components/destination-field.tsx`) takes
+  `autoSearch={false}` to suppress the suggestion dropdown while a value is
+  filled programmatically (device location). Re-enable it when the traveler types.
+
+## 11. Scout wizard patterns (`features/trip-planner/components/scout-idea-wizard.tsx`)
+
+- **Five screens only:** vibe → crew → budget → departure → timing. The timing
+  screen also holds the duration preset + exact day count, the free-text
+  constraint, the AI consent, and the generate CTA. There is no fine-tune
+  screen; pace/comfort, stay style, and nonstop are deferred to per-idea
+  decisions and sent as neutral defaults.
+- **Progress rail:** `WizardProgress` renders one segment per screen (5). Never
+  cap the counter below the real screen count.
+- **Savings is optional:** an empty amount sends `"0"`; check
+  `plan.savings.hasPace` before rendering any savings date, and show
+  `copy.scoutIdeaNoSavingsPace` instead.
+- **Device location:** the departure screen's "Use my current location" action
+  calls `navigator.geolocation.getCurrentPosition` once (10s timeout, coarse) and
+  then `reverseGeocodeDestination` (`app/actions/places.ts`, Google Geocoding when
+  `GOOGLE_MAPS_API_KEY` is set, keyless BigDataCloud otherwise). Only the city
+  label enters wizard state; coordinates are never stored or sent to the AI.
+  Denied/unavailable/timeout/unresolved each have their own localized message.
+- **Expanded idea detail:** three stat tiles (goal, fare per traveler, book-by),
+  a today → book-by → goal-reached timeline, then `Tabs` (Budget · Savings ·
+  Flights · Stay) with 2×2 grid on mobile and 4-up on `sm`. Provider submodals
+  stay in the always-visible footer next to the save CTA.
