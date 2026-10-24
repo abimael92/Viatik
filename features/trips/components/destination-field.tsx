@@ -25,6 +25,7 @@ export function DestinationField({
   label,
   placeholder,
   helpText,
+  autoSearch = true,
 }: {
   value?: string;
   onChange?: (value: string) => void;
@@ -37,6 +38,8 @@ export function DestinationField({
   label?: string;
   placeholder?: string;
   helpText?: string;
+  /** Set false while a value is filled programmatically (e.g. device location). */
+  autoSearch?: boolean;
 }) {
   const { t } = useI18n();
   const helpId = `${id}-help`;
@@ -55,7 +58,7 @@ export function DestinationField({
   useEffect(() => {
     const version = ++searchVersion.current;
     const timer = window.setTimeout(async () => {
-      if (value.trim().length < 2 || value === selectedPlaceLabel) {
+      if (!autoSearch || value.trim().length < 2 || value === selectedPlaceLabel) {
         setSuggestions([]);
         return;
       }
@@ -71,7 +74,7 @@ export function DestinationField({
       }
     }, 300);
     return () => window.clearTimeout(timer);
-  }, [value, selectedPlaceLabel]);
+  }, [value, selectedPlaceLabel, autoSearch]);
 
   function setValue(next: string, selected = false) {
     if (!selected) setSelectedPlaceLabel(null);
@@ -126,7 +129,7 @@ export function DestinationField({
           )}
         />
       </div>
-      {suggestions.length > 0 && (
+      {suggestions.length > 0 && autoSearch && (
         <div
           data-places-suggestions
           className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border bg-popover shadow-lg"

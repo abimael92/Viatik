@@ -65,6 +65,125 @@ export async function searchActivityPlaces(query: string) {
   return searchPlaces(query, false);
 }
 
+export type ReverseGeocodeResult =
+  | { label: string }
+  | { label: null; reason: "invalid" | "unavailable" };
+
+type ReverseGeocodeLocale = "en" | "es";
+
+function isUsableCoordinate(latitude: number, longitude: number): boolean {
+  return (
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
+    latitude >= -90 &&
+    latitude <= 90 &&
+    longitude >= -180 &&
+    longitude <= 180
+  );
+}
+
+function joinLabel(parts: Array<string | undefined>): string {
+  const seen = new Set<string>();
+  const label = parts.flatMap((part) => {
+    const trimmed = part?.trim();
+    if (!trimmed || seen.has(trimmed)) return [];
+    seen.add(trimmed);
+    return [trimmed];
+  });
+  return label.slice(0, 3).join(", ");
+}
+
+async function reverseGeocodeWithGoogle(
+  latitude: number,
+  longitude: number,
+  locale: ReverseGeocodeLocale
+): Promise<string | null> {
+  if (!env.GOOGLE_MAPS_API_KEY) return null;
+
+  const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
+  url.searchParams.set("latlng", `${latitude},${longitude}`);
+  url.searchParams.set("language", locale);
+  url.searchParams.set("key", env.GOOGLE_MAPS_API_KEY);
+
+  const response = await fetch(url, { cache: "no-store" });
+  if (!response.ok) return null;
+
+  const payload = (await response.json()) as {
+    status?: string;
+    results?: Array<{
+      address_components?: Array<{ long_name?: string; types?: string[] }>;
+    }>;
+  };
+  if (payload.status !== "OK") return null;
+
+  const components = payload.results?.[0]?.address_components ?? [];
+  const byType = (type: string) =>
+    components.find((component) => component.types?.includes(type))?.long_name;
+
+  const label = joinLabel([
+    byType("locality") ?? byType("postal_town") ?? byType("administrative_area_level_2"),
+    byType("administrative_area_level_1"),
+    byType("country"),
+  ]);
+  return label || null;
+}
+
+/**
+ * Keyless fallback so the quick action still works without a Maps key. Only the
+ * coordinates leave the server; the traveler's identity never does.
+ */
+async function reverseGeocodeWithBigDataCloud(
+  latitude: number,
+  longitude: number,
+  locale: ReverseGeocodeLocale
+): Promise<string | null> {
+  const url = new URL("https://api.bigdatacloud.net/data/reverse-geocode-client");
+  url.searchParams.set("latitude", String(latitude));
+  url.searchParams.set("longitude", String(longitude));
+  url.searchParams.set("localityLanguage", locale);
+
+  const response = await fetch(url, { cache: "no-store" });
+  if (!response.ok) return null;
+
+  const payload = (await response.json()) as {
+    city?: string;
+    locality?: string;
+    principalSubdivision?: string;
+    countryName?: string;
+  };
+  const label = joinLabel([
+    payload.city ?? payload.locality,
+    payload.principalSubdivision,
+    payload.countryName,
+  ]);
+  return label || null;
+}
+
+/**
+ * Turns a single device position into a city label for the Scout departure
+ * field. Coordinates are validated, used once, and never returned or stored.
+ */
+export async function reverseGeocodeDestination({
+  latitude,
+  longitude,
+  locale = "en",
+}: {
+  latitude: number;
+  longitude: number;
+  locale?: ReverseGeocodeLocale;
+}): Promise<ReverseGeocodeResult> {
+  if (!isUsableCoordinate(latitude, longitude)) return { label: null, reason: "invalid" };
+
+  try {
+    const label =
+      (await reverseGeocodeWithGoogle(latitude, longitude, locale)) ??
+      (await reverseGeocodeWithBigDataCloud(latitude, longitude, locale));
+    return label ? { label } : { label: null, reason: "unavailable" };
+  } catch {
+    return { label: null, reason: "unavailable" };
+  }
+}
+
 export async function getPlaceDetails(placeId: string, label: string): Promise<PlaceDetails | null> {
   if (placeId.startsWith("open-meteo:")) {
     const [, latitude, longitude, timeZone] = placeId.split(":");

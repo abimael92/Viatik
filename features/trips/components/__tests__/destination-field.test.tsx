@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DestinationField } from "@/features/trips/components/destination-field";
@@ -28,5 +28,22 @@ describe("DestinationField", () => {
 
     expect(await screen.findByText("Location search is temporarily unavailable.")).toBeTruthy();
     expect(input.value).toBe("Kyoto, Japan");
+  });
+
+  it("does not open the suggestion list for a programmatically filled value", async () => {
+    mocks.searchDestinations.mockResolvedValue({
+      configured: true,
+      suggestions: [{ placeId: "p1", label: "Chihuahua, Mexico" }],
+    });
+    render(
+      <DestinationField value="Chihuahua, Mexico" onChange={() => undefined} autoSearch={false} />
+    );
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 350));
+    });
+
+    expect(mocks.searchDestinations).not.toHaveBeenCalled();
+    expect(screen.queryByText("Chihuahua, Mexico", { selector: "button" })).toBeNull();
   });
 });

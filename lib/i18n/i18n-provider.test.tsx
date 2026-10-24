@@ -152,11 +152,13 @@ describe("I18nProvider", () => {
       "Ciudad o aeropuerto de salida"
     );
     expect(translate("es", "copy.scoutWizardTimingCheapest")).toBe("Cuando sea más barato");
-    expect(translate("es", "copy.scoutWizardFineTuneTitle")).toBe("Ajustar detalles (opcional)");
-    expect(translate("es", "copy.scoutWizardComfortPremium")).toBe("Darse un gusto");
-    expect(translate("es", "copy.scoutWizardStayRental")).toBe("Alquiler");
-    expect(translate("es", "copy.scoutWizardSkip")).toBe("Omitir");
-    expect(translate("en", "copy.scoutWizardNonstop")).toBe("Nonstop only");
+    expect(translate("es", "copy.scoutWizardExactDays")).toBe(
+      "Número exacto de días (opcional)"
+    );
+    expect(translate("es", "copy.scoutWizardSavingsOptional")).toContain("Opcional");
+    expect(translate("en", "copy.scoutIdeaNoSavingsPace")).toBe(
+      "Add a savings pace to see when you could go."
+    );
     expect(
       translate("en", "copy.scoutWizardFewerResults", { count: 3, expected: 5 })
     ).toBe("Scout found 3 of 5 matches for this vibe.");
