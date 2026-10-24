@@ -259,6 +259,7 @@ describe("generateScoutTripIdeas", () => {
       timing: "month",
       targetMonth: "2027-12",
       tripLength: "week",
+      durationDays: 5,
       comfort: "premium",
       stayStyle: "rental",
       nonstopOnly: true,
@@ -271,10 +272,42 @@ describe("generateScoutTripIdeas", () => {
     expect(payload.timing).toBe("month");
     expect(payload.targetMonth).toBe("2027-12");
     expect(payload.tripLength).toBe("week");
+    expect(payload.exactDurationDays).toBe(5);
     expect(payload.comfort).toBe("premium");
     expect(payload.stayStyle).toBe("rental");
     expect(payload.nonstopOnly).toBe(true);
     expect(payload.constraints).toBe("Vegetarian, no long hikes");
+    expect(payload.requirements).toContain("must be exactly 5");
+  });
+
+  it("omits the savings pace from the prompt when the traveler has not set one", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(geminiPayload(fiveIdeas()));
+
+    const result = await generateScoutTripIdeas({ ...input, savingsCapacityMinor: "0" });
+    expect(result.success).toBe(true);
+
+    const body = JSON.parse(String(fetchSpy.mock.calls[0]![1]?.body));
+    const payload = JSON.parse(body.contents[0].parts[0].text);
+    expect(payload.savingsCapacity).toBeNull();
+    expect(payload.savingsHorizonsPerTraveler).toBeNull();
+    expect(payload.requirements).toContain("has not set a savings pace");
+  });
+
+  it("honors an exact day count over the trip-length preset in the fallback", async () => {
+    mocks.env.GEMINI_API_KEY = undefined;
+    mocks.env.OPENAI_API_KEY = undefined;
+
+    const result = await generateScoutTripIdeas({
+      ...input,
+      tripLength: "two-weeks",
+      durationDays: 3,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      for (const idea of result.suggestions.ideas) {
+        expect(idea.ideal_duration_days).toBe(3);
+      }
+    }
   });
 
   it("bends fallback durations to the requested trip length", async () => {

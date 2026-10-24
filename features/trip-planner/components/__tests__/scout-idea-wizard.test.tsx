@@ -8,6 +8,8 @@ const mocks = vi.hoisted(() => ({
   upsert: vi.fn(),
   onOpenChange: vi.fn(),
   onManualAdd: vi.fn(),
+  reverseGeocode: vi.fn(),
+  getCurrentPosition: vi.fn(),
 }));
 
 vi.mock("@/app/actions/scout-trip-ideas", () => ({
@@ -16,6 +18,7 @@ vi.mock("@/app/actions/scout-trip-ideas", () => ({
 vi.mock("@/app/actions/places", () => ({
   searchDestinations: async () => ({ suggestions: [], configured: true }),
   getPlaceDetails: async () => null,
+  reverseGeocodeDestination: mocks.reverseGeocode,
 }));
 vi.mock("@/features/trip-planner/data/dexie-trip-planner-repository", () => ({
   tripIdeaRepository: { create: mocks.create },
@@ -56,8 +59,8 @@ function renderWizard(isOnline: boolean | null = true) {
   );
 }
 
-/** vibe → crew → savings → origin → timing → fine-tune. */
-function walkToFineTune() {
+/** vibe → crew → savings → origin → timing (the last screen). */
+function walkToTiming() {
   fireEvent.click(screen.getByRole("button", { name: "Nature and fresh air" }));
   fireEvent.click(screen.getByRole("button", { name: "Next" }));
   fireEvent.click(screen.getByRole("button", { name: "With my partner" }));
@@ -65,15 +68,37 @@ function walkToFineTune() {
   fireEvent.change(screen.getByLabelText("Comfortable savings amount (USD)"), {
     target: { value: "250" },
   });
-  fireEvent.click(screen.getByRole("checkbox"));
-  fireEvent.click(screen.getByRole("button", { name: "Next" }));
   fireEvent.click(screen.getByRole("button", { name: "Next" }));
   fireEvent.click(screen.getByRole("button", { name: "Next" }));
 }
 
+/** vibe → crew → savings, stopping on the departure screen. */
+function walkToOrigin() {
+  fireEvent.click(screen.getByRole("button", { name: "Nature and fresh air" }));
+  fireEvent.click(screen.getByRole("button", { name: "Next" }));
+  fireEvent.click(screen.getByRole("button", { name: "With my partner" }));
+  fireEvent.click(screen.getByRole("button", { name: "Next" }));
+  fireEvent.change(screen.getByLabelText("Comfortable savings amount (USD)"), {
+    target: { value: "250" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Next" }));
+}
+
+function stubGeolocation() {
+  Object.defineProperty(window.navigator, "geolocation", {
+    configurable: true,
+    value: { getCurrentPosition: mocks.getCurrentPosition },
+  });
+}
+
+function consent() {
+  fireEvent.click(screen.getByRole("checkbox"));
+}
+
 async function loadIdeas() {
   renderWizard();
-  walkToFineTune();
+  walkToTiming();
+  consent();
   fireEvent.click(screen.getByRole("button", { name: "Find my trip ideas" }));
   await screen.findByText("Kyoto, Japan");
 }
@@ -92,6 +117,7 @@ const expectedPayload = {
   timing: "asap",
   targetMonth: null,
   tripLength: "any",
+  durationDays: null,
   comfort: "balanced",
   stayStyle: "either",
   nonstopOnly: false,
@@ -110,13 +136,17 @@ describe("ScoutIdeaWizard", () => {
     mocks.upsert.mockResolvedValue(undefined);
   });
 
-  afterEach(() => cleanup());
+  afterEach(() => {
+    cleanup();
+    Reflect.deleteProperty(window.navigator, "geolocation");
+  });
 
-  it("walks five required steps then asks for five ranked ideas", async () => {
+  it("walks the five questions then asks for five ranked ideas", async () => {
     renderWizard();
 
-    walkToFineTune();
-    expect(screen.getByText("Fine-tune (optional)")).toBeTruthy();
+    walkToTiming();
+    expect(screen.getByText("Anything we must plan around")).toBeTruthy();
+    consent();
     fireEvent.click(screen.getByRole("button", { name: "Find my trip ideas" }));
 
     expect(await screen.findByText("Kyoto, Japan")).toBeTruthy();
@@ -126,25 +156,119 @@ describe("ScoutIdeaWizard", () => {
     expect(screen.getByText(/historical estimates, not live prices/)).toBeTruthy();
   });
 
-  it("asks where the traveler flies from and sends the origin", async () => {
+  it("lists every screen in the progress rail", () => {
     renderWizard();
 
-    fireEvent.click(screen.getByRole("button", { name: "Nature and fresh air" }));
-    fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    fireEvent.click(screen.getByRole("button", { name: "With my partner" }));
-    fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    fireEvent.change(screen.getByLabelText("Comfortable savings amount (USD)"), {
-      target: { value: "250" },
+    expect(screen.getByText("Question 1 of 5")).toBeTruthy();
+    const rail = screen.getByLabelText("Wizard steps");
+    expect(within(rail).getAllByRole("listitem")).toHaveLength(5);
+    expect(within(rail).getByText("Vibe").closest("li")?.getAttribute("aria-current")).toBe("step");
+    expect(within(rail).getByText("Departure")).toBeTruthy();
+    expect(within(rail).queryByText("Fine-tune")).toBeNull();
+
+    walkToTiming();
+
+    expect(screen.getByText("Question 5 of 5")).toBeTruthy();
+    expect(
+      within(screen.getByLabelText("Wizard steps"))
+        .getByText("Timing")
+        .closest("li")
+        ?.getAttribute("aria-current")
+    ).toBe("step");
+  });
+
+  it("fills the departure city from the current location", async () => {
+    stubGeolocation();
+    mocks.getCurrentPosition.mockImplementation(
+      (success: (position: { coords: { latitude: number; longitude: number } }) => void) =>
+        success({ coords: { latitude: 20.6597, longitude: -103.3496 } })
+    );
+    mocks.reverseGeocode.mockResolvedValue({ label: "Guadalajara, Jalisco, Mexico" });
+
+    renderWizard();
+    walkToOrigin();
+    fireEvent.click(screen.getByRole("button", { name: "Use my current location" }));
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("Departure city or airport")).toHaveProperty(
+        "value",
+        "Guadalajara, Jalisco, Mexico"
+      )
+    );
+    expect(screen.getByText("Departing from Guadalajara, Jalisco, Mexico.")).toBeTruthy();
+    expect(mocks.reverseGeocode).toHaveBeenCalledWith({
+      latitude: 20.6597,
+      longitude: -103.3496,
+      locale: "en",
     });
-    fireEvent.click(screen.getByRole("checkbox"));
+
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    consent();
+    fireEvent.click(screen.getByRole("button", { name: "Find my trip ideas" }));
+    await screen.findByText("Kyoto, Japan");
+    expect(mocks.generate).toHaveBeenCalledWith(
+      expect.objectContaining({ originCity: "Guadalajara, Jalisco, Mexico" })
+    );
+  });
+
+  it("keeps manual entry when the browser denies location", async () => {
+    stubGeolocation();
+    mocks.getCurrentPosition.mockImplementation(
+      (_success: unknown, failure: (error: { code: number }) => void) => failure({ code: 1 })
+    );
+
+    renderWizard();
+    walkToOrigin();
+    fireEvent.click(screen.getByRole("button", { name: "Use my current location" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Location permission was denied. Type your city instead."
+    );
+    expect(screen.getByLabelText("Departure city or airport")).toHaveProperty("value", "");
+    expect(mocks.reverseGeocode).not.toHaveBeenCalled();
+  });
+
+  it("explains when the device cannot share a location", async () => {
+    renderWizard();
+    walkToOrigin();
+    fireEvent.click(screen.getByRole("button", { name: "Use my current location" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "This device can't share its location. Type your city instead."
+    );
+    expect(screen.getByLabelText("Departure city or airport")).toHaveProperty("value", "");
+  });
+
+  it("keeps one detail panel open at a time", async () => {
+    await loadIdeas();
+
+    expect(screen.getByText("Budget for 2 travelers")).toBeTruthy();
+    expect(screen.queryByText("Hotel or Airbnb")).toBeNull();
+
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Stay" }), { button: 0 });
+    expect(await screen.findByText("Hotel or Airbnb")).toBeTruthy();
+    expect(screen.queryByText("Budget for 2 travelers")).toBeNull();
+
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Savings" }), { button: 0 });
+    expect(
+      await screen.findByText("Save $250.00 Monthly to reach this goal.")
+    ).toBeTruthy();
+
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Flights" }), { button: 0 });
+    expect(await screen.findByText(/Book about 12 weeks ahead/)).toBeTruthy();
+    expect(screen.queryByText("Hotel or Airbnb")).toBeNull();
+  });
+
+  it("asks where the traveler flies from and sends the origin", async () => {
+    renderWizard();
+    walkToOrigin();
 
     expect(screen.getByLabelText("Departure city or airport")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Departure city or airport"), {
       target: { value: "Guadalajara, Mexico" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    consent();
     fireEvent.click(screen.getByRole("button", { name: "Find my trip ideas" }));
 
     await screen.findByText("Kyoto, Japan");
@@ -155,21 +279,11 @@ describe("ScoutIdeaWizard", () => {
 
   it("sends a pinned travel month when the traveler picks one", async () => {
     renderWizard();
-
-    fireEvent.click(screen.getByRole("button", { name: "Nature and fresh air" }));
-    fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    fireEvent.click(screen.getByRole("button", { name: "With my partner" }));
-    fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    fireEvent.change(screen.getByLabelText("Comfortable savings amount (USD)"), {
-      target: { value: "250" },
-    });
-    fireEvent.click(screen.getByRole("checkbox"));
-    fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    walkToTiming();
 
     fireEvent.click(screen.getByRole("button", { name: "A specific month" }));
     fireEvent.change(screen.getByLabelText("Which month?"), { target: { value: "2027-12" } });
-    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    consent();
     fireEvent.click(screen.getByRole("button", { name: "Find my trip ideas" }));
 
     await screen.findByText("Kyoto, Japan");
@@ -178,47 +292,78 @@ describe("ScoutIdeaWizard", () => {
     );
   });
 
-  it("sends fine-tune preferences, and Skip sends the defaults", async () => {
+  it("sends the trip length preset, an exact day count, and free-text constraints", async () => {
     renderWizard();
-    walkToFineTune();
+    walkToTiming();
 
     fireEvent.click(screen.getByRole("button", { name: "Long weekend" }));
-    fireEvent.click(screen.getByRole("button", { name: "Treat yourself" }));
-    fireEvent.click(screen.getByRole("button", { name: "Rental" }));
-    fireEvent.click(screen.getByLabelText("Nonstop only"));
+    fireEvent.change(screen.getByLabelText("Exact number of days (optional)"), {
+      target: { value: "5" },
+    });
     fireEvent.change(screen.getByLabelText("Anything we must plan around"), {
       target: { value: "Vegetarian, no long hikes" },
     });
+    consent();
     fireEvent.click(screen.getByRole("button", { name: "Find my trip ideas" }));
 
     await screen.findByText("Kyoto, Japan");
     expect(mocks.generate).toHaveBeenLastCalledWith(
       expect.objectContaining({
         tripLength: "weekend",
-        comfort: "premium",
-        stayStyle: "rental",
-        nonstopOnly: true,
+        durationDays: 5,
         constraints: "Vegetarian, no long hikes",
       })
     );
+  });
 
-    cleanup();
-    mocks.generate.mockClear();
+  it("rejects an out-of-range exact day count before asking Scout", async () => {
     renderWizard();
-    walkToFineTune();
-    fireEvent.click(screen.getByRole("button", { name: "Long weekend" }));
-    fireEvent.click(screen.getByRole("button", { name: "Skip" }));
+    walkToTiming();
+
+    fireEvent.change(screen.getByLabelText("Exact number of days (optional)"), {
+      target: { value: "90" },
+    });
+    consent();
+    fireEvent.click(screen.getByRole("button", { name: "Find my trip ideas" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Enter a whole number of days between 1 and 60."
+    );
+    expect(mocks.generate).not.toHaveBeenCalled();
+  });
+
+  it("lets the traveler brainstorm without a savings pace", async () => {
+    renderWizard();
+    fireEvent.click(screen.getByRole("button", { name: "Nature and fresh air" }));
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    fireEvent.click(screen.getByRole("button", { name: "With my partner" }));
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+
+    expect(screen.getByLabelText("Comfortable savings amount (USD)")).toHaveProperty("value", "");
+    expect(screen.getByText(/Optional\. Leave it empty/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    consent();
+    fireEvent.click(screen.getByRole("button", { name: "Find my trip ideas" }));
 
     await screen.findByText("Kyoto, Japan");
     expect(mocks.generate).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        tripLength: "any",
-        comfort: "balanced",
-        stayStyle: "either",
-        nonstopOnly: false,
-        constraints: "",
-      })
+      expect.objectContaining({ savingsCapacityMinor: "0" })
     );
+    expect(screen.getByText("Add a savings pace to see when you could go.")).toBeTruthy();
+  });
+
+  it("asks for consent on the last screen before sending anything", async () => {
+    renderWizard();
+    walkToTiming();
+
+    fireEvent.click(screen.getByRole("button", { name: "Find my trip ideas" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Please confirm before sending your answers to Scout."
+    );
+    expect(mocks.generate).not.toHaveBeenCalled();
   });
 
   it("shows skeleton placeholders while Scout is thinking", async () => {
@@ -230,7 +375,8 @@ describe("ScoutIdeaWizard", () => {
     );
 
     renderWizard();
-    walkToFineTune();
+    walkToTiming();
+    consent();
     fireEvent.click(screen.getByRole("button", { name: "Find my trip ideas" }));
 
     const busy = document.querySelector('[aria-busy="true"]');
@@ -387,20 +533,12 @@ describe("ScoutIdeaWizard", () => {
 
   it("puts the departure city first so Google applies the route filters", async () => {
     renderWizard();
-    fireEvent.click(screen.getByRole("button", { name: "Nature and fresh air" }));
-    fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    fireEvent.click(screen.getByRole("button", { name: "With my partner" }));
-    fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    fireEvent.change(screen.getByLabelText("Comfortable savings amount (USD)"), {
-      target: { value: "250" },
-    });
-    fireEvent.click(screen.getByRole("checkbox"));
-    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    walkToOrigin();
     fireEvent.change(screen.getByLabelText("Departure city or airport"), {
       target: { value: "Guadalajara, Mexico" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    consent();
     fireEvent.click(screen.getByRole("button", { name: "Find my trip ideas" }));
     await screen.findByText("Kyoto, Japan");
 
@@ -421,21 +559,18 @@ describe("ScoutIdeaWizard", () => {
     expect(query).not.toContain("class");
   });
 
-  it("applies the nonstop preference to the flight search", async () => {    renderWizard();
-    walkToFineTune();
-    fireEvent.click(screen.getByLabelText("Nonstop only"));
-    fireEvent.click(screen.getByRole("button", { name: "Find my trip ideas" }));
-    await screen.findByText("Kyoto, Japan");
+  it("defaults the flight search to any stops because the wizard no longer asks", async () => {
+    await loadIdeas();
 
     fireEvent.click(screen.getByRole("button", { name: "Flight details" }));
     const sub = await screen.findByRole("dialog", { name: "Flights to Kyoto, Japan" });
     const info = within(sub);
 
-    expect(info.getByText("Nonstop only")).toBeTruthy();
+    expect(info.getByText("Any")).toBeTruthy();
     const href = new URL(
       info.getByRole("link", { name: "Search these flights" }).getAttribute("href")!
     );
-    expect(href.searchParams.get("q")).toContain("nonstop");
+    expect(href.searchParams.get("q")).not.toContain("nonstop");
   });
 
   it("opens stay details in a submodal with the hotel versus Airbnb comparison", async () => {
@@ -485,7 +620,8 @@ describe("ScoutIdeaWizard", () => {
     });
 
     renderWizard();
-    walkToFineTune();
+    walkToTiming();
+    consent();
     fireEvent.click(screen.getByRole("button", { name: "Find my trip ideas" }));
 
     expect(

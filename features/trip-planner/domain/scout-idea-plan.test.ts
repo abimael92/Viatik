@@ -112,6 +112,25 @@ describe("buildScoutIdeaPlan", () => {
     expect(plan.grandTotalMinor).toBe(900n + 1_200n + 840n);
   });
 
+  it("treats an unset savings pace as leaving whenever the traveler is ready", () => {
+    const plan = buildScoutIdeaPlan({
+      suggestion,
+      crewSize: 2,
+      savingsCapacityMinor: 0n,
+      savingsCadence: "monthly",
+      currency: "USD",
+      today,
+    });
+
+    expect(plan.savings.hasPace).toBe(false);
+    expect(plan.savings.withinReach).toBe(false);
+    expect(plan.savings.periods).toBe(0);
+    expect(plan.savings.readyOn).toBe("2026-10-21");
+    expect(plan.flights.earliestDeparture).toBe("2026-10-21");
+    expect(plan.flights.returnDate).toBe("2026-10-27");
+    expect(plan.flights.bookBy).toBe("2026-10-21");
+  });
+
   it("defers departure to a pinned month but never before the savings goal is met", () => {
     const pinnedLater = buildScoutIdeaPlan({
       suggestion,
