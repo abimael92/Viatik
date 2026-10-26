@@ -117,8 +117,17 @@ describe("I18nProvider", () => {
   });
 
   it("localizes every Scout wizard and idea-detail string into Spanish", () => {
-    expect(translate("en", "copy.scoutWizardTrigger")).toBe("Let Scout help you brainstorm!");
-    expect(translate("es", "copy.scoutWizardTrigger")).toBe("¡Deja que Scout te ayude a pensar!");
+    expect(translate("en", "copy.scoutWizardTrigger")).toBe("Ask Scout for ideas");
+    expect(translate("es", "copy.scoutWizardTrigger")).toBe("Pide ideas a Scout");
+    expect(translate("en", "copy.scoutWizardTitle")).toBe("Scout's trip ideas");
+    expect(translate("es", "copy.scoutWizardTitle")).toBe("Ideas de viaje de Scout");
+    expect(
+      translate("es", "copy.scoutWizardStepProgress", {
+        current: 5,
+        total: 5,
+        step: "Fechas",
+      })
+    ).toBe("Paso 5 de 5 · Fechas");
     expect(translate("es", "copy.scoutWizardVibeQuestion")).toBe(
       "¡Hola! ¿Qué tipo de viaje te apetece?"
     );
@@ -152,7 +161,7 @@ describe("I18nProvider", () => {
       "Ciudad o aeropuerto de salida"
     );
     expect(translate("es", "copy.scoutWizardTimingCheapest")).toBe("Cuando sea más barato");
-    expect(translate("es", "copy.scoutWizardExactDays")).toBe("Número exacto de días");
+    expect(translate("es", "copy.scoutWizardExactDays")).toBe("O un número exacto de días");
     expect(translate("es", "copy.scoutWizardSavingsOptional")).toBe(
       "Déjalo vacío para omitir el plazo de ahorro."
     );

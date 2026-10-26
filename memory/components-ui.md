@@ -204,6 +204,10 @@ and `lib/i18n/error-copy.ts`. Locale persists in `localStorage["viatik-language"
 - `DestinationField` (`features/trips/components/destination-field.tsx`) takes
   `autoSearch={false}` to suppress the suggestion dropdown while a value is
   filled programmatically (device location). Re-enable it when the traveler types.
+- `Collapsible` accepts controlled `open` / `onOpenChange` (added 2026-10-25) as
+  well as `defaultOpen`. Its panel stays mounted through the motion exit
+  animation, so jsdom tests assert `aria-expanded` rather than DOM absence after
+  collapsing.
 
 ## 11. Scout wizard patterns (`features/trip-planner/components/scout-idea-wizard.tsx`)
 
@@ -212,8 +216,22 @@ and `lib/i18n/error-copy.ts`. Locale persists in `localStorage["viatik-language"
   constraint, the AI consent, and the generate CTA. There is no fine-tune
   screen; pace/comfort, stay style, and nonstop are deferred to per-idea
   decisions and sent as neutral defaults.
-- **Progress rail:** `WizardProgress` renders one segment per screen (5). Never
-  cap the counter below the real screen count.
+- **Progress rail:** `WizardProgress` renders one segment per screen (5) and is
+  the only step indicator; the header subtitle carries
+  `copy.scoutWizardStepProgress` ("Step 5 of 5 · Timing"). Past segments use
+  `bg-viatik-blue/40`, the current one `bg-viatik-gradient`, future `bg-muted`.
+  Never cap the counter below the real screen count.
+- **Trigger vs title:** `copy.scoutWizardTrigger` ("Ask Scout for ideas") is the
+  planner button; `copy.scoutWizardTitle` ("Scout's trip ideas") is the dialog
+  heading. They must stay different strings — reusing one for both reads as a
+  duplicated screen.
+- **Last screen:** timing + consent stay visible. Trip length, exact day count,
+  and free-text constraints live in a closed-by-default `Collapsible`
+  (`scout-trip-details`) whose badge summarizes what is set; `validateStep`
+  reopens it before focusing an invalid day count.
+- **Fixed footer:** Back / Next / Find live in a `<footer>` sibling of the
+  `overflow-y-auto` body, never inside it — otherwise the primary CTA scrolls
+  out of reach at 430×900.
 - **Validation:** Next is never disabled for a missing answer. `validateStep`
   checks the fields owned by the current step (vibe ≥ 2 chars, crew, savings
   parse, pinned month, exact days, consent), writes per-field errors, and moves
