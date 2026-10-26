@@ -179,6 +179,30 @@ Also update the topic file whose subject changed:
 
 ## 7. Session log (newest first)
 
+### 2026-10-25 — Scout wizard: inline validation, required/optional labels
+- **Changed:** `features/trip-planner/components/scout-idea-wizard.tsx` now keeps
+  **Next enabled** and validates the current step on press instead of disabling
+  the button. Vibe, crew, savings, pinned month, exact days, and consent each
+  render an inline `role="alert"` error wired with `aria-invalid` +
+  `aria-describedby`, and focus moves to the first invalid control. Mandatory
+  and optional answers are labelled with a localized `Required` / `Optional`
+  pill (bubble hint on steps 1–4, per-field badges on the timing screen).
+  Choosing "A specific month" now requires a month. Verbose helper copy was
+  shortened in `lib/i18n/frontend-copy.ts` (EN/ES); new keys
+  `scoutWizardRequired`, `scoutWizardOptional`, `scoutWizardVibeRequired`,
+  `scoutWizardMonthRequired`.
+- **Schema:** none. No Dexie bump, no Supabase migration, no outbox change.
+- **Verification:** `pnpm typecheck` ✅ · `pnpm lint` ✅ (no warnings) ·
+  `pnpm test` ✅ 218 files / 1,422 tests · `pnpm build` ✅ (21 routes). All five
+  wizard screens plus the inline vibe/crew/month/consent errors were reviewed in
+  a real browser through the `/e2e` harness at 1500×720.
+- **Gotchas:** validation lives in `validateStep(step)`; do not reintroduce
+  `disabled` expressions for required answers — a disabled Next gives no reason
+  and is a dead end on touch. `aria-required` is invalid on `role="group"` (the
+  crew chips), so the group exposes `aria-describedby` to its error instead.
+  Copy assertions in `scout-idea-wizard.test.tsx` and
+  `lib/i18n/i18n-provider.test.tsx` track the exact strings.
+
 ### 2026-10-23 — Scout wizard: five screens, optional savings, exact days
 - **Changed:** the wizard is now exactly five screens (vibe · crew · budget ·
   departure · timing). The fine-tune screen is gone: pace/comfort, stay style,

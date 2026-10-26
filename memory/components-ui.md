@@ -214,6 +214,14 @@ and `lib/i18n/error-copy.ts`. Locale persists in `localStorage["viatik-language"
   decisions and sent as neutral defaults.
 - **Progress rail:** `WizardProgress` renders one segment per screen (5). Never
   cap the counter below the real screen count.
+- **Validation:** Next is never disabled for a missing answer. `validateStep`
+  checks the fields owned by the current step (vibe ≥ 2 chars, crew, savings
+  parse, pinned month, exact days, consent), writes per-field errors, and moves
+  focus to the first invalid control. Each error is inline (`role="alert"`) with
+  `aria-invalid` + `aria-describedby`; errors clear as the traveler edits.
+  Mandatory/optional answers carry a localized `Required` / `Optional` pill
+  (`RequirementHint`): bubble hint on the first four screens, per-field badges on
+  the timing screen.
 - **Savings is optional:** an empty amount sends `"0"`; check
   `plan.savings.hasPace` before rendering any savings date, and show
   `copy.scoutIdeaNoSavingsPace` instead.

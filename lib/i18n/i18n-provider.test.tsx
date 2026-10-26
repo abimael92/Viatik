@@ -152,10 +152,18 @@ describe("I18nProvider", () => {
       "Ciudad o aeropuerto de salida"
     );
     expect(translate("es", "copy.scoutWizardTimingCheapest")).toBe("Cuando sea más barato");
-    expect(translate("es", "copy.scoutWizardExactDays")).toBe(
-      "Número exacto de días (opcional)"
+    expect(translate("es", "copy.scoutWizardExactDays")).toBe("Número exacto de días");
+    expect(translate("es", "copy.scoutWizardSavingsOptional")).toBe(
+      "Déjalo vacío para omitir el plazo de ahorro."
     );
-    expect(translate("es", "copy.scoutWizardSavingsOptional")).toContain("Opcional");
+    expect(translate("es", "copy.scoutWizardRequired")).toBe("Obligatorio");
+    expect(translate("en", "copy.scoutWizardOptional")).toBe("Optional");
+    expect(translate("es", "copy.scoutWizardVibeRequired")).toBe(
+      "Cuéntale a Scout tu ambiente en pocas palabras."
+    );
+    expect(translate("es", "copy.scoutWizardMonthRequired")).toBe(
+      "Elige un mes o cambia la opción de fechas."
+    );
     expect(translate("en", "copy.scoutIdeaNoSavingsPace")).toBe(
       "Add a savings pace to see when you could go."
     );
