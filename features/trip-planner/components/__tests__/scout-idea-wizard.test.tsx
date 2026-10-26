@@ -72,12 +72,17 @@ function walkToTiming() {
   fireEvent.click(screen.getByRole("button", { name: "Next" }));
 }
 
-/** vibe → crew → savings, stopping on the departure screen. */
-function walkToOrigin() {
+/** vibe → crew, stopping on the savings screen. */
+function walkToBudget() {
   fireEvent.click(screen.getByRole("button", { name: "Nature and fresh air" }));
   fireEvent.click(screen.getByRole("button", { name: "Next" }));
   fireEvent.click(screen.getByRole("button", { name: "With my partner" }));
   fireEvent.click(screen.getByRole("button", { name: "Next" }));
+}
+
+/** vibe → crew → savings, stopping on the departure screen. */
+function walkToOrigin() {
+  walkToBudget();
   fireEvent.change(screen.getByLabelText("Comfortable savings amount (USD)"), {
     target: { value: "250" },
   });
@@ -154,6 +159,90 @@ describe("ScoutIdeaWizard", () => {
     expect(screen.getByText("Your 5 closest matches")).toBeTruthy();
     expect(screen.getAllByText("Best match")).toHaveLength(1);
     expect(screen.getByText(/historical estimates, not live prices/)).toBeTruthy();
+  });
+
+  it("explains mandatory answers inline instead of disabling Next", () => {
+    renderWizard();
+
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByRole("alert").textContent).toBe("Tell Scout your vibe in a few words.");
+    expect(screen.getByText("Question 1 of 5")).toBeTruthy();
+    expect(
+      screen.getByLabelText("Or tell me in your own words").getAttribute("aria-invalid")
+    ).toBe("true");
+
+    fireEvent.change(screen.getByLabelText("Or tell me in your own words"), {
+      target: { value: "Food and museums" },
+    });
+    expect(screen.queryByRole("alert")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByText("Question 2 of 5")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByRole("alert").textContent).toBe("Choose who is joining you.");
+    expect(screen.getByText("Question 2 of 5")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "With my partner" }));
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("rejects an invalid savings amount on the budget step", () => {
+    renderWizard();
+    walkToBudget();
+
+    fireEvent.change(screen.getByLabelText("Comfortable savings amount (USD)"), {
+      target: { value: "abc" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+
+    expect(screen.getByRole("alert").textContent).toBe(
+      "Enter a valid savings amount or leave it empty."
+    );
+    expect(screen.getByText("Question 3 of 5")).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("Comfortable savings amount (USD)"), {
+      target: { value: "250" },
+    });
+    expect(screen.queryByRole("alert")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByText("Question 4 of 5")).toBeTruthy();
+  });
+
+  it("requires a month when the traveler pins one", async () => {
+    renderWizard();
+    walkToTiming();
+
+    fireEvent.click(screen.getByRole("button", { name: "A specific month" }));
+    consent();
+    fireEvent.click(screen.getByRole("button", { name: "Find my trip ideas" }));
+
+    expect(screen.getByRole("alert").textContent).toBe(
+      "Pick a month, or choose another timing option."
+    );
+    expect(mocks.generate).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText("Which month?"), { target: { value: "2027-12" } });
+    expect(screen.queryByRole("alert")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Find my trip ideas" }));
+    await screen.findByText("Kyoto, Japan");
+    expect(mocks.generate).toHaveBeenCalledWith(
+      expect.objectContaining({ timing: "month", targetMonth: "2027-12" })
+    );
+  });
+
+  it("labels which answers are mandatory and which are optional", () => {
+    renderWizard();
+
+    expect(screen.getByText("Required")).toBeTruthy();
+
+    walkToBudget();
+    expect(screen.getAllByText("Optional").length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getAllByText("Optional").length).toBeGreaterThan(0);
   });
 
   it("lists every screen in the progress rail", () => {
@@ -297,7 +386,7 @@ describe("ScoutIdeaWizard", () => {
     walkToTiming();
 
     fireEvent.click(screen.getByRole("button", { name: "Long weekend" }));
-    fireEvent.change(screen.getByLabelText("Exact number of days (optional)"), {
+    fireEvent.change(screen.getByLabelText("Exact number of days"), {
       target: { value: "5" },
     });
     fireEvent.change(screen.getByLabelText("Anything we must plan around"), {
@@ -320,7 +409,7 @@ describe("ScoutIdeaWizard", () => {
     renderWizard();
     walkToTiming();
 
-    fireEvent.change(screen.getByLabelText("Exact number of days (optional)"), {
+    fireEvent.change(screen.getByLabelText("Exact number of days"), {
       target: { value: "90" },
     });
     consent();
@@ -329,7 +418,21 @@ describe("ScoutIdeaWizard", () => {
     expect((await screen.findByRole("alert")).textContent).toBe(
       "Enter a whole number of days between 1 and 60."
     );
+    expect(screen.getByLabelText("Exact number of days").getAttribute("aria-invalid")).toBe(
+      "true"
+    );
     expect(mocks.generate).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText("Exact number of days"), {
+      target: { value: "5" },
+    });
+    expect(screen.queryByRole("alert")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Find my trip ideas" }));
+    await screen.findByText("Kyoto, Japan");
+    expect(mocks.generate).toHaveBeenLastCalledWith(
+      expect.objectContaining({ durationDays: 5 })
+    );
   });
 
   it("lets the traveler brainstorm without a savings pace", async () => {
@@ -340,7 +443,7 @@ describe("ScoutIdeaWizard", () => {
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
 
     expect(screen.getByLabelText("Comfortable savings amount (USD)")).toHaveProperty("value", "");
-    expect(screen.getByText(/Optional\. Leave it empty/)).toBeTruthy();
+    expect(screen.getByText("Leave it empty to skip the savings timeline.")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
@@ -363,6 +466,7 @@ describe("ScoutIdeaWizard", () => {
     expect((await screen.findByRole("alert")).textContent).toBe(
       "Please confirm before sending your answers to Scout."
     );
+    expect(screen.getByRole("checkbox").getAttribute("aria-invalid")).toBe("true");
     expect(mocks.generate).not.toHaveBeenCalled();
   });
 

@@ -95,6 +95,7 @@ const TYPEWRITER_MAX_MS = 700;
 const MAX_DURATION_DAYS = 60;
 
 type Suggestion = ScoutTripIdeaSuggestion;
+type WizardField = "vibe" | "crew" | "savings" | "month" | "duration" | "consent";
 
 function toMinorUnits(wholeCurrencyUnits: number, currency: string): bigint {
   return BigInt(wholeCurrencyUnits) * 10n ** BigInt(getCurrencyExponent(currency));
@@ -242,6 +243,23 @@ function StatTile({
         </dd>
       )}
     </div>
+  );
+}
+
+/** Says out loud whether a step or field blocks the flow. */
+function RequirementHint({ kind }: { kind: "required" | "optional" }) {
+  const { t } = useI18n();
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+        kind === "required"
+          ? "bg-destructive/10 text-destructive"
+          : "bg-muted text-muted-foreground"
+      )}
+    >
+      {t(kind === "required" ? "copy.scoutWizardRequired" : "copy.scoutWizardOptional")}
+    </span>
   );
 }
 
@@ -758,11 +776,13 @@ function ScoutInfoDialog({
 
 function ChoiceChips<T extends string>({
   label,
+  hint,
   options,
   value,
   onChange,
 }: {
   label: string;
+  hint?: ReactNode;
   options: Array<{ value: T; key: TranslationKey }>;
   value: T;
   onChange: (value: T) => void;
@@ -770,7 +790,10 @@ function ChoiceChips<T extends string>({
   const { t } = useI18n();
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium">{label}</p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-medium">{label}</p>
+        {hint}
+      </div>
       <div
         className="grid gap-2"
         style={{ gridTemplateColumns: "repeat(auto-fit, minmax(9rem, 1fr))" }}
@@ -876,6 +899,7 @@ export function ScoutIdeaWizard({
   const [consented, setConsented] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<WizardField, string>>>({});
   const [loading, setLoading] = useState(false);
   const [addingMore, setAddingMore] = useState(false);
   const [exhausted, setExhausted] = useState(false);
@@ -904,6 +928,7 @@ export function ScoutIdeaWizard({
     setConsented(false);
     setSuggestions([]);
     setError(null);
+    setFieldErrors({});
     setLoading(false);
     setAddingMore(false);
     setExhausted(false);
@@ -1019,29 +1044,84 @@ export function ScoutIdeaWizard({
     }
   }
 
+  function clearFieldError(field: WizardField) {
+    setFieldErrors((current) => {
+      if (!(field in current)) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  }
+
+  function focusField(field: WizardField) {
+    const target =
+      field === "crew"
+        ? document.querySelector<HTMLElement>("[data-scout-crew]")
+        : document.getElementById(
+            field === "vibe"
+              ? "scout-vibe"
+              : field === "savings"
+                ? "scout-savings"
+                : field === "month"
+                  ? "scout-target-month"
+                  : field === "duration"
+                    ? "scout-duration-days"
+                    : "scout-consent"
+          );
+    target?.focus();
+  }
+
+  /**
+   * Validates the step that owns the field so the error appears next to the
+   * answer, not in a generic box on the last screen. Focus moves to the first
+   * invalid control, which also gives keyboard and screen-reader users the
+   * context a disabled button never could.
+   */
+  function validateStep(current: number): boolean {
+    const next: Partial<Record<WizardField, string>> = {};
+    if (current === 0 && vibe.trim().length < 2) {
+      next.vibe = t("copy.scoutWizardVibeRequired");
+    }
+    if (current === 1 && !crewSize) {
+      next.crew = t("copy.scoutWizardChooseCrew");
+    }
+    if (current === 2 && readSavings() === null) {
+      next.savings = t("copy.scoutWizardSavingsInvalid");
+    }
+    if (current === TOTAL_WIZARD_STEPS - 1) {
+      if (timing === "month" && !targetMonth) {
+        next.month = t("copy.scoutWizardMonthRequired");
+      }
+      if (durationDays.trim() && parsedDurationDays() === null) {
+        next.duration = t("copy.scoutWizardDurationInvalid", {
+          min: 1,
+          max: MAX_DURATION_DAYS,
+        });
+      }
+      if (!consented) {
+        next.consent = t("copy.scoutWizardConsentRequired");
+      }
+    }
+
+    setFieldErrors(next);
+    const firstInvalid = (Object.keys(next) as WizardField[])[0];
+    if (firstInvalid) focusField(firstInvalid);
+    return !firstInvalid;
+  }
+
+  function goNext() {
+    setError(null);
+    if (!validateStep(step)) return;
+    setStep((current) => current + 1);
+  }
+
   async function askScout() {
     setError(null);
     if (isOnline !== true) {
       setError(t("copy.scoutWizardNeedsConnection"));
       return;
     }
-    if (!consented) {
-      setError(t("copy.scoutWizardConsentRequired"));
-      return;
-    }
-    if (!crewSize) {
-      setError(t("copy.scoutWizardChooseCrew"));
-      return;
-    }
-    if (durationDays.trim() && parsedDurationDays() === null) {
-      setError(
-        t("copy.scoutWizardDurationInvalid", {
-          min: 1,
-          max: MAX_DURATION_DAYS,
-        })
-      );
-      return;
-    }
+    if (!validateStep(TOTAL_WIZARD_STEPS - 1)) return;
 
     const parsedSavings = readSavings();
     if (parsedSavings === null) {
@@ -1286,6 +1366,11 @@ export function ScoutIdeaWizard({
                             ? t("copy.scoutWizardOriginHelp")
                             : t("copy.scoutWizardTimingHelp")}
                   </p>
+                  {step < TOTAL_WIZARD_STEPS - 1 && (
+                    <div className="mt-2">
+                      <RequirementHint kind={step <= 1 ? "required" : "optional"} />
+                    </div>
+                  )}
                 </div>
 
                 {step === 0 && (
@@ -1301,6 +1386,7 @@ export function ScoutIdeaWizard({
                           onClick={() => {
                             setVibe(option.value);
                             setConsented(false);
+                            clearFieldError("vibe");
                           }}
                         >
                           {t(option.key)}
@@ -1313,37 +1399,69 @@ export function ScoutIdeaWizard({
                         id="scout-vibe"
                         value={vibe}
                         maxLength={240}
+                        aria-invalid={Boolean(fieldErrors.vibe)}
+                        aria-describedby={fieldErrors.vibe ? "scout-vibe-error" : undefined}
                         onChange={(event) => {
                           setVibe(event.target.value);
                           setConsented(false);
+                          clearFieldError("vibe");
                         }}
                         placeholder={t("copy.scoutWizardVibePlaceholder")}
+                        className={
+                          fieldErrors.vibe
+                            ? "border-destructive focus-visible:ring-destructive/50"
+                            : undefined
+                        }
                       />
+                      {fieldErrors.vibe && (
+                        <p
+                          id="scout-vibe-error"
+                          role="alert"
+                          className="text-xs font-semibold text-destructive"
+                        >
+                          {fieldErrors.vibe}
+                        </p>
+                      )}
                     </div>
                   </section>
                 )}
 
                 {step === 1 && (
-                  <section
-                    className="grid gap-3"
-                    style={{ gridTemplateColumns: "repeat(auto-fit, minmax(9rem, 1fr))" }}
-                    aria-label={t("copy.scoutWizardCrewQuestion")}
-                  >
-                    {CREW_CHOICES.map((option) => (
-                      <Button
-                        key={option.size}
-                        type="button"
-                        variant={crewSize === option.size ? "default" : "outline"}
-                        aria-pressed={crewSize === option.size}
-                        className="min-h-12 whitespace-normal transition-all duration-200 ease-out active:scale-[0.98]"
-                        onClick={() => {
-                          setCrewSize(option.size);
-                          setConsented(false);
-                        }}
+                  <section className="space-y-3">
+                    <div
+                      className="grid gap-3"
+                      style={{ gridTemplateColumns: "repeat(auto-fit, minmax(9rem, 1fr))" }}
+                      role="group"
+                      aria-label={t("copy.scoutWizardCrewQuestion")}
+                      aria-describedby={fieldErrors.crew ? "scout-crew-error" : undefined}
+                    >
+                      {CREW_CHOICES.map((option, index) => (
+                        <Button
+                          key={option.size}
+                          type="button"
+                          data-scout-crew={index === 0 ? "" : undefined}
+                          variant={crewSize === option.size ? "default" : "outline"}
+                          aria-pressed={crewSize === option.size}
+                          className="min-h-12 whitespace-normal transition-all duration-200 ease-out active:scale-[0.98]"
+                          onClick={() => {
+                            setCrewSize(option.size);
+                            setConsented(false);
+                            clearFieldError("crew");
+                          }}
+                        >
+                          {t(option.key)}
+                        </Button>
+                      ))}
+                    </div>
+                    {fieldErrors.crew && (
+                      <p
+                        id="scout-crew-error"
+                        role="alert"
+                        className="text-xs font-semibold text-destructive"
                       >
-                        {t(option.key)}
-                      </Button>
-                    ))}
+                        {fieldErrors.crew}
+                      </p>
+                    )}
                   </section>
                 )}
 
@@ -1357,12 +1475,31 @@ export function ScoutIdeaWizard({
                         id="scout-savings"
                         inputMode="decimal"
                         value={savingsAmount}
+                        aria-invalid={Boolean(fieldErrors.savings)}
+                        aria-describedby={
+                          fieldErrors.savings ? "scout-savings-error" : "scout-savings-help"
+                        }
                         onChange={(event) => {
                           setSavingsAmount(event.target.value);
                           setConsented(false);
+                          clearFieldError("savings");
                         }}
                         placeholder={currency === "JPY" ? "25000" : "250"}
+                        className={
+                          fieldErrors.savings
+                            ? "border-destructive focus-visible:ring-destructive/50"
+                            : undefined
+                        }
                       />
+                      {fieldErrors.savings && (
+                        <p
+                          id="scout-savings-error"
+                          role="alert"
+                          className="text-xs font-semibold text-destructive"
+                        >
+                          {fieldErrors.savings}
+                        </p>
+                      )}
                     </div>
                     <div
                       className="flex gap-2"
@@ -1387,7 +1524,7 @@ export function ScoutIdeaWizard({
                         </Button>
                       ))}
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p id="scout-savings-help" className="text-xs text-muted-foreground">
                       {t("copy.scoutWizardSavingsOptional")}
                     </p>
                   </section>
@@ -1457,7 +1594,10 @@ export function ScoutIdeaWizard({
                             variant={timing === option.value ? "default" : "outline"}
                             aria-pressed={timing === option.value}
                             className="min-h-11 whitespace-normal"
-                            onClick={() => setTiming(option.value)}
+                            onClick={() => {
+                              setTiming(option.value);
+                              clearFieldError("month");
+                            }}
                           >
                             {t(option.key)}
                           </Button>
@@ -1465,16 +1605,38 @@ export function ScoutIdeaWizard({
                       </div>
                       {timing === "month" && (
                         <div className="space-y-2">
-                          <Label htmlFor="scout-target-month">
-                            {t("copy.scoutWizardTimingMonthLabel")}
-                          </Label>
+                          <div className="flex items-center justify-between gap-2">
+                            <Label htmlFor="scout-target-month">
+                              {t("copy.scoutWizardTimingMonthLabel")}
+                            </Label>
+                            <RequirementHint kind="required" />
+                          </div>
                           <Input
                             id="scout-target-month"
                             type="month"
                             value={targetMonth}
-                            onChange={(event) => setTargetMonth(event.target.value)}
-                            className="h-11"
+                            aria-required
+                            aria-invalid={Boolean(fieldErrors.month)}
+                            aria-describedby={fieldErrors.month ? "scout-month-error" : undefined}
+                            onChange={(event) => {
+                              setTargetMonth(event.target.value);
+                              clearFieldError("month");
+                            }}
+                            className={
+                              fieldErrors.month
+                                ? "h-11 border-destructive focus-visible:ring-destructive/50"
+                                : "h-11"
+                            }
                           />
+                          {fieldErrors.month && (
+                            <p
+                              id="scout-month-error"
+                              role="alert"
+                              className="text-xs font-semibold text-destructive"
+                            >
+                              {fieldErrors.month}
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1482,14 +1644,18 @@ export function ScoutIdeaWizard({
                     <div className="space-y-3">
                       <ChoiceChips
                         label={t("copy.scoutWizardTripLength")}
+                        hint={<RequirementHint kind="optional" />}
                         options={LENGTH_CHOICES}
                         value={tripLength}
                         onChange={setTripLength}
                       />
                       <div className="space-y-1.5">
-                        <Label htmlFor="scout-duration-days">
-                          {t("copy.scoutWizardExactDays")}
-                        </Label>
+                        <div className="flex items-center justify-between gap-2">
+                          <Label htmlFor="scout-duration-days">
+                            {t("copy.scoutWizardExactDays")}
+                          </Label>
+                          <RequirementHint kind="optional" />
+                        </div>
                         <Input
                           id="scout-duration-days"
                           type="number"
@@ -1498,19 +1664,44 @@ export function ScoutIdeaWizard({
                           max={MAX_DURATION_DAYS}
                           step={1}
                           value={durationDays}
-                          onChange={(event) => setDurationDays(event.target.value)}
+                          aria-invalid={Boolean(fieldErrors.duration)}
+                          aria-describedby={
+                            fieldErrors.duration ? "scout-duration-error" : "scout-duration-help"
+                          }
+                          onChange={(event) => {
+                            setDurationDays(event.target.value);
+                            clearFieldError("duration");
+                          }}
                           placeholder={t("copy.scoutWizardExactDaysPlaceholder")}
-                          className="h-11"
-                          aria-describedby="scout-duration-help"
+                          className={
+                            fieldErrors.duration
+                              ? "h-11 border-destructive focus-visible:ring-destructive/50"
+                              : "h-11"
+                          }
                         />
-                        <p id="scout-duration-help" className="text-xs text-muted-foreground">
-                          {t("copy.scoutWizardExactDaysHelp", { max: MAX_DURATION_DAYS })}
-                        </p>
+                        {fieldErrors.duration ? (
+                          <p
+                            id="scout-duration-error"
+                            role="alert"
+                            className="text-xs font-semibold text-destructive"
+                          >
+                            {fieldErrors.duration}
+                          </p>
+                        ) : (
+                          <p id="scout-duration-help" className="text-xs text-muted-foreground">
+                            {t("copy.scoutWizardExactDaysHelp", { max: MAX_DURATION_DAYS })}
+                          </p>
+                        )}
                       </div>
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="scout-constraints">{t("copy.scoutWizardConstraints")}</Label>
+                      <div className="flex items-center justify-between gap-2">
+                        <Label htmlFor="scout-constraints">
+                          {t("copy.scoutWizardConstraints")}
+                        </Label>
+                        <RequirementHint kind="optional" />
+                      </div>
                       <Input
                         id="scout-constraints"
                         value={constraints}
@@ -1521,15 +1712,36 @@ export function ScoutIdeaWizard({
                       />
                     </div>
 
-                    <label className="flex items-start gap-3 rounded-xl border border-border p-3 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={consented}
-                        onChange={(event) => setConsented(event.target.checked)}
-                        className="mt-1 size-4 accent-primary"
-                      />
-                      <span>{t("copy.scoutWizardConsent")}</span>
-                    </label>
+                    <div className="space-y-1.5">
+                      <label className="flex items-start gap-3 rounded-xl border border-border p-3 text-sm">
+                        <input
+                          id="scout-consent"
+                          type="checkbox"
+                          checked={consented}
+                          aria-required
+                          aria-invalid={Boolean(fieldErrors.consent)}
+                          aria-describedby={fieldErrors.consent ? "scout-consent-error" : undefined}
+                          onChange={(event) => {
+                            setConsented(event.target.checked);
+                            clearFieldError("consent");
+                          }}
+                          className="mt-1 size-4 accent-primary"
+                        />
+                        <span className="flex flex-wrap items-center gap-2">
+                          {t("copy.scoutWizardConsent")}
+                          <RequirementHint kind="required" />
+                        </span>
+                      </label>
+                      {fieldErrors.consent && (
+                        <p
+                          id="scout-consent-error"
+                          role="alert"
+                          className="text-xs font-semibold text-destructive"
+                        >
+                          {fieldErrors.consent}
+                        </p>
+                      )}
+                    </div>
                   </section>
                 )}
               </motion.div>
@@ -1584,11 +1796,8 @@ export function ScoutIdeaWizard({
                   <Button
                     type="button"
                     className="min-h-11 transition-all duration-200 ease-out active:scale-[0.98]"
-                    disabled={(step === 0 && vibe.trim().length < 2) || (step === 1 && !crewSize)}
-                    onClick={() => {
-                      setError(null);
-                      setStep((current) => current + 1);
-                    }}
+                    disabled={loading}
+                    onClick={goNext}
                   >
                     {t("copy.scoutWizardNext")} <ArrowRight aria-hidden />
                   </Button>

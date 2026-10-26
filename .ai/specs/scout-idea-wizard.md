@@ -244,6 +244,11 @@ book travel, or provide financial advice.
       stops.
 - [x] Consent appears only on the final screen, next to "Find my trip ideas",
       and generation is blocked until it is checked.
+- [x] Every mandatory answer is labelled **Required** and every optional answer
+      **Optional**. Advancing never relies on a disabled button: the owning step
+      validates on press, shows a localized inline error, and focuses the first
+      invalid control.
+- [x] Choosing a specific month requires a month before generation.
 - [x] Result rows collapse to destination, trip goal, one tag, and a chevron;
       only one row expands at a time, and only the first question types itself
       out.
@@ -290,7 +295,12 @@ Record actual results and known limitations in Completion Notes before release.
   and placeholders). The 2026-10-23 pass additionally verified the departure
   quick action against the live reverse-geocode endpoint and reviewed the
   redesigned detail surface and the new timing screen in a real browser at
-  430px and 900px in light and dark themes.
+  430px and 900px in light and dark themes. The 2026-10-25 validation pass added
+  per-step inline errors, required/optional labels, and the mandatory pinned
+  month; the suite then reported 218 files / 1,422 tests passing, and all five
+  screens plus the inline vibe, crew, month, and consent errors were reviewed in
+  a real browser through the `/e2e` harness. See
+  [bug-scout-wizard-validation.md](./bug-scout-wizard-validation.md).
 - **Security review:** Server Action authentication, input/output validation,
   consent, server-only key handling (`GEMINI_API_KEY` primary, `OPENAI_API_KEY`
   fallback), and data minimization reviewed during implementation. The exclusion
