@@ -216,22 +216,48 @@ and `lib/i18n/error-copy.ts`. Locale persists in `localStorage["viatik-language"
   constraint, the AI consent, and the generate CTA. There is no fine-tune
   screen; pace/comfort, stay style, and nonstop are deferred to per-idea
   decisions and sent as neutral defaults.
+- **Voice:** dialog title **Let's find your kind of trip** — a spoken invitation,
+  never a branded feature name; rail labels
+  *Vibe · The Crew · Budget · Takeoff · Timing*; questions are invitations
+  ("Picture your next getaway…", "Who are we scheming this trip for?") and every
+  helper line is Scout speaking in the first person.
 - **Progress rail:** `WizardProgress` renders one segment per screen (5) and is
   the only step indicator; the header subtitle carries
   `copy.scoutWizardStepProgress` ("Step 5 of 5 · Timing"). Past segments use
   `bg-viatik-blue/40`, the current one `bg-viatik-gradient`, future `bg-muted`.
   Never cap the counter below the real screen count.
 - **Trigger vs title:** `copy.scoutWizardTrigger` ("Ask Scout for ideas") is the
-  planner button; `copy.scoutWizardTitle` ("Scout's trip ideas") is the dialog
+  planner button; `copy.scoutWizardTitle` ("Let's find your kind of trip") is the dialog
   heading. They must stay different strings — reusing one for both reads as a
   duplicated screen.
+- **No emoji.** The user explicitly rejected emoji in this flow. Answer anchors
+  are `lucide-react` icons (Waves / Building2 / Trees, User / Heart / Users,
+  PiggyBank / CalendarDays / TrendingDown), always `aria-hidden`, and the
+  primary CTA is plain text.
+- **Answer primitives:** vibe is a row of chips (icon + label, where the label
+  *is* the value sent to Scout); crew and timing use `SelectableCard`
+  (`rounded-xl border border-border/80 bg-card/60 p-4`, selected
+  `ring-2 ring-primary border-primary bg-primary/5 shadow-sm`) with a
+  `LucideIcon` anchor and an optional subtitle. Both expose `aria-pressed`;
+  never convey selection with color alone.
+- **Micro-feedback:** `ScoutReaction` renders one line in an `aria-live` region
+  inside the bubble. It is *derived* from the current answer (custom vibe text
+  clears it) and timing needs the `timingTouched` flag because `asap` is the
+  default. Keep reactions to one short sentence.
+- **Budget:** optional amount plus `scoutBudgetPresets(currency)` pills
+  (`features/trip-planner/domain/scout-budget-presets.ts`). Presets are
+  per-currency whole-unit constants in minor units — no FX lookup, because the
+  wizard must render offline. Pills set the input via `decimalFromMinorUnits`.
 - **Last screen:** timing + consent stay visible. Trip length, exact day count,
   and free-text constraints live in a closed-by-default `Collapsible`
   (`scout-trip-details`) whose badge summarizes what is set; `validateStep`
   reopens it before focusing an invalid day count.
-- **Fixed footer:** Back / Next / Find live in a `<footer>` sibling of the
-  `overflow-y-auto` body, never inside it — otherwise the primary CTA scrolls
-  out of reach at 430×900.
+- **Fixed footer:** Back / Next / Show my trip ideas live in a `<footer>` sibling
+  of the `overflow-y-auto` body, never inside it — otherwise the primary CTA
+  scrolls out of reach at 430×900.
+- **Motion:** the step panel is keyed by `step` and slides in the travel
+  direction (`x: 18 * direction`, `direction` set by `goNext` / `goBack`), always
+  behind `useReducedMotion()`.
 - **Validation:** Next is never disabled for a missing answer. `validateStep`
   checks the fields owned by the current step (vibe ≥ 2 chars, crew, savings
   parse, pinned month, exact days, consent), writes per-field errors, and moves
@@ -249,7 +275,15 @@ and `lib/i18n/error-copy.ts`. Locale persists in `localStorage["viatik-language"
   `GOOGLE_MAPS_API_KEY` is set, keyless BigDataCloud otherwise). Only the city
   label enters wizard state; coordinates are never stored or sent to the AI.
   Denied/unavailable/timeout/unresolved each have their own localized message.
-- **Expanded idea detail:** three stat tiles (goal, fare per traveler, book-by),
-  a today → book-by → goal-reached timeline, then `Tabs` (Budget · Savings ·
-  Flights · Stay) with 2×2 grid on mobile and 4-up on `sm`. Provider submodals
+  `DestinationField` gets its own short `helpText` so the bubble and the field
+  never repeat the same sentence.
+- **Results:** rows lead with the destination, the **Top Match for You** pill
+  (gradient border, first card only, which also gets a thicker gradient rail),
+  the `scout_pitch` clamped to two lines, and only then the trip goal pill +
+  duration. The expanded detail opens with season/traveler/cabin/stops badges,
+  then three stat pills (trip goal = gradient, fare = blue, stay = magenta), a
+  today → book-by → goal-reached timeline, then `Tabs` (Budget · Savings ·
+  Flights · Stay) with a 2×2 grid on mobile and 4-up on `sm`. Provider submodals
   stay in the always-visible footer next to the save CTA.
+- **Loading:** skeletons are preceded by `copy.scoutWizardThinking` ("Scout is
+  matching routes, stays, and vibes...") inside the `aria-busy` region.
