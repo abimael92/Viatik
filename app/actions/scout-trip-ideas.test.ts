@@ -109,6 +109,19 @@ describe("generateScoutTripIdeas", () => {
     expect(promptPayload.requirements).toContain("exactly 5 distinct");
   });
 
+  it("keeps the pitch rhythm and the strict estimate rules in the system prompt", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(geminiPayload(fiveIdeas()));
+
+    await generateScoutTripIdeas(input);
+
+    const body = JSON.parse(String(fetchSpy.mock.calls[0]![1]?.body));
+    const systemPrompt: string = body.systemInstruction.parts[0].text;
+    expect(systemPrompt).toContain("exactly two sentences");
+    expect(systemPrompt).toContain("sensory atmosphere");
+    expect(systemPrompt).toContain("'City, Country'");
+    expect(systemPrompt).toContain("never minor units or cents");
+  });
+
   it("requests the Spanish language and the exact count when asked", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(geminiPayload(fiveIdeas()));
 
@@ -184,6 +197,48 @@ describe("generateScoutTripIdeas", () => {
       }
     }
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("maps each wizard vibe chip to its own fallback pool", async () => {
+    mocks.env.GEMINI_API_KEY = undefined;
+    mocks.env.OPENAI_API_KEY = undefined;
+
+    const poolOf = async (vibe: string) => {
+      const result = await generateScoutTripIdeas({ ...input, vibe });
+      return result.success ? result.suggestions.ideas.map((idea) => idea.destination) : [];
+    };
+
+    const beach = [
+      "Puerto Vallarta, Mexico",
+      "Cancun, Mexico",
+      "Lisbon, Portugal",
+      "Split, Croatia",
+      "Bali, Indonesia",
+    ];
+    const food = [
+      "Oaxaca, Mexico",
+      "Bologna, Italy",
+      "Porto, Portugal",
+      "Ho Chi Minh City, Vietnam",
+      "Kyoto, Japan",
+    ];
+    const nature = [
+      "Banff, Canada",
+      "San Jose, Costa Rica",
+      "Interlaken, Switzerland",
+      "Queenstown, New Zealand",
+      "Reykjavik, Iceland",
+    ];
+
+    expect(
+      (await poolOf("Slow mornings by the water")).every((item) => beach.includes(item))
+    ).toBe(true);
+    expect(
+      (await poolOf("Vibrant streets, culture & good food")).every((item) => food.includes(item))
+    ).toBe(true);
+    expect(
+      (await poolOf("Fresh mountain air & quiet trails")).every((item) => nature.includes(item))
+    ).toBe(true);
   });
 
   it("adds two more destinations that exclude every destination already shown", async () => {

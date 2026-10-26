@@ -189,7 +189,7 @@ describe("TripPlannerView", () => {
     render(<TripPlannerView userId="user-1" onBack={vi.fn()} />);
 
     expect(
-      await screen.findByRole("button", { name: "Let Scout help you brainstorm!" })
+      await screen.findByRole("button", { name: "Ask Scout for ideas" })
     ).toHaveProperty("disabled", true);
     expect(screen.getByRole("button", { name: "Add trip idea" })).toHaveProperty("disabled", false);
     Object.defineProperty(navigator, "onLine", { configurable: true, value: true });

@@ -117,13 +117,22 @@ describe("I18nProvider", () => {
   });
 
   it("localizes every Scout wizard and idea-detail string into Spanish", () => {
-    expect(translate("en", "copy.scoutWizardTrigger")).toBe("Let Scout help you brainstorm!");
-    expect(translate("es", "copy.scoutWizardTrigger")).toBe("¡Deja que Scout te ayude a pensar!");
+    expect(translate("en", "copy.scoutWizardTrigger")).toBe("Ask Scout for ideas");
+    expect(translate("es", "copy.scoutWizardTrigger")).toBe("Pide ideas a Scout");
+    expect(translate("en", "copy.scoutWizardTitle")).toBe("Let's find your kind of trip");
+    expect(translate("es", "copy.scoutWizardTitle")).toBe("Encontremos tu tipo de viaje");
+    expect(
+      translate("es", "copy.scoutWizardStepProgress", {
+        current: 5,
+        total: 5,
+        step: "Fechas",
+      })
+    ).toBe("Paso 5 de 5 · Fechas");
     expect(translate("es", "copy.scoutWizardVibeQuestion")).toBe(
-      "¡Hola! ¿Qué tipo de viaje te apetece?"
+      "Imagínate tu próxima escapada. ¿Qué es lo primero que se te antoja sentir?"
     );
-    expect(translate("es", "copy.scoutWizardFind")).toBe("Buscar ideas de viaje");
-    expect(translate("es", "copy.scoutWizardCrewPartner")).toBe("Con mi pareja");
+    expect(translate("es", "copy.scoutWizardFind")).toBe("Ver mis ideas de viaje");
+    expect(translate("es", "copy.scoutWizardCrewPartner")).toBe("En pareja o con un acompañante");
     expect(translate("es", "copy.scoutWizardSavingsLabel", { currency: "MXN" })).toBe(
       "Cantidad cómoda de ahorro (MXN)"
     );
@@ -136,7 +145,7 @@ describe("I18nProvider", () => {
       })
     ).toBe("$10.00 × 7 días × 2 viajeros");
     expect(translate("es", "copy.scoutIdeaStayHeading")).toBe("Hotel o Airbnb");
-    expect(translate("es", "copy.scoutWizardBestMatch")).toBe("Mejor opción");
+    expect(translate("es", "copy.scoutWizardBestMatch")).toBe("La mejor opción para ti");
     expect(translate("es", "copy.scoutWizardOptionsHeading", { count: 7 })).toBe(
       "Tus 7 opciones más cercanas"
     );
@@ -147,15 +156,39 @@ describe("I18nProvider", () => {
     expect(translate("es", "copy.scoutIdeaRank", { rank: 3 })).toBe("Opción 3");
     expect(translate("en", "copy.scoutIdeaBadgeEasiest")).toBe("Easiest to reach");
     expect(translate("es", "copy.scoutIdeaBadgeEasiest")).toBe("Más fácil de alcanzar");
-    expect(translate("es", "copy.scoutWizardOriginQuestion")).toBe("¿Desde dónde viajas?");
+    expect(translate("es", "copy.scoutWizardOriginQuestion")).toBe("¿Desde dónde despegas?");
     expect(translate("es", "copy.scoutWizardOriginLabel")).toBe(
       "Ciudad o aeropuerto de salida"
     );
     expect(translate("es", "copy.scoutWizardTimingCheapest")).toBe("Cuando sea más barato");
-    expect(translate("es", "copy.scoutWizardExactDays")).toBe(
-      "Número exacto de días (opcional)"
+    expect(translate("es", "copy.scoutWizardExactDays")).toBe("O un número exacto de días");
+    expect(translate("es", "copy.scoutWizardSavingsOptional")).toBe(
+      "Tu ritmo semanal o mensual, sin juicios."
     );
-    expect(translate("es", "copy.scoutWizardSavingsOptional")).toContain("Opcional");
+    expect(translate("en", "copy.scoutWizardStepCrew")).toBe("The Crew");
+    expect(translate("es", "copy.scoutWizardStepDeparture")).toBe("Despegue");
+    expect(translate("es", "copy.scoutWizardCrewSoloSubtitle")).toBe("A mi ritmo y sin prisas");
+    expect(translate("en", "copy.scoutWizardCrewSoloReaction")).toBe(
+      "Solo trips are the best for recharging."
+    );
+    expect(translate("es", "copy.scoutWizardVibeNatureReaction")).toBe(
+      "La montaña le hace bien a la cabeza."
+    );
+    expect(translate("en", "copy.scoutWizardThinking")).toBe(
+      "Scout is matching routes, stays, and vibes..."
+    );
+    expect(translate("en", "copy.scoutWizardBudgetPresets")).toBe("Pick a starting point");
+    expect(translate("es", "copy.scoutIdeaStatStayDetail", { nights: 6 })).toBe(
+      "6 noches, todo el grupo"
+    );
+    expect(translate("es", "copy.scoutWizardRequired")).toBe("Obligatorio");
+    expect(translate("en", "copy.scoutWizardOptional")).toBe("Optional");
+    expect(translate("es", "copy.scoutWizardVibeRequired")).toBe(
+      "Cuéntale a Scout tu ambiente en pocas palabras."
+    );
+    expect(translate("es", "copy.scoutWizardMonthRequired")).toBe(
+      "Elige un mes o cambia la opción de fechas."
+    );
     expect(translate("en", "copy.scoutIdeaNoSavingsPace")).toBe(
       "Add a savings pace to see when you could go."
     );

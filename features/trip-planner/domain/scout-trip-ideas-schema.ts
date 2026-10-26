@@ -47,7 +47,7 @@ const scoutPitchSchema = z
   .min(20)
   .max(400)
   .describe(
-    "A friendly, casual 2-sentence pitch from Scout explaining why this destination perfectly matches their vibe and savings capacity."
+    "Exactly two sentences. The first captures the sensory atmosphere and authentic highlights of the destination and why it matches the traveler's vibe. The second ties the pick to practical group ease, travel simplicity, or budget friendliness."
   )
   .refine((pitch) => (pitch.match(/[.!?](?:\s|$)/g) ?? []).length === 2, {
     message: "Scout's pitch must have exactly two sentences.",
