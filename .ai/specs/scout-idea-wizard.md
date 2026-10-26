@@ -92,6 +92,16 @@ book travel, or provide financial advice.
   the first question only, animated step transitions, a progress indicator,
   staggered compact rows, rank badges, and hover lift — all gated by
   `useReducedMotion()`.
+- A calm header: a short dialog title (never the trigger sentence) plus one
+  subtitle that names the current step ("Step 5 of 5 · Timing"). The
+  five-segment rail is the only step indicator; past, current, and future
+  segments use distinct fills.
+- Optional timing extras (trip length, exact day count, free-text constraints)
+  live in a closed-by-default **Trip details** `Collapsible` that summarizes what
+  is set, so the final screen shows timing + consent only.
+- Back / Next / **Find my trip ideas** render in a fixed dialog footer outside
+  the scroll container, so the primary action is always reachable without
+  scrolling.
 - Compact, expandable result rows (horizontal snap-scroll on mobile), a single
   consolidated disclaimer, and a dashed "add more" card at the end of the list.
 - An expanded detail surface that reads as a summary rather than a document:
@@ -262,6 +272,15 @@ book travel, or provide financial advice.
 - [x] The expanded idea detail shows the goal, fare, and book-by date as stat
       tiles, a today → book-by → goal-reached timeline, and
       Budget/Savings/Flights/Stay tabs where only one panel renders at a time.
+- [x] The trigger ("Ask Scout for ideas") and the dialog title ("Scout's trip
+      ideas") are different strings in English and Spanish.
+- [x] The dialog subtitle names the current step; the rail distinguishes past,
+      current, and future segments.
+- [x] Trip length, exact day count, and free-text constraints are collapsed
+      behind **Trip details**, which summarizes the current values and reopens
+      automatically when validation rejects the exact-day count.
+- [x] The wizard's Back / Next / Find actions render in a fixed footer that
+      stays visible at 430×900 without scrolling.
 
 ## Verification
 
@@ -301,6 +320,13 @@ Record actual results and known limitations in Completion Notes before release.
   screens plus the inline vibe, crew, month, and consent errors were reviewed in
   a real browser through the `/e2e` harness. See
   [bug-scout-wizard-validation.md](./bug-scout-wizard-validation.md).
+- **2026-10-25 clarity pass:** the final screen was rebuilt around a
+  `Collapsible` "Trip details" section and a fixed dialog footer; the dialog was
+  retitled and the progress rail simplified. `pnpm lint` ✅ · `pnpm typecheck` ✅ ·
+  `pnpm test` ✅ 219 files / 1,427 tests · `pnpm build` ✅ (21 routes). The Timing
+  screen was reviewed in the `/e2e` harness at 430×900 and 1000×900, light and
+  dark, in English and Spanish, collapsed and expanded. See
+  [bug-scout-wizard-last-step.md](./bug-scout-wizard-last-step.md).
 - **Security review:** Server Action authentication, input/output validation,
   consent, server-only key handling (`GEMINI_API_KEY` primary, `OPENAI_API_KEY`
   fallback), and data minimization reviewed during implementation. The exclusion
