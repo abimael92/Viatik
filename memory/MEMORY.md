@@ -4,7 +4,7 @@
 > before exploring the codebase; update it before ending a task.
 > **Companions:** [`data-models.md`](data-models.md) ·
 > [`components-ui.md`](components-ui.md) · [`roles-abilities.md`](roles-abilities.md)
-> **Last updated:** 2026-10-23 · schema v47 · 218 test files / 1,418 tests
+> **Last updated:** 2026-10-25 · schema v47 · 219 test files / 1,427 tests
 
 ---
 
@@ -178,6 +178,33 @@ Also update the topic file whose subject changed:
 ---
 
 ## 7. Session log (newest first)
+
+### 2026-10-25 — Scout wizard: calm header, collapsed trip details, fixed footer
+- **Changed:** `features/trip-planner/components/scout-idea-wizard.tsx` — the
+  dialog title is now "Scout's trip ideas" (the trigger is "Ask Scout for ideas",
+  so the two no longer duplicate), the subtitle carries
+  `scoutWizardStepProgress` ("Step 5 of 5 · Timing"), the "Scout says · …" row is
+  gone, and the rail uses `bg-viatik-blue/40` (past) / `bg-viatik-gradient`
+  (current) / `bg-muted` (future). The last screen keeps timing + consent visible
+  and moves trip length, exact day count, and free-text constraints into a
+  closed-by-default `Collapsible` ("Trip details") that summarizes the current
+  values; validation reopens it before focusing an invalid day count. Back / Next
+  / Find now render in a fixed `footer` outside the scroll container.
+  `components/ui/collapsible.tsx` gained optional controlled `open` /
+  `onOpenChange` props (new `collapsible.test.tsx`). Copy changes in
+  `lib/i18n/frontend-copy.ts` (EN/ES); `scoutWizardQuestionCount` and
+  `scoutWizardScoutSays` were removed.
+- **Schema:** none. No Dexie bump, no Supabase migration, no outbox change.
+- **Verification:** `pnpm lint` ✅ · `pnpm typecheck` ✅ · `pnpm test` ✅ 219 files
+  / 1,427 tests · `pnpm build` ✅ (21 routes). Timing screen reviewed in the
+  `/e2e` harness at 430×900 and 1000×900, light and dark, EN and ES, collapsed
+  and expanded.
+- **Gotchas:** `Collapsible` keeps its panel mounted during the motion exit
+  animation, so jsdom tests must assert `aria-expanded` instead of DOM absence
+  after collapsing. The wizard footer must stay outside the `overflow-y-auto`
+  container or the primary CTA scrolls out of reach on phones. The `/e2e` harness
+  has no Supabase session, so **Find my trip ideas** ends in "Sign in again to ask
+  Scout" there — results need a real signed-in session.
 
 ### 2026-10-25 — Scout wizard: inline validation, required/optional labels
 - **Changed:** `features/trip-planner/components/scout-idea-wizard.tsx` now keeps
