@@ -4,7 +4,7 @@
 > before exploring the codebase; update it before ending a task.
 > **Companions:** [`data-models.md`](data-models.md) ·
 > [`components-ui.md`](components-ui.md) · [`roles-abilities.md`](roles-abilities.md)
-> **Last updated:** 2026-10-25 · schema v47 · 219 test files / 1,427 tests
+> **Last updated:** 2026-10-25 · schema v47 · 220 test files / 1,438 tests
 
 ---
 
@@ -178,6 +178,52 @@ Also update the topic file whose subject changed:
 ---
 
 ## 7. Session log (newest first)
+
+### 2026-10-25 — Scout wizard: conversational co-planner (copy, cards, results)
+- **Changed:** `features/trip-planner/components/scout-idea-wizard.tsx` — dialog
+  is now "Let's find your kind of trip" (a spoken invitation, not a branded
+  feature name); the rail reads *Vibe · The Crew · Budget · Takeoff · Timing*.
+  Crew and timing answers are tactile `SelectableCard`s (icon anchor, title,
+  subtitle, `aria-pressed`, `ring-2 ring-primary` selected state). Vibe chips
+  carry lucide icons and their labels are the exact vibe string sent to Scout.
+  **No emoji anywhere in the flow** (explicit user preference) — anchors are
+  lucide icons and the CTA is plain text. A `ScoutReaction` line inside the
+  speech bubble echoes the pick (`Nothing beats ocean air.`, `Solo trips are the
+  best for recharging.`, timing only after an explicit tap). Budget gained
+  one-tap `$100 / $250 / $500` pills. Step motion is direction-aware
+  (`x: ±18px`) and still gated by `useReducedMotion()`. Results: the first card
+  gets a gradient-bordered **Top Match for You** pill and a thicker gradient
+  rail, `scout_pitch` renders under the destination (2-line clamp until
+  expanded) before any number, and the expanded detail shows the trip goal /
+  fare / stay as three labelled stat pills instead of the old book-by tile
+  (book-by stays in the savings timeline). New pure module
+  `features/trip-planner/domain/scout-budget-presets.ts` (+ test).
+  `app/actions/scout-trip-ideas.ts` `SYSTEM_PROMPT` rewritten for a candid,
+  well-traveled voice and the two-sentence pitch rhythm (sensory atmosphere →
+  practical group ease / simplicity / budget); every hard constraint kept.
+  `scout_pitch` descriptions in the Gemini schema and the Zod schema updated to
+  match. `selectFallbackCategory` now treats `water|waterside|shore|seaside` as
+  beach (the beach chip is no longer literally "Beach and slow mornings").
+  EN/ES copy in `lib/i18n/frontend-copy.ts`.
+- **Schema:** none. No Dexie bump, no Supabase migration, no outbox change. The
+  action contract is unchanged (`scoutTripIdeasInputSchema` untouched).
+- **Verification:** `pnpm lint` ✅ · `pnpm typecheck` ✅ · `pnpm test` ✅ 220 files
+  / 1,438 tests · `pnpm build` ✅ (21 routes). All five screens reviewed in the
+  `/e2e` harness at 1000×900 and 430×900 in EN and ES; the results surface was
+  reviewed the same way with a temporary local stub of `askScout` (the harness
+  has no signed-in session), which was reverted before committing.
+- **Gotchas:** the accessible name of a crew/timing card includes its subtitle,
+  so tests must match with a regex (`{ name: /Traveling duo/ }`) while vibe chips
+  stay exact. Budget presets are per-currency whole-unit constants, not an FX
+  conversion — Scout must not need the network to show them, and
+  `scoutBudgetPresets` returns `[]` for an unsupported code instead of throwing.
+  The reaction line is derived from state, so typing a custom vibe clears it; the
+  timing reaction needs `timingTouched` because `asap` is the default answer.
+  `scoutWizardThinking` is now the loading message inside the skeleton block
+  (the footer is hidden while loading, so it was previously dead copy). A vibe
+  chip label is both display text and the string sent to Scout, so renaming a
+  chip changes the deterministic fallback pool — `scout-trip-ideas.test.ts` now
+  pins each chip to its pool.
 
 ### 2026-10-25 — Scout wizard: calm header, collapsed trip details, fixed footer
 - **Changed:** `features/trip-planner/components/scout-idea-wizard.tsx` — the
