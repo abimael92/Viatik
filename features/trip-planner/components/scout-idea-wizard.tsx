@@ -22,6 +22,7 @@ import { reverseGeocodeDestination } from "@/app/actions/places";
 import { generateScoutTripIdeas } from "@/app/actions/scout-trip-ideas";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Collapsible } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -826,41 +827,31 @@ function WizardProgress({ step }: { step: number }) {
   const { t } = useI18n();
 
   return (
-    <div className="shrink-0 px-6 pt-4">
-      <div className="flex items-center justify-between gap-3 text-xs font-medium text-muted-foreground">
-        <span className="flex min-w-0 items-center gap-1.5">
-          <Sparkles aria-hidden className="size-3.5 shrink-0 text-viatik-magenta" />
-          <span className="truncate">
-            {t("copy.scoutWizardScoutSays")} · {t(STEP_LABELS[step] ?? STEP_LABELS[0]!)}
-          </span>
-        </span>
-      </div>
-      <ol
-        className="mt-2 grid grid-cols-5 gap-1"
-        aria-label={t("copy.scoutWizardProgressLabel")}
-      >
-        {STEP_LABELS.map((labelKey, index) => (
-          <li
-            key={labelKey}
-            aria-current={index === step ? "step" : undefined}
-            className="min-w-0"
-          >
-            <div
-              aria-hidden
-              className={cn(
-                "h-1.5 rounded-full transition-colors duration-300",
-                index > step
-                  ? "bg-muted"
-                  : index === step
-                    ? "bg-viatik-gradient"
-                    : "bg-viatik-gradient opacity-55"
-              )}
-            />
-            <span className="sr-only">{t(labelKey)}</span>
-          </li>
-        ))}
-      </ol>
-    </div>
+    <ol
+      className="mx-6 mt-4 grid shrink-0 grid-cols-5 gap-1"
+      aria-label={t("copy.scoutWizardProgressLabel")}
+    >
+      {STEP_LABELS.map((labelKey, index) => (
+        <li
+          key={labelKey}
+          aria-current={index === step ? "step" : undefined}
+          className="min-w-0"
+        >
+          <div
+            aria-hidden
+            className={cn(
+              "h-1.5 rounded-full transition-colors duration-300",
+              index > step
+                ? "bg-muted"
+                : index === step
+                  ? "bg-viatik-gradient"
+                  : "bg-viatik-blue/40"
+            )}
+          />
+          <span className="sr-only">{t(labelKey)}</span>
+        </li>
+      ))}
+    </ol>
   );
 }
 
@@ -895,6 +886,7 @@ export function ScoutIdeaWizard({
   const [tripLength, setTripLength] = useState<ScoutTripIdeasInput["tripLength"]>("any");
   const [durationDays, setDurationDays] = useState("");
   const [constraints, setConstraints] = useState("");
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [savingsCapacityMinor, setSavingsCapacityMinor] = useState(0n);
   const [consented, setConsented] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -924,6 +916,7 @@ export function ScoutIdeaWizard({
     setTripLength("any");
     setDurationDays("");
     setConstraints("");
+    setDetailsOpen(false);
     setSavingsCapacityMinor(0n);
     setConsented(false);
     setSuggestions([]);
@@ -1105,7 +1098,14 @@ export function ScoutIdeaWizard({
 
     setFieldErrors(next);
     const firstInvalid = (Object.keys(next) as WizardField[])[0];
-    if (firstInvalid) focusField(firstInvalid);
+    if (firstInvalid) {
+      if (firstInvalid === "duration") {
+        setDetailsOpen(true);
+        window.setTimeout(() => focusField("duration"), 0);
+      } else {
+        focusField(firstInvalid);
+      }
+    }
     return !firstInvalid;
   }
 
@@ -1205,6 +1205,16 @@ export function ScoutIdeaWizard({
 
   const completedQuestion = suggestions.length > 0;
   const travelers = crewSize ?? 1;
+  const exactDuration = parsedDurationDays();
+  const tripDetailsSummary = [
+    tripLength !== "any"
+      ? t(LENGTH_CHOICES.find((option) => option.value === tripLength)!.key)
+      : null,
+    exactDuration ? t("copy.tripIdeaDurationDays", { days: exactDuration }) : null,
+    constraints.trim() ? t("copy.scoutWizardTripDetailsNote") : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   const plans = suggestions.map((suggestion) =>
     buildScoutIdeaPlan({
@@ -1253,7 +1263,7 @@ export function ScoutIdeaWizard({
   return (
     <Dialog open={open} onOpenChange={close}>
       <DialogContent className="flex max-h-[92dvh] flex-col overflow-hidden p-0 sm:max-w-2xl">
-        <header className="relative shrink-0 border-b border-border/60 bg-card/80 px-6 pb-4 pt-5 backdrop-blur-md">
+        <header className="relative shrink-0 border-b border-border/60 bg-card/80 px-6 pb-3 pt-5 backdrop-blur-md">
           <div aria-hidden className="absolute inset-x-0 top-0 h-0.5 bg-viatik-gradient" />
           <DialogHeader className="relative mb-0">
             <div className="flex items-center gap-3 pr-10">
@@ -1273,12 +1283,13 @@ export function ScoutIdeaWizard({
               </motion.div>
               <div className="min-w-0">
                 <DialogTitle>{t("copy.scoutWizardTitle")}</DialogTitle>
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="mt-1 truncate text-sm text-muted-foreground">
                   {completedQuestion
                     ? t("copy.scoutWizardOptionsHeading", { count: suggestions.length })
-                    : t("copy.scoutWizardQuestionCount", {
+                    : t("copy.scoutWizardStepProgress", {
                         current: step + 1,
                         total: TOTAL_WIZARD_STEPS,
+                        step: t(STEP_LABELS[step] ?? STEP_LABELS[0]!),
                       })}
                 </p>
               </div>
@@ -1641,76 +1652,87 @@ export function ScoutIdeaWizard({
                       )}
                     </div>
 
-                    <div className="space-y-3">
-                      <ChoiceChips
-                        label={t("copy.scoutWizardTripLength")}
-                        hint={<RequirementHint kind="optional" />}
-                        options={LENGTH_CHOICES}
-                        value={tripLength}
-                        onChange={setTripLength}
-                      />
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between gap-2">
+                    <Collapsible
+                      id="scout-trip-details"
+                      title={t("copy.scoutWizardTripDetails")}
+                      open={detailsOpen}
+                      onOpenChange={setDetailsOpen}
+                      badge={
+                        tripDetailsSummary ? (
+                          <span className="max-w-[15rem] truncate text-[11px] font-medium normal-case tracking-normal text-muted-foreground">
+                            {tripDetailsSummary}
+                          </span>
+                        ) : (
+                          <RequirementHint kind="optional" />
+                        )
+                      }
+                    >
+                      <div className="space-y-4">
+                        <ChoiceChips
+                          label={t("copy.scoutWizardTripLength")}
+                          options={LENGTH_CHOICES}
+                          value={tripLength}
+                          onChange={setTripLength}
+                        />
+                        <div className="space-y-1.5">
                           <Label htmlFor="scout-duration-days">
                             {t("copy.scoutWizardExactDays")}
                           </Label>
-                          <RequirementHint kind="optional" />
+                          <Input
+                            id="scout-duration-days"
+                            type="number"
+                            inputMode="numeric"
+                            min={1}
+                            max={MAX_DURATION_DAYS}
+                            step={1}
+                            value={durationDays}
+                            aria-invalid={Boolean(fieldErrors.duration)}
+                            aria-describedby={
+                              fieldErrors.duration
+                                ? "scout-duration-error"
+                                : "scout-duration-help"
+                            }
+                            onChange={(event) => {
+                              setDurationDays(event.target.value);
+                              clearFieldError("duration");
+                            }}
+                            placeholder={t("copy.scoutWizardExactDaysPlaceholder")}
+                            className={
+                              fieldErrors.duration
+                                ? "h-11 border-destructive focus-visible:ring-destructive/50"
+                                : "h-11"
+                            }
+                          />
+                          {fieldErrors.duration ? (
+                            <p
+                              id="scout-duration-error"
+                              role="alert"
+                              className="text-xs font-semibold text-destructive"
+                            >
+                              {fieldErrors.duration}
+                            </p>
+                          ) : (
+                            <p id="scout-duration-help" className="text-xs text-muted-foreground">
+                              {t("copy.scoutWizardExactDaysHelp", { max: MAX_DURATION_DAYS })}
+                            </p>
+                          )}
                         </div>
-                        <Input
-                          id="scout-duration-days"
-                          type="number"
-                          inputMode="numeric"
-                          min={1}
-                          max={MAX_DURATION_DAYS}
-                          step={1}
-                          value={durationDays}
-                          aria-invalid={Boolean(fieldErrors.duration)}
-                          aria-describedby={
-                            fieldErrors.duration ? "scout-duration-error" : "scout-duration-help"
-                          }
-                          onChange={(event) => {
-                            setDurationDays(event.target.value);
-                            clearFieldError("duration");
-                          }}
-                          placeholder={t("copy.scoutWizardExactDaysPlaceholder")}
-                          className={
-                            fieldErrors.duration
-                              ? "h-11 border-destructive focus-visible:ring-destructive/50"
-                              : "h-11"
-                          }
-                        />
-                        {fieldErrors.duration ? (
-                          <p
-                            id="scout-duration-error"
-                            role="alert"
-                            className="text-xs font-semibold text-destructive"
-                          >
-                            {fieldErrors.duration}
-                          </p>
-                        ) : (
-                          <p id="scout-duration-help" className="text-xs text-muted-foreground">
-                            {t("copy.scoutWizardExactDaysHelp", { max: MAX_DURATION_DAYS })}
-                          </p>
-                        )}
-                      </div>
-                    </div>
 
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <Label htmlFor="scout-constraints">
-                          {t("copy.scoutWizardConstraints")}
-                        </Label>
-                        <RequirementHint kind="optional" />
+                        <div className="space-y-2">
+                          <Label htmlFor="scout-constraints">
+                            {t("copy.scoutWizardConstraints")}
+                          </Label>
+                          <Input
+                            id="scout-constraints"
+                            value={constraints}
+                            maxLength={200}
+                            onChange={(event) => setConstraints(event.target.value)}
+                            placeholder={t("copy.scoutWizardConstraintsPlaceholder")}
+                            className="h-11"
+                          />
+                        </div>
                       </div>
-                      <Input
-                        id="scout-constraints"
-                        value={constraints}
-                        maxLength={200}
-                        onChange={(event) => setConstraints(event.target.value)}
-                        placeholder={t("copy.scoutWizardConstraintsPlaceholder")}
-                        className="h-11"
-                      />
-                    </div>
+                    </Collapsible>
 
                     <div className="space-y-1.5">
                       <label className="flex items-start gap-3 rounded-xl border border-border p-3 text-sm">
@@ -1764,45 +1786,6 @@ export function ScoutIdeaWizard({
                   </Button>
                 </div>
               )}
-
-              <div className="flex justify-between gap-3 border-t border-border pt-4">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="min-h-11"
-                  disabled={step === 0 || loading}
-                  onClick={() => {
-                    setError(null);
-                    setStep((current) => current - 1);
-                  }}
-                >
-                  <ArrowLeft aria-hidden /> {t("copy.scoutWizardBack")}
-                </Button>
-                {step === TOTAL_WIZARD_STEPS - 1 ? (
-                  <Button
-                    type="button"
-                    className="min-h-11 bg-viatik-gradient text-white transition-all duration-200 ease-out active:scale-[0.98]"
-                    disabled={loading || isOnline !== true}
-                    onClick={() => void askScout()}
-                  >
-                    {loading ? (
-                      <LoaderCircle aria-hidden className="animate-spin" />
-                    ) : (
-                      <Sparkles aria-hidden />
-                    )}
-                    {loading ? t("copy.scoutWizardThinking") : t("copy.scoutWizardFind")}
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    className="min-h-11 transition-all duration-200 ease-out active:scale-[0.98]"
-                    disabled={loading}
-                    onClick={goNext}
-                  >
-                    {t("copy.scoutWizardNext")} <ArrowRight aria-hidden />
-                  </Button>
-                )}
-              </div>
             </div>
           ) : (
             <div className="space-y-4">
@@ -2000,6 +1983,49 @@ export function ScoutIdeaWizard({
             </div>
           )}
         </div>
+
+        {!completedQuestion && !loading && isOnline !== false && (
+          <footer className="shrink-0 border-t border-border/60 bg-card/95 px-6 py-3 backdrop-blur-md">
+            <div className="flex items-center justify-between gap-3">
+              <Button
+                type="button"
+                variant="ghost"
+                className="min-h-11"
+                disabled={step === 0 || loading}
+                onClick={() => {
+                  setError(null);
+                  setStep((current) => current - 1);
+                }}
+              >
+                <ArrowLeft aria-hidden /> {t("copy.scoutWizardBack")}
+              </Button>
+              {step === TOTAL_WIZARD_STEPS - 1 ? (
+                <Button
+                  type="button"
+                  className="min-h-11 bg-viatik-gradient text-white transition-all duration-200 ease-out active:scale-[0.98]"
+                  disabled={loading || isOnline !== true}
+                  onClick={() => void askScout()}
+                >
+                  {loading ? (
+                    <LoaderCircle aria-hidden className="animate-spin" />
+                  ) : (
+                    <Sparkles aria-hidden />
+                  )}
+                  {loading ? t("copy.scoutWizardThinking") : t("copy.scoutWizardFind")}
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  className="min-h-11 transition-all duration-200 ease-out active:scale-[0.98]"
+                  disabled={loading}
+                  onClick={goNext}
+                >
+                  {t("copy.scoutWizardNext")} <ArrowRight aria-hidden />
+                </Button>
+              )}
+            </div>
+          </footer>
+        )}
       </DialogContent>
 
       {infoDialog && suggestions[infoDialog.index] && plans[infoDialog.index] && (

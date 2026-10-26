@@ -17,6 +17,8 @@ export function Collapsible({
   id,
   children,
   defaultOpen = false,
+  open: controlledOpen,
+  onOpenChange,
   badge,
   className,
   triggerClassName,
@@ -25,11 +27,19 @@ export function Collapsible({
   id: string;
   children: React.ReactNode;
   defaultOpen?: boolean;
+  /** Controlled mode: the caller owns the open state. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   badge?: React.ReactNode;
   className?: string;
   triggerClassName?: string;
 }) {
-  const [open, setOpen] = React.useState(defaultOpen);
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(defaultOpen);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const setOpen = (next: boolean) => {
+    setUncontrolledOpen(next);
+    onOpenChange?.(next);
+  };
   const buttonId = `${id}-trigger`;
   const panelId = `${id}-panel`;
 
@@ -40,7 +50,7 @@ export function Collapsible({
         id={buttonId}
         aria-expanded={open}
         aria-controls={panelId}
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => setOpen(!open)}
         className={cn(
           "flex min-h-11 w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-semibold transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           triggerClassName,

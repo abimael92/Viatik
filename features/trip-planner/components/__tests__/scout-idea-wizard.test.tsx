@@ -72,6 +72,11 @@ function walkToTiming() {
   fireEvent.click(screen.getByRole("button", { name: "Next" }));
 }
 
+/** The last screen hides trip length, exact days, and notes behind a disclosure. */
+function openTripDetails() {
+  fireEvent.click(screen.getByRole("button", { name: /Trip details/ }));
+}
+
 /** vibe → crew, stopping on the savings screen. */
 function walkToBudget() {
   fireEvent.click(screen.getByRole("button", { name: "Nature and fresh air" }));
@@ -150,6 +155,7 @@ describe("ScoutIdeaWizard", () => {
     renderWizard();
 
     walkToTiming();
+    openTripDetails();
     expect(screen.getByText("Anything we must plan around")).toBeTruthy();
     consent();
     fireEvent.click(screen.getByRole("button", { name: "Find my trip ideas" }));
@@ -166,7 +172,7 @@ describe("ScoutIdeaWizard", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     expect(screen.getByRole("alert").textContent).toBe("Tell Scout your vibe in a few words.");
-    expect(screen.getByText("Question 1 of 5")).toBeTruthy();
+    expect(screen.getByText("Step 1 of 5 · Vibe")).toBeTruthy();
     expect(
       screen.getByLabelText("Or tell me in your own words").getAttribute("aria-invalid")
     ).toBe("true");
@@ -177,11 +183,11 @@ describe("ScoutIdeaWizard", () => {
     expect(screen.queryByRole("alert")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    expect(screen.getByText("Question 2 of 5")).toBeTruthy();
+    expect(screen.getByText("Step 2 of 5 · Crew")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     expect(screen.getByRole("alert").textContent).toBe("Choose who is joining you.");
-    expect(screen.getByText("Question 2 of 5")).toBeTruthy();
+    expect(screen.getByText("Step 2 of 5 · Crew")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "With my partner" }));
     expect(screen.queryByRole("alert")).toBeNull();
@@ -199,7 +205,7 @@ describe("ScoutIdeaWizard", () => {
     expect(screen.getByRole("alert").textContent).toBe(
       "Enter a valid savings amount or leave it empty."
     );
-    expect(screen.getByText("Question 3 of 5")).toBeTruthy();
+    expect(screen.getByText("Step 3 of 5 · Budget")).toBeTruthy();
 
     fireEvent.change(screen.getByLabelText("Comfortable savings amount (USD)"), {
       target: { value: "250" },
@@ -207,7 +213,7 @@ describe("ScoutIdeaWizard", () => {
     expect(screen.queryByRole("alert")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    expect(screen.getByText("Question 4 of 5")).toBeTruthy();
+    expect(screen.getByText("Step 4 of 5 · Departure")).toBeTruthy();
   });
 
   it("requires a month when the traveler pins one", async () => {
@@ -248,7 +254,7 @@ describe("ScoutIdeaWizard", () => {
   it("lists every screen in the progress rail", () => {
     renderWizard();
 
-    expect(screen.getByText("Question 1 of 5")).toBeTruthy();
+    expect(screen.getByText("Step 1 of 5 · Vibe")).toBeTruthy();
     const rail = screen.getByLabelText("Wizard steps");
     expect(within(rail).getAllByRole("listitem")).toHaveLength(5);
     expect(within(rail).getByText("Vibe").closest("li")?.getAttribute("aria-current")).toBe("step");
@@ -257,7 +263,7 @@ describe("ScoutIdeaWizard", () => {
 
     walkToTiming();
 
-    expect(screen.getByText("Question 5 of 5")).toBeTruthy();
+    expect(screen.getByText("Step 5 of 5 · Timing")).toBeTruthy();
     expect(
       within(screen.getByLabelText("Wizard steps"))
         .getByText("Timing")
@@ -384,9 +390,10 @@ describe("ScoutIdeaWizard", () => {
   it("sends the trip length preset, an exact day count, and free-text constraints", async () => {
     renderWizard();
     walkToTiming();
+    openTripDetails();
 
     fireEvent.click(screen.getByRole("button", { name: "Long weekend" }));
-    fireEvent.change(screen.getByLabelText("Exact number of days"), {
+    fireEvent.change(screen.getByLabelText("Or an exact number of days"), {
       target: { value: "5" },
     });
     fireEvent.change(screen.getByLabelText("Anything we must plan around"), {
@@ -408,8 +415,9 @@ describe("ScoutIdeaWizard", () => {
   it("rejects an out-of-range exact day count before asking Scout", async () => {
     renderWizard();
     walkToTiming();
+    openTripDetails();
 
-    fireEvent.change(screen.getByLabelText("Exact number of days"), {
+    fireEvent.change(screen.getByLabelText("Or an exact number of days"), {
       target: { value: "90" },
     });
     consent();
@@ -418,12 +426,15 @@ describe("ScoutIdeaWizard", () => {
     expect((await screen.findByRole("alert")).textContent).toBe(
       "Enter a whole number of days between 1 and 60."
     );
-    expect(screen.getByLabelText("Exact number of days").getAttribute("aria-invalid")).toBe(
+    expect(screen.getByRole("button", { name: /Trip details/ }).getAttribute("aria-expanded")).toBe(
+      "true"
+    );
+    expect(screen.getByLabelText("Or an exact number of days").getAttribute("aria-invalid")).toBe(
       "true"
     );
     expect(mocks.generate).not.toHaveBeenCalled();
 
-    fireEvent.change(screen.getByLabelText("Exact number of days"), {
+    fireEvent.change(screen.getByLabelText("Or an exact number of days"), {
       target: { value: "5" },
     });
     expect(screen.queryByRole("alert")).toBeNull();
@@ -433,6 +444,59 @@ describe("ScoutIdeaWizard", () => {
     expect(mocks.generate).toHaveBeenLastCalledWith(
       expect.objectContaining({ durationDays: 5 })
     );
+  });
+
+  it("keeps trip details collapsed and summarizes what was set", () => {
+    renderWizard();
+    walkToTiming();
+
+    expect(screen.getByRole("button", { name: /Trip details/ }).getAttribute("aria-expanded")).toBe(
+      "false"
+    );
+    expect(screen.queryByLabelText("Or an exact number of days")).toBeNull();
+
+    openTripDetails();
+    expect(screen.getByRole("button", { name: /Trip details/ }).getAttribute("aria-expanded")).toBe(
+      "true"
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "About a week" }));
+    fireEvent.change(screen.getByLabelText("Or an exact number of days"), {
+      target: { value: "5" },
+    });
+
+    openTripDetails();
+    expect(screen.getByRole("button", { name: /Trip details/ }).getAttribute("aria-expanded")).toBe(
+      "false"
+    );
+    expect(screen.getByRole("button", { name: /Trip details/ }).textContent).toContain(
+      "About a week · 5 days"
+    );
+  });
+
+  it("reopens trip details when the exact day count is invalid", async () => {
+    renderWizard();
+    walkToTiming();
+
+    openTripDetails();
+    fireEvent.change(screen.getByLabelText("Or an exact number of days"), {
+      target: { value: "90" },
+    });
+    openTripDetails();
+    expect(screen.getByRole("button", { name: /Trip details/ }).getAttribute("aria-expanded")).toBe(
+      "false"
+    );
+
+    consent();
+    fireEvent.click(screen.getByRole("button", { name: "Find my trip ideas" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Enter a whole number of days between 1 and 60."
+    );
+    expect(screen.getByLabelText("Or an exact number of days").getAttribute("aria-invalid")).toBe(
+      "true"
+    );
+    expect(mocks.generate).not.toHaveBeenCalled();
   });
 
   it("lets the traveler brainstorm without a savings pace", async () => {
