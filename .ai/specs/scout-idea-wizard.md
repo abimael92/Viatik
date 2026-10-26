@@ -4,8 +4,80 @@
 **Owner:** Abimael Garcia
 **Status:** Ready for QA
 **Created:** 2026-10-19
-**Updated:** 2026-10-23
+**Updated:** 2026-10-25
 **Related work:** [Vacation Planner](./vacation-planner.md), [AI Activity Scout](./ai-activity-scout.md)
+
+## Conversational co-planner pass (2026-10-25)
+
+Scout stopped reading as a five-step form and started reading as a planning
+conversation with a well-traveled friend.
+
+- **Voice:** the dialog is titled **Let's find your kind of trip** — a spoken
+  invitation, not a branded feature name, and still distinct from the
+  **Ask Scout for ideas** trigger. Scout speaks in the first person
+  ("Tap a vibe, or tell me in your own words.", "I'll take it from there.",
+  "I'll use your travel preferences to find ideas that fit."). The rail reads
+  *Vibe · The Crew · Budget · Takeoff · Timing*; the subtitle keeps the
+  `Step N of 5 · <step>` counter.
+- **Questions are invitations, not fields.** "Picture your next getaway. What's
+  the main feeling you're craving?", "Who are we scheming this trip for?",
+  "Let's keep this trip guilt-free. What's comfortable to set aside?", "Where are
+  you taking off from?", "When are you dreaming of packing your bags?"
+- **No emoji anywhere.** Answer anchors are `lucide-react` icons (Waves /
+  Building2 / Trees for the vibes, User / Heart / Users for the crew,
+  PiggyBank / CalendarDays / TrendingDown for timing) and the primary CTA is
+  plain text. Icons are decorative (`aria-hidden`) so they never enter an
+  accessible name.
+- **Answer chips carry a mood anchor.** The three vibe chips render an icon and
+  the labels are the vibe text that is sent to Scout, so the free-text field
+  never contradicts the chip the traveler tapped.
+- **Crew and timing are tactile cards**, not buttons: an icon anchor, a title,
+  an optional one-line subtitle, `rounded-xl border bg-card/60 p-4`, and a
+  selected state of `ring-2 ring-primary border-primary bg-primary/5 shadow-sm`.
+  Selection is exposed with `aria-pressed`, never color alone.
+- **Micro-feedback.** Picking a vibe, crew size, or timing card makes Scout react
+  in one short line inside the speech bubble (`Nothing beats ocean air.`,
+  `Solo trips are the best for recharging.`). The line lives in an `aria-live`
+  region, is derived from the current answer (so it disappears when the traveler
+  types their own vibe), and never appears for a default the traveler did not
+  choose.
+- **Budget quick pills.** `$100 / $250 / $500` in whole units of the traveler's
+  planner currency (`scoutBudgetPresets`), one tap to fill the amount. Values are
+  per-currency constants, not a live FX conversion, because Scout must work
+  without a network round-trip.
+- **Motion is directional** (`x: ±18px` fade/slide depending on forward vs back)
+  and remains gated by `useReducedMotion()`.
+- **Results read editorially.** The `scout_pitch` is surfaced directly under the
+  destination in every row (clamped to two lines until expanded), before the
+  numbers. The first card carries a **Top Match for You** pill with a gradient
+  border and a thicker gradient rail. The expanded detail separates the trip
+  goal, the per-traveler fare, and the stay total into three labelled stat pills
+  (gradient / blue / magenta) instead of a single block of figures.
+- **Scout's system prompt** now asks for a candid, well-traveled voice and a
+  fixed two-sentence pitch rhythm: sentence one for sensory atmosphere,
+  authentic highlights, and vibe fit; sentence two for group ease, travel
+  simplicity, or budget friendliness. Every previous hard constraint (integer
+  whole-currency units, `City, Country`, duration overrides, valid JSON) is
+  retained.
+
+Acceptance criteria for this pass:
+
+- [x] Every wizard question, option, help line, consent sentence, CTA, and
+      loading message above renders in English and Spanish through `lib/i18n`.
+- [x] Crew and timing answers are cards with an icon anchor and an
+      `aria-pressed` selected state; no screen uses emoji.
+- [x] Selecting a vibe, crew, or timing answer shows one Scout reaction line and
+      clears it when the step changes.
+- [x] The budget step offers one-tap presets in the traveler's currency.
+- [x] The first result carries a gradient-bordered **Top Match for You** pill.
+- [x] `scout_pitch` renders under the destination before any numeric figure.
+- [x] Step transitions slide in the travel direction and respect
+      `prefers-reduced-motion`.
+- [x] `scoutBudgetPresets` is covered by unit tests for every supported
+      currency plus an unsupported code.
+- [x] Each vibe chip label is also the vibe string sent to Scout, and the
+      deterministic fallback keeps mapping it to the matching pool (the beach
+      matcher now accepts "water").
 
 ## What & Why
 
@@ -269,11 +341,12 @@ book travel, or provide financial advice.
       non-blocking explanation when the browser denies or cannot resolve it.
 - [x] The progress rail and counter list all five screens and match the flow
       exactly.
-- [x] The expanded idea detail shows the goal, fare, and book-by date as stat
-      tiles, a today → book-by → goal-reached timeline, and
-      Budget/Savings/Flights/Stay tabs where only one panel renders at a time.
-- [x] The trigger ("Ask Scout for ideas") and the dialog title ("Scout's trip
-      ideas") are different strings in English and Spanish.
+- [x] The expanded idea detail shows the trip goal, the per-traveler fare, and the
+      stay total as labelled stat pills, a today → book-by → goal-reached
+      timeline, and Budget/Savings/Flights/Stay tabs where only one panel renders
+      at a time.
+- [x] The trigger ("Ask Scout for ideas") and the dialog title ("Let's find
+      your kind of trip") are different strings in English and Spanish.
 - [x] The dialog subtitle names the current step; the rail distinguishes past,
       current, and future segments.
 - [x] Trip length, exact day count, and free-text constraints are collapsed
@@ -327,6 +400,14 @@ Record actual results and known limitations in Completion Notes before release.
   screen was reviewed in the `/e2e` harness at 430×900 and 1000×900, light and
   dark, in English and Spanish, collapsed and expanded. See
   [bug-scout-wizard-last-step.md](./bug-scout-wizard-last-step.md).
+- **2026-10-25 conversational pass:** the wizard copy, crew/timing cards,
+  Scout reaction lines, budget quick pills, result presentation (Top Match pill,
+  pitch under the destination, three stat pills), and the system prompt were
+  reworked. `pnpm lint` ✅ · `pnpm typecheck` ✅ · `pnpm test` ✅ 220 files /
+  1,438 tests · `pnpm build` ✅ (21 routes). All five screens plus the results
+  surface (stubbed locally, because the `/e2e` harness has no signed-in session)
+  were reviewed in a real browser at 1000×900 and 430×900, in English and
+  Spanish.
 - **Security review:** Server Action authentication, input/output validation,
   consent, server-only key handling (`GEMINI_API_KEY` primary, `OPENAI_API_KEY`
   fallback), and data minimization reviewed during implementation. The exclusion
