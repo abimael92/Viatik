@@ -155,7 +155,7 @@ const expectedPayload = {
   currency: "USD",
   consentToAI: true,
   locale: "en",
-  count: 5,
+  count: 2,
   excludeDestinations: [],
   excludeRoutes: [],
   destination: "",
@@ -380,22 +380,21 @@ describe("ScoutIdeaWizard", () => {
     expect(screen.getByLabelText("Departure city or airport")).toHaveProperty("value", "");
   });
 
-  it("keeps one detail panel open at a time", async () => {
+  it("shows one compact summary panel instead of detail tabs", async () => {
     await loadIdeas();
 
-    expect(screen.getByText("Budget for 2 travelers")).toBeTruthy();
-    expect(screen.queryByText("Hotel or Airbnb")).toBeNull();
+    const panel = document.getElementById("scout-idea-0")!;
+    expect(panel).toBeTruthy();
+    expect(within(panel).queryByRole("tablist")).toBeNull();
 
-    fireEvent.mouseDown(screen.getByRole("tab", { name: "Stay" }), { button: 0 });
-    expect(await screen.findByText("Hotel or Airbnb")).toBeTruthy();
-    expect(screen.queryByText("Budget for 2 travelers")).toBeNull();
-
-    fireEvent.mouseDown(screen.getByRole("tab", { name: "Savings" }), { button: 0 });
-    expect(await screen.findByText("Save $250.00 Monthly to reach this goal.")).toBeTruthy();
-
-    fireEvent.mouseDown(screen.getByRole("tab", { name: "Flights" }), { button: 0 });
-    expect(await screen.findByText(/Book about 12 weeks ahead/)).toBeTruthy();
-    expect(screen.queryByText("Hotel or Airbnb")).toBeNull();
+    expect(within(panel).getByText("Trip goal")).toBeTruthy();
+    expect(within(panel).getByText("Travelers: 2")).toBeTruthy();
+    expect(within(panel).getByText("Flights")).toBeTruthy();
+    expect(within(panel).getByText("Stay")).toBeTruthy();
+    expect(within(panel).getByText("Daily spending")).toBeTruthy();
+    const amounts = within(panel).getAllByText(/\$[\d,]+\.\d{2}/);
+    expect(amounts.length).toBeGreaterThanOrEqual(4);
+    expect(within(panel).getByText(/to save · ready .+ · book flights by/)).toBeTruthy();
   });
 
   it("asks where the traveler flies from and sends the origin", async () => {
@@ -620,6 +619,7 @@ describe("ScoutIdeaWizard", () => {
 
     const group = screen.getByRole("group", { name: "Who are we scheming this trip for?" });
     expect(within(group).getAllByRole("button")).toHaveLength(3);
+    expect(group.querySelector(".line-clamp-2")).toBeNull();
     expect(screen.getByRole("button", { name: /Small crew/ }).getAttribute("aria-pressed")).toBe(
       "false"
     );
@@ -631,6 +631,94 @@ describe("ScoutIdeaWizard", () => {
     expect(screen.getByRole("button", { name: /Solo trip/ }).getAttribute("aria-pressed")).toBe(
       "false"
     );
+  });
+
+  it("shows the crew options without a counting-mode toggle", () => {
+    renderWizard();
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    fireEvent.click(screen.getByRole("button", { name: "Fresh mountain air & quiet trails" }));
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+
+    expect(screen.queryByRole("button", { name: "Enter a number" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "From my contacts" })).toBeNull();
+    expect(screen.queryByLabelText("How many people are going?")).toBeNull();
+  });
+
+  it("sends the typed crew size when a small crew is picked", async () => {
+    renderWizard();
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    fireEvent.click(screen.getByRole("button", { name: "Fresh mountain air & quiet trails" }));
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    fireEvent.click(screen.getByRole("button", { name: /Small crew/ }));
+
+    const input = screen.getByLabelText("How many people are going?");
+    expect(input).toHaveProperty("value", "3");
+    fireEvent.change(input, { target: { value: "6" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    fireEvent.change(screen.getByLabelText("Comfortable savings amount (USD)"), {
+      target: { value: "250" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    consent();
+    fireEvent.click(screen.getByRole("button", { name: "Show my trip ideas" }));
+
+    await screen.findByText("Kyoto, Japan");
+    const payload = mocks.generate.mock.calls[0]![0] as Record<string, unknown>;
+    expect(payload.crewSize).toBe(6);
+  });
+
+  it("blocks Next when the typed crew size is out of range or empty", () => {
+    renderWizard();
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    fireEvent.click(screen.getByRole("button", { name: "Fresh mountain air & quiet trails" }));
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    fireEvent.click(screen.getByRole("button", { name: /Small crew/ }));
+
+    const input = screen.getByLabelText("How many people are going?");
+    fireEvent.change(input, { target: { value: "2" } });
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByRole("alert").textContent).toBe("Choose who is joining you.");
+
+    fireEvent.change(input, { target: { value: "5" } });
+    fireEvent.change(input, { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByRole("alert").textContent).toBe("Choose who is joining you.");
+  });
+
+  it("hides the crew size input for solo and duo picks", () => {
+    renderWizard();
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    fireEvent.click(screen.getByRole("button", { name: "Fresh mountain air & quiet trails" }));
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+
+    fireEvent.click(screen.getByRole("button", { name: /Small crew/ }));
+    expect(screen.getByLabelText("How many people are going?")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /Solo trip/ }));
+    expect(screen.queryByLabelText("How many people are going?")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /Small crew/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Traveling duo/ }));
+    expect(screen.queryByLabelText("How many people are going?")).toBeNull();
+  });
+
+  it("lays out the timing options in a compact two-column grid", () => {
+    renderWizard();
+    walkToTiming();
+
+    const group = screen.getByRole("group", {
+      name: "When are you dreaming of packing your bags?",
+    });
+    expect(group.className).toContain("grid-cols-2");
+    const options = within(group).getAllByRole("button");
+    expect(options).toHaveLength(4);
+    options.forEach((option) => expect(option.getAttribute("aria-pressed")).not.toBeNull());
+    const subtitle = options
+      .map((option) => option.querySelector(".line-clamp-2"))
+      .find(Boolean);
+    expect(subtitle).toBeTruthy();
   });
 
   it("turns the timing answers into cards that react to the pick", () => {
@@ -1036,7 +1124,8 @@ describe("ScoutIdeaWizard", () => {
       fireEvent.click(screen.getByRole("button", { name: "Next" }));
       fireEvent.click(screen.getByRole("button", { name: "Fresh mountain air & quiet trails" }));
       fireEvent.click(screen.getByRole("button", { name: "Next" }));
-      fireEvent.click(screen.getByRole("button", { name: "From my contacts" }));
+      fireEvent.click(screen.getByRole("button", { name: /Small crew/ }));
+      fireEvent.click(screen.getByRole("button", { name: "Pick from my contacts" }));
     }
 
     it("counts you plus the selected contacts and never sends contact data", async () => {
