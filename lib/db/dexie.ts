@@ -736,6 +736,20 @@ export class ViatikDatabase extends Dexie {
       tripIdeas: "id, updatedAt, convertedToTripId",
       tripSavingsPlans: "id, &tripIdeaId, updatedAt",
     });
+
+    // v48: Scout ideas can carry contact-based crews and an estimated flight
+    // route; existing rows get empty defaults. No index changes.
+    this.version(48)
+      .stores({})
+      .upgrade(async (transaction) => {
+        await transaction
+          .table("tripIdeas")
+          .toCollection()
+          .modify((idea: Record<string, unknown>) => {
+            if (!Array.isArray(idea.travelerContactIds)) idea.travelerContactIds = [];
+            if (idea.flightRoute === undefined) idea.flightRoute = null;
+          });
+      });
   }
 }
 
