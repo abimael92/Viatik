@@ -113,6 +113,8 @@ export const errorCopy = {
     scoutSavingsRange: "Enter a savings amount within the supported range.",
     scoutReviewAnswers: "Review your answers and try again.",
     scoutSignIn: "Sign in again to ask Scout.",
+    scoutRouteNeedsAi:
+      "Planning a specific place needs Scout's AI connection. Try again, or add the idea manually.",
     notifySignIn: "Sign in again to notify travelers.",
     notifyFailed: "We couldn't notify travelers right now.",
     signInFailed: "We couldn't sign you in right now. Please try again.",
@@ -232,6 +234,8 @@ export const errorCopy = {
     scoutSavingsRange: "Introduce un importe de ahorro dentro del rango admitido.",
     scoutReviewAnswers: "Revisa tus respuestas e inténtalo de nuevo.",
     scoutSignIn: "Vuelve a iniciar sesión para preguntar a Scout.",
+    scoutRouteNeedsAi:
+      "Planificar un lugar concreto necesita la conexión de Scout con la IA. Inténtalo de nuevo o agrega la idea manualmente.",
     notifySignIn: "Vuelve a iniciar sesión para avisar a los viajeros.",
     notifyFailed: "No pudimos avisar a los viajeros ahora.",
     signInFailed: "No pudimos iniciar tu sesión ahora. Inténtalo de nuevo.",

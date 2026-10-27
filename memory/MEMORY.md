@@ -4,7 +4,7 @@
 > before exploring the codebase; update it before ending a task.
 > **Companions:** [`data-models.md`](data-models.md) ·
 > [`components-ui.md`](components-ui.md) · [`roles-abilities.md`](roles-abilities.md)
-> **Last updated:** 2026-10-25 · schema v47 · 220 test files / 1,438 tests
+> **Last updated:** 2026-10-26 · schema v48 · 224 test files / 1,479 tests
 
 ---
 
@@ -178,6 +178,13 @@ Also update the topic file whose subject changed:
 ---
 
 ## 7. Session log (newest first)
+
+### 2026-10-26 — Scout: exact destination, dates, contacts crew & flight routes
+
+- **Changed:** `scout-trip-ideas-schema.ts` (input `destination`/`startDate`/`endDate`/`excludeRoutes`, `timing:"dates"`, output `continent` + `flight_route`), new `scout-flight-route.ts` (`deriveRouteFacts`, `routeSignature`, `repairRouteContiguity`, `toTripIdeaFlightRoute`), `scout-idea-plan.ts` (`plan.dates = { pinned, shortfallMinor }` bigint), `scout-trip-idea-mapping.ts` (origin/dates/place/contacts/route), `dexie-trip-planner-repository.ts` (normalization), `lib/db/dexie.ts` v48, `app/actions/scout-trip-ideas.ts` (route mode, fallback continents/hubs), `scout-idea-wizard.tsx` (named steps via new `scout-wizard-steps.ts`), new `scout-where-step.tsx`, `scout-crew-contacts-dialog.tsx`, `scout-flight-route-view.tsx`, EN/ES copy + `errors.scoutRouteNeedsAi`.
+- **Schema:** Dexie **v48** (`.stores({})` + `.upgrade()` backfilling `travelerContactIds`/`flightRoute` on `tripIdeas`; still local-only — no outbox/Supabase).
+- **Gotchas:** route mode never falls back to fabricated routes (returns `scoutRouteNeedsAi` instead); `flight_route` is an estimate gated by `deriveRouteFacts` (<24h for same-date); contact names/ids never leave the device — only crew count reaches the Server Action; `vibe` is `""` in route mode (`interests` stays empty); `where` is always step 1 so pinning a destination just skips `vibe`.
+- **Verification:** `pnpm lint` ✅ · `pnpm typecheck` ✅ · `pnpm test` 224 files / 1,479 tests ✅ · `pnpm build` ✅.
 
 ### 2026-10-25 — Scout wizard: conversational co-planner (copy, cards, results)
 - **Changed:** `features/trip-planner/components/scout-idea-wizard.tsx` — dialog
