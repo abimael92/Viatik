@@ -16,6 +16,20 @@ export interface TripIdeaPriceCheck {
   checkedAt: string;
 }
 
+export interface TripIdeaFlightRouteLeg {
+  from: string;
+  to: string;
+  approxDurationMinutes: number;
+  layoverAfterMinutes: number;
+}
+
+/** Estimated routing only — never a schedule, airline, or live price. */
+export interface TripIdeaFlightRoute {
+  legs: TripIdeaFlightRouteLeg[];
+  arrivesSameDate: boolean;
+  isEstimate: true;
+}
+
 export interface TripIdea {
   id: string;
   name: string;
@@ -31,6 +45,9 @@ export interface TripIdea {
   durationDays: number | null;
   adultCount: number;
   childCount: number;
+  /** Selected contact ids when the crew was picked from contacts (≤19). */
+  travelerContactIds: string[];
+  flightRoute: TripIdeaFlightRoute | null;
   currency: CurrencyCode;
   interests: string[];
   notes: string;
@@ -68,6 +85,8 @@ export interface NewTripIdea {
   durationDays?: number | null;
   adultCount?: number;
   childCount?: number;
+  travelerContactIds?: string[];
+  flightRoute?: TripIdeaFlightRoute | null;
   currency: CurrencyCode;
   interests?: string[];
   notes?: string;

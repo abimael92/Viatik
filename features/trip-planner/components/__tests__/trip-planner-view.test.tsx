@@ -76,6 +76,8 @@ const idea: TripIdea = {
   durationDays: 5,
   adultCount: 2,
   childCount: 0,
+  travelerContactIds: [],
+  flightRoute: null,
   currency: "CAD",
   interests: ["Food", "Gardens"],
   notes: "",
