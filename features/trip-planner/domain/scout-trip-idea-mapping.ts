@@ -1,10 +1,22 @@
 import { getCurrencyExponent, MAX_MINOR_UNITS, type MinorUnits } from "@/features/domain/money";
 import { buildScoutIdeaBudget } from "@/features/trip-planner/domain/scout-idea-plan";
+import { toTripIdeaFlightRoute } from "@/features/trip-planner/domain/scout-flight-route";
 import type {
   NewTripIdea,
   SavingsCadence,
 } from "@/features/trip-planner/domain/trip-planner-types";
-import type { ScoutTripIdeaSuggestion } from "@/features/trip-planner/domain/scout-trip-ideas-schema";
+import type {
+  ScoutTripIdeasInput,
+  ScoutTripIdeaSuggestion,
+} from "@/features/trip-planner/domain/scout-trip-ideas-schema";
+
+/** Places result kept client-side; never part of the AI payload. */
+export type ScoutIdeaPlace = {
+  placeId: string;
+  latitude: number;
+  longitude: number;
+  timeZone: string;
+};
 
 function toMinorUnits(wholeCurrencyUnits: number, currency: string): MinorUnits {
   const amount = BigInt(wholeCurrencyUnits) * 10n ** BigInt(getCurrencyExponent(currency));
@@ -20,12 +32,24 @@ export function mapScoutIdeaToTripIdea({
   crewSize,
   currency,
   cadence,
+  originCity = "",
+  timing = "asap",
+  startDate = null,
+  endDate = null,
+  place = null,
+  travelerContactIds = [],
 }: {
   suggestion: ScoutTripIdeaSuggestion;
   vibe: string;
   crewSize: number;
   currency: string;
   cadence: Extract<SavingsCadence, "weekly" | "monthly">;
+  originCity?: string;
+  timing?: ScoutTripIdeasInput["timing"];
+  startDate?: string | null;
+  endDate?: string | null;
+  place?: ScoutIdeaPlace | null;
+  travelerContactIds?: string[];
 }): {
   idea: NewTripIdea;
   cadence: SavingsCadence;
@@ -49,12 +73,21 @@ export function mapScoutIdeaToTripIdea({
     idea: {
       id: crypto.randomUUID(),
       name: `${suggestion.destination} - ${suggestion.best_season}`.slice(0, 120),
+      origin: originCity.trim().slice(0, 120),
       destination: suggestion.destination,
+      placeId: place?.placeId ?? null,
+      latitude: place?.latitude ?? null,
+      longitude: place?.longitude ?? null,
+      timeZone: place?.timeZone ?? null,
+      startDate: timing === "dates" ? startDate : null,
+      endDate: timing === "dates" ? endDate : null,
       durationDays: suggestion.ideal_duration_days,
       adultCount: crewSize,
       childCount: 0,
+      travelerContactIds,
+      flightRoute: toTripIdeaFlightRoute(suggestion.flight_route),
       currency,
-      interests: [vibe.trim().slice(0, 60)],
+      interests: vibe.trim() ? [vibe.trim().slice(0, 60)] : [],
       notes: `${suggestion.scout_pitch}\n\nBest season: ${suggestion.best_season}`.slice(0, 500),
       targetTripCostMinor,
       categoryEstimates: [

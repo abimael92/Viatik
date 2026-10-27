@@ -4,6 +4,18 @@ import { mapScoutIdeaToTripIdea } from "@/features/trip-planner/domain/scout-tri
 import type { ScoutTripIdeaSuggestion } from "@/features/trip-planner/domain/scout-trip-ideas-schema";
 
 const suggestion: ScoutTripIdeaSuggestion = {
+  continent: "Asia",
+  flight_route: {
+    legs: [
+      {
+        from: "Guadalajara",
+        to: "Kyoto",
+        approx_duration_minutes: 780,
+        layover_after_minutes: 0,
+      },
+    ],
+    arrives_same_date: false,
+  },
   destination: "Kyoto, Japan",
   ideal_duration_days: 7,
   best_season: "Fall (Oct-Nov) for mild weather and colorful foliage.",
@@ -57,6 +69,69 @@ describe("mapScoutIdeaToTripIdea", () => {
       0n
     );
     expect(allocated).toBe(mapped.idea.targetTripCostMinor);
+  });
+
+  it("persists origin, pinned dates, place details, contacts, and the route estimate", () => {
+    const mapped = mapScoutIdeaToTripIdea({
+      suggestion,
+      vibe: "",
+      crewSize: 3,
+      currency: "USD",
+      cadence: "monthly",
+      originCity: "Guadalajara, Mexico",
+      timing: "dates",
+      startDate: "2027-03-10",
+      endDate: "2027-03-17",
+      place: {
+        placeId: "place-1",
+        latitude: 35.0116,
+        longitude: 135.7681,
+        timeZone: "Asia/Tokyo",
+      },
+      travelerContactIds: ["contact-1", "contact-2"],
+    });
+
+    expect(mapped.idea.origin).toBe("Guadalajara, Mexico");
+    expect(mapped.idea.startDate).toBe("2027-03-10");
+    expect(mapped.idea.endDate).toBe("2027-03-17");
+    expect(mapped.idea.placeId).toBe("place-1");
+    expect(mapped.idea.latitude).toBe(35.0116);
+    expect(mapped.idea.longitude).toBe(135.7681);
+    expect(mapped.idea.timeZone).toBe("Asia/Tokyo");
+    expect(mapped.idea.travelerContactIds).toEqual(["contact-1", "contact-2"]);
+    // Route mode sends an empty vibe; an empty interest must not be stored.
+    expect(mapped.idea.interests).toEqual([]);
+    expect(mapped.idea.flightRoute).toEqual({
+      legs: [
+        {
+          from: "Guadalajara",
+          to: "Kyoto",
+          approxDurationMinutes: 780,
+          layoverAfterMinutes: 0,
+        },
+      ],
+      arrivesSameDate: false,
+      isEstimate: true,
+    });
+  });
+
+  it("leaves dates, place, contacts, and route unset outside exact-date mode", () => {
+    const mapped = mapScoutIdeaToTripIdea({
+      suggestion,
+      vibe: "Food",
+      crewSize: 2,
+      currency: "USD",
+      cadence: "monthly",
+      timing: "asap",
+      startDate: "2027-03-10",
+      endDate: "2027-03-17",
+    });
+
+    expect(mapped.idea.origin).toBe("");
+    expect(mapped.idea.startDate).toBeNull();
+    expect(mapped.idea.endDate).toBeNull();
+    expect(mapped.idea.placeId).toBeNull();
+    expect(mapped.idea.travelerContactIds).toEqual([]);
   });
 
   it("does not add cents to zero-decimal currencies and rejects totals over the domain limit", () => {
