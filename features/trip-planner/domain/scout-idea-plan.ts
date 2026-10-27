@@ -1,4 +1,14 @@
-import { addDays, addMonths, addWeeks, format, isBefore, startOfDay } from "date-fns";
+import {
+  addDays,
+  addMonths,
+  addWeeks,
+  differenceInMonths,
+  differenceInWeeks,
+  format,
+  isBefore,
+  parseISO,
+  startOfDay,
+} from "date-fns";
 
 import { getCurrencyExponent, type CurrencyCode, type MinorUnits } from "@/features/domain/money";
 import type { ScoutTripIdeaSuggestion } from "@/features/trip-planner/domain/scout-trip-ideas-schema";
@@ -48,6 +58,15 @@ export type ScoutIdeaPlan = ScoutIdeaBudget & {
     earliestDeparture: string;
     latestDeparture: string;
     returnDate: string;
+  };
+  dates: {
+    /** True when the traveler pinned exact start and end dates. */
+    pinned: boolean;
+    /**
+     * Amount still uncovered by the savings pace on the pinned start date;
+     * `null` when no pace was set. Never negative.
+     */
+    shortfallMinor: MinorUnits | null;
   };
 };
 
@@ -123,6 +142,8 @@ export function buildScoutIdeaPlan({
   today = new Date(),
   timing = "asap",
   targetMonth = null,
+  startDate = null,
+  endDate = null,
 }: {
   suggestion: ScoutTripIdeaSuggestion;
   crewSize: number;
@@ -130,8 +151,11 @@ export function buildScoutIdeaPlan({
   savingsCadence: "weekly" | "monthly";
   currency: CurrencyCode;
   today?: Date;
-  timing?: "asap" | "month" | "cheapest";
+  timing?: "asap" | "month" | "cheapest" | "dates";
   targetMonth?: string | null;
+  /** `YYYY-MM-DD`; required together when `timing` is `"dates"`. */
+  startDate?: string | null;
+  endDate?: string | null;
 }): ScoutIdeaPlan {
   if (savingsCapacityMinor < 0n) throw new RangeError("Savings capacity must be non-negative.");
 
@@ -170,12 +194,37 @@ export function buildScoutIdeaPlan({
       : SHORT_HAUL_BOOKING_WINDOW_DAYS;
   const rawBookBy = addDays(ready, -bookingWindowDays);
 
+  const pinnedStart = timing === "dates" && startDate ? parseISO(startDate) : null;
+  const pinnedEnd = timing === "dates" && endDate ? parseISO(endDate) : null;
+  const datesPinned = pinnedStart !== null && pinnedEnd !== null;
+
+  // Exact dates pin the stay and flight dates directly; the savings fields keep
+  // describing the pace-based ready date, and `dates.shortfallMinor` reports
+  // what the pace cannot cover by the chosen departure.
+  const pinnedRawBookBy = datesPinned ? addDays(pinnedStart, -bookingWindowDays) : null;
+  const elapsedPeriods = datesPinned
+    ? Math.max(
+        0,
+        savingsCadence === "weekly"
+          ? differenceInWeeks(pinnedStart!, start)
+          : differenceInMonths(pinnedStart!, start)
+      )
+    : 0;
+  const coveredMinor = hasPace ? savingsCapacityMinor * BigInt(elapsedPeriods) : 0n;
+  const shortfallMinor = datesPinned
+    ? hasPace
+      ? budget.grandTotalMinor > coveredMinor
+        ? budget.grandTotalMinor - coveredMinor
+        : 0n
+      : null
+    : null;
+
   return {
     ...budget,
     stay: {
       ...budget.stay,
-      checkIn: isoDate(ready),
-      checkOut: isoDate(addDays(ready, budget.nights)),
+      checkIn: datesPinned ? isoDate(pinnedStart!) : isoDate(ready),
+      checkOut: datesPinned ? isoDate(pinnedEnd!) : isoDate(addDays(ready, budget.nights)),
     },
     savings: {
       cadence: savingsCadence,
@@ -187,10 +236,18 @@ export function buildScoutIdeaPlan({
     },
     flights: {
       bookingWindowDays,
-      bookBy: isoDate(isBefore(rawBookBy, start) ? start : rawBookBy),
-      earliestDeparture: isoDate(ready),
-      latestDeparture: isoDate(addDays(ready, DEPARTURE_FLEX_DAYS)),
-      returnDate: isoDate(addDays(ready, budget.nights)),
+      bookBy: datesPinned
+        ? isoDate(isBefore(pinnedRawBookBy!, start) ? start : pinnedRawBookBy!)
+        : isoDate(isBefore(rawBookBy, start) ? start : rawBookBy),
+      earliestDeparture: datesPinned ? isoDate(pinnedStart!) : isoDate(ready),
+      latestDeparture: datesPinned
+        ? isoDate(pinnedStart!)
+        : isoDate(addDays(ready, DEPARTURE_FLEX_DAYS)),
+      returnDate: datesPinned ? isoDate(pinnedEnd!) : isoDate(addDays(ready, budget.nights)),
+    },
+    dates: {
+      pinned: datesPinned,
+      shortfallMinor,
     },
   };
 }

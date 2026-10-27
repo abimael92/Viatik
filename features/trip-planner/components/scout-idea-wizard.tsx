@@ -8,6 +8,7 @@ import {
   Building2,
   CalendarClock,
   CalendarDays,
+  CalendarRange,
   ChevronDown,
   Compass,
   Heart,
@@ -28,7 +29,7 @@ import {
 import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useState, type ReactNode } from "react";
 
-import { reverseGeocodeDestination } from "@/app/actions/places";
+import { reverseGeocodeDestination, type PlaceDetails } from "@/app/actions/places";
 import { generateScoutTripIdeas } from "@/app/actions/scout-trip-ideas";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -48,8 +49,19 @@ import {
   tripSavingsPlanRepository,
 } from "@/features/trip-planner/data/dexie-trip-planner-repository";
 import { scoutBudgetPresets } from "@/features/trip-planner/domain/scout-budget-presets";
-import { buildScoutIdeaPlan, type ScoutIdeaPlan } from "@/features/trip-planner/domain/scout-idea-plan";
-import { mapScoutIdeaToTripIdea } from "@/features/trip-planner/domain/scout-trip-idea-mapping";
+import {
+  buildScoutIdeaPlan,
+  type ScoutIdeaPlan,
+} from "@/features/trip-planner/domain/scout-idea-plan";
+import { routeSignature } from "@/features/trip-planner/domain/scout-flight-route";
+import {
+  mapScoutIdeaToTripIdea,
+  type ScoutIdeaPlace,
+} from "@/features/trip-planner/domain/scout-trip-idea-mapping";
+import {
+  getScoutWizardSteps,
+  type ScoutWizardStepId,
+} from "@/features/trip-planner/domain/scout-wizard-steps";
 import {
   SCOUT_INITIAL_IDEA_COUNT,
   SCOUT_MORE_IDEA_COUNT,
@@ -62,6 +74,12 @@ import {
 } from "@/features/trip-planner/domain/google-travel-links";
 import { buildAirbnbSearchUrl } from "@/features/trip-planner/domain/stay-links";
 import { DestinationField } from "@/features/trips/components/destination-field";
+import { ScoutCrewContactsDialog } from "@/features/trip-planner/components/scout-crew-contacts-dialog";
+import {
+  FlightRouteLegs,
+  FlightRouteSummary,
+} from "@/features/trip-planner/components/scout-flight-route-view";
+import { ScoutWhereStep } from "@/features/trip-planner/components/scout-where-step";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { localizeUserError } from "@/lib/i18n/localize-error";
 import type { TranslationKey } from "@/lib/i18n/translations";
@@ -126,12 +144,20 @@ const CREW_CHOICES: Array<{
 const TIMING_CHOICES: Array<{
   value: ScoutTripIdeasInput["timing"];
   key: TranslationKey;
+  subtitleKey?: TranslationKey;
   Icon: LucideIcon;
   reactionKey: TranslationKey;
 }> = [
   {
+    value: "dates",
+    key: "copy.scoutWizardTimingDates",
+    Icon: CalendarRange,
+    reactionKey: "copy.scoutWizardTimingDatesReaction",
+  },
+  {
     value: "asap",
     key: "copy.scoutWizardTimingAsap",
+    subtitleKey: "copy.scoutWizardTimingAsapSubtitle",
     Icon: PiggyBank,
     reactionKey: "copy.scoutWizardTimingAsapReaction",
   },
@@ -156,16 +182,41 @@ const LENGTH_CHOICES: Array<{ value: ScoutTripIdeasInput["tripLength"]; key: Tra
   { value: "two-weeks", key: "copy.scoutWizardLengthTwoWeeks" },
 ];
 
-/** Every question the wizard asks: vibe, crew, savings, origin, timing. */
-const TOTAL_WIZARD_STEPS = 5;
+const STEP_LABELS: Record<ScoutWizardStepId, TranslationKey> = {
+  where: "copy.scoutWizardStepWhere",
+  vibe: "copy.scoutWizardStepVibe",
+  crew: "copy.scoutWizardStepCrew",
+  budget: "copy.scoutWizardStepBudget",
+  takeoff: "copy.scoutWizardStepDeparture",
+  timing: "copy.scoutWizardStepTiming",
+};
 
-const STEP_LABELS: TranslationKey[] = [
-  "copy.scoutWizardStepVibe",
-  "copy.scoutWizardStepCrew",
-  "copy.scoutWizardStepBudget",
-  "copy.scoutWizardStepDeparture",
-  "copy.scoutWizardStepTiming",
-];
+const STEP_QUESTIONS: Record<ScoutWizardStepId, TranslationKey> = {
+  where: "copy.scoutWizardWhereQuestion",
+  vibe: "copy.scoutWizardVibeQuestion",
+  crew: "copy.scoutWizardCrewQuestion",
+  budget: "copy.scoutWizardBudgetQuestion",
+  takeoff: "copy.scoutWizardOriginQuestion",
+  timing: "copy.scoutWizardTimingQuestion",
+};
+
+const STEP_HELP: Record<ScoutWizardStepId, TranslationKey> = {
+  where: "copy.scoutWizardWhereHelp",
+  vibe: "copy.scoutWizardVibeHelp",
+  crew: "copy.scoutWizardCrewHelp",
+  budget: "copy.scoutWizardBudgetHelp",
+  takeoff: "copy.scoutWizardOriginHelp",
+  timing: "copy.scoutWizardTimingHelp",
+};
+
+const CONTINENT_KEYS: Record<Suggestion["continent"], TranslationKey> = {
+  Africa: "copy.scoutContinentAfrica",
+  Asia: "copy.scoutContinentAsia",
+  Europe: "copy.scoutContinentEurope",
+  "North America": "copy.scoutContinentNorthAmerica",
+  "South America": "copy.scoutContinentSouthAmerica",
+  Oceania: "copy.scoutContinentOceania",
+};
 
 const EASE: [number, number, number, number] = [0.23, 1, 0.32, 1];
 const CARD_ENTER_MS = 0.24;
@@ -176,7 +227,16 @@ const TYPEWRITER_MAX_MS = 700;
 const MAX_DURATION_DAYS = 60;
 
 type Suggestion = ScoutTripIdeaSuggestion;
-type WizardField = "vibe" | "crew" | "savings" | "month" | "duration" | "consent";
+type WizardField =
+  | "where"
+  | "vibe"
+  | "crew"
+  | "savings"
+  | "month"
+  | "duration"
+  | "startDate"
+  | "endDate"
+  | "consent";
 
 function toMinorUnits(wholeCurrencyUnits: number, currency: string): bigint {
   return BigInt(wholeCurrencyUnits) * 10n ** BigInt(getCurrencyExponent(currency));
@@ -474,6 +534,28 @@ function IdeaDetails({
             </li>
           ))}
         </ol>
+        {plan.dates.pinned && (
+          <p className="mt-3 text-sm font-medium">
+            {t("copy.scoutIdeaPinnedDates", {
+              start: formatDay(plan.stay.checkIn, locale),
+              end: formatDay(plan.stay.checkOut, locale),
+            })}
+          </p>
+        )}
+        {plan.dates.shortfallMinor !== null && (
+          <p
+            className={cn(
+              "mt-2 text-sm",
+              plan.dates.shortfallMinor > 0n ? "font-medium text-viatik-magenta" : "text-success"
+            )}
+          >
+            {plan.dates.shortfallMinor > 0n
+              ? t("copy.scoutIdeaShortfall", {
+                  amount: formatMinorUnits(plan.dates.shortfallMinor, currency),
+                })
+              : t("copy.scoutIdeaCovered")}
+          </p>
+        )}
         <p className="mt-3 rounded-xl border-l-2 border-viatik-magenta bg-card/70 p-2.5 text-sm">
           {summary}
         </p>
@@ -787,6 +869,16 @@ function ScoutInfoDialog({
           )}
         </section>
 
+        {isFlights && (
+          <section className="space-y-2" aria-labelledby={`route-${kind}`}>
+            <h4 id={`route-${kind}`} className="text-sm font-semibold">
+              {t("copy.scoutRouteLegsHeading")}
+            </h4>
+            <FlightRouteLegs route={suggestion.flight_route} />
+            <p className="text-xs text-muted-foreground">{t("copy.scoutRouteGoogleMayDiffer")}</p>
+          </section>
+        )}
+
         <section className="space-y-1.5" aria-labelledby={`why-${kind}`}>
           <h4 id={`why-${kind}`} className="text-sm font-semibold">
             {t("copy.scoutIdeaWhyHeading")}
@@ -987,20 +1079,17 @@ function ScoutReaction({ text }: { text: string | null }) {
  * at the fifth question, so the optional fine-tune screen looked like an
  * unlisted extra step.
  */
-function WizardProgress({ step }: { step: number }) {
+function WizardProgress({ steps, step }: { steps: ScoutWizardStepId[]; step: number }) {
   const { t } = useI18n();
 
   return (
     <ol
-      className="mx-6 mt-4 grid shrink-0 grid-cols-5 gap-1"
+      className="mx-6 mt-4 grid shrink-0 gap-1"
+      style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}
       aria-label={t("copy.scoutWizardProgressLabel")}
     >
-      {STEP_LABELS.map((labelKey, index) => (
-        <li
-          key={labelKey}
-          aria-current={index === step ? "step" : undefined}
-          className="min-w-0"
-        >
+      {steps.map((id, index) => (
+        <li key={id} aria-current={index === step ? "step" : undefined} className="min-w-0">
           <div
             aria-hidden
             className={cn(
@@ -1012,7 +1101,7 @@ function WizardProgress({ step }: { step: number }) {
                   : "bg-viatik-blue/40"
             )}
           />
-          <span className="sr-only">{t(labelKey)}</span>
+          <span className="sr-only">{t(STEP_LABELS[id])}</span>
         </li>
       ))}
     </ol>
@@ -1026,6 +1115,7 @@ export function ScoutIdeaWizard({
   currency,
   isOnline,
   defaultOrigin = "",
+  userId = "",
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -1033,12 +1123,20 @@ export function ScoutIdeaWizard({
   currency: string;
   isOnline: boolean | null;
   defaultOrigin?: string;
+  /** Dexie contacts owner; the contacts crew picker stays local-only. */
+  userId?: string;
 }) {
   const { t, locale } = useI18n();
   const reducedMotion = useReducedMotion() ?? false;
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState<1 | -1>(1);
   const [vibe, setVibe] = useState("");
+  const [destination, setDestination] = useState("");
+  const [destinationPlace, setDestinationPlace] = useState<ScoutIdeaPlace | null>(null);
+  const [destinationPlaceLabel, setDestinationPlaceLabel] = useState("");
+  const [crewMode, setCrewMode] = useState<"count" | "contacts">("count");
+  const [travelerContactIds, setTravelerContactIds] = useState<string[]>([]);
+  const [contactsOpen, setContactsOpen] = useState(false);
   const [crewSize, setCrewSize] = useState<number | null>(null);
   const [savingsAmount, setSavingsAmount] = useState("");
   const [savingsCadence, setSavingsCadence] = useState<"weekly" | "monthly">("monthly");
@@ -1049,6 +1147,8 @@ export function ScoutIdeaWizard({
   const [timing, setTiming] = useState<ScoutTripIdeasInput["timing"]>("asap");
   const [timingTouched, setTimingTouched] = useState(false);
   const [targetMonth, setTargetMonth] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [tripLength, setTripLength] = useState<ScoutTripIdeasInput["tripLength"]>("any");
   const [durationDays, setDurationDays] = useState("");
   const [constraints, setConstraints] = useState("");
@@ -1067,10 +1167,36 @@ export function ScoutIdeaWizard({
     null
   );
 
+  const routeMode = destination.trim().length > 0;
+  const steps = getScoutWizardSteps(routeMode);
+  const stepId = steps[Math.min(step, steps.length - 1)] ?? "where";
+  /** Contacts crews are you plus the picked people; counts stay manual. */
+  const travelers = crewMode === "contacts" ? 1 + travelerContactIds.length : (crewSize ?? 1);
+  /** Inclusive day count for exact dates; null while the pair is incomplete. */
+  const exactDatesDays = (() => {
+    if (timing !== "dates" || !startDate || !endDate) return null;
+    const ms = Date.parse(`${endDate}T00:00:00Z`) - Date.parse(`${startDate}T00:00:00Z`);
+    if (!Number.isFinite(ms) || ms < 0) return null;
+    return Math.round(ms / 86_400_000) + 1;
+  })();
+
+  function todayIso(): string {
+    const now = new Date();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${now.getFullYear()}-${month}-${day}`;
+  }
+
   function reset() {
     setStep(0);
     setDirection(1);
     setVibe("");
+    setDestination("");
+    setDestinationPlace(null);
+    setDestinationPlaceLabel("");
+    setCrewMode("count");
+    setTravelerContactIds([]);
+    setContactsOpen(false);
     setCrewSize(null);
     setSavingsAmount("");
     setSavingsCadence("monthly");
@@ -1081,6 +1207,8 @@ export function ScoutIdeaWizard({
     setTiming("asap");
     setTimingTouched(false);
     setTargetMonth("");
+    setStartDate("");
+    setEndDate("");
     setTripLength("any");
     setDurationDays("");
     setConstraints("");
@@ -1160,14 +1288,17 @@ export function ScoutIdeaWizard({
     savingsMinor,
     count,
     excludeDestinations,
+    excludeRoutes,
   }: {
     savingsMinor: bigint;
     count: number;
     excludeDestinations: string[];
+    excludeRoutes: string[];
   }) {
     return generateScoutTripIdeas({
-      vibe,
-      crewSize: crewSize ?? 1,
+      // Route mode skips the vibe question entirely; only the count travels.
+      vibe: routeMode ? "" : vibe,
+      crewSize: travelers,
       savingsCapacityMinor: savingsMinor.toString(),
       savingsCadence,
       currency: currency as ScoutTripIdeasInput["currency"],
@@ -1175,11 +1306,15 @@ export function ScoutIdeaWizard({
       locale: locale === "es" ? "es" : "en",
       count,
       excludeDestinations,
+      excludeRoutes,
+      destination: destination.trim(),
       originCity: originCity.trim(),
       timing,
       targetMonth: timing === "month" && targetMonth ? targetMonth : null,
       tripLength,
-      durationDays: parsedDurationDays(),
+      durationDays: timing === "dates" ? exactDatesDays : parsedDurationDays(),
+      startDate: timing === "dates" && startDate ? startDate : null,
+      endDate: timing === "dates" && endDate ? endDate : null,
       comfort: "balanced",
       stayStyle: "either",
       nonstopOnly: false,
@@ -1221,13 +1356,19 @@ export function ScoutIdeaWizard({
         : document.getElementById(
             field === "vibe"
               ? "scout-vibe"
-              : field === "savings"
-                ? "scout-savings"
-                : field === "month"
-                  ? "scout-target-month"
-                  : field === "duration"
-                    ? "scout-duration-days"
-                    : "scout-consent"
+              : field === "where"
+                ? "scout-destination"
+                : field === "savings"
+                  ? "scout-savings"
+                  : field === "month"
+                    ? "scout-target-month"
+                    : field === "startDate"
+                      ? "scout-start-date"
+                      : field === "endDate"
+                        ? "scout-end-date"
+                        : field === "duration"
+                          ? "scout-duration-days"
+                          : "scout-consent"
           );
     target?.focus();
   }
@@ -1238,22 +1379,45 @@ export function ScoutIdeaWizard({
    * invalid control, which also gives keyboard and screen-reader users the
    * context a disabled button never could.
    */
-  function validateStep(current: number): boolean {
+  function validateStep(current: ScoutWizardStepId): boolean {
     const next: Partial<Record<WizardField, string>> = {};
-    if (current === 0 && vibe.trim().length < 2) {
+    if (current === "where" && destination.trim() && !destination.includes(",")) {
+      next.where = t("copy.scoutWizardWhereInvalid");
+    }
+    if (current === "vibe" && vibe.trim().length < 2) {
       next.vibe = t("copy.scoutWizardVibeRequired");
     }
-    if (current === 1 && !crewSize) {
+    if (
+      current === "crew" &&
+      (crewMode === "contacts" ? travelerContactIds.length === 0 : !crewSize)
+    ) {
       next.crew = t("copy.scoutWizardChooseCrew");
     }
-    if (current === 2 && readSavings() === null) {
+    if (current === "budget" && readSavings() === null) {
       next.savings = t("copy.scoutWizardSavingsInvalid");
     }
-    if (current === TOTAL_WIZARD_STEPS - 1) {
+    if (current === "timing") {
       if (timing === "month" && !targetMonth) {
         next.month = t("copy.scoutWizardMonthRequired");
       }
-      if (durationDays.trim() && parsedDurationDays() === null) {
+      if (timing === "dates") {
+        if (!startDate) {
+          next.startDate = t("copy.scoutWizardDateStartRequired");
+        } else if (startDate < todayIso()) {
+          next.startDate = t("copy.scoutWizardDateStartPast");
+        }
+        if (!endDate) {
+          next.endDate = t("copy.scoutWizardDateEndRequired");
+        } else if (startDate && endDate < startDate) {
+          next.endDate = t("copy.scoutWizardDateOrderInvalid");
+        } else if (exactDatesDays === null || exactDatesDays > MAX_DURATION_DAYS) {
+          next.endDate = t("copy.scoutWizardDurationInvalid", {
+            min: 1,
+            max: MAX_DURATION_DAYS,
+          });
+        }
+      }
+      if (timing !== "dates" && durationDays.trim() && parsedDurationDays() === null) {
         next.duration = t("copy.scoutWizardDurationInvalid", {
           min: 1,
           max: MAX_DURATION_DAYS,
@@ -1279,7 +1443,7 @@ export function ScoutIdeaWizard({
 
   function goNext() {
     setError(null);
-    if (!validateStep(step)) return;
+    if (!validateStep(stepId)) return;
     setDirection(1);
     setStep((current) => current + 1);
   }
@@ -1296,7 +1460,7 @@ export function ScoutIdeaWizard({
       setError(t("copy.scoutWizardNeedsConnection"));
       return;
     }
-    if (!validateStep(TOTAL_WIZARD_STEPS - 1)) return;
+    if (!validateStep("timing")) return;
 
     const parsedSavings = readSavings();
     if (parsedSavings === null) {
@@ -1311,6 +1475,7 @@ export function ScoutIdeaWizard({
         savingsMinor: parsedSavings,
         count: SCOUT_INITIAL_IDEA_COUNT,
         excludeDestinations: [],
+        excludeRoutes: [],
       });
       if (!result.success) {
         setError(localizeUserError(result.error, t, "errors.unexpected"));
@@ -1333,7 +1498,11 @@ export function ScoutIdeaWizard({
       const result = await callScout({
         savingsMinor: savingsCapacityMinor,
         count: SCOUT_MORE_IDEA_COUNT,
-        excludeDestinations: suggestions.map((item) => item.destination),
+        // Route mode excludes the routings already shown; idea mode excludes places.
+        excludeDestinations: routeMode ? [] : suggestions.map((item) => item.destination),
+        excludeRoutes: routeMode
+          ? suggestions.map((item) => routeSignature(item.flight_route))
+          : [],
       });
       if (!result.success) {
         setError(localizeUserError(result.error, t, "errors.unexpected"));
@@ -1355,10 +1524,16 @@ export function ScoutIdeaWizard({
     try {
       const mapped = mapScoutIdeaToTripIdea({
         suggestion,
-        vibe,
-        crewSize: crewSize ?? 1,
+        vibe: routeMode ? "" : vibe,
+        crewSize: travelers,
         currency,
         cadence: savingsCadence,
+        originCity: originCity.trim(),
+        timing,
+        startDate: timing === "dates" && startDate ? startDate : null,
+        endDate: timing === "dates" && endDate ? endDate : null,
+        place: destinationPlace,
+        travelerContactIds,
       });
       const saved = await tripIdeaRepository.create(mapped.idea);
       const plan = await tripSavingsPlanRepository.getByIdea(saved.id);
@@ -1379,24 +1554,29 @@ export function ScoutIdeaWizard({
   }
 
   const completedQuestion = suggestions.length > 0;
-  const travelers = crewSize ?? 1;
   const exactDuration = parsedDurationDays();
   const budgetPresets = scoutBudgetPresets(currency);
   const currentSavings = readSavings();
   const reactionKey =
-    step === 0
+    stepId === "vibe"
       ? VIBE_CHIPS.find((option) => option.value === vibe)?.reactionKey
-      : step === 1
-        ? CREW_CHOICES.find((option) => option.size === crewSize)?.reactionKey
-        : step === TOTAL_WIZARD_STEPS - 1 && timingTouched
+      : stepId === "crew"
+        ? crewMode === "contacts"
+          ? "copy.scoutWizardCrewContactsReaction"
+          : CREW_CHOICES.find((option) => option.size === crewSize)?.reactionKey
+        : stepId === "timing" && timingTouched
           ? TIMING_CHOICES.find((option) => option.value === timing)?.reactionKey
           : undefined;
   const reaction = reactionKey ? t(reactionKey) : null;
   const tripDetailsSummary = [
-    tripLength !== "any"
-      ? t(LENGTH_CHOICES.find((option) => option.value === tripLength)!.key)
+    timing === "dates" && exactDatesDays
+      ? t("copy.tripIdeaDurationDays", { days: exactDatesDays })
+      : tripLength !== "any"
+        ? t(LENGTH_CHOICES.find((option) => option.value === tripLength)!.key)
+        : null,
+    timing !== "dates" && exactDuration
+      ? t("copy.tripIdeaDurationDays", { days: exactDuration })
       : null,
-    exactDuration ? t("copy.tripIdeaDurationDays", { days: exactDuration }) : null,
     constraints.trim() ? t("copy.scoutWizardTripDetailsNote") : null,
   ]
     .filter(Boolean)
@@ -1411,6 +1591,8 @@ export function ScoutIdeaWizard({
       currency,
       timing,
       targetMonth: timing === "month" && targetMonth ? targetMonth : null,
+      startDate: timing === "dates" && startDate ? startDate : null,
+      endDate: timing === "dates" && endDate ? endDate : null,
     })
   );
   const lowestCost = plans.length
@@ -1474,8 +1656,8 @@ export function ScoutIdeaWizard({
                     ? t("copy.scoutWizardOptionsHeading", { count: suggestions.length })
                     : t("copy.scoutWizardStepProgress", {
                         current: step + 1,
-                        total: TOTAL_WIZARD_STEPS,
-                        step: t(STEP_LABELS[step] ?? STEP_LABELS[0]!),
+                        total: steps.length,
+                        step: t(STEP_LABELS[stepId]),
                       })}
                 </p>
               </div>
@@ -1484,7 +1666,7 @@ export function ScoutIdeaWizard({
         </header>
 
         {!completedQuestion && !loading && isOnline !== false && (
-          <WizardProgress step={step} />
+          <WizardProgress steps={steps} step={step} />
         )}
 
         <div className="flex-1 overflow-y-auto px-6 pb-6 pt-5">
@@ -1539,43 +1721,57 @@ export function ScoutIdeaWizard({
                     aria-hidden
                     className="absolute -top-2 left-5 size-4 rotate-45 border-l border-t border-border/60 bg-muted/40"
                   />
-                  <h3 className="text-lg font-semibold">
+                  <h3 className="text-lg font-semibold" id="scout-where-question">
                     <ScoutSpeech
-                      text={
-                        step === 0
-                          ? t("copy.scoutWizardVibeQuestion")
-                          : step === 1
-                            ? t("copy.scoutWizardCrewQuestion")
-                            : step === 2
-                              ? t("copy.scoutWizardBudgetQuestion")
-                              : step === 3
-                                ? t("copy.scoutWizardOriginQuestion")
-                                : t("copy.scoutWizardTimingQuestion")
-                      }
+                      text={t(STEP_QUESTIONS[stepId])}
                       reducedMotion={reducedMotion}
                       animate={step === 0}
                     />
                   </h3>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {step === 0
-                      ? t("copy.scoutWizardVibeHelp")
-                      : step === 1
-                        ? t("copy.scoutWizardCrewHelp")
-                        : step === 2
-                          ? t("copy.scoutWizardBudgetHelp")
-                          : step === 3
-                            ? t("copy.scoutWizardOriginHelp")
-                            : t("copy.scoutWizardTimingHelp")}
-                  </p>
-                  {step < TOTAL_WIZARD_STEPS - 1 && (
+                  <p className="mt-1 text-sm text-muted-foreground">{t(STEP_HELP[stepId])}</p>
+                  {stepId !== "timing" && (
                     <div className="mt-2">
-                      <RequirementHint kind={step <= 1 ? "required" : "optional"} />
+                      <RequirementHint
+                        kind={stepId === "vibe" || stepId === "crew" ? "required" : "optional"}
+                      />
                     </div>
                   )}
                   <ScoutReaction text={reaction} />
                 </div>
 
-                {step === 0 && (
+                {stepId === "where" && (
+                  <ScoutWhereStep
+                    destination={destination}
+                    error={fieldErrors.where}
+                    onDestinationChange={(next) => {
+                      setDestination(next);
+                      if (next !== destinationPlaceLabel) {
+                        setDestinationPlace(null);
+                        setDestinationPlaceLabel("");
+                      }
+                      setConsented(false);
+                      clearFieldError("where");
+                    }}
+                    onPlaceSelect={(details: PlaceDetails) => {
+                      setDestinationPlace({
+                        placeId: details.placeId,
+                        latitude: details.latitude,
+                        longitude: details.longitude,
+                        timeZone: details.timeZone ?? "",
+                      });
+                      setDestinationPlaceLabel(details.label);
+                    }}
+                    onSurprise={() => {
+                      setDestination("");
+                      setDestinationPlace(null);
+                      setDestinationPlaceLabel("");
+                      setConsented(false);
+                      clearFieldError("where");
+                    }}
+                  />
+                )}
+
+                {stepId === "vibe" && (
                   <section className="space-y-4" aria-labelledby="scout-vibe-question">
                     <div className="flex flex-wrap gap-2">
                       {VIBE_CHIPS.map((option) => (
@@ -1629,31 +1825,82 @@ export function ScoutIdeaWizard({
                   </section>
                 )}
 
-                {step === 1 && (
+                {stepId === "crew" && (
                   <section className="space-y-3">
                     <div
-                      className="grid gap-3"
-                      style={{ gridTemplateColumns: "repeat(auto-fit, minmax(12rem, 1fr))" }}
+                      className="grid grid-cols-2 gap-2"
                       role="group"
-                      aria-label={t("copy.scoutWizardCrewQuestion")}
-                      aria-describedby={fieldErrors.crew ? "scout-crew-error" : undefined}
+                      aria-label={t("copy.scoutWizardCrewModeLabel")}
                     >
-                      {CREW_CHOICES.map((option, index) => (
-                        <SelectableCard
-                          key={option.size}
-                          groupAnchor={index === 0}
-                          selected={crewSize === option.size}
-                          icon={<option.Icon aria-hidden className="size-4" />}
-                          title={t(option.key)}
-                          subtitle={t(option.subtitleKey)}
-                          onSelect={() => {
-                            setCrewSize(option.size);
+                      {(
+                        [
+                          { mode: "count", key: "copy.scoutWizardCrewEnterNumber" },
+                          { mode: "contacts", key: "copy.scoutWizardCrewFromContacts" },
+                        ] as const
+                      ).map((option) => (
+                        <Button
+                          key={option.mode}
+                          type="button"
+                          variant={crewMode === option.mode ? "default" : "outline"}
+                          aria-pressed={crewMode === option.mode}
+                          className="min-h-11"
+                          onClick={() => {
+                            setCrewMode(option.mode);
+                            if (option.mode === "count") setTravelerContactIds([]);
+                            if (option.mode === "contacts") setContactsOpen(true);
                             setConsented(false);
                             clearFieldError("crew");
                           }}
-                        />
+                        >
+                          {t(option.key)}
+                        </Button>
                       ))}
                     </div>
+
+                    {crewMode === "count" ? (
+                      <div
+                        className="grid gap-3"
+                        style={{ gridTemplateColumns: "repeat(auto-fit, minmax(12rem, 1fr))" }}
+                        role="group"
+                        aria-label={t("copy.scoutWizardCrewQuestion")}
+                        aria-describedby={fieldErrors.crew ? "scout-crew-error" : undefined}
+                      >
+                        {CREW_CHOICES.map((option, index) => (
+                          <SelectableCard
+                            key={option.size}
+                            groupAnchor={index === 0}
+                            selected={crewSize === option.size}
+                            icon={<option.Icon aria-hidden className="size-4" />}
+                            title={t(option.key)}
+                            subtitle={t(option.subtitleKey)}
+                            onSelect={() => {
+                              setCrewSize(option.size);
+                              setConsented(false);
+                              clearFieldError("crew");
+                            }}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <SelectableCard
+                          groupAnchor
+                          selected={travelerContactIds.length > 0}
+                          icon={<UsersRound aria-hidden className="size-4" />}
+                          title={t("copy.scoutWizardContactsPick")}
+                          subtitle={t("copy.scoutWizardContactsPickSubtitle")}
+                          onSelect={() => setContactsOpen(true)}
+                        />
+                        <p aria-live="polite" className="text-sm text-muted-foreground">
+                          {t(
+                            travelers === 1
+                              ? "copy.scoutWizardContactsSummaryOne"
+                              : "copy.scoutWizardContactsSummaryMany",
+                            { count: travelerContactIds.length, total: travelers }
+                          )}
+                        </p>
+                      </div>
+                    )}
                     {fieldErrors.crew && (
                       <p
                         id="scout-crew-error"
@@ -1666,7 +1913,7 @@ export function ScoutIdeaWizard({
                   </section>
                 )}
 
-                {step === 2 && (
+                {stepId === "budget" && (
                   <section className="space-y-4" aria-labelledby="scout-wallet-question">
                     <div className="space-y-2">
                       <Label htmlFor="scout-savings">
@@ -1763,7 +2010,7 @@ export function ScoutIdeaWizard({
                   </section>
                 )}
 
-                {step === 3 && (
+                {stepId === "takeoff" && (
                   <section className="space-y-3" aria-labelledby="scout-origin-question">
                     <DestinationField
                       id="scout-origin"
@@ -1816,7 +2063,7 @@ export function ScoutIdeaWizard({
                   </section>
                 )}
 
-                {step === 4 && (
+                {stepId === "timing" && (
                   <section className="space-y-5" aria-labelledby="scout-timing-question">
                     <div className="space-y-3">
                       <div
@@ -1831,14 +2078,95 @@ export function ScoutIdeaWizard({
                             selected={timing === option.value}
                             icon={<option.Icon aria-hidden className="size-4" />}
                             title={t(option.key)}
+                            subtitle={option.subtitleKey ? t(option.subtitleKey) : undefined}
                             onSelect={() => {
                               setTiming(option.value);
                               setTimingTouched(true);
                               clearFieldError("month");
+                              clearFieldError("startDate");
+                              clearFieldError("endDate");
                             }}
                           />
                         ))}
                       </div>
+                      {timing === "dates" && (
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <Label htmlFor="scout-start-date">
+                                {t("copy.scoutWizardDateStart")}
+                              </Label>
+                              <RequirementHint kind="required" />
+                            </div>
+                            <Input
+                              id="scout-start-date"
+                              type="date"
+                              value={startDate}
+                              min={todayIso()}
+                              aria-required
+                              aria-invalid={Boolean(fieldErrors.startDate)}
+                              aria-describedby={
+                                fieldErrors.startDate ? "scout-start-date-error" : undefined
+                              }
+                              onChange={(event) => {
+                                setStartDate(event.target.value);
+                                setConsented(false);
+                                clearFieldError("startDate");
+                              }}
+                              className={
+                                fieldErrors.startDate
+                                  ? "h-11 border-destructive focus-visible:ring-destructive/50"
+                                  : "h-11"
+                              }
+                            />
+                            {fieldErrors.startDate && (
+                              <p
+                                id="scout-start-date-error"
+                                role="alert"
+                                className="text-xs font-semibold text-destructive"
+                              >
+                                {fieldErrors.startDate}
+                              </p>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <Label htmlFor="scout-end-date">{t("copy.scoutWizardDateEnd")}</Label>
+                              <RequirementHint kind="required" />
+                            </div>
+                            <Input
+                              id="scout-end-date"
+                              type="date"
+                              value={endDate}
+                              min={startDate || todayIso()}
+                              aria-required
+                              aria-invalid={Boolean(fieldErrors.endDate)}
+                              aria-describedby={
+                                fieldErrors.endDate ? "scout-end-date-error" : undefined
+                              }
+                              onChange={(event) => {
+                                setEndDate(event.target.value);
+                                setConsented(false);
+                                clearFieldError("endDate");
+                              }}
+                              className={
+                                fieldErrors.endDate
+                                  ? "h-11 border-destructive focus-visible:ring-destructive/50"
+                                  : "h-11"
+                              }
+                            />
+                            {fieldErrors.endDate && (
+                              <p
+                                id="scout-end-date-error"
+                                role="alert"
+                                className="text-xs font-semibold text-destructive"
+                              >
+                                {fieldErrors.endDate}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
                       {timing === "month" && (
                         <div className="space-y-2">
                           <div className="flex items-center justify-between gap-2">
@@ -1893,55 +2221,62 @@ export function ScoutIdeaWizard({
                       }
                     >
                       <div className="space-y-4">
-                        <ChoiceChips
-                          label={t("copy.scoutWizardTripLength")}
-                          options={LENGTH_CHOICES}
-                          value={tripLength}
-                          onChange={setTripLength}
-                        />
-                        <div className="space-y-1.5">
-                          <Label htmlFor="scout-duration-days">
-                            {t("copy.scoutWizardExactDays")}
-                          </Label>
-                          <Input
-                            id="scout-duration-days"
-                            type="number"
-                            inputMode="numeric"
-                            min={1}
-                            max={MAX_DURATION_DAYS}
-                            step={1}
-                            value={durationDays}
-                            aria-invalid={Boolean(fieldErrors.duration)}
-                            aria-describedby={
-                              fieldErrors.duration
-                                ? "scout-duration-error"
-                                : "scout-duration-help"
-                            }
-                            onChange={(event) => {
-                              setDurationDays(event.target.value);
-                              clearFieldError("duration");
-                            }}
-                            placeholder={t("copy.scoutWizardExactDaysPlaceholder")}
-                            className={
-                              fieldErrors.duration
-                                ? "h-11 border-destructive focus-visible:ring-destructive/50"
-                                : "h-11"
-                            }
-                          />
-                          {fieldErrors.duration ? (
-                            <p
-                              id="scout-duration-error"
-                              role="alert"
-                              className="text-xs font-semibold text-destructive"
-                            >
-                              {fieldErrors.duration}
-                            </p>
-                          ) : (
-                            <p id="scout-duration-help" className="text-xs text-muted-foreground">
-                              {t("copy.scoutWizardExactDaysHelp", { max: MAX_DURATION_DAYS })}
-                            </p>
-                          )}
-                        </div>
+                        {timing !== "dates" && (
+                          <>
+                            <ChoiceChips
+                              label={t("copy.scoutWizardTripLength")}
+                              options={LENGTH_CHOICES}
+                              value={tripLength}
+                              onChange={setTripLength}
+                            />
+                            <div className="space-y-1.5">
+                              <Label htmlFor="scout-duration-days">
+                                {t("copy.scoutWizardExactDays")}
+                              </Label>
+                              <Input
+                                id="scout-duration-days"
+                                type="number"
+                                inputMode="numeric"
+                                min={1}
+                                max={MAX_DURATION_DAYS}
+                                step={1}
+                                value={durationDays}
+                                aria-invalid={Boolean(fieldErrors.duration)}
+                                aria-describedby={
+                                  fieldErrors.duration
+                                    ? "scout-duration-error"
+                                    : "scout-duration-help"
+                                }
+                                onChange={(event) => {
+                                  setDurationDays(event.target.value);
+                                  clearFieldError("duration");
+                                }}
+                                placeholder={t("copy.scoutWizardExactDaysPlaceholder")}
+                                className={
+                                  fieldErrors.duration
+                                    ? "h-11 border-destructive focus-visible:ring-destructive/50"
+                                    : "h-11"
+                                }
+                              />
+                              {fieldErrors.duration ? (
+                                <p
+                                  id="scout-duration-error"
+                                  role="alert"
+                                  className="text-xs font-semibold text-destructive"
+                                >
+                                  {fieldErrors.duration}
+                                </p>
+                              ) : (
+                                <p
+                                  id="scout-duration-help"
+                                  className="text-xs text-muted-foreground"
+                                >
+                                  {t("copy.scoutWizardExactDaysHelp", { max: MAX_DURATION_DAYS })}
+                                </p>
+                              )}
+                            </div>
+                          </>
+                        )}
 
                         <div className="space-y-2">
                           <Label htmlFor="scout-constraints">
@@ -2093,7 +2428,14 @@ export function ScoutIdeaWizard({
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="truncate font-semibold">{suggestion.destination}</span>
+                            <span className="truncate font-semibold">
+                              {routeMode
+                                ? t("copy.scoutRouteOption", {
+                                    option: index + 1,
+                                    destination: suggestion.destination,
+                                  })
+                                : suggestion.destination}
+                            </span>
                             {index === 0 && (
                               <span className="inline-flex shrink-0 rounded-full bg-viatik-gradient p-px">
                                 <span className="rounded-full bg-card px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-viatik-magenta">
@@ -2106,6 +2448,11 @@ export function ScoutIdeaWizard({
                                 {tag}
                               </span>
                             )}
+                            {!routeMode && (
+                              <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                                {t(CONTINENT_KEYS[suggestion.continent])}
+                              </span>
+                            )}
                           </div>
                           <p
                             className={cn(
@@ -2115,6 +2462,7 @@ export function ScoutIdeaWizard({
                           >
                             {suggestion.scout_pitch}
                           </p>
+                          <FlightRouteSummary route={suggestion.flight_route} />
                           <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground">
                             <span className="rounded-full bg-muted px-2 py-0.5 font-semibold text-foreground tabular-nums">
                               {formatMinorUnits(plan.grandTotalMinor, currency)}
@@ -2244,7 +2592,7 @@ export function ScoutIdeaWizard({
               >
                 <ArrowLeft aria-hidden /> {t("copy.scoutWizardBack")}
               </Button>
-              {step === TOTAL_WIZARD_STEPS - 1 ? (
+              {stepId === "timing" ? (
                 <Button
                   type="button"
                   className="min-h-11 bg-viatik-gradient text-white transition-all duration-200 ease-out active:scale-[0.98]"
@@ -2268,6 +2616,19 @@ export function ScoutIdeaWizard({
           </footer>
         )}
       </DialogContent>
+
+      {contactsOpen && (
+        <ScoutCrewContactsDialog
+          ownerId={userId}
+          selectedIds={travelerContactIds}
+          onChange={(ids) => {
+            setTravelerContactIds(ids);
+            setConsented(false);
+            clearFieldError("crew");
+          }}
+          onClose={() => setContactsOpen(false)}
+        />
+      )}
 
       {infoDialog && suggestions[infoDialog.index] && plans[infoDialog.index] && (
         <ScoutInfoDialog

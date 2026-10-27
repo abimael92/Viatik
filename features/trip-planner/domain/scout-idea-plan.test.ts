@@ -4,6 +4,18 @@ import { buildScoutIdeaPlan } from "@/features/trip-planner/domain/scout-idea-pl
 import type { ScoutTripIdeaSuggestion } from "@/features/trip-planner/domain/scout-trip-ideas-schema";
 
 const suggestion: ScoutTripIdeaSuggestion = {
+  continent: "Asia",
+  flight_route: {
+    legs: [
+      {
+        from: "Guadalajara",
+        to: "Kyoto",
+        approx_duration_minutes: 780,
+        layover_after_minutes: 0,
+      },
+    ],
+    arrives_same_date: false,
+  },
   destination: "Kyoto, Japan",
   ideal_duration_days: 7,
   best_season: "Fall (Oct-Nov) for mild weather and colorful foliage.",
@@ -168,5 +180,104 @@ describe("buildScoutIdeaPlan", () => {
       targetMonth: "2027-12",
     });
     expect(asap.flights.earliestDeparture).toBe("2027-08-21");
+  });
+
+  it("pins stay and flight dates to exact dates with no flex window", () => {
+    const plan = buildScoutIdeaPlan({
+      suggestion,
+      crewSize: 2,
+      savingsCapacityMinor: 50_000n,
+      savingsCadence: "monthly",
+      currency: "USD",
+      today,
+      timing: "dates",
+      startDate: "2027-06-10",
+      endDate: "2027-06-16",
+    });
+
+    expect(plan.dates.pinned).toBe(true);
+    expect(plan.stay.checkIn).toBe("2027-06-10");
+    expect(plan.stay.checkOut).toBe("2027-06-16");
+    expect(plan.flights.earliestDeparture).toBe("2027-06-10");
+    expect(plan.flights.latestDeparture).toBe("2027-06-10");
+    expect(plan.flights.returnDate).toBe("2027-06-16");
+    // Long-haul booking window back from the pinned departure, never the past.
+    expect(plan.flights.bookBy).toBe("2027-03-18");
+    // Savings fields still describe the pace-based ready date.
+    expect(plan.savings.readyOn).toBe("2027-08-21");
+  });
+
+  it("reports the uncovered shortfall on the pinned start date in minor units", () => {
+    // 7 whole months elapse between 2026-10-21 and 2027-06-10:
+    // covered = 7 × 50_000 = 350_000; grand total 468_000 → shortfall 118_000.
+    const plan = buildScoutIdeaPlan({
+      suggestion,
+      crewSize: 2,
+      savingsCapacityMinor: 50_000n,
+      savingsCadence: "monthly",
+      currency: "USD",
+      today,
+      timing: "dates",
+      startDate: "2027-06-10",
+      endDate: "2027-06-16",
+    });
+    expect(plan.dates.shortfallMinor).toBe(118_000n);
+
+    const weekly = buildScoutIdeaPlan({
+      suggestion,
+      crewSize: 2,
+      savingsCapacityMinor: 12_500n,
+      savingsCadence: "weekly",
+      currency: "USD",
+      today,
+      timing: "dates",
+      startDate: "2026-11-04",
+      endDate: "2026-11-10",
+    });
+    // 2 whole weeks elapse → covered 25_000 → shortfall 443_000.
+    expect(weekly.dates.shortfallMinor).toBe(443_000n);
+
+    const covered = buildScoutIdeaPlan({
+      suggestion,
+      crewSize: 2,
+      savingsCapacityMinor: 50_000n,
+      savingsCadence: "monthly",
+      currency: "USD",
+      today,
+      timing: "dates",
+      startDate: "2027-12-10",
+      endDate: "2027-12-16",
+    });
+    // 13 months elapsed → covered 650_000 ≥ 468_000.
+    expect(covered.dates.shortfallMinor).toBe(0n);
+
+    const noPace = buildScoutIdeaPlan({
+      suggestion,
+      crewSize: 2,
+      savingsCapacityMinor: 0n,
+      savingsCadence: "monthly",
+      currency: "USD",
+      today,
+      timing: "dates",
+      startDate: "2027-06-10",
+      endDate: "2027-06-16",
+    });
+    expect(noPace.dates).toEqual({ pinned: true, shortfallMinor: null });
+  });
+
+  it("leaves dates unpinned for the other timings", () => {
+    const plan = buildScoutIdeaPlan({
+      suggestion,
+      crewSize: 2,
+      savingsCapacityMinor: 50_000n,
+      savingsCadence: "monthly",
+      currency: "USD",
+      today,
+      timing: "asap",
+      startDate: "2027-06-10",
+      endDate: "2027-06-16",
+    });
+    expect(plan.dates).toEqual({ pinned: false, shortfallMinor: null });
+    expect(plan.stay.checkIn).toBe("2027-08-21");
   });
 });
