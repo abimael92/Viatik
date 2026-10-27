@@ -144,7 +144,6 @@ describe("I18nProvider", () => {
         travelers: 2,
       })
     ).toBe("$10.00 × 7 días × 2 viajeros");
-    expect(translate("es", "copy.scoutIdeaStayHeading")).toBe("Hotel o Airbnb");
     expect(translate("es", "copy.scoutWizardBestMatch")).toBe("La mejor opción para ti");
     expect(translate("es", "copy.scoutWizardOptionsHeading", { count: 7 })).toBe(
       "Tus 7 opciones más cercanas"
@@ -178,9 +177,6 @@ describe("I18nProvider", () => {
       "Scout is matching routes, stays, and vibes..."
     );
     expect(translate("en", "copy.scoutWizardBudgetPresets")).toBe("Pick a starting point");
-    expect(translate("es", "copy.scoutIdeaStatStayDetail", { nights: 6 })).toBe(
-      "6 noches, todo el grupo"
-    );
     expect(translate("es", "copy.scoutWizardRequired")).toBe("Obligatorio");
     expect(translate("en", "copy.scoutWizardOptional")).toBe("Optional");
     expect(translate("es", "copy.scoutWizardVibeRequired")).toBe(

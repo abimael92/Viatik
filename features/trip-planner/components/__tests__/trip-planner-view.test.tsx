@@ -196,4 +196,65 @@ describe("TripPlannerView", () => {
     expect(screen.getByRole("button", { name: "Add trip idea" })).toHaveProperty("disabled", false);
     Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
   });
+
+  it("embeds without the page header while keeping every action", async () => {
+    render(<TripPlannerView userId="user-1" embedded />);
+
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Want to go" })
+    ).toBeTruthy();
+    expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Back to trips" })).toBeNull();
+    expect(screen.getByText(/stored only on this device/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Ask Scout for ideas" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Add trip idea" }));
+    expect(await screen.findByRole("dialog")).toBeTruthy();
+  });
+
+  it("marks an unconverted idea and keeps all its actions", async () => {
+    mocks.ideas = [idea];
+    render(<TripPlannerView userId="user-1" onBack={vi.fn()} />);
+
+    expect(await screen.findByText("Kyoto in spring")).toBeTruthy();
+    expect(screen.getByText("Idea")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Edit" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Plan this trip" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Savings plan" })).toBeTruthy();
+  });
+
+  it("collapses converted ideas to a read-only card", async () => {
+    mocks.ideas = [{ ...idea, convertedToTripId: "trip-9" }];
+    render(<TripPlannerView userId="user-1" onBack={vi.fn()} />);
+
+    expect(await screen.findByText("Kyoto in spring")).toBeTruthy();
+    expect(screen.getByText("Planned trip")).toBeTruthy();
+    expect(
+      screen.getByText("This idea is now a trip. Open it to keep planning.")
+    ).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Open trip" }).getAttribute("href")).toBe(
+      "/trips/trip-9"
+    );
+    expect(screen.getByRole("button", { name: "Delete Kyoto in spring" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Plan this trip" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Savings plan" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Search and price checks" })).toBeNull();
+  });
+
+  it("lists unconverted ideas before converted ones", async () => {
+    const converted = {
+      ...idea,
+      id: "idea-2",
+      name: "Booked Lisbon",
+      convertedToTripId: "trip-9",
+    };
+    mocks.ideas = [converted, idea];
+    render(<TripPlannerView userId="user-1" onBack={vi.fn()} />);
+
+    const headings = await screen.findAllByRole("heading", { level: 2 });
+    const names = headings.map((heading) => heading.textContent);
+    expect(names.indexOf("Kyoto in spring")).toBeGreaterThanOrEqual(0);
+    expect(names.indexOf("Kyoto in spring")).toBeLessThan(names.indexOf("Booked Lisbon"));
+  });
 });

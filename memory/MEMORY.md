@@ -179,6 +179,50 @@ Also update the topic file whose subject changed:
 
 ## 7. Session log (newest first)
 
+### 2026-10-27 — Scout wizard: crew-step input & compact idea card
+
+- **Changed:** `features/trip-planner/components/scout-idea-wizard.tsx` — the crew
+  step drops the "Enter a number / From my contacts" mode toggle: the three
+  `SelectableCard`s (Solo 1, duo 2, small crew 3+) always render; the crew card
+  reveals a labeled `type="number"` input (3–20, local `crewSizeDraft` string)
+  plus a "Pick from my contacts" outline button that opens the contacts dialog.
+  Any `crewSize >= 3` maps to the group reaction. The expanded idea card loses
+  its Budget/Savings/Flights/Stay tabs, StatTiles, and savings-timeline card in
+  favor of one compact `lg:grid-cols-2` summary panel: budget total + stacked
+  proportion bar + flights/stay/daily amounts on the left, savings timeline +
+  summary on the right; travelers badge removed (count lives in the budget
+  header). The timing step uses a new `compact` variant of `SelectableCard`
+  (icon `size-8`, `text-[11px] line-clamp-2` subtitle, `h-full`) in a
+  deterministic 2×2 `grid-cols-2`. EN/ES keys pruned
+  (`scoutWizardCrewMode*/EnterNumber/FromContacts`, `scoutIdeaTab*` and
+  friends); tests updated.
+- **Schema:** none.
+- **Also changed (Trips page):** `features/trips/components/trip-dashboard.tsx`
+  drops the "Want to go" page-swap (`showTripPlanner` + early return + header
+  button) — `TripPlannerView embedded` now renders unconditionally as the last
+  section of the Trips page, so the wishlist, Scout button, and Add-idea are
+  always visible below the trips (zero trips, no matches, and loading all keep
+  it). `TripPlannerView` gained optional `onBack` + `embedded` (level-2 "Want
+  to go" heading + muted description + shared Scout/Add buttons, section uses
+  `aria-labelledby`); non-embedded rendering is unchanged for the `/e2e`
+  harness. The Create Trip dialog also gained a create-mode-only "Save as
+  idea" secondary action on every step: it validates only idea fields
+  (destination is required even though trips allow it empty), skips the
+  trip-only date/split/cover rules, and writes a `NewTripIdea` via
+  `tripIdeaRepository.create` (targetMonth derived from startDate,
+  travelerContactIds from selected contacts; cover + manual travelers
+  excluded, disclosed by `copy.saveAsIdeaHelper`). Idea cards now carry an
+  "Idea" / "Planned trip" status chip (`convertedToTripId`), converted cards
+  hide edit/savings/price sections and show an "Open trip" link + note, and
+  the wishlist sorts unconverted first.
+- **Gotchas:** the group card stays selected via `crewGroupPicked` even when the
+  draft is invalid (crewSize null) so the panel doesn't collapse mid-typing;
+  editing the number input while in contacts mode switches back to count mode;
+  the proportion bar uses `Number(part*1000n/total)/10` — display-only, not money
+  math.
+- **Verification:** `pnpm vitest run features/trip-planner lib/i18n` ✅ ·
+  `pnpm lint` ✅ · `pnpm typecheck` ✅.
+
 ### 2026-10-26 — Scout: exact destination, dates, contacts crew & flight routes
 
 - **Changed:** `scout-trip-ideas-schema.ts` (input `destination`/`startDate`/`endDate`/`excludeRoutes`, `timing:"dates"`, output `continent` + `flight_route`), new `scout-flight-route.ts` (`deriveRouteFacts`, `routeSignature`, `repairRouteContiguity`, `toTripIdeaFlightRoute`), `scout-idea-plan.ts` (`plan.dates = { pinned, shortfallMinor }` bigint), `scout-trip-idea-mapping.ts` (origin/dates/place/contacts/route), `dexie-trip-planner-repository.ts` (normalization), `lib/db/dexie.ts` v48, `app/actions/scout-trip-ideas.ts` (route mode, fallback continents/hubs), `scout-idea-wizard.tsx` (named steps via new `scout-wizard-steps.ts`), new `scout-where-step.tsx`, `scout-crew-contacts-dialog.tsx`, `scout-flight-route-view.tsx`, EN/ES copy + `errors.scoutRouteNeedsAi`.
