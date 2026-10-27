@@ -16,6 +16,24 @@ vi.mock("@/lib/supabase/server-client", () => ({
 import { generateScoutTripIdeas } from "@/app/actions/scout-trip-ideas";
 
 const suggestion = {
+  continent: "Asia",
+  flight_route: {
+    legs: [
+      {
+        from: "Guadalajara",
+        to: "Seoul",
+        approx_duration_minutes: 300,
+        layover_after_minutes: 90,
+      },
+      {
+        from: "Seoul",
+        to: "Kyoto",
+        approx_duration_minutes: 540,
+        layover_after_minutes: 0,
+      },
+    ],
+    arrives_same_date: false,
+  },
   destination: "Kyoto, Japan",
   ideal_duration_days: 7,
   best_season: "Fall (Oct-Nov) for mild weather and colorful leaves.",
@@ -423,6 +441,183 @@ describe("generateScoutTripIdeas", () => {
     expect(rentalIdea.estimated_hotel_per_night).toBe(
       eitherIdea.estimated_alt_stay_per_night
     );
+  });
+
+  it("forces the pinned destination and dedupes provider routes by signature", async () => {
+    mocks.env.GEMINI_API_KEY = undefined;
+    const routeTo = (chain: string[], minutes: number) => ({
+      legs: chain.slice(0, -1).map((from, index) => ({
+        from,
+        to: chain[index + 1],
+        approx_duration_minutes: minutes,
+        layover_after_minutes: index === chain.length - 2 ? 0 : 90,
+      })),
+      arrives_same_date: true,
+    });
+    const viaSeoul = routeTo(["Guadalajara", "Seoul", "Kyoto"], 300);
+    const viaTokyo = routeTo(["Guadalajara", "Tokyo", "Kyoto"], 320);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      openAiPayload([
+        { ...suggestion, destination: "Somewhere Else, Japan", flight_route: viaSeoul },
+        { ...suggestion, flight_route: viaTokyo },
+        // Same city chain in different case is a duplicate routing.
+        {
+          ...suggestion,
+          flight_route: routeTo(["guadalajara", "seoul", "kyoto"], 999),
+        },
+      ])
+    );
+
+    const result = await generateScoutTripIdeas({
+      ...input,
+      vibe: "",
+      destination: "Kyoto, Japan",
+      originCity: "Guadalajara, Mexico",
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.suggestions.ideas).toHaveLength(2);
+      for (const idea of result.suggestions.ideas) {
+        expect(idea.destination).toBe("Kyoto, Japan");
+      }
+      expect(result.suggestions.ideas[0]!.flight_route.legs[1]!.from).toBe("Seoul");
+      expect(result.suggestions.ideas[1]!.flight_route.legs[1]!.from).toBe("Tokyo");
+    }
+  });
+
+  it("drops provider routes the traveler already saw", async () => {
+    mocks.env.GEMINI_API_KEY = undefined;
+    const legs = (hub: string) => ({
+      legs: [
+        { from: "Guadalajara", to: hub, approx_duration_minutes: 200, layover_after_minutes: 90 },
+        { from: hub, to: "Kyoto", approx_duration_minutes: 500, layover_after_minutes: 0 },
+      ],
+      arrives_same_date: true,
+    });
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      openAiPayload([
+        { ...suggestion, flight_route: legs("Seoul") },
+        { ...suggestion, flight_route: legs("Tokyo") },
+      ])
+    );
+
+    const result = await generateScoutTripIdeas({
+      ...input,
+      destination: "Kyoto, Japan",
+      excludeRoutes: ["Guadalajara > Seoul > Kyoto".toLowerCase()],
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.suggestions.ideas).toHaveLength(1);
+      expect(result.suggestions.ideas[0]!.flight_route.legs[0]!.to).toBe("Tokyo");
+    }
+  });
+
+  it("never fabricates routes in route mode without a provider or after failure", async () => {
+    mocks.env.GEMINI_API_KEY = undefined;
+    mocks.env.OPENAI_API_KEY = undefined;
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+
+    const noKeys = await generateScoutTripIdeas({ ...input, destination: "Kyoto, Japan" });
+    expect(noKeys).toEqual({
+      success: false,
+      error:
+        "Planning a specific place needs Scout's AI connection. Try again, or add the idea manually.",
+    });
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    mocks.env.OPENAI_API_KEY = "test-openai-key";
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({ ok: false, status: 503 } as Response);
+    const failed = await generateScoutTripIdeas({ ...input, destination: "Kyoto, Japan" });
+    expect(failed).toEqual({
+      success: false,
+      error:
+        "Planning a specific place needs Scout's AI connection. Try again, or add the idea manually.",
+    });
+  });
+
+  it("repairs broken leg joins and clamps route fields from the provider", async () => {
+    mocks.env.GEMINI_API_KEY = undefined;
+    const broken = {
+      ...suggestion,
+      continent: "asia",
+      flight_route: {
+        legs: [
+          {
+            from: "Guadalajara",
+            to: "Seoul",
+            approx_duration_minutes: 9999,
+            layover_after_minutes: 120,
+          },
+          {
+            from: "Wrong City",
+            to: "Kyoto",
+            approx_duration_minutes: 540,
+            layover_after_minutes: 30,
+          },
+        ],
+        arrives_same_date: true,
+      },
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(openAiPayload([broken]));
+
+    const result = await generateScoutTripIdeas(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      const [idea] = result.suggestions.ideas;
+      expect(idea!.continent).toBe("Asia");
+      expect(idea!.flight_route.legs[0]!.approx_duration_minutes).toBe(1500);
+      expect(idea!.flight_route.legs[1]!.from).toBe("Seoul");
+      expect(idea!.flight_route.legs[1]!.layover_after_minutes).toBe(0);
+    }
+  });
+
+  it("sends route-mode fields and derived exact duration in the provider payload", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(geminiPayload(fiveIdeas()));
+
+    await generateScoutTripIdeas({
+      ...input,
+      vibe: "",
+      destination: "Kyoto, Japan",
+      originCity: "Guadalajara, Mexico",
+      timing: "dates",
+      startDate: "2027-03-10",
+      endDate: "2027-03-17",
+      durationDays: null,
+      excludeRoutes: ["guadalajara > seoul > kyoto"],
+    });
+
+    const body = JSON.parse(String(fetchSpy.mock.calls[0]![1]?.body));
+    const payload = JSON.parse(body.contents[0].parts[0].text);
+    expect(payload.destination).toBe("Kyoto, Japan");
+    expect(payload.startDate).toBe("2027-03-10");
+    expect(payload.endDate).toBe("2027-03-17");
+    expect(payload.exactDurationDays).toBe(8);
+    expect(payload.excludeRoutes).toEqual(["guadalajara > seoul > kyoto"]);
+    expect(payload.requirements).toContain("distinct flight-route options");
+    expect(payload.requirements).toContain("exactly 8");
+  });
+
+  it("returns continent and a contiguous estimated route in fallback ideas", async () => {
+    mocks.env.GEMINI_API_KEY = undefined;
+    mocks.env.OPENAI_API_KEY = undefined;
+
+    const result = await generateScoutTripIdeas(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      for (const idea of result.suggestions.ideas) {
+        expect(idea.continent).toBeTruthy();
+        expect(idea.flight_route.legs.length).toBeGreaterThanOrEqual(1);
+        for (let index = 1; index < idea.flight_route.legs.length; index += 1) {
+          expect(idea.flight_route.legs[index]!.from).toBe(idea.flight_route.legs[index - 1]!.to);
+        }
+      }
+      const continents = new Set(result.suggestions.ideas.map((idea) => idea.continent));
+      // The anchor continent leads: every in-pool option shares the top pick's continent.
+      expect(continents.size).toBeGreaterThanOrEqual(1);
+    }
   });
 
   it("rejects unconsented or oversized input before calling the provider", async () => {

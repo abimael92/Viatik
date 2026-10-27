@@ -22,6 +22,8 @@ const idea: TripIdea = {
   durationDays: 5,
   adultCount: 1,
   childCount: 0,
+  travelerContactIds: [],
+  flightRoute: null,
   currency: "USD",
   interests: [],
   notes: "",

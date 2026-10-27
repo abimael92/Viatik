@@ -5,7 +5,9 @@
 **Status:** Ready for QA
 **Created:** 2026-10-19
 **Updated:** 2026-10-25
-**Related work:** [Vacation Planner](./vacation-planner.md), [AI Activity Scout](./ai-activity-scout.md)
+**Related work:** [Vacation Planner](./vacation-planner.md), [AI Activity Scout](./ai-activity-scout.md), [Scout — Exact Destination, Dates, Travelers & Flight Routes](./scout-exact-destination-routes.md)
+
+> **Update (2026-10-26):** the newer spec adds a Where step (named step list, 6 screens in idea mode / 5 in route mode), contact-based crews, exact dates, and per-idea flight routes. The "five screens" acceptance notes below describe the pre-Where flow.
 
 ## Conversational co-planner pass (2026-10-25)
 
@@ -309,8 +311,8 @@ book travel, or provide financial advice.
       its primary action opens Airbnb pre-filtered with those dates and guests.
 - [x] All wizard copy, including the trigger and every detail section, renders
       in English and Spanish through `lib/i18n`.
-- [x] The wizard runs five screens and never asks for a budget ceiling, age, or
-      gender.
+- [x] The wizard never asks for a budget ceiling, age, or gender (steps are
+      now a computed named list: 6 in idea mode, 5 in route mode).
 - [x] A departure city is collected through Places autocomplete and pre-filled
       when a previous idea already has one.
 - [x] A pinned travel month defers the recommended departure but never precedes
@@ -339,8 +341,8 @@ book travel, or provide financial advice.
 - [x] The departure screen offers **Use my current location**, fills the field
       with the reverse-geocoded city on success, and shows a localized,
       non-blocking explanation when the browser denies or cannot resolve it.
-- [x] The progress rail and counter list all five screens and match the flow
-      exactly.
+- [x] The progress rail and counter list every computed step and match the
+      flow exactly (5 in route mode, 6 in idea mode).
 - [x] The expanded idea detail shows the trip goal, the per-traveler fare, and the
       stay total as labelled stat pills, a today → book-by → goal-reached
       timeline, and Budget/Savings/Flights/Stay tabs where only one panel renders
@@ -404,7 +406,7 @@ Record actual results and known limitations in Completion Notes before release.
   Scout reaction lines, budget quick pills, result presentation (Top Match pill,
   pitch under the destination, three stat pills), and the system prompt were
   reworked. `pnpm lint` ✅ · `pnpm typecheck` ✅ · `pnpm test` ✅ 220 files /
-  1,438 tests · `pnpm build` ✅ (21 routes). All five screens plus the results
+  1,438 tests · `pnpm build` ✅ (21 routes). All screens plus the results
   surface (stubbed locally, because the `/e2e` harness has no signed-in session)
   were reviewed in a real browser at 1000×900 and 430×900, in English and
   Spanish.

@@ -10,6 +10,18 @@ import {
 } from "@/features/trip-planner/domain/scout-trip-ideas-schema";
 
 const suggestion = {
+  continent: "Asia",
+  flight_route: {
+    legs: [
+      {
+        from: "Guadalajara",
+        to: "Kyoto",
+        approx_duration_minutes: 780,
+        layover_after_minutes: 0,
+      },
+    ],
+    arrives_same_date: false,
+  },
   destination: "Kyoto, Japan",
   ideal_duration_days: 7,
   best_season: "Fall (Oct-Nov) for mild weather and colorful leaves.",
@@ -118,6 +130,66 @@ describe("Scout trip idea contracts", () => {
     expect(parsed.success).toBe(true);
   });
 
+  it("requires a comma-formatted destination and lets it relax the vibe minimum", () => {
+    expect(
+      scoutTripIdeasInputSchema.safeParse({ ...baseInput, consentToAI: true, destination: "Kyoto" })
+        .success
+    ).toBe(false);
+    expect(
+      scoutTripIdeasInputSchema.safeParse({
+        ...baseInput,
+        consentToAI: true,
+        destination: "Kyoto, Japan",
+        vibe: "",
+      }).success
+    ).toBe(true);
+    expect(
+      scoutTripIdeasInputSchema.safeParse({ ...baseInput, consentToAI: true, vibe: "x" }).success
+    ).toBe(false);
+  });
+
+  it("bounds the route exclusion list like the destination one", () => {
+    const parsed = scoutTripIdeasInputSchema.parse({
+      ...baseInput,
+      consentToAI: true,
+      destination: "Kyoto, Japan",
+      excludeRoutes: ["gdl > icn > kix", "gdl > nrt > kix"],
+    });
+    expect(parsed.excludeRoutes).toEqual(["gdl > icn > kix", "gdl > nrt > kix"]);
+    expect(
+      scoutTripIdeasInputSchema.safeParse({
+        ...baseInput,
+        consentToAI: true,
+        excludeRoutes: Array.from({ length: 21 }, () => "a > b"),
+      }).success
+    ).toBe(false);
+  });
+
+  it("requires ordered, bounded exact dates only for the dates timing", () => {
+    const exact = {
+      ...baseInput,
+      consentToAI: true,
+      timing: "dates",
+      startDate: "2027-03-10",
+      endDate: "2027-03-17",
+    };
+    expect(scoutTripIdeasInputSchema.safeParse(exact).success).toBe(true);
+    expect(scoutTripIdeasInputSchema.safeParse({ ...exact, endDate: "2027-03-09" }).success).toBe(
+      false
+    );
+    expect(scoutTripIdeasInputSchema.safeParse({ ...exact, startDate: null }).success).toBe(false);
+    expect(scoutTripIdeasInputSchema.safeParse({ ...exact, endDate: "2027-05-10" }).success).toBe(
+      false
+    );
+    expect(
+      scoutTripIdeasInputSchema.safeParse({ ...baseInput, consentToAI: true, timing: "asap" })
+        .success
+    ).toBe(true);
+    expect(scoutTripIdeasInputSchema.safeParse({ ...exact, startDate: "2027-3-1" }).success).toBe(
+      false
+    );
+  });
+
   it("rejects counts outside the supported range", () => {
     expect(
       scoutTripIdeasInputSchema.safeParse({ ...baseInput, consentToAI: true, count: 8 }).success
@@ -165,6 +237,30 @@ describe("Scout trip idea contracts", () => {
       scoutTripIdeasResponseSchema.safeParse({
         ideas: [suggestion, { ...suggestion, unexpected: "field" }],
       }).success
+    ).toBe(false);
+  });
+
+  it("requires a known continent and a contiguous flight route", () => {
+    expect(scoutTripIdeaSchema.safeParse({ ...suggestion, continent: "Antarctica" }).success).toBe(
+      false
+    );
+    expect(scoutTripIdeaSchema.safeParse({ ...suggestion, continent: undefined }).success).toBe(
+      false
+    );
+
+    const broken = {
+      ...suggestion,
+      flight_route: {
+        legs: [
+          { from: "A", to: "B", approx_duration_minutes: 120, layover_after_minutes: 60 },
+          { from: "X", to: "C", approx_duration_minutes: 120, layover_after_minutes: 0 },
+        ],
+        arrives_same_date: true,
+      },
+    };
+    expect(scoutTripIdeaSchema.safeParse(broken).success).toBe(false);
+    expect(
+      scoutTripIdeaSchema.safeParse({ ...suggestion, flight_route: { legs: [] } }).success
     ).toBe(false);
   });
 

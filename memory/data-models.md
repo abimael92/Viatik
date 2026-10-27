@@ -1,12 +1,12 @@
 # Viatik Data Models & Offline Persistence
 
-> **Authoritative source:** [`lib/db/dexie.ts`](../lib/db/dexie.ts) (schema v47),
+> **Authoritative source:** [`lib/db/dexie.ts`](../lib/db/dexie.ts) (schema v48),
 > [`features/domain/entities.ts`](../features/domain/entities.ts) (domain types),
 > [`lib/sync/`](../lib/sync/) (outbox + sync engine), [`lib/supabase/mappers.ts`](../lib/supabase/mappers.ts)
 > (row ⇄ entity mapping). If this document and the code disagree, **the code wins** —
 > correct this file.
 >
-> Last audited: 2026-10-22 against Dexie schema version **47**.
+> Last audited: 2026-10-22 against Dexie schema version **48**.
 
 ## 1. Storage topology
 
@@ -90,7 +90,7 @@ pulled/realtime; **local** = device-only, never leaves the browser.
 | `syncLeases` | `key` | `expiresAt` | local (cross-tab) | sync |
 | `syncConflicts` | `id` | `tripId`, `entityType`, `resolvedAt` | local | sync |
 | `tripBudgets` | `id` | `tripId`, `updatedAt`, `deletedAt` | **local** | finance |
-| `tripIdeas` | `id` | `updatedAt`, `convertedToTripId` | **local** | trip-planner |
+| `tripIdeas` | `id` | `updatedAt`, `convertedToTripId` | **local** (v48 backfills `travelerContactIds`, `flightRoute`) | trip-planner |
 | `tripSavingsPlans` | `id` | `&tripIdeaId` (unique), `updatedAt` | **local** | trip-planner |
 | `profiles` | `id` | `updatedAt` | **local** (mirror) | profile |
 | `tripPins` | `id` | `tripId`, `category`, `updatedAt`, `deletedAt` | **local** | maps |

@@ -221,6 +221,7 @@ export function TripPlannerView({
         currency={currency}
         isOnline={isOnline}
         defaultOrigin={ideas?.find((idea) => idea.origin.trim())?.origin ?? ""}
+        userId={userId}
       />
     </section>
   );

@@ -72,7 +72,7 @@ describe("DexieTripPlannerRepository", () => {
     await upgraded.open();
     setCurrentDatabase(upgraded);
 
-    expect(upgraded.verno).toBe(47);
+    expect(upgraded.verno).toBe(48);
     expect((await upgraded.trips.get("legacy-trip"))?.name).toBe("Old trip");
     expect((await upgraded.tripBudgets.get("legacy-budget"))?.totalBudgetMinor).toBe(2500n);
     expect(await upgraded.tripIdeas.count()).toBe(0);
@@ -110,6 +110,60 @@ describe("DexieTripPlannerRepository", () => {
     expect(await db.tripIdeas.get("idea-1")).toBeUndefined();
     expect(await tripSavingsPlanRepository.getByIdea("idea-1")).toBeUndefined();
     expect(await db.outboxMutations.count()).toBe(0);
+  });
+
+  it("normalizes traveler contacts and the flight route estimate", async () => {
+    const idea = await tripIdeaRepository.create({
+      ...newIdea(),
+      travelerContactIds: ["contact-1", " contact-2 ", "contact-1"],
+      flightRoute: {
+        legs: [
+          {
+            from: " Guadalajara ",
+            to: " Seoul ",
+            approxDurationMinutes: 300,
+            layoverAfterMinutes: 90,
+          },
+          { from: "Seoul", to: "Kyoto", approxDurationMinutes: 540, layoverAfterMinutes: 0 },
+        ],
+        arrivesSameDate: true,
+        isEstimate: true,
+      },
+    });
+
+    expect(idea.travelerContactIds).toEqual(["contact-1", "contact-2"]);
+    expect(idea.flightRoute).toEqual({
+      legs: [
+        { from: "Guadalajara", to: "Seoul", approxDurationMinutes: 300, layoverAfterMinutes: 90 },
+        { from: "Seoul", to: "Kyoto", approxDurationMinutes: 540, layoverAfterMinutes: 0 },
+      ],
+      arrivesSameDate: true,
+      isEstimate: true,
+    });
+
+    const edited = await tripIdeaRepository.updateIdea(idea.id, { notes: "Keep the crew" });
+    expect(edited.travelerContactIds).toEqual(["contact-1", "contact-2"]);
+    expect(edited.flightRoute).toEqual(idea.flightRoute);
+  });
+
+  it("rejects oversized crews of contacts and out-of-range route legs", async () => {
+    await expect(
+      tripIdeaRepository.create({
+        ...newIdea(),
+        travelerContactIds: Array.from({ length: 20 }, (_, i) => `contact-${i}`),
+      })
+    ).rejects.toThrow(/at most 19 contacts/);
+
+    await expect(
+      tripIdeaRepository.create({
+        ...newIdea("idea-2"),
+        flightRoute: {
+          legs: [{ from: "A", to: "B", approxDurationMinutes: 5, layoverAfterMinutes: 0 }],
+          arrivesSameDate: true,
+          isEstimate: true,
+        },
+      })
+    ).rejects.toThrow(/between 20 and 1500 minutes/);
   });
 
   it("records manual prices in minor units with source and date", async () => {

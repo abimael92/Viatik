@@ -2,16 +2,23 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { differenceInCalendarDays, parseISO } from "date-fns";
 import { z } from "zod";
 
 import { env } from "@/env.mjs";
 import {
+  SCOUT_CONTINENTS,
   scoutTripIdeasInputSchema,
   scoutTripIdeasJsonSchema,
   scoutTripIdeasResponseSchema,
+  type ScoutFlightRoute,
   type ScoutTripIdeasInput,
   type ScoutTripIdeasResponse,
 } from "@/features/trip-planner/domain/scout-trip-ideas-schema";
+import {
+  deriveRouteFacts,
+  routeSignature,
+} from "@/features/trip-planner/domain/scout-flight-route";
 import {
   MAX_MINOR_UNITS,
   decimalFromMinorUnits,
@@ -45,6 +52,45 @@ const geminiResponseSchema = z.object({
     )
     .optional(),
 });
+
+const geminiFlightRouteSchema = {
+  type: "OBJECT",
+  properties: {
+    legs: {
+      type: "ARRAY",
+      description:
+        "Ordered flight legs from the departure city to the destination (1 to 4 legs). Each leg's `to` must be the next leg's `from`, and layover cities must be real airport cities.",
+      items: {
+        type: "OBJECT",
+        properties: {
+          from: {
+            type: "STRING",
+            description: "Departure city name or IATA code of this leg.",
+          },
+          to: {
+            type: "STRING",
+            description: "Arrival city name or IATA code of this leg.",
+          },
+          approx_duration_minutes: {
+            type: "INTEGER",
+            description: "Estimated airborne time for this leg in minutes (20 to 1500).",
+          },
+          layover_after_minutes: {
+            type: "INTEGER",
+            description:
+              "Estimated layover after this leg in minutes (0 to 720); always 0 for the last leg.",
+          },
+        },
+        required: ["from", "to", "approx_duration_minutes", "layover_after_minutes"],
+      },
+    },
+    arrives_same_date: {
+      type: "BOOLEAN",
+      description: "True when the route plausibly lands on the same calendar date it departs.",
+    },
+  },
+  required: ["legs", "arrives_same_date"],
+} as const;
 
 const geminiIdeaSchema = {
   type: "OBJECT",
@@ -88,8 +134,15 @@ const geminiIdeaSchema = {
       description:
         "Exactly two sentences. The first captures the sensory atmosphere and authentic highlights of the destination and why it matches the traveler's vibe. The second ties the pick to practical group ease, travel simplicity, or budget friendliness.",
     },
+    continent: {
+      type: "STRING",
+      description: `The continent the destination belongs to. One of: ${SCOUT_CONTINENTS.join(", ")}.`,
+    },
+    flight_route: geminiFlightRouteSchema,
   },
   required: [
+    "continent",
+    "flight_route",
     "destination",
     "ideal_duration_days",
     "best_season",
@@ -142,6 +195,18 @@ const SYSTEM_PROMPT =
   "Hotel and vacation-rental rates are integer whole-currency-unit estimates per night for the " +
   "whole group, one room or one rental, and the rental rate must be at or below the hotel rate. " +
   "Format every destination as 'City, Country' with a comma and make every destination distinct. " +
+  "When the traveler pins an exact destination, every idea's destination field must equal it " +
+  "verbatim and the ideas differ only by routing: offer a nonstop option first when realistic, " +
+  "then one-stop and two-stop variants through different real hub airports, never the same city " +
+  "chain twice. Rank those options by same-date arrival first, then fewer stops, then shorter " +
+  "total elapsed time, then lower fare. " +
+  "When suggesting destinations freely, prefer keeping every idea on a single continent: the " +
+  "departure city's continent when it is clear, otherwise the continent of your best match. " +
+  "Every idea carries a flight_route made of ordered legs from the departure city to the " +
+  "destination; each leg's `to` must be the next leg's `from`, every layover city must be a real " +
+  "airport city, and the last leg's layover is always 0. Routes are estimates only: never invent " +
+  "airlines, flight numbers, or schedules, and set arrives_same_date honestly — never promise a " +
+  "same-date arrival for a journey of a day or more. " +
   "Never promise prices, affordability, availability, or outcomes. Write the pitches in the " +
   "requested language. Use the supplied currency; never infer another currency.";
 
@@ -178,14 +243,49 @@ function resolveServerKey(
   return undefined;
 }
 
+function derivedDurationDays(input: ScoutTripIdeasInput): number | null {
+  if (input.timing === "dates" && input.startDate && input.endDate) {
+    return differenceInCalendarDays(parseISO(input.endDate), parseISO(input.startDate)) + 1;
+  }
+  return input.durationDays;
+}
+
 function buildUserPromptPayload(input: ScoutTripIdeasInput, savingsCapacityMinor: bigint): string {
   const crew = BigInt(input.crewSize);
   const hasSavings = savingsCapacityMinor > 0n;
+  const routeMode = input.destination.length > 0;
+  const exactDurationDays = derivedDurationDays(input);
   const monthlyGroupMinor =
     input.savingsCadence === "weekly" ? savingsCapacityMinor * 4n : savingsCapacityMinor;
   const threeMonthsPerTraveler = (monthlyGroupMinor * 3n) / crew;
   const sixMonthsPerTraveler = (monthlyGroupMinor * 6n) / crew;
   const twelveMonthsPerTraveler = (monthlyGroupMinor * 12n) / crew;
+
+  const requirements = routeMode
+    ? `Return JSON with an "ideas" array of exactly ${input.count} distinct flight-route options ` +
+      `to "${input.destination}". Every idea's destination field must be exactly ` +
+      `"${input.destination}" and only the flight_route changes between ideas: a nonstop option ` +
+      "first when realistic, then one-stop and two-stop variants through different real hub " +
+      "airports. Rank same-date arrivals first, then fewer stops, then shorter total elapsed " +
+      "time, then lower fare. All per-traveler costs and per-night group stay rates are whole " +
+      `integer units in ${input.currency}.` +
+      (input.excludeRoutes.length > 0
+        ? " Do not repeat any city chain listed in excludeRoutes."
+        : "") +
+      (exactDurationDays != null
+        ? ` Every idea's ideal_duration_days must be exactly ${exactDurationDays}.`
+        : "")
+    : `Return JSON with an "ideas" array of exactly ${input.count} distinct 'City, Country' destinations, ` +
+      "ordered best match first: lowest realistic all-in cost for the savings pace, then easiest and " +
+      "shortest journey, then shorter trip length. Prefer keeping every idea on a single continent " +
+      "and routes that arrive the same calendar date with fewer stops. All per-traveler costs and " +
+      `per-night group stay rates are whole integer units in ${input.currency}.` +
+      (hasSavings
+        ? ""
+        : " The traveler has not set a savings pace, so rank by lowest realistic all-in cost first.") +
+      (exactDurationDays != null
+        ? ` Every idea's ideal_duration_days must be exactly ${exactDurationDays}.`
+        : "");
 
   return JSON.stringify({
     vibe: input.vibe,
@@ -202,27 +302,21 @@ function buildUserPromptPayload(input: ScoutTripIdeasInput, savingsCapacityMinor
       : null,
     currency: input.currency,
     language: input.locale === "es" ? "Spanish" : "English",
+    destination: input.destination || null,
     departureCity: input.originCity || null,
     timing: input.timing,
+    startDate: input.timing === "dates" ? input.startDate : null,
+    endDate: input.timing === "dates" ? input.endDate : null,
     targetMonth: input.timing === "month" ? input.targetMonth : null,
     tripLength: input.tripLength,
-    exactDurationDays: input.durationDays,
+    exactDurationDays,
     comfort: input.comfort,
     stayStyle: input.stayStyle,
     nonstopOnly: input.nonstopOnly,
     constraints: input.constraints || null,
     excludeDestinations: input.excludeDestinations,
-    requirements:
-      `Return JSON with an "ideas" array of exactly ${input.count} distinct 'City, Country' destinations, ` +
-      "ordered best match first: lowest realistic all-in cost for the savings pace, then easiest and " +
-      "shortest journey, then shorter trip length. All per-traveler costs and per-night group stay " +
-      `rates are whole integer units in ${input.currency}.` +
-      (hasSavings
-        ? ""
-        : " The traveler has not set a savings pace, so rank by lowest realistic all-in cost first.") +
-      (input.durationDays != null
-        ? ` Every idea's ideal_duration_days must be exactly ${input.durationDays}.`
-        : ""),
+    excludeRoutes: input.excludeRoutes,
+    requirements,
   });
 }
 
@@ -261,6 +355,43 @@ function normalizeScoutPitch(rawPitch: string): string {
     return `${single} It keeps the crew moving without stretching the budget.`.slice(0, 400);
   }
   return `${parts[0]!} ${parts[1]!}`.slice(0, 400);
+}
+
+function clampInt(value: unknown, min: number, max: number): unknown {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.min(max, Math.max(min, Math.round(value)))
+    : value;
+}
+
+/**
+ * Repair provider route output without fabricating one: clamp leg fields into
+ * range and copy each previous leg's `to` into the next `from` so the chain is
+ * contiguous, then zero the last layover.
+ */
+function normalizeFlightRouteSlot(rawRoute: unknown): unknown {
+  if (!rawRoute || typeof rawRoute !== "object") return rawRoute;
+  const route = rawRoute as Record<string, unknown>;
+  if (!Array.isArray(route.legs)) return rawRoute;
+
+  const slicedLegs = route.legs.slice(0, 4);
+  const legs = slicedLegs.map((rawLeg, index) => {
+    const leg = (rawLeg ?? {}) as Record<string, unknown>;
+    return {
+      from: typeof leg.from === "string" ? leg.from.trim().slice(0, 80) : leg.from,
+      to: typeof leg.to === "string" ? leg.to.trim().slice(0, 80) : leg.to,
+      approx_duration_minutes: clampInt(leg.approx_duration_minutes, 20, 1500),
+      layover_after_minutes:
+        index === slicedLegs.length - 1 ? 0 : clampInt(leg.layover_after_minutes, 0, 720),
+    };
+  });
+  for (let index = 1; index < legs.length; index += 1) {
+    legs[index]!.from = legs[index - 1]!.to;
+  }
+
+  return {
+    legs,
+    arrives_same_date: route.arrives_same_date === true,
+  };
 }
 
 function normalizeIdeaSlot(slot: unknown): unknown {
@@ -316,7 +447,17 @@ function normalizeIdeaSlot(slot: unknown): unknown {
   const scoutPitch =
     typeof item.scout_pitch === "string" ? normalizeScoutPitch(item.scout_pitch) : item.scout_pitch;
 
+  const rawContinent = item.continent;
+  const continent =
+    typeof rawContinent === "string"
+      ? (SCOUT_CONTINENTS.find(
+          (name) => name.toLowerCase() === rawContinent.trim().toLowerCase()
+        ) ?? rawContinent.trim())
+      : rawContinent;
+
   return {
+    continent,
+    flight_route: normalizeFlightRouteSlot(item.flight_route),
     destination,
     ideal_duration_days: duration,
     best_season: bestSeason,
@@ -344,6 +485,9 @@ type SeasonNote = "dry" | "mild" | "warm" | "cool" | "any";
 
 type FallbackSeed = {
   destination: string;
+  continent: (typeof SCOUT_CONTINENTS)[number];
+  /** Realistic connecting hub for one-stop routings to this destination. */
+  hub: string;
   durationDays: number;
   /** Inclusive month range (1-12) for the best travel window. */
   bestMonths: [number, number];
@@ -357,39 +501,39 @@ type FallbackSeed = {
 
 const FALLBACK_POOLS: Record<VibeCategory, FallbackSeed[]> = {
   beach: [
-    { destination: "Puerto Vallarta, Mexico", durationDays: 5, bestMonths: [11, 4], seasonNote: "dry", baseFlightUsd: 380, baseDailyUsd: 70, baseHotelUsd: 150, baseAltStayUsd: 110, horizonMonths: 3 },
-    { destination: "Cancun, Mexico", durationDays: 4, bestMonths: [12, 4], seasonNote: "warm", baseFlightUsd: 340, baseDailyUsd: 75, baseHotelUsd: 160, baseAltStayUsd: 120, horizonMonths: 3 },
-    { destination: "Lisbon, Portugal", durationDays: 7, bestMonths: [5, 10], seasonNote: "mild", baseFlightUsd: 720, baseDailyUsd: 95, baseHotelUsd: 190, baseAltStayUsd: 145, horizonMonths: 6 },
-    { destination: "Split, Croatia", durationDays: 6, bestMonths: [5, 9], seasonNote: "warm", baseFlightUsd: 780, baseDailyUsd: 90, baseHotelUsd: 175, baseAltStayUsd: 130, horizonMonths: 6 },
-    { destination: "Bali, Indonesia", durationDays: 10, bestMonths: [5, 9], seasonNote: "dry", baseFlightUsd: 1150, baseDailyUsd: 60, baseHotelUsd: 120, baseAltStayUsd: 85, horizonMonths: 10 },
+    { destination: "Puerto Vallarta, Mexico", continent: "North America", hub: "Mexico City", durationDays: 5, bestMonths: [11, 4], seasonNote: "dry", baseFlightUsd: 380, baseDailyUsd: 70, baseHotelUsd: 150, baseAltStayUsd: 110, horizonMonths: 3 },
+    { destination: "Cancun, Mexico", continent: "North America", hub: "Mexico City", durationDays: 4, bestMonths: [12, 4], seasonNote: "warm", baseFlightUsd: 340, baseDailyUsd: 75, baseHotelUsd: 160, baseAltStayUsd: 120, horizonMonths: 3 },
+    { destination: "Lisbon, Portugal", continent: "Europe", hub: "Madrid", durationDays: 7, bestMonths: [5, 10], seasonNote: "mild", baseFlightUsd: 720, baseDailyUsd: 95, baseHotelUsd: 190, baseAltStayUsd: 145, horizonMonths: 6 },
+    { destination: "Split, Croatia", continent: "Europe", hub: "Frankfurt", durationDays: 6, bestMonths: [5, 9], seasonNote: "warm", baseFlightUsd: 780, baseDailyUsd: 90, baseHotelUsd: 175, baseAltStayUsd: 130, horizonMonths: 6 },
+    { destination: "Bali, Indonesia", continent: "Asia", hub: "Singapore", durationDays: 10, bestMonths: [5, 9], seasonNote: "dry", baseFlightUsd: 1150, baseDailyUsd: 60, baseHotelUsd: 120, baseAltStayUsd: 85, horizonMonths: 10 },
   ],
   city: [
-    { destination: "Montreal, Canada", durationDays: 4, bestMonths: [5, 10], seasonNote: "mild", baseFlightUsd: 340, baseDailyUsd: 95, baseHotelUsd: 210, baseAltStayUsd: 160, horizonMonths: 3 },
-    { destination: "Mexico City, Mexico", durationDays: 5, bestMonths: [3, 5], seasonNote: "dry", baseFlightUsd: 420, baseDailyUsd: 85, baseHotelUsd: 150, baseAltStayUsd: 110, horizonMonths: 3 },
-    { destination: "Madrid, Spain", durationDays: 6, bestMonths: [4, 10], seasonNote: "mild", baseFlightUsd: 700, baseDailyUsd: 100, baseHotelUsd: 180, baseAltStayUsd: 140, horizonMonths: 6 },
-    { destination: "Prague, Czechia", durationDays: 5, bestMonths: [4, 10], seasonNote: "mild", baseFlightUsd: 760, baseDailyUsd: 85, baseHotelUsd: 150, baseAltStayUsd: 115, horizonMonths: 6 },
-    { destination: "Tokyo, Japan", durationDays: 9, bestMonths: [3, 11], seasonNote: "mild", baseFlightUsd: 1100, baseDailyUsd: 110, baseHotelUsd: 220, baseAltStayUsd: 165, horizonMonths: 10 },
+    { destination: "Montreal, Canada", continent: "North America", hub: "Toronto", durationDays: 4, bestMonths: [5, 10], seasonNote: "mild", baseFlightUsd: 340, baseDailyUsd: 95, baseHotelUsd: 210, baseAltStayUsd: 160, horizonMonths: 3 },
+    { destination: "Mexico City, Mexico", continent: "North America", hub: "Dallas", durationDays: 5, bestMonths: [3, 5], seasonNote: "dry", baseFlightUsd: 420, baseDailyUsd: 85, baseHotelUsd: 150, baseAltStayUsd: 110, horizonMonths: 3 },
+    { destination: "Madrid, Spain", continent: "Europe", hub: "Paris", durationDays: 6, bestMonths: [4, 10], seasonNote: "mild", baseFlightUsd: 700, baseDailyUsd: 100, baseHotelUsd: 180, baseAltStayUsd: 140, horizonMonths: 6 },
+    { destination: "Prague, Czechia", continent: "Europe", hub: "Frankfurt", durationDays: 5, bestMonths: [4, 10], seasonNote: "mild", baseFlightUsd: 760, baseDailyUsd: 85, baseHotelUsd: 150, baseAltStayUsd: 115, horizonMonths: 6 },
+    { destination: "Tokyo, Japan", continent: "Asia", hub: "Seoul", durationDays: 9, bestMonths: [3, 11], seasonNote: "mild", baseFlightUsd: 1100, baseDailyUsd: 110, baseHotelUsd: 220, baseAltStayUsd: 165, horizonMonths: 10 },
   ],
   nature: [
-    { destination: "Banff, Canada", durationDays: 5, bestMonths: [6, 9], seasonNote: "mild", baseFlightUsd: 420, baseDailyUsd: 85, baseHotelUsd: 240, baseAltStayUsd: 180, horizonMonths: 3 },
-    { destination: "San Jose, Costa Rica", durationDays: 7, bestMonths: [12, 4], seasonNote: "dry", baseFlightUsd: 560, baseDailyUsd: 80, baseHotelUsd: 150, baseAltStayUsd: 110, horizonMonths: 6 },
-    { destination: "Interlaken, Switzerland", durationDays: 5, bestMonths: [6, 9], seasonNote: "mild", baseFlightUsd: 880, baseDailyUsd: 120, baseHotelUsd: 260, baseAltStayUsd: 200, horizonMonths: 8 },
-    { destination: "Queenstown, New Zealand", durationDays: 8, bestMonths: [12, 3], seasonNote: "warm", baseFlightUsd: 1400, baseDailyUsd: 110, baseHotelUsd: 210, baseAltStayUsd: 160, horizonMonths: 12 },
-    { destination: "Reykjavik, Iceland", durationDays: 8, bestMonths: [6, 9], seasonNote: "cool", baseFlightUsd: 850, baseDailyUsd: 105, baseHotelUsd: 230, baseAltStayUsd: 175, horizonMonths: 10 },
+    { destination: "Banff, Canada", continent: "North America", hub: "Vancouver", durationDays: 5, bestMonths: [6, 9], seasonNote: "mild", baseFlightUsd: 420, baseDailyUsd: 85, baseHotelUsd: 240, baseAltStayUsd: 180, horizonMonths: 3 },
+    { destination: "San Jose, Costa Rica", continent: "North America", hub: "Panama City", durationDays: 7, bestMonths: [12, 4], seasonNote: "dry", baseFlightUsd: 560, baseDailyUsd: 80, baseHotelUsd: 150, baseAltStayUsd: 110, horizonMonths: 6 },
+    { destination: "Interlaken, Switzerland", continent: "Europe", hub: "Zurich", durationDays: 5, bestMonths: [6, 9], seasonNote: "mild", baseFlightUsd: 880, baseDailyUsd: 120, baseHotelUsd: 260, baseAltStayUsd: 200, horizonMonths: 8 },
+    { destination: "Queenstown, New Zealand", continent: "Oceania", hub: "Sydney", durationDays: 8, bestMonths: [12, 3], seasonNote: "warm", baseFlightUsd: 1400, baseDailyUsd: 110, baseHotelUsd: 210, baseAltStayUsd: 160, horizonMonths: 12 },
+    { destination: "Reykjavik, Iceland", continent: "Europe", hub: "London", durationDays: 8, bestMonths: [6, 9], seasonNote: "cool", baseFlightUsd: 850, baseDailyUsd: 105, baseHotelUsd: 230, baseAltStayUsd: 175, horizonMonths: 10 },
   ],
   food: [
-    { destination: "Oaxaca, Mexico", durationDays: 5, bestMonths: [10, 4], seasonNote: "dry", baseFlightUsd: 410, baseDailyUsd: 60, baseHotelUsd: 130, baseAltStayUsd: 95, horizonMonths: 3 },
-    { destination: "Bologna, Italy", durationDays: 5, bestMonths: [4, 10], seasonNote: "mild", baseFlightUsd: 760, baseDailyUsd: 90, baseHotelUsd: 170, baseAltStayUsd: 130, horizonMonths: 6 },
-    { destination: "Porto, Portugal", durationDays: 6, bestMonths: [5, 10], seasonNote: "mild", baseFlightUsd: 680, baseDailyUsd: 85, baseHotelUsd: 160, baseAltStayUsd: 120, horizonMonths: 6 },
-    { destination: "Ho Chi Minh City, Vietnam", durationDays: 8, bestMonths: [12, 4], seasonNote: "dry", baseFlightUsd: 980, baseDailyUsd: 55, baseHotelUsd: 110, baseAltStayUsd: 80, horizonMonths: 9 },
-    { destination: "Kyoto, Japan", durationDays: 8, bestMonths: [10, 11], seasonNote: "mild", baseFlightUsd: 1050, baseDailyUsd: 95, baseHotelUsd: 200, baseAltStayUsd: 150, horizonMonths: 10 },
+    { destination: "Oaxaca, Mexico", continent: "North America", hub: "Mexico City", durationDays: 5, bestMonths: [10, 4], seasonNote: "dry", baseFlightUsd: 410, baseDailyUsd: 60, baseHotelUsd: 130, baseAltStayUsd: 95, horizonMonths: 3 },
+    { destination: "Bologna, Italy", continent: "Europe", hub: "Rome", durationDays: 5, bestMonths: [4, 10], seasonNote: "mild", baseFlightUsd: 760, baseDailyUsd: 90, baseHotelUsd: 170, baseAltStayUsd: 130, horizonMonths: 6 },
+    { destination: "Porto, Portugal", continent: "Europe", hub: "Lisbon", durationDays: 6, bestMonths: [5, 10], seasonNote: "mild", baseFlightUsd: 680, baseDailyUsd: 85, baseHotelUsd: 160, baseAltStayUsd: 120, horizonMonths: 6 },
+    { destination: "Ho Chi Minh City, Vietnam", continent: "Asia", hub: "Bangkok", durationDays: 8, bestMonths: [12, 4], seasonNote: "dry", baseFlightUsd: 980, baseDailyUsd: 55, baseHotelUsd: 110, baseAltStayUsd: 80, horizonMonths: 9 },
+    { destination: "Kyoto, Japan", continent: "Asia", hub: "Tokyo", durationDays: 8, bestMonths: [10, 11], seasonNote: "mild", baseFlightUsd: 1050, baseDailyUsd: 95, baseHotelUsd: 200, baseAltStayUsd: 150, horizonMonths: 10 },
   ],
   default: [
-    { destination: "Cartagena, Colombia", durationDays: 5, bestMonths: [12, 4], seasonNote: "dry", baseFlightUsd: 400, baseDailyUsd: 70, baseHotelUsd: 150, baseAltStayUsd: 110, horizonMonths: 3 },
-    { destination: "Medellin, Colombia", durationDays: 5, bestMonths: [12, 3], seasonNote: "mild", baseFlightUsd: 430, baseDailyUsd: 65, baseHotelUsd: 130, baseAltStayUsd: 95, horizonMonths: 4 },
-    { destination: "Marrakech, Morocco", durationDays: 6, bestMonths: [3, 5], seasonNote: "mild", baseFlightUsd: 720, baseDailyUsd: 70, baseHotelUsd: 150, baseAltStayUsd: 110, horizonMonths: 6 },
-    { destination: "Athens, Greece", durationDays: 6, bestMonths: [4, 10], seasonNote: "warm", baseFlightUsd: 800, baseDailyUsd: 85, baseHotelUsd: 165, baseAltStayUsd: 125, horizonMonths: 7 },
-    { destination: "Tbilisi, Georgia", durationDays: 7, bestMonths: [5, 10], seasonNote: "mild", baseFlightUsd: 760, baseDailyUsd: 60, baseHotelUsd: 120, baseAltStayUsd: 90, horizonMonths: 8 },
+    { destination: "Cartagena, Colombia", continent: "South America", hub: "Bogota", durationDays: 5, bestMonths: [12, 4], seasonNote: "dry", baseFlightUsd: 400, baseDailyUsd: 70, baseHotelUsd: 150, baseAltStayUsd: 110, horizonMonths: 3 },
+    { destination: "Medellin, Colombia", continent: "South America", hub: "Bogota", durationDays: 5, bestMonths: [12, 3], seasonNote: "mild", baseFlightUsd: 430, baseDailyUsd: 65, baseHotelUsd: 130, baseAltStayUsd: 95, horizonMonths: 4 },
+    { destination: "Marrakech, Morocco", continent: "Africa", hub: "Casablanca", durationDays: 6, bestMonths: [3, 5], seasonNote: "mild", baseFlightUsd: 720, baseDailyUsd: 70, baseHotelUsd: 150, baseAltStayUsd: 110, horizonMonths: 6 },
+    { destination: "Athens, Greece", continent: "Europe", hub: "Istanbul", durationDays: 6, bestMonths: [4, 10], seasonNote: "warm", baseFlightUsd: 800, baseDailyUsd: 85, baseHotelUsd: 165, baseAltStayUsd: 125, horizonMonths: 7 },
+    { destination: "Tbilisi, Georgia", continent: "Asia", hub: "Istanbul", durationDays: 7, bestMonths: [5, 10], seasonNote: "mild", baseFlightUsd: 760, baseDailyUsd: 60, baseHotelUsd: 120, baseAltStayUsd: 90, horizonMonths: 8 },
   ],
 };
 
@@ -464,6 +608,8 @@ function fallbackPitch(
 type RankedCandidate = {
   seed: FallbackSeed;
   inVibePool: boolean;
+  route: ScoutFlightRoute;
+  routeFacts: ReturnType<typeof deriveRouteFacts>;
   days: number;
   flightWhole: number;
   hotelWhole: number;
@@ -481,6 +627,64 @@ const OFF_VIBE_PENALTY = 1.5;
 
 /** Extra weight on the fare when the traveler insists on nonstop travel. */
 const NONSTOP_FARE_WEIGHT = 0.3;
+
+/**
+ * Penalty for destinations off the anchor continent. Smaller than
+ * `OFF_VIBE_PENALTY` so vibe fit still leads, but off-anchor options lose ties.
+ */
+const OFF_ANCHOR_CONTINENT_PENALTY = 0.4;
+
+/** Per-traveler fallback fares at or above this are treated as long-haul. */
+const SHORT_HAUL_FARE_USD = 700;
+
+/** Rough estimate ceiling for a plausible same-calendar-date arrival. */
+const SAME_DATE_ELAPSED_LIMIT_MINUTES = 720;
+
+/**
+ * Deterministic estimated route for a fallback seed: nonstop when the traveler
+ * asked for it or the fare reads short-haul, otherwise one stop through the
+ * seed's real hub city. Durations are rough estimates, never schedules.
+ */
+function buildFallbackRoute(
+  seed: FallbackSeed,
+  originCity: string,
+  nonstopOnly: boolean
+): ScoutFlightRoute {
+  const from = originCity || "Your city";
+  const to = seed.destination.split(",")[0]!.trim();
+  const flightMinutes = Math.min(900, Math.max(90, Math.round(seed.baseFlightUsd / 120) * 60));
+  if (nonstopOnly || seed.baseFlightUsd < SHORT_HAUL_FARE_USD) {
+    return {
+      legs: [
+        {
+          from,
+          to,
+          approx_duration_minutes: flightMinutes,
+          layover_after_minutes: 0,
+        },
+      ],
+      arrives_same_date: flightMinutes < SAME_DATE_ELAPSED_LIMIT_MINUTES,
+    };
+  }
+  const firstLeg = Math.round(flightMinutes * 0.4);
+  return {
+    legs: [
+      {
+        from,
+        to: seed.hub,
+        approx_duration_minutes: firstLeg,
+        layover_after_minutes: 90,
+      },
+      {
+        from: seed.hub,
+        to,
+        approx_duration_minutes: Math.max(20, flightMinutes - firstLeg),
+        layover_after_minutes: 0,
+      },
+    ],
+    arrives_same_date: flightMinutes + 90 < SAME_DATE_ELAPSED_LIMIT_MINUTES,
+  };
+}
 
 const COMFORT_MULTIPLIER: Record<ScoutTripIdeasInput["comfort"], number> = {
   budget: 0.82,
@@ -540,7 +744,7 @@ function generateFallbackScoutTripIdeas(
   const comfortMultiplier = COMFORT_MULTIPLIER[input.comfort];
 
   const scaled: RankedCandidate[] = candidates.map(({ seed, inVibePool }) => {
-    const days = adjustDuration(seed.durationDays, input.tripLength, input.durationDays);
+    const days = adjustDuration(seed.durationDays, input.tripLength, derivedDurationDays(input));
     const nights = Math.max(1, days - 1);
 
     const baseFlight = seed.baseFlightUsd * fx;
@@ -570,9 +774,13 @@ function generateFallbackScoutTripIdeas(
     // A traveler who asked for rentals should see the rental price as the goal.
     const goalStayWhole = input.stayStyle === "rental" ? altWhole : hotelWhole;
 
+    const route = buildFallbackRoute(seed, input.originCity, input.nonstopOnly);
+
     return {
       seed,
       inVibePool,
+      route,
+      routeFacts: deriveRouteFacts(route),
       days,
       flightWhole,
       hotelWhole: goalStayWhole,
@@ -593,7 +801,7 @@ function generateFallbackScoutTripIdeas(
   const maxDays = Math.max(...durations);
 
   // "Closest" = cheapest all-in cost first, then easiest and shortest journey.
-  const ranked = scaled
+  const scored = scaled
     .map((item) => ({
       item,
       score:
@@ -605,8 +813,27 @@ function generateFallbackScoutTripIdeas(
     }))
     .sort((a, b) => a.score - b.score || a.item.groupTotal - b.item.groupTotal);
 
+  // Same-continent preference: the best-scoring candidate sets the anchor, and
+  // off-anchor options are penalized, not forbidden. Same-date arrivals and
+  // fewer stops break remaining ties.
+  const anchor = scored[0]?.item.seed.continent;
+  const ranked = scored
+    .map(({ item, score }) => ({
+      item,
+      score: score + (anchor && item.seed.continent !== anchor ? OFF_ANCHOR_CONTINENT_PENALTY : 0),
+    }))
+    .sort(
+      (a, b) =>
+        a.score - b.score ||
+        Number(b.item.routeFacts.arrivesSameDate) - Number(a.item.routeFacts.arrivesSameDate) ||
+        a.item.routeFacts.stops - b.item.routeFacts.stops ||
+        a.item.groupTotal - b.item.groupTotal
+    );
+
   const ideas = ranked.slice(0, Math.max(1, input.count)).map(({ item }) =>
     normalizeIdeaSlot({
+      continent: item.seed.continent,
+      flight_route: item.route,
       destination: item.seed.destination,
       ideal_duration_days: item.days,
       best_season: formatSeason(item.seed, locale),
@@ -623,21 +850,30 @@ function generateFallbackScoutTripIdeas(
 
 function parseValidatedSuggestions(
   content: string | null,
-  count: number
+  count: number,
+  options?: { destination?: string; excludeRoutes?: string[] }
 ): ScoutTripIdeasResponse | null {
   if (!content) return null;
+  const routeMode = Boolean(options?.destination);
+  const excludedRoutes = new Set(
+    (options?.excludeRoutes ?? []).map((item) => item.trim().toLowerCase())
+  );
   try {
     const rawJson: unknown = JSON.parse(stripJsonCodeFence(content));
     const parsed = scoutTripIdeasResponseSchema.parse(normalizeSuggestionsPayload(rawJson));
     const seen = new Set<string>();
     const unique = parsed.ideas.filter((idea) => {
-      const key = idea.destination.toLowerCase();
-      if (seen.has(key)) return false;
+      const key = routeMode ? routeSignature(idea.flight_route) : idea.destination.toLowerCase();
+      if (seen.has(key) || (routeMode && excludedRoutes.has(key))) return false;
       seen.add(key);
       return true;
     });
     if (unique.length === 0) return null;
-    return { ideas: unique.slice(0, count) };
+    return {
+      ideas: unique
+        .slice(0, count)
+        .map((idea) => (routeMode ? { ...idea, destination: options!.destination! } : idea)),
+    };
   } catch {
     return null;
   }
@@ -737,6 +973,9 @@ async function requestOpenAiTripIdeas(
   return { ok: true, content };
 }
 
+const ROUTE_MODE_NEEDS_PROVIDER_ERROR =
+  "Planning a specific place needs Scout's AI connection. Try again, or add the idea manually.";
+
 export async function generateScoutTripIdeas(input: unknown): Promise<ScoutTripIdeasResult> {
   const parsed = scoutTripIdeasInputSchema.safeParse(input);
   if (!parsed.success) return { success: false, error: "Review your answers and try again." };
@@ -751,9 +990,17 @@ export async function generateScoutTripIdeas(input: unknown): Promise<ScoutTripI
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) return { success: false, error: "Sign in again to ask Scout." };
 
+    // Route mode has no honest deterministic fallback: Scout never fabricates
+    // routings to an arbitrary pinned destination.
+    const routeMode = parsed.data.destination.length > 0;
+    const parseOptions = routeMode
+      ? { destination: parsed.data.destination, excludeRoutes: parsed.data.excludeRoutes }
+      : undefined;
+
     const geminiApiKey = resolveServerKey("GEMINI_API_KEY", env.GEMINI_API_KEY);
     const openAiApiKey = resolveServerKey("OPENAI_API_KEY", env.OPENAI_API_KEY);
     if (!geminiApiKey && !openAiApiKey) {
+      if (routeMode) return { success: false, error: ROUTE_MODE_NEEDS_PROVIDER_ERROR };
       return {
         success: true,
         suggestions: generateFallbackScoutTripIdeas(parsed.data, savingsCapacityMinor),
@@ -766,7 +1013,11 @@ export async function generateScoutTripIdeas(input: unknown): Promise<ScoutTripI
       try {
         const geminiResult = await requestGeminiTripIdeas(geminiApiKey, userPromptPayload);
         if (geminiResult.ok) {
-          const suggestions = parseValidatedSuggestions(geminiResult.content, parsed.data.count);
+          const suggestions = parseValidatedSuggestions(
+            geminiResult.content,
+            parsed.data.count,
+            parseOptions
+          );
           if (suggestions) return { success: true, suggestions };
         }
       } catch {
@@ -778,7 +1029,11 @@ export async function generateScoutTripIdeas(input: unknown): Promise<ScoutTripI
       try {
         const openAiResult = await requestOpenAiTripIdeas(openAiApiKey, userPromptPayload);
         if (openAiResult.ok) {
-          const suggestions = parseValidatedSuggestions(openAiResult.content, parsed.data.count);
+          const suggestions = parseValidatedSuggestions(
+            openAiResult.content,
+            parsed.data.count,
+            parseOptions
+          );
           if (suggestions) return { success: true, suggestions };
         }
       } catch {
@@ -786,6 +1041,7 @@ export async function generateScoutTripIdeas(input: unknown): Promise<ScoutTripI
       }
     }
 
+    if (routeMode) return { success: false, error: ROUTE_MODE_NEEDS_PROVIDER_ERROR };
     return {
       success: true,
       suggestions: generateFallbackScoutTripIdeas(parsed.data, savingsCapacityMinor),

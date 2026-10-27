@@ -211,11 +211,29 @@ and `lib/i18n/error-copy.ts`. Locale persists in `localStorage["viatik-language"
 
 ## 11. Scout wizard patterns (`features/trip-planner/components/scout-idea-wizard.tsx`)
 
-- **Five screens only:** vibe → crew → budget → departure → timing. The timing
-  screen also holds the duration preset + exact day count, the free-text
-  constraint, the AI consent, and the generate CTA. There is no fine-tune
-  screen; pace/comfort, stay style, and nonstop are deferred to per-idea
-  decisions and sent as neutral defaults.
+- **Named steps:** `getScoutWizardSteps(hasDestination)`
+  (`features/trip-planner/domain/scout-wizard-steps.ts`) returns the ordered id
+  list — idea mode `where · vibe · crew · budget · takeoff · timing` (6), route
+  mode skips `vibe` (5). `where` is always first so toggling the destination
+  never shifts the step. `WizardProgress`/`stepId`/`validateStep` key off ids,
+  not indexes.
+- **Where step:** `ScoutWhereStep` (`scout-where-step.tsx`) = `DestinationField`
+  (Places autocomplete; `placeId/latitude/longitude/timeZone` kept client-side)
+  - a "Surprise me" card that clears the destination. Empty = idea mode.
+- **Crew:** count cards or "From my contacts" — `ScoutCrewContactsDialog`
+  (`scout-crew-contacts-dialog.tsx`, nested dialog) multi-selects Dexie contacts
+  via `contactRepository.watch(ownerId)`; badge for `linkedProfileId`; cap 19.
+  crewSize = 1 + selected; contact data never reaches the Server Action.
+- **Timing:** four cards — exact dates (`timing:"dates"`, two `type="date"`
+  inputs validated start ≥ today, end ≥ start, ≤60 days), calculate-for-me
+  (asap), month, cheapest. Exact dates hide trip-length/exact-days and the badge
+  shows "N days".
+- **Results:** `FlightRouteSummary`/`FlightRouteLegs`
+  (`scout-flight-route-view.tsx`) render `A → B → C`, stops, elapsed time, and
+  same-day/next-day badge from `deriveRouteFacts` (never same-day ≥24h); idea
+  mode adds a continent chip; route mode titles cards "Route option N".
+  `plan.dates.pinned` shows pinned dates + `shortfallMinor` line in the savings
+  section; flight submodal lists legs + estimate note.
 - **Voice:** dialog title **Let's find your kind of trip** — a spoken invitation,
   never a branded feature name; rail labels
   *Vibe · The Crew · Budget · Takeoff · Timing*; questions are invitations

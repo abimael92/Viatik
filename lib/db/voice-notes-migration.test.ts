@@ -19,7 +19,7 @@ describe("voice notes migrations", () => {
 
     try {
       await db.open();
-      expect(db.verno).toBe(47);
+      expect(db.verno).toBe(48);
       expect(db.mediaTranscripts.schema.primKey.name).toBe("mediaId");
       expect(db.mediaTranscripts.schema.indexes.map((index) => index.name)).toEqual(
         expect.arrayContaining(["tripId", "status", "updatedAt"])

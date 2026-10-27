@@ -37,6 +37,15 @@ describe("localizeUserError", () => {
     expect(localizeUserError("Email not confirmed", t, "errors.unexpected")).toBe(
       "Tu correo aún está pendiente de confirmación. Abre el enlace que te enviamos y luego inicia sesión.",
     );
+    expect(
+      localizeUserError(
+        "Planning a specific place needs Scout's AI connection. Try again, or add the idea manually.",
+        t,
+        "errors.unexpected"
+      )
+    ).toBe(
+      "Planificar un lugar concreto necesita la conexión de Scout con la IA. Inténtalo de nuevo o agrega la idea manualmente."
+    );
     expect(localizeThrownError(new Error(""), t, "Please try again.")).toBe("Inténtalo de nuevo.");
   });
 });

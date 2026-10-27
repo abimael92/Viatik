@@ -19,6 +19,7 @@ import type {
   NewTripIdea,
   TripIdea,
   TripIdeaEstimate,
+  TripIdeaFlightRoute,
   TripIdeaPriceCheck,
   TripSavingsPlan,
 } from "@/features/trip-planner/domain/trip-planner-types";
@@ -70,6 +71,54 @@ function normalizeEstimates(estimates: TripIdeaEstimate[]): TripIdeaEstimate[] {
     seen.add(estimate.category);
     return { category: estimate.category, amountMinor: estimate.amountMinor };
   });
+}
+
+function normalizeTravelerContactIds(ids: string[] | undefined): string[] {
+  const unique = new Set<string>();
+  for (const id of ids ?? []) {
+    const trimmed = id.trim();
+    if (!trimmed || trimmed.length > 120) throw new Error("Enter a valid traveler contact.");
+    unique.add(trimmed);
+  }
+  if (unique.size > 19) throw new Error("A crew can include at most 19 contacts.");
+  return [...unique];
+}
+
+function normalizeFlightRoute(
+  route: TripIdeaFlightRoute | null | undefined
+): TripIdeaFlightRoute | null {
+  if (route == null) return null;
+  if (route.isEstimate !== true || typeof route.arrivesSameDate !== "boolean") {
+    throw new Error("Enter a valid flight route estimate.");
+  }
+  if (!Array.isArray(route.legs) || route.legs.length < 1 || route.legs.length > 4) {
+    throw new Error("A flight route needs between 1 and 4 legs.");
+  }
+  const legs = route.legs.map((leg) => {
+    const from = boundedText(leg.from, "flight leg origin", 80);
+    const to = boundedText(leg.to, "flight leg destination", 80);
+    if (
+      !Number.isInteger(leg.approxDurationMinutes) ||
+      leg.approxDurationMinutes < 20 ||
+      leg.approxDurationMinutes > 1500
+    ) {
+      throw new Error("Flight leg durations must be between 20 and 1500 minutes.");
+    }
+    if (
+      !Number.isInteger(leg.layoverAfterMinutes) ||
+      leg.layoverAfterMinutes < 0 ||
+      leg.layoverAfterMinutes > 720
+    ) {
+      throw new Error("Flight layovers must be between 0 and 720 minutes.");
+    }
+    return {
+      from,
+      to,
+      approxDurationMinutes: leg.approxDurationMinutes,
+      layoverAfterMinutes: leg.layoverAfterMinutes,
+    };
+  });
+  return { legs, arrivesSameDate: route.arrivesSameDate, isEstimate: true };
 }
 
 function normalizeTripIdea(input: NewTripIdea, now: string): TripIdea {
@@ -126,6 +175,8 @@ function normalizeTripIdea(input: NewTripIdea, now: string): TripIdea {
     durationDays: input.durationDays ?? null,
     adultCount: input.adultCount ?? 1,
     childCount: input.childCount ?? 0,
+    travelerContactIds: normalizeTravelerContactIds(input.travelerContactIds),
+    flightRoute: normalizeFlightRoute(input.flightRoute),
     currency: normalizeCurrencyCode(input.currency),
     interests,
     notes,
