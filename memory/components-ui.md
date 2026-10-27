@@ -220,11 +220,15 @@ and `lib/i18n/error-copy.ts`. Locale persists in `localStorage["viatik-language"
 - **Where step:** `ScoutWhereStep` (`scout-where-step.tsx`) = `DestinationField`
   (Places autocomplete; `placeId/latitude/longitude/timeZone` kept client-side)
   - a "Surprise me" card that clears the destination. Empty = idea mode.
-- **Crew:** count cards or "From my contacts" — `ScoutCrewContactsDialog`
-  (`scout-crew-contacts-dialog.tsx`, nested dialog) multi-selects Dexie contacts
-  via `contactRepository.watch(ownerId)`; badge for `linkedProfileId`; cap 19.
-  crewSize = 1 + selected; contact data never reaches the Server Action.
-- **Timing:** four cards — exact dates (`timing:"dates"`, two `type="date"`
+- **Crew:** three `SelectableCard`s — Solo (1), duo (2), small crew (3+). Picking
+  the crew card reveals a `type="number"` input (3–20, local string draft) plus a
+  "Pick from my contacts" outline button that opens `ScoutCrewContactsDialog`
+  (`scout-crew-contacts-dialog.tsx`, nested dialog) multi-selecting Dexie
+  contacts via `contactRepository.watch(ownerId)`; badge for `linkedProfileId`;
+  cap 19. crewSize = 1 + selected; contact data never reaches the Server Action.
+  Editing the input while in contacts mode switches back to a plain count.
+- **Timing:** four compact (`compact` prop on `SelectableCard`, 2×2
+  `grid-cols-2`) cards — exact dates (`timing:"dates"`, two `type="date"`
   inputs validated start ≥ today, end ≥ start, ≤60 days), calculate-for-me
   (asap), month, cheapest. Exact dates hide trip-length/exact-days and the badge
   shows "N days".
@@ -298,10 +302,36 @@ and `lib/i18n/error-copy.ts`. Locale persists in `localStorage["viatik-language"
 - **Results:** rows lead with the destination, the **Top Match for You** pill
   (gradient border, first card only, which also gets a thicker gradient rail),
   the `scout_pitch` clamped to two lines, and only then the trip goal pill +
-  duration. The expanded detail opens with season/traveler/cabin/stops badges,
-  then three stat pills (trip goal = gradient, fare = blue, stay = magenta), a
-  today → book-by → goal-reached timeline, then `Tabs` (Budget · Savings ·
-  Flights · Stay) with a 2×2 grid on mobile and 4-up on `sm`. Provider submodals
-  stay in the always-visible footer next to the save CTA.
+  duration. The expanded detail opens with season/cabin/stops badges, then one
+  compact `lg:grid-cols-2` summary panel: left = trip goal total + traveler
+  count + an aria-hidden stacked proportion bar (flights blue / stay magenta /
+  daily muted) + a 3-column `dl` with each leg's amount and one-line detail;
+  right = the today → book-by → goal-reached timeline, pinned-dates/shortfall
+  lines, and the summary sentence. Flight/Stay detail dialogs and the save CTA
+  sit in one action row (`sm:flex-row`, save = `sm:flex-[1.4]` gradient).
 - **Loading:** skeletons are preceded by `copy.scoutWizardThinking` ("Scout is
   matching routes, stays, and vibes...") inside the `aria-busy` region.
+
+## 12. Trips page (`features/trips/components/trip-dashboard.tsx`)
+
+- The Trips page is a **single view**: header (eyebrow, H1, "Create trip"),
+  `MetricsRow`, search, invitations, then trips (skeleton / `EmptyTrips` /
+  no-matches / `SegmentedTabs` Upcoming-Past), and finally
+  `<TripPlannerView userId embedded />` rendered **unconditionally** as the
+  last section — the wishlist, Scout wizard trigger, and Add-idea button are
+  always on the page. There is no ideas tab and no page swap.
+- `TripPlannerView` (`features/trip-planner/components/trip-planner-view.tsx`)
+  takes optional `onBack` + `embedded`. Embedded mode replaces the back
+  button/eyebrow/H1 header with a `sm:flex-row sm:items-end` section header:
+  level-2 `Heading` "Want to go" (`id`ed, referenced by the section's
+  `aria-labelledby`) + the device-local `tripPlannerDescription`, and the same
+  shared action buttons. Non-embedded rendering is unchanged (still used by
+  the `/e2e` harness).
+- `TripFormDialog` (create mode only) has a "Save as idea" outline button on
+  every step: it validates only name/destination/notes bounds (destination is
+  required for ideas), skips the trip date/split/cover checks, and calls
+  `tripIdeaRepository.create`; `onIdeaSaved` fires a success toast.
+- `TripIdeaCard` shows a status chip ("Idea" muted / "Planned trip" success)
+  driven by `convertedToTripId`; converted cards drop Edit, savings, and price
+  sections, keep the "Open trip" link + delete, and add a muted note. The
+  planner list stable-sorts unconverted ideas first.

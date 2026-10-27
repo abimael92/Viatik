@@ -22,12 +22,11 @@ import {
   TrendingDown,
   User,
   UsersRound,
-  Wallet,
   Waves,
   type LucideIcon,
 } from "lucide-react";
-import { motion, useReducedMotion } from "motion/react";
-import { useEffect, useState, type ReactNode } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { reverseGeocodeDestination, type PlaceDetails } from "@/app/actions/places";
 import { generateScoutTripIdeas } from "@/app/actions/scout-trip-ideas";
@@ -37,7 +36,6 @@ import { Collapsible } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   decimalFromMinorUnits,
   formatMinorUnits,
@@ -220,6 +218,14 @@ const CONTINENT_KEYS: Record<Suggestion["continent"], TranslationKey> = {
 
 const EASE: [number, number, number, number] = [0.23, 1, 0.32, 1];
 const CARD_ENTER_MS = 0.24;
+const SCOUT_FIRST_WAVE_COUNT = 2;
+const SCOUT_STAGE_KEYS = [
+  "copy.scoutWizardStage1",
+  "copy.scoutWizardStage2",
+  "copy.scoutWizardStage3",
+  "copy.scoutWizardStage4",
+  "copy.scoutWizardStage5",
+] as const;
 const CARD_STAGGER_MS = 0.04;
 const CARD_STAGGER_CAP = 4;
 const TYPEWRITER_MS = 10;
@@ -308,102 +314,11 @@ function ScoutSpeech({
   );
 }
 
-function DetailRow({
-  icon,
-  label,
-  detail,
-  amount,
-  emphasis = false,
-}: {
-  icon?: ReactNode;
-  label: string;
-  detail: string;
-  amount: string;
-  emphasis?: boolean;
-}) {
-  return (
-    <div
-      className={
-        emphasis
-          ? "flex items-start justify-between gap-3 border-t border-border/60 pt-3"
-          : "flex items-start justify-between gap-3"
-      }
-    >
-      <div className="min-w-0">
-        <dt className="flex items-center gap-2 text-sm font-medium">
-          {icon}
-          {label}
-        </dt>
-        <dd className="mt-0.5 text-xs text-muted-foreground">{detail}</dd>
-      </div>
-      <dd className={emphasis ? "shrink-0 font-semibold tabular-nums" : "shrink-0 tabular-nums"}>
-        {amount}
-      </dd>
-    </div>
-  );
-}
-
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-3 border-b border-border/40 py-2 last:border-b-0">
       <dt className="text-sm text-muted-foreground">{label}</dt>
       <dd className="text-right text-sm font-medium tabular-nums">{value}</dd>
-    </div>
-  );
-}
-
-function StatTile({
-  label,
-  value,
-  detail,
-  emphasis = false,
-  tone = "muted",
-  className,
-}: {
-  label: string;
-  value: string;
-  detail?: string;
-  emphasis?: boolean;
-  tone?: "muted" | "blue" | "magenta";
-  className?: string;
-}) {
-  return (
-    <div
-      className={cn(
-        "rounded-xl border p-3",
-        emphasis
-          ? "border-transparent bg-viatik-gradient text-white shadow-sm"
-          : "border-border/60 bg-muted/30",
-        className
-      )}
-    >
-      <dt>
-        <span
-          className={cn(
-            "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-            emphasis
-              ? "bg-white/20 text-white"
-              : tone === "blue"
-                ? "bg-viatik-blue/10 text-viatik-blue"
-                : tone === "magenta"
-                  ? "bg-viatik-magenta/10 text-viatik-magenta"
-                  : "bg-muted text-muted-foreground"
-          )}
-        >
-          {label}
-        </span>
-      </dt>
-      <dd className="mt-1.5 text-lg font-semibold leading-tight tabular-nums">{value}</dd>
-      {detail && (
-        <dd
-          className={cn(
-            "mt-0.5 text-[11px] leading-snug",
-            emphasis ? "text-white/80" : "text-muted-foreground"
-          )}
-        >
-          {detail}
-        </dd>
-      )}
     </div>
   );
 }
@@ -426,9 +341,9 @@ function RequirementHint({ kind }: { kind: "required" | "optional" }) {
 }
 
 /**
- * The expanded idea surface. It leads with the three numbers a traveler acts
- * on, then a today → book-by → ready timeline, then one detail panel at a time
- * so a long estimate never becomes a wall of text.
+ * The expanded idea surface: one compact panel pairing the budget breakdown
+ * (total, proportion bar, per-leg amounts) with the savings timeline, so every
+ * number appears exactly once.
  */
 function IdeaDetails({
   suggestion,
@@ -448,24 +363,57 @@ function IdeaDetails({
   nonstopOnly: boolean;
 }) {
   const { t } = useI18n();
-  const cadenceLabel =
-    plan.savings.cadence === "weekly" ? t("copy.scoutWizardWeekly") : t("copy.scoutWizardMonthly");
   const readyLabel = !plan.savings.hasPace
     ? t("copy.scoutIdeaSearchNotSet")
     : plan.savings.withinReach
       ? formatDay(plan.savings.readyOn, locale)
       : t("copy.scoutIdeaTimelineUnknown");
-  const bookByLabel = plan.savings.hasPace ? formatDay(plan.flights.bookBy, locale) : t("copy.scoutIdeaSearchNotSet");
+  const bookByLabel = plan.savings.hasPace
+    ? formatDay(plan.flights.bookBy, locale)
+    : t("copy.scoutIdeaSearchNotSet");
+  const budgetTotal = plan.grandTotalMinor;
+  const share = (part: bigint) =>
+    budgetTotal > 0n ? Number((part * 1000n) / budgetTotal) / 10 : 0;
+  const budgetRows = [
+    {
+      label: t("copy.scoutIdeaBudgetFlights"),
+      amount: plan.flightTotalMinor,
+      detail: t("copy.scoutIdeaBudgetFlightsDetail", {
+        amount: formatMinorUnits(plan.flightTotalMinor / BigInt(crewSize), currency),
+        travelers: crewSize,
+      }),
+      dot: "bg-viatik-blue",
+    },
+    {
+      label: t("copy.scoutIdeaBudgetStay"),
+      amount: plan.stay.hotelTotalMinor,
+      detail: t("copy.scoutIdeaBudgetStayDetail", {
+        amount: formatMinorUnits(plan.stay.nightlyHotelMinor, currency),
+        nights: plan.nights,
+      }),
+      dot: "bg-viatik-magenta",
+    },
+    {
+      label: t("copy.scoutIdeaBudgetDaily"),
+      amount: plan.dailyTotalMinor,
+      detail: t("copy.scoutIdeaBudgetDailyDetail", {
+        amount: formatMinorUnits(
+          plan.dailyTotalMinor / BigInt(crewSize * suggestion.ideal_duration_days),
+          currency
+        ),
+        days: suggestion.ideal_duration_days,
+        travelers: crewSize,
+      }),
+      dot: "bg-muted-foreground/40",
+    },
+  ];
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-1.5">
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-1">
         <Badge variant="muted" className="gap-1.5 normal-case tracking-normal">
           <CalendarClock aria-hidden className="size-3.5" />
           {suggestion.best_season}
-        </Badge>
-        <Badge variant="outline" className="normal-case tracking-normal">
-          {t("copy.scoutIdeaSearchTravelers")}: {crewSize}
         </Badge>
         <Badge variant="outline" className="normal-case tracking-normal">
           {t("copy.scoutIdeaSearchCabinEconomy")}
@@ -477,237 +425,110 @@ function IdeaDetails({
         </Badge>
       </div>
 
-      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        <StatTile
-          emphasis
-          label={t("copy.scoutIdeaBudgetTotal")}
-          value={formatMinorUnits(plan.grandTotalMinor, currency)}
-          detail={t("copy.scoutIdeaStatGoalDetail", { travelers: crewSize })}
-        />
-        <StatTile
-          tone="blue"
-          label={t("copy.scoutIdeaStatFare")}
-          value={formatMinorUnits(
-            toMinorUnits(suggestion.estimated_flight_cost_per_person, currency),
-            currency
-          )}
-          detail={t("copy.scoutIdeaStatFareDetail")}
-        />
-        <StatTile
-          tone="magenta"
-          className="col-span-2 sm:col-span-1"
-          label={t("copy.scoutIdeaStatStay")}
-          value={formatMinorUnits(plan.stay.hotelTotalMinor, currency)}
-          detail={t("copy.scoutIdeaStatStayDetail", { nights: plan.nights })}
-        />
-      </dl>
-
-      <section
-        className="rounded-2xl border border-border/60 bg-muted/30 p-3"
-        aria-labelledby={`timeline-${suggestion.destination}`}
-      >
-        <h4
-          id={`timeline-${suggestion.destination}`}
-          className="flex items-center gap-2 text-sm font-semibold"
-        >
-          <CalendarClock aria-hidden className="size-4 text-viatik-magenta" />
-          {t("copy.scoutIdeaSavingsHeading")}
-        </h4>
-        <ol className="mt-3 grid grid-cols-3 gap-2">
-          {[
-            { label: t("copy.scoutIdeaTimelineToday"), value: t("copy.scoutIdeaTimelineNow") },
-            { label: t("copy.scoutIdeaTimelineBookBy"), value: bookByLabel },
-            { label: t("copy.scoutIdeaTimelineReady"), value: readyLabel },
-          ].map((node, index) => (
-            <li key={node.label} className="min-w-0">
+      <section className="grid gap-3 rounded-2xl border bg-muted/30 p-3 lg:grid-cols-2">
+        <div className="min-w-0">
+          <div className="flex items-end justify-between gap-2">
+            <div className="min-w-0">
+              <h4 className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                {t("copy.scoutIdeaBudgetTotal")}
+              </h4>
+              <p className="truncate text-xl font-semibold tabular-nums">
+                {formatMinorUnits(budgetTotal, currency)}
+              </p>
+            </div>
+            <p className="shrink-0 text-xs text-muted-foreground">
+              {t("copy.scoutIdeaSearchTravelers")}: {crewSize}
+            </p>
+          </div>
+          <div aria-hidden className="mt-2 flex h-2 overflow-hidden rounded-full">
+            {budgetRows.map((row) => (
               <div
-                aria-hidden
-                className={cn(
-                  "h-1 rounded-full",
-                  index === 0 ? "bg-viatik-gradient" : "bg-border"
-                )}
+                key={row.label}
+                className={row.dot}
+                style={{ width: `${share(row.amount)}%` }}
               />
-              <p className="mt-1.5 truncate text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                {node.label}
-              </p>
-              <p className="mt-0.5 truncate text-xs font-semibold tabular-nums">{node.value}</p>
-            </li>
-          ))}
-        </ol>
-        {plan.dates.pinned && (
-          <p className="mt-3 text-sm font-medium">
-            {t("copy.scoutIdeaPinnedDates", {
-              start: formatDay(plan.stay.checkIn, locale),
-              end: formatDay(plan.stay.checkOut, locale),
-            })}
-          </p>
-        )}
-        {plan.dates.shortfallMinor !== null && (
-          <p
-            className={cn(
-              "mt-2 text-sm",
-              plan.dates.shortfallMinor > 0n ? "font-medium text-viatik-magenta" : "text-success"
-            )}
-          >
-            {plan.dates.shortfallMinor > 0n
-              ? t("copy.scoutIdeaShortfall", {
-                  amount: formatMinorUnits(plan.dates.shortfallMinor, currency),
-                })
-              : t("copy.scoutIdeaCovered")}
-          </p>
-        )}
-        <p className="mt-3 rounded-xl border-l-2 border-viatik-magenta bg-card/70 p-2.5 text-sm">
-          {summary}
-        </p>
-      </section>
-
-      <Tabs defaultValue="budget">
-        <TabsList className="grid h-auto grid-cols-2 gap-1 p-1 sm:grid-cols-4">
-          <TabsTrigger value="budget" className="h-9 px-2 text-xs">
-            <Wallet aria-hidden className="size-4" />
-            {t("copy.scoutIdeaTabBudget")}
-          </TabsTrigger>
-          <TabsTrigger value="savings" className="h-9 px-2 text-xs">
-            <CalendarClock aria-hidden className="size-4" />
-            {t("copy.scoutIdeaTabSavings")}
-          </TabsTrigger>
-          <TabsTrigger value="flights" className="h-9 px-2 text-xs">
-            <Plane aria-hidden className="size-4" />
-            {t("copy.scoutIdeaTabFlights")}
-          </TabsTrigger>
-          <TabsTrigger value="stay" className="h-9 px-2 text-xs">
-            <BedDouble aria-hidden className="size-4" />
-            {t("copy.scoutIdeaTabStay")}
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="budget" className="mt-3 space-y-2">
-          <p className="text-sm font-semibold">
-            {t("copy.scoutIdeaBudgetHeading", { travelers: crewSize })}
-          </p>
-          <dl className="space-y-2">
-            <DetailRow
-              icon={<Plane aria-hidden className="size-4 text-muted-foreground" />}
-              label={t("copy.scoutIdeaBudgetFlights")}
-              detail={t("copy.scoutIdeaBudgetFlightsDetail", {
-                amount: formatMinorUnits(plan.flightTotalMinor / BigInt(crewSize), currency),
-                travelers: crewSize,
-              })}
-              amount={formatMinorUnits(plan.flightTotalMinor, currency)}
-            />
-            <DetailRow
-              icon={<BedDouble aria-hidden className="size-4 text-muted-foreground" />}
-              label={t("copy.scoutIdeaBudgetStay")}
-              detail={t("copy.scoutIdeaBudgetStayDetail", {
-                amount: formatMinorUnits(plan.stay.nightlyHotelMinor, currency),
-                nights: plan.nights,
-              })}
-              amount={formatMinorUnits(plan.stay.hotelTotalMinor, currency)}
-            />
-            <DetailRow
-              label={t("copy.scoutIdeaBudgetDaily")}
-              detail={t("copy.scoutIdeaBudgetDailyDetail", {
-                amount: formatMinorUnits(
-                  plan.dailyTotalMinor / BigInt(crewSize * suggestion.ideal_duration_days),
-                  currency
-                ),
-                days: suggestion.ideal_duration_days,
-                travelers: crewSize,
-              })}
-              amount={formatMinorUnits(plan.dailyTotalMinor, currency)}
-            />
-            <DetailRow
-              label={t("copy.scoutIdeaBudgetTotal")}
-              detail=""
-              amount={formatMinorUnits(plan.grandTotalMinor, currency)}
-              emphasis
-            />
+            ))}
+          </div>
+          <dl className="mt-2 grid grid-cols-3 gap-2">
+            {budgetRows.map((row) => (
+              <div key={row.label} className="min-w-0">
+                <dt className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+                  <span
+                    aria-hidden
+                    className={cn("size-2 shrink-0 rounded-full", row.dot)}
+                  />
+                  <span className="truncate">{row.label}</span>
+                </dt>
+                <dd className="mt-0.5 truncate text-sm font-semibold tabular-nums">
+                  {formatMinorUnits(row.amount, currency)}
+                </dd>
+                <dd className="truncate text-[11px] text-muted-foreground">{row.detail}</dd>
+              </div>
+            ))}
           </dl>
-        </TabsContent>
+        </div>
 
-        <TabsContent value="savings" className="mt-3 space-y-2">
+        <div className="min-w-0">
+          <h4 className="sr-only">{t("copy.scoutIdeaSavingsHeading")}</h4>
           {!plan.savings.hasPace ? (
-            <p className="text-sm">{t("copy.scoutIdeaNoSavingsPace")}</p>
-          ) : plan.savings.withinReach ? (
-            <>
-              <p className="text-sm">
-                {t("copy.scoutIdeaSavingsDetail", {
-                  amount: formatMinorUnits(plan.savings.contributionMinor, currency),
-                  cadence: cadenceLabel,
-                })}
-              </p>
-              <p className="text-sm font-medium">
-                {t("copy.scoutIdeaSavingsReady", { date: formatDay(plan.savings.readyOn, locale) })}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {t("copy.scoutIdeaSavingsPeriods", {
-                  periods: plan.savings.periods,
-                  cadence: cadenceLabel,
-                })}
-              </p>
-            </>
+            <p className="text-xs text-muted-foreground">{summary}</p>
           ) : (
-            <p className="text-sm">{t("copy.scoutIdeaOutOfReach")}</p>
+            <>
+              <ol className="grid grid-cols-3 gap-2">
+                {[
+                  {
+                    label: t("copy.scoutIdeaTimelineToday"),
+                    value: t("copy.scoutIdeaTimelineNow"),
+                  },
+                  { label: t("copy.scoutIdeaTimelineBookBy"), value: bookByLabel },
+                  { label: t("copy.scoutIdeaTimelineReady"), value: readyLabel },
+                ].map((node, index) => (
+                  <li key={node.label} className="min-w-0">
+                    <div
+                      aria-hidden
+                      className={cn(
+                        "h-1 rounded-full",
+                        index === 0 ? "bg-viatik-gradient" : "bg-border"
+                      )}
+                    />
+                    <p className="mt-1.5 truncate text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      {node.label}
+                    </p>
+                    <p className="mt-0.5 truncate text-xs font-semibold tabular-nums">
+                      {node.value}
+                    </p>
+                  </li>
+                ))}
+              </ol>
+              {plan.dates.pinned && (
+                <p className="mt-2 text-xs font-medium">
+                  {t("copy.scoutIdeaPinnedDates", {
+                    start: formatDay(plan.stay.checkIn, locale),
+                    end: formatDay(plan.stay.checkOut, locale),
+                  })}
+                </p>
+              )}
+              {plan.dates.shortfallMinor !== null && (
+                <p
+                  className={cn(
+                    "mt-1 text-xs",
+                    plan.dates.shortfallMinor > 0n
+                      ? "font-medium text-viatik-magenta"
+                      : "text-success"
+                  )}
+                >
+                  {plan.dates.shortfallMinor > 0n
+                    ? t("copy.scoutIdeaShortfall", {
+                        amount: formatMinorUnits(plan.dates.shortfallMinor, currency),
+                      })
+                    : t("copy.scoutIdeaCovered")}
+                </p>
+              )}
+              <p className="mt-2 text-xs text-muted-foreground">{summary}</p>
+            </>
           )}
-        </TabsContent>
-
-        <TabsContent value="flights" className="mt-3 space-y-2">
-          {plan.savings.hasPace && (
-            <p className="text-sm">
-              {t("copy.scoutIdeaFlightsWindow", {
-                weeks: Math.round(plan.flights.bookingWindowDays / 7),
-                date: formatDay(plan.flights.bookBy, locale),
-              })}
-            </p>
-          )}
-          <p className="text-sm">
-            {t("copy.scoutIdeaFlightsDeparture", {
-              earliest: formatDay(plan.flights.earliestDeparture, locale),
-              latest: formatDay(plan.flights.latestDeparture, locale),
-            })}
-          </p>
-          <p className="text-xs text-muted-foreground">{t("copy.scoutIdeaFlightsNote")}</p>
-        </TabsContent>
-
-        <TabsContent value="stay" className="mt-3 space-y-2">
-          <p className="text-sm font-semibold">{t("copy.scoutIdeaStayHeading")}</p>
-          <dl className="space-y-2">
-            <DetailRow
-              label={t("copy.scoutIdeaStayHotel")}
-              detail={t("copy.scoutIdeaStayPerNight", {
-                amount: formatMinorUnits(plan.stay.nightlyHotelMinor, currency),
-                total: formatMinorUnits(plan.stay.hotelTotalMinor, currency),
-                nights: plan.nights,
-              })}
-              amount={formatMinorUnits(plan.stay.hotelTotalMinor, currency)}
-            />
-            <DetailRow
-              label={t("copy.scoutIdeaStayAlt")}
-              detail={t("copy.scoutIdeaStayPerNight", {
-                amount: formatMinorUnits(plan.stay.nightlyAltMinor, currency),
-                total: formatMinorUnits(plan.stay.altTotalMinor, currency),
-                nights: plan.nights,
-              })}
-              amount={formatMinorUnits(plan.stay.altTotalMinor, currency)}
-            />
-          </dl>
-          {plan.stay.altSavingsMinor > 0n && (
-            <p className="text-sm font-medium text-success">
-              {t("copy.scoutIdeaStaySaving", {
-                amount: formatMinorUnits(plan.stay.altSavingsMinor, currency),
-              })}
-            </p>
-          )}
-          {plan.stay.altSavingsMinor < 0n && (
-            <p className="text-sm text-muted-foreground">
-              {t("copy.scoutIdeaStayExtra", {
-                amount: formatMinorUnits(-plan.stay.altSavingsMinor, currency),
-              })}
-            </p>
-          )}
-          <p className="text-xs text-muted-foreground">{t("copy.scoutIdeaStayNote")}</p>
-        </TabsContent>
-      </Tabs>
+        </div>
+      </section>
     </div>
   );
 }
@@ -1020,6 +841,7 @@ function SelectableCard({
   icon,
   onSelect,
   groupAnchor = false,
+  compact = false,
 }: {
   selected: boolean;
   title: string;
@@ -1027,6 +849,7 @@ function SelectableCard({
   icon: ReactNode;
   onSelect: () => void;
   groupAnchor?: boolean;
+  compact?: boolean;
 }) {
   return (
     <button
@@ -1035,28 +858,76 @@ function SelectableCard({
       data-scout-crew={groupAnchor ? "" : undefined}
       onClick={onSelect}
       className={cn(
-        "flex min-h-11 w-full cursor-pointer items-start gap-3 rounded-xl border border-border/80 bg-card/60 p-4 text-left transition-all duration-200 ease-out hover:border-primary/50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        "flex min-h-11 w-full cursor-pointer rounded-xl border border-border/80 bg-card/60 text-left transition-all duration-200 ease-out hover:border-primary/50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        compact ? "h-full items-center gap-2.5 p-3" : "items-start gap-3 p-4",
         selected && "border-primary bg-primary/5 shadow-sm ring-2 ring-primary"
       )}
     >
       <span
         aria-hidden
         className={cn(
-          "grid size-9 shrink-0 place-items-center rounded-lg",
+          "grid shrink-0 place-items-center rounded-lg",
+          compact ? "size-8" : "size-9",
           selected ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
         )}
       >
         {icon}
       </span>
       <span className="min-w-0">
-        <span className="block text-sm font-semibold leading-snug">{title}</span>
+        <span
+          className={cn(
+            "block text-sm font-semibold",
+            compact ? "leading-tight" : "leading-snug"
+          )}
+        >
+          {title}
+        </span>
         {subtitle && (
-          <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">
+          <span
+            className={cn(
+              "mt-0.5 block leading-snug text-muted-foreground",
+              compact ? "text-[11px] line-clamp-2" : "text-xs"
+            )}
+          >
             {subtitle}
           </span>
         )}
       </span>
     </button>
+  );
+}
+
+/** Shimmer placeholder shaped like a result card; shared by the loading view
+ *  and the wave-2 "more coming" placeholders. */
+function ScoutSkeletonCard({ index, reducedMotion }: { index: number; reducedMotion: boolean }) {
+  return (
+    <motion.div
+      aria-hidden
+      initial={reducedMotion ? false : { opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, delay: reducedMotion ? 0 : index * 0.08 }}
+      className="relative w-[86vw] shrink-0 snap-center overflow-hidden rounded-2xl border border-border/60 bg-card p-4 sm:w-auto"
+    >
+      <div className="flex items-center gap-3">
+        <div className="size-9 shrink-0 rounded-xl bg-muted" />
+        <div className="flex-1 space-y-2">
+          <div className="h-3 w-1/2 rounded bg-muted" />
+          <div className="h-2.5 w-1/3 rounded bg-muted" />
+        </div>
+      </div>
+      <div className="mt-3 space-y-2">
+        <div className="h-2.5 w-full rounded bg-muted" />
+        <div className="h-2.5 w-3/4 rounded bg-muted" />
+      </div>
+      <div className="mt-3 h-5 w-20 rounded-full bg-muted" />
+      {!reducedMotion && (
+        <motion.div
+          className="absolute inset-0 bg-gradient-to-r from-transparent via-foreground/10 to-transparent"
+          animate={{ x: ["-100%", "100%"] }}
+          transition={{ duration: 1.6, repeat: Infinity, ease: "linear", delay: index * 0.15 }}
+        />
+      )}
+    </motion.div>
   );
 }
 
@@ -1138,6 +1009,8 @@ export function ScoutIdeaWizard({
   const [travelerContactIds, setTravelerContactIds] = useState<string[]>([]);
   const [contactsOpen, setContactsOpen] = useState(false);
   const [crewSize, setCrewSize] = useState<number | null>(null);
+  const [crewSizeDraft, setCrewSizeDraft] = useState("3");
+  const [crewGroupPicked, setCrewGroupPicked] = useState(false);
   const [savingsAmount, setSavingsAmount] = useState("");
   const [savingsCadence, setSavingsCadence] = useState<"weekly" | "monthly">("monthly");
   const [originCity, setOriginCity] = useState(defaultOrigin);
@@ -1161,6 +1034,9 @@ export function ScoutIdeaWizard({
   const [loading, setLoading] = useState(false);
   const [addingMore, setAddingMore] = useState(false);
   const [exhausted, setExhausted] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [loadingStage, setLoadingStage] = useState(0);
+  const runId = useRef(0);
   const [savingIndex, setSavingIndex] = useState<number | null>(null);
   const [expandedIndex, setExpandedIndex] = useState<number | null>(0);
   const [infoDialog, setInfoDialog] = useState<{ kind: "flights" | "stay"; index: number } | null>(
@@ -1172,6 +1048,7 @@ export function ScoutIdeaWizard({
   const stepId = steps[Math.min(step, steps.length - 1)] ?? "where";
   /** Contacts crews are you plus the picked people; counts stay manual. */
   const travelers = crewMode === "contacts" ? 1 + travelerContactIds.length : (crewSize ?? 1);
+  const crewGroupActive = crewMode === "contacts" || crewGroupPicked;
   /** Inclusive day count for exact dates; null while the pair is incomplete. */
   const exactDatesDays = (() => {
     if (timing !== "dates" || !startDate || !endDate) return null;
@@ -1198,6 +1075,8 @@ export function ScoutIdeaWizard({
     setTravelerContactIds([]);
     setContactsOpen(false);
     setCrewSize(null);
+    setCrewSizeDraft("3");
+    setCrewGroupPicked(false);
     setSavingsAmount("");
     setSavingsCadence("monthly");
     setOriginCity(defaultOrigin);
@@ -1224,12 +1103,23 @@ export function ScoutIdeaWizard({
     setSavingIndex(null);
     setExpandedIndex(0);
     setInfoDialog(null);
+    setPendingCount(0);
+    setLoadingStage(0);
+    runId.current += 1;
   }
 
   function close(openNext: boolean) {
     onOpenChange(openNext);
     if (!openNext) reset();
   }
+
+  useEffect(() => {
+    if (!loading || reducedMotion) return;
+    const interval = window.setInterval(() => {
+      setLoadingStage((current) => Math.min(current + 1, SCOUT_STAGE_KEYS.length - 1));
+    }, 2800);
+    return () => window.clearInterval(interval);
+  }, [loading, reducedMotion]);
 
   function readPosition(): Promise<GeolocationPosition> {
     return new Promise((resolve, reject) => {
@@ -1468,30 +1358,79 @@ export function ScoutIdeaWizard({
       return;
     }
 
+    const run = ++runId.current;
     setLoading(true);
     setExhausted(false);
+    setLoadingStage(0);
+    let first: Suggestion[];
     try {
       const result = await callScout({
         savingsMinor: parsedSavings,
-        count: SCOUT_INITIAL_IDEA_COUNT,
+        count: SCOUT_FIRST_WAVE_COUNT,
         excludeDestinations: [],
         excludeRoutes: [],
       });
       if (!result.success) {
         setError(localizeUserError(result.error, t, "errors.unexpected"));
+        setLoading(false);
         return;
       }
-      setSavingsCapacityMinor(parsedSavings);
-      setSuggestions(result.suggestions.ideas);
-      setExpandedIndex(0);
+      first = result.suggestions.ideas;
     } catch {
       setError(t("copy.scoutOfflineError"));
-    } finally {
       setLoading(false);
+      return;
+    }
+
+    setSavingsCapacityMinor(parsedSavings);
+    setSuggestions(first.slice(0, SCOUT_INITIAL_IDEA_COUNT));
+    setExpandedIndex(0);
+    const remaining = Math.max(0, SCOUT_INITIAL_IDEA_COUNT - first.length);
+    const wantsMore = remaining > 0 && first.length >= SCOUT_FIRST_WAVE_COUNT;
+    if (wantsMore) setPendingCount(remaining);
+    setLoading(false);
+    if (!wantsMore) return;
+
+    try {
+      const result = await callScout({
+        savingsMinor: parsedSavings,
+        count: remaining,
+        // Route mode excludes the routings already shown; idea mode excludes places.
+        excludeDestinations: routeMode ? [] : first.map((item) => item.destination),
+        excludeRoutes: routeMode
+          ? first.map((item) => routeSignature(item.flight_route))
+          : [],
+      });
+      if (runId.current !== run) return;
+      if (!result.success) {
+        setError(localizeUserError(result.error, t, "errors.unexpected"));
+        return;
+      }
+      const fresh = result.suggestions.ideas;
+      if (fresh.length < remaining) setExhausted(true);
+      setSuggestions((current) => {
+        const seenDestinations = new Set(current.map((item) => item.destination));
+        const seenRoutes = new Set(
+          current.map((item) => routeSignature(item.flight_route))
+        );
+        const additions = fresh
+          .filter((item) =>
+            routeMode
+              ? !seenRoutes.has(routeSignature(item.flight_route))
+              : !seenDestinations.has(item.destination)
+          )
+          .slice(0, Math.max(0, SCOUT_INITIAL_IDEA_COUNT - current.length));
+        return [...current, ...additions];
+      });
+    } catch {
+      if (runId.current === run) setError(t("copy.scoutOfflineError"));
+    } finally {
+      if (runId.current === run) setPendingCount(0);
     }
   }
 
   async function addMore() {
+    if (pendingCount > 0) return;
     setError(null);
     setAddingMore(true);
     try {
@@ -1563,7 +1502,9 @@ export function ScoutIdeaWizard({
       : stepId === "crew"
         ? crewMode === "contacts"
           ? "copy.scoutWizardCrewContactsReaction"
-          : CREW_CHOICES.find((option) => option.size === crewSize)?.reactionKey
+          : CREW_CHOICES.find((option) =>
+                option.size === 3 ? (crewSize ?? 0) >= 3 : option.size === crewSize
+              )?.reactionKey
         : stepId === "timing" && timingTouched
           ? TIMING_CHOICES.find((option) => option.value === timing)?.reactionKey
           : undefined;
@@ -1688,23 +1629,44 @@ export function ScoutIdeaWizard({
             </div>
           ) : loading ? (
             <div className="space-y-3" aria-busy="true" aria-live="polite">
-              <p className="flex items-center gap-2 text-sm font-medium">
-                <Sparkles aria-hidden className="size-4 shrink-0 text-viatik-magenta" />
-                {t("copy.scoutWizardThinking")}
-              </p>
-              {Array.from({ length: SCOUT_INITIAL_IDEA_COUNT }).map((_, index) => (
-                <div
-                  key={index}
-                  className="animate-pulse rounded-2xl border border-border/60 bg-card p-4"
+              <div className="flex items-center gap-3">
+                <motion.span
+                  aria-hidden
+                  className="grid size-9 shrink-0 place-items-center rounded-xl bg-viatik-gradient text-white"
+                  animate={
+                    reducedMotion
+                      ? undefined
+                      : { scale: [1, 1.08, 1], rotate: [0, 8, 0] }
+                  }
+                  transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="size-9 shrink-0 rounded-xl bg-muted" />
-                    <div className="flex-1 space-y-2">
-                      <div className="h-3 w-1/2 rounded bg-muted" />
-                      <div className="h-2.5 w-1/3 rounded bg-muted" />
-                    </div>
-                  </div>
-                </div>
+                  <Sparkles className="size-4" />
+                </motion.span>
+                <p className="text-sm font-medium">{t("copy.scoutWizardThinking")}</p>
+              </div>
+              <div className="min-h-5">
+                <AnimatePresence mode="wait">
+                  <motion.p
+                    key={loadingStage}
+                    initial={reducedMotion ? false : { opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={reducedMotion ? undefined : { opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="text-xs text-muted-foreground"
+                  >
+                    {t(SCOUT_STAGE_KEYS[loadingStage]!)}
+                  </motion.p>
+                </AnimatePresence>
+              </div>
+              <div className="h-1 overflow-hidden rounded-full bg-muted">
+                <motion.div
+                  className="h-full w-1/3 rounded-full bg-viatik-gradient"
+                  animate={reducedMotion ? undefined : { x: ["-100%", "250%"] }}
+                  transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+                />
+              </div>
+              {Array.from({ length: SCOUT_INITIAL_IDEA_COUNT }).map((_, index) => (
+                <ScoutSkeletonCard key={index} index={index} reducedMotion={reducedMotion} />
               ))}
             </div>
           ) : suggestions.length === 0 ? (
@@ -1828,77 +1790,114 @@ export function ScoutIdeaWizard({
                 {stepId === "crew" && (
                   <section className="space-y-3">
                     <div
-                      className="grid grid-cols-2 gap-2"
+                      className="grid gap-3"
+                      style={{ gridTemplateColumns: "repeat(auto-fit, minmax(12rem, 1fr))" }}
                       role="group"
-                      aria-label={t("copy.scoutWizardCrewModeLabel")}
+                      aria-label={t("copy.scoutWizardCrewQuestion")}
+                      aria-describedby={fieldErrors.crew ? "scout-crew-error" : undefined}
                     >
-                      {(
-                        [
-                          { mode: "count", key: "copy.scoutWizardCrewEnterNumber" },
-                          { mode: "contacts", key: "copy.scoutWizardCrewFromContacts" },
-                        ] as const
-                      ).map((option) => (
-                        <Button
-                          key={option.mode}
-                          type="button"
-                          variant={crewMode === option.mode ? "default" : "outline"}
-                          aria-pressed={crewMode === option.mode}
-                          className="min-h-11"
-                          onClick={() => {
-                            setCrewMode(option.mode);
-                            if (option.mode === "count") setTravelerContactIds([]);
-                            if (option.mode === "contacts") setContactsOpen(true);
+                      {CREW_CHOICES.map((option, index) => (
+                        <SelectableCard
+                          key={option.size}
+                          groupAnchor={index === 0}
+                          selected={
+                            option.size === 3
+                              ? crewGroupActive
+                              : crewMode === "count" && crewSize === option.size
+                          }
+                          icon={<option.Icon aria-hidden className="size-4" />}
+                          title={t(option.key)}
+                          subtitle={t(option.subtitleKey)}
+                          onSelect={() => {
+                            if (option.size === 3) {
+                              if (!crewGroupActive) {
+                                setCrewMode("count");
+                                setTravelerContactIds([]);
+                                setCrewSize(3);
+                                setCrewSizeDraft("3");
+                                setCrewGroupPicked(true);
+                              }
+                            } else {
+                              setCrewMode("count");
+                              setTravelerContactIds([]);
+                              setCrewSize(option.size);
+                              setCrewGroupPicked(false);
+                            }
                             setConsented(false);
                             clearFieldError("crew");
                           }}
-                        >
-                          {t(option.key)}
-                        </Button>
+                        />
                       ))}
                     </div>
 
-                    {crewMode === "count" ? (
-                      <div
-                        className="grid gap-3"
-                        style={{ gridTemplateColumns: "repeat(auto-fit, minmax(12rem, 1fr))" }}
-                        role="group"
-                        aria-label={t("copy.scoutWizardCrewQuestion")}
-                        aria-describedby={fieldErrors.crew ? "scout-crew-error" : undefined}
-                      >
-                        {CREW_CHOICES.map((option, index) => (
-                          <SelectableCard
-                            key={option.size}
-                            groupAnchor={index === 0}
-                            selected={crewSize === option.size}
-                            icon={<option.Icon aria-hidden className="size-4" />}
-                            title={t(option.key)}
-                            subtitle={t(option.subtitleKey)}
-                            onSelect={() => {
-                              setCrewSize(option.size);
+                    {crewGroupActive && (
+                      <div className="space-y-3">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="scout-crew-size">
+                            {t("copy.scoutWizardCrewCountLabel")}
+                          </Label>
+                          <Input
+                            id="scout-crew-size"
+                            type="number"
+                            inputMode="numeric"
+                            min={3}
+                            max={20}
+                            value={
+                              crewMode === "contacts" ? String(travelers) : crewSizeDraft
+                            }
+                            aria-invalid={Boolean(fieldErrors.crew)}
+                            aria-describedby={
+                              fieldErrors.crew
+                                ? "scout-crew-size-help scout-crew-error"
+                                : "scout-crew-size-help"
+                            }
+                            onChange={(event) => {
+                              const draft = event.target.value;
+                              setCrewSizeDraft(draft);
+                              if (crewMode === "contacts") {
+                                setCrewMode("count");
+                                setTravelerContactIds([]);
+                              }
+                              const parsed = Number.parseInt(draft, 10);
+                              setCrewSize(
+                                Number.isInteger(parsed) && parsed >= 3 && parsed <= 20
+                                  ? parsed
+                                  : null
+                              );
                               setConsented(false);
                               clearFieldError("crew");
                             }}
                           />
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <SelectableCard
-                          groupAnchor
-                          selected={travelerContactIds.length > 0}
-                          icon={<UsersRound aria-hidden className="size-4" />}
-                          title={t("copy.scoutWizardContactsPick")}
-                          subtitle={t("copy.scoutWizardContactsPickSubtitle")}
-                          onSelect={() => setContactsOpen(true)}
-                        />
-                        <p aria-live="polite" className="text-sm text-muted-foreground">
-                          {t(
-                            travelers === 1
-                              ? "copy.scoutWizardContactsSummaryOne"
-                              : "copy.scoutWizardContactsSummaryMany",
-                            { count: travelerContactIds.length, total: travelers }
-                          )}
-                        </p>
+                          <p
+                            id="scout-crew-size-help"
+                            className="text-xs text-muted-foreground"
+                          >
+                            {t("copy.scoutWizardCrewCountHelp")}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="min-h-11"
+                          onClick={() => {
+                            setCrewMode("contacts");
+                            setContactsOpen(true);
+                            setConsented(false);
+                            clearFieldError("crew");
+                          }}
+                        >
+                          {t("copy.scoutWizardContactsPick")}
+                        </Button>
+                        {crewMode === "contacts" && (
+                          <p aria-live="polite" className="text-sm text-muted-foreground">
+                            {t(
+                              travelers === 1
+                                ? "copy.scoutWizardContactsSummaryOne"
+                                : "copy.scoutWizardContactsSummaryMany",
+                              { count: travelerContactIds.length, total: travelers }
+                            )}
+                          </p>
+                        )}
                       </div>
                     )}
                     {fieldErrors.crew && (
@@ -2064,17 +2063,17 @@ export function ScoutIdeaWizard({
                 )}
 
                 {stepId === "timing" && (
-                  <section className="space-y-5" aria-labelledby="scout-timing-question">
-                    <div className="space-y-3">
+                  <section className="space-y-3" aria-labelledby="scout-timing-question">
+                    <div className="space-y-2.5">
                       <div
-                        className="grid gap-3"
-                        style={{ gridTemplateColumns: "repeat(auto-fit, minmax(9rem, 1fr))" }}
+                        className="grid grid-cols-2 items-stretch gap-2"
                         role="group"
                         aria-label={t("copy.scoutWizardTimingQuestion")}
                       >
                         {TIMING_CHOICES.map((option) => (
                           <SelectableCard
                             key={option.value}
+                            compact
                             selected={timing === option.value}
                             icon={<option.Icon aria-hidden className="size-4" />}
                             title={t(option.key)}
@@ -2295,7 +2294,7 @@ export function ScoutIdeaWizard({
                     </Collapsible>
 
                     <div className="space-y-1.5">
-                      <label className="flex items-start gap-3 rounded-xl border border-border p-3 text-sm">
+                      <label className="flex items-start gap-3 rounded-xl border border-border p-2.5 text-sm">
                         <input
                           id="scout-consent"
                           type="checkbox"
@@ -2357,7 +2356,12 @@ export function ScoutIdeaWizard({
                   {error}
                 </p>
               )}
-              {suggestions.length < SCOUT_INITIAL_IDEA_COUNT && (
+              {pendingCount > 0 && (
+                <p role="status" className="text-sm text-muted-foreground">
+                  {t("copy.scoutWizardMoreComing", { count: pendingCount })}
+                </p>
+              )}
+              {suggestions.length < SCOUT_INITIAL_IDEA_COUNT && pendingCount === 0 && (
                 <p role="status" className="text-sm text-muted-foreground">
                   {t("copy.scoutWizardFewerResults", {
                     count: suggestions.length,
@@ -2490,7 +2494,7 @@ export function ScoutIdeaWizard({
                           initial={reducedMotion ? false : { opacity: 0, y: -4 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.2, ease: "easeOut" }}
-                          className="space-y-4 border-t border-border/40 px-4 pb-4 pt-4"
+                          className="space-y-3 border-t border-border/40 px-4 pb-4 pt-3"
                         >
                           <IdeaDetails
                             suggestion={suggestion}
@@ -2501,11 +2505,11 @@ export function ScoutIdeaWizard({
                             summary={summary}
                             nonstopOnly={false}
                           />
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="flex flex-col gap-2 sm:flex-row">
                             <Button
                               type="button"
                               variant="outline"
-                              className="min-h-11"
+                              className="min-h-11 sm:flex-1"
                               onClick={() => setInfoDialog({ kind: "flights", index })}
                             >
                               <Plane aria-hidden />
@@ -2514,34 +2518,42 @@ export function ScoutIdeaWizard({
                             <Button
                               type="button"
                               variant="outline"
-                              className="min-h-11"
+                              className="min-h-11 sm:flex-1"
                               onClick={() => setInfoDialog({ kind: "stay", index })}
                             >
                               <BedDouble aria-hidden />
                               {t("copy.scoutIdeaStayDetails")}
                             </Button>
+                            <Button
+                              type="button"
+                              className="min-h-11 bg-viatik-gradient text-white transition-all duration-200 ease-out active:scale-[0.98] sm:flex-[1.4]"
+                              disabled={savingIndex !== null}
+                              onClick={() => void saveSuggestion(suggestion, index)}
+                            >
+                              {savingIndex === index ? (
+                                <LoaderCircle aria-hidden className="animate-spin" />
+                              ) : null}
+                              {t("copy.scoutWizardSaveIdea")}
+                            </Button>
                           </div>
-                          <Button
-                            type="button"
-                            className="min-h-11 w-full bg-viatik-gradient text-white transition-all duration-200 ease-out active:scale-[0.98]"
-                            disabled={savingIndex !== null}
-                            onClick={() => void saveSuggestion(suggestion, index)}
-                          >
-                            {savingIndex === index ? (
-                              <LoaderCircle aria-hidden className="animate-spin" />
-                            ) : null}
-                            {t("copy.scoutWizardSaveIdea")}
-                          </Button>
                         </motion.div>
                       )}
                     </motion.article>
                   );
                 })}
 
+                {Array.from({ length: pendingCount }).map((_, index) => (
+                  <ScoutSkeletonCard
+                    key={`pending-${index}`}
+                    index={index}
+                    reducedMotion={reducedMotion}
+                  />
+                ))}
+
                 {!exhausted && (
                   <button
                     type="button"
-                    disabled={addingMore || isOnline !== true}
+                    disabled={addingMore || pendingCount > 0 || isOnline !== true}
                     onClick={() => void addMore()}
                     className="flex min-h-24 w-[86vw] shrink-0 snap-center flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border/70 bg-transparent px-4 py-6 text-sm font-medium text-muted-foreground transition-colors hover:border-viatik-magenta/50 hover:text-foreground disabled:opacity-60 sm:w-auto"
                   >
@@ -2570,6 +2582,8 @@ export function ScoutIdeaWizard({
                     setExhausted(false);
                     setError(null);
                     setExpandedIndex(0);
+                    setPendingCount(0);
+                    runId.current += 1;
                     setStep(0);
                   }}
                 >

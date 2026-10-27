@@ -61,10 +61,12 @@ export function TripPlannerView({
   userId,
   onBack,
   onTripCreated,
+  embedded = false,
 }: {
   userId: string;
-  onBack: () => void;
+  onBack?: () => void;
   onTripCreated?: (ideaId: string, tripId: string) => void;
+  embedded?: boolean;
 }) {
   const router = useRouter();
   const { t } = useI18n();
@@ -116,41 +118,68 @@ export function TripPlannerView({
     });
   }
 
+  const actions = (
+    <div className="flex flex-col gap-2 sm:flex-row">
+      <Button
+        type="button"
+        variant="outline"
+        disabled={isOnline !== true}
+        title={isOnline === false ? t("copy.scoutWizardNeedsConnection") : undefined}
+        onClick={() => setWizardOpen(true)}
+      >
+        <Sparkles aria-hidden />
+        {t("copy.scoutWizardTrigger")}
+      </Button>
+      <Button type="button" onClick={openCreate}>
+        {t("copy.addTripIdea")}
+      </Button>
+    </div>
+  );
+
   return (
-    <section className="space-y-6" aria-labelledby="trip-planner-heading">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <Button type="button" variant="ghost" className="mb-2 -ml-3" onClick={onBack}>
-            {t("copy.tripPlannerBackToTrips")}
-          </Button>
-          <p className="text-sm font-semibold text-viatik-magenta">{t("copy.tripPlannerEyebrow")}</p>
-          <Heading
-            level={1}
-            id="trip-planner-heading"
-            className="mt-1 text-3xl font-bold sm:text-4xl"
-          >
-            {t("copy.tripPlannerHeading")}
-          </Heading>
-          <p className="mt-2 max-w-2xl text-muted-foreground">
-            {t("copy.tripPlannerDescription")}
-          </p>
+    <section
+      className="space-y-6"
+      aria-labelledby={embedded ? "trip-planner-embedded-heading" : "trip-planner-heading"}
+    >
+      {embedded ? (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <Heading
+              level={2}
+              id="trip-planner-embedded-heading"
+              className="text-xl font-semibold"
+            >
+              {t("copy.wantToGo")}
+            </Heading>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t("copy.tripPlannerDescription")}
+            </p>
+          </div>
+          {actions}
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={isOnline !== true}
-            title={isOnline === false ? t("copy.scoutWizardNeedsConnection") : undefined}
-            onClick={() => setWizardOpen(true)}
-          >
-            <Sparkles aria-hidden />
-            {t("copy.scoutWizardTrigger")}
-          </Button>
-          <Button type="button" onClick={openCreate}>
-            {t("copy.addTripIdea")}
-          </Button>
-        </div>
-      </header>
+      ) : (
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <Button type="button" variant="ghost" className="mb-2 -ml-3" onClick={onBack}>
+              {t("copy.tripPlannerBackToTrips")}
+            </Button>
+            <p className="text-sm font-semibold text-viatik-magenta">
+              {t("copy.tripPlannerEyebrow")}
+            </p>
+            <Heading
+              level={1}
+              id="trip-planner-heading"
+              className="mt-1 text-3xl font-bold sm:text-4xl"
+            >
+              {t("copy.tripPlannerHeading")}
+            </Heading>
+            <p className="mt-2 max-w-2xl text-muted-foreground">
+              {t("copy.tripPlannerDescription")}
+            </p>
+          </div>
+          {actions}
+        </header>
+      )}
 
       {ideas === null ? (
         <Card className="p-6 text-sm text-muted-foreground" aria-live="polite">
@@ -170,7 +199,11 @@ export function TripPlannerView({
         </Card>
       ) : (
         <div className="grid gap-4 xl:grid-cols-2">
-          {ideas.map((idea) => (
+          {[...ideas]
+            .sort(
+              (a, b) => Number(Boolean(a.convertedToTripId)) - Number(Boolean(b.convertedToTripId))
+            )
+            .map((idea) => (
             <TripIdeaCard
               key={idea.id}
               idea={idea}

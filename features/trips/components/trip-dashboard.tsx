@@ -80,6 +80,7 @@ import { collaborationRepository } from "@/features/collaboration/data/dexie-col
 import { ensureMemberForLinkedContact } from "@/features/collaboration/lib/ensure-member";
 import { DestinationField } from "@/features/trips/components/destination-field";
 import { TripPlannerView } from "@/features/trip-planner/components/trip-planner-view";
+import { tripIdeaRepository } from "@/features/trip-planner/data/dexie-trip-planner-repository";
 import { tripRepository } from "@/features/trips/data/dexie-trip-repository";
 import { getTripCoverGradient, isTripCoverImage } from "@/features/trips/lib/trip-cover";
 import { getMaxEndDate, getTripDurationError } from "@/features/trips/lib/trip-duration";
@@ -93,7 +94,6 @@ export function TripDashboard({ userId }: { userId: string }) {
   const [trips, setTrips] = useState<Trip[] | null>(null);
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
-  const [showTripPlanner, setShowTripPlanner] = useState(false);
   const [endTripId, setEndTripId] = useState<string | null>(null);
   const [invitations, setInvitations] = useState<TripInvitation[]>([]);
   const { toast } = useToast();
@@ -175,10 +175,6 @@ export function TripDashboard({ userId }: { userId: string }) {
       );
   }
 
-  if (showTripPlanner) {
-    return <TripPlannerView userId={userId} onBack={() => setShowTripPlanner(false)} />;
-  }
-
   return (
     <div className="space-y-10">
       <header className="relative flex flex-col gap-5 overflow-hidden sm:flex-row sm:items-end sm:justify-between">
@@ -195,9 +191,6 @@ export function TripDashboard({ userId }: { userId: string }) {
           <p className="mt-2 text-muted-foreground">{t("common.tripsDescription")}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" onClick={() => setShowTripPlanner(true)}>
-            {t("copy.wantToGo")}
-          </Button>
           <Button variant="primary" onClick={() => setCreating(true)}>
             <Plus className="size-5" />
             {t("common.createTripAction")}
@@ -323,6 +316,8 @@ export function TripDashboard({ userId }: { userId: string }) {
         </>
       )}
 
+      <TripPlannerView userId={userId} embedded />
+
       <TripFormDialog
         key={creating ? "create" : "closed"}
         open={creating}
@@ -330,6 +325,13 @@ export function TripDashboard({ userId }: { userId: string }) {
         userId={userId}
         onError={(message) =>
           toast({ title: t("copy.unableSaveTrip"), description: message, variant: "error" })
+        }
+        onIdeaSaved={() =>
+          toast({
+            title: t("copy.ideaSavedTitle"),
+            description: t("copy.ideaSavedDescription"),
+            variant: "success",
+          })
         }
       />
       {endingTrip && (
@@ -640,12 +642,14 @@ export function TripFormDialog({
   userId,
   trip,
   onError,
+  onIdeaSaved,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   userId: string;
   trip?: Trip;
   onError?: (message: string) => void;
+  onIdeaSaved?: () => void;
 }) {
   const { t } = useI18n();
   const [saving, setSaving] = useState(false);
@@ -912,6 +916,59 @@ export function TripFormDialog({
     }
   }
 
+  /** Saves the form's basics as a private trip idea without committing to a
+   *  trip. Only step-1 fields are validated; dates, travelers and the cover
+   *  image are not required for an idea. */
+  async function saveAsIdea() {
+    setFormError(null);
+    const errors: Record<string, string> = {};
+    const nameIssue = validateTripName(name);
+    if (nameIssue) errors.name = t(nameIssue.key, nameIssue.variables);
+    if (!destination.trim()) {
+      errors.destination = t("copy.tripIdeaDestinationRequired");
+    } else {
+      const destinationIssue = validateMaxText(destination, 120);
+      if (destinationIssue)
+        errors.destination = t(destinationIssue.key, destinationIssue.variables);
+    }
+    const descriptionIssue = validateMaxText(description, 500);
+    if (descriptionIssue)
+      errors.description = t(descriptionIssue.key, descriptionIssue.variables);
+    if (Object.keys(errors).length > 0) {
+      setStep(1);
+      setFieldErrors(errors);
+      focusFirstError(errors);
+      return;
+    }
+    setFieldErrors({});
+    setSaving(true);
+    try {
+      await tripIdeaRepository.create({
+        id: crypto.randomUUID(),
+        name: name.trim(),
+        destination: destination.trim(),
+        placeId: placeId || null,
+        latitude,
+        longitude,
+        timeZone: timeZone || null,
+        startDate: startDate || null,
+        endDate: endDate || null,
+        targetMonth: startDate ? startDate.slice(0, 7) : null,
+        adultCount,
+        childCount,
+        travelerContactIds: Object.keys(selectedContacts),
+        currency: baseCurrency.toUpperCase(),
+        notes: description.trim(),
+      });
+      onOpenChange(false);
+      onIdeaSaved?.();
+    } catch (cause) {
+      setFormError(localizeThrownError(cause, t, "Unable to save idea"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
@@ -1066,7 +1123,20 @@ export function TripFormDialog({
             </div>
           )}
 
+          {!trip && (
+            <p className="text-xs text-muted-foreground">{t("copy.saveAsIdeaHelper")}</p>
+          )}
           <DialogFooter>
+            {!trip && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={saving}
+                onClick={() => void saveAsIdea()}
+              >
+                {t("copy.saveAsIdea")}
+              </Button>
+            )}
             {step > 1 && (
               <Button type="button" variant="outline" onClick={() => setStep((s) => s - 1)}>
                 {t("common.back")}

@@ -34,6 +34,7 @@ import {
 import { tripSavingsPlanRepository } from "@/features/trip-planner/data/dexie-trip-planner-repository";
 import { SavingsPlanner } from "@/features/trip-planner/components/savings-planner";
 import { useI18n } from "@/lib/i18n/i18n-provider";
+import { cn } from "@/lib/utils";
 import type { TranslationKey } from "@/lib/i18n/translations";
 
 const CATEGORY_COPY_KEYS: Record<SpendingCategory, TranslationKey> = {
@@ -107,6 +108,8 @@ export function TripIdeaCard({
   const [savingPrice, setSavingPrice] = useState(false);
 
   useEffect(() => tripSavingsPlanRepository.watchByIdea(idea.id, setPlan), [idea.id]);
+
+  const converted = Boolean(idea.convertedToTripId);
 
   const estimateTotal = idea.categoryEstimates.reduce(
     (sum, estimate) => sum + estimate.amountMinor,
@@ -198,7 +201,17 @@ export function TripIdeaCard({
       )}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h2 className="text-lg font-semibold">{idea.name}</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-lg font-semibold">{idea.name}</h2>
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                converted ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"
+              )}
+            >
+              {t(converted ? "copy.tripIdeaStatusPlanned" : "copy.tripIdeaStatusIdea")}
+            </span>
+          </div>
           <p className="mt-1 text-sm font-medium">{idea.destination}</p>
           <dl className="mt-3 grid gap-x-5 gap-y-1 text-sm text-muted-foreground sm:grid-cols-2">
             <div>
@@ -231,7 +244,12 @@ export function TripIdeaCard({
               {t("copy.tripIdeaInterests", { interests: idea.interests.join(", ") })}
             </p>
           )}
-          {idea.targetTripCostMinor != null && (
+          {converted && (
+            <p className="mt-3 text-sm text-muted-foreground">
+              {t("copy.tripIdeaConvertedNote")}
+            </p>
+          )}
+          {!converted && idea.targetTripCostMinor != null && (
             <p className="mt-3 font-semibold tabular-nums">
               {t("copy.tripIdeaTarget", {
                 amount: formatMinorUnits(idea.targetTripCostMinor, idea.currency),
@@ -239,7 +257,7 @@ export function TripIdeaCard({
               })}
             </p>
           )}
-          {idea.categoryEstimates.length > 0 && (
+          {!converted && idea.categoryEstimates.length > 0 && (
             <ul className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
               {idea.categoryEstimates.map((estimate) => (
                 <li key={estimate.category} className="rounded-full bg-muted px-2.5 py-1">
@@ -249,7 +267,7 @@ export function TripIdeaCard({
               ))}
             </ul>
           )}
-          {unallocated != null && unallocated !== 0n && (
+          {!converted && unallocated != null && unallocated !== 0n && (
             <p className="mt-2 text-xs text-muted-foreground">
               {t(unallocated > 0n ? "copy.tripIdeaUnallocated" : "copy.tripIdeaOverAllocated", {
                 amount: formatMinorUnits(unallocated > 0n ? unallocated : -unallocated, idea.currency),
@@ -258,10 +276,12 @@ export function TripIdeaCard({
           )}
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" onClick={onEdit}>
-            <Pencil aria-hidden />
-            {t("copy.tripIdeaEdit")}
-          </Button>
+          {!converted && (
+            <Button type="button" variant="outline" onClick={onEdit}>
+              <Pencil aria-hidden />
+              {t("copy.tripIdeaEdit")}
+            </Button>
+          )}
           {idea.convertedToTripId ? (
             <Button asChild>
               <Link href={`/trips/${encodeURIComponent(idea.convertedToTripId)}`}>{t("copy.tripIdeaOpenTrip")}</Link>
@@ -283,6 +303,7 @@ export function TripIdeaCard({
         </div>
       </div>
 
+      {!converted && (
       <Collapsible title={t("copy.tripIdeaSavingsSection")} id={`idea-savings-${idea.id}`}>
         <SavingsPlanner
           key={`${idea.id}-${idea.startDate}-${idea.targetTripCostMinor ?? "unset"}-${plan?.version ?? 0}`}
@@ -291,7 +312,9 @@ export function TripIdeaCard({
           onSave={onSaveSavings}
         />
       </Collapsible>
+      )}
 
+      {!converted && (
       <Collapsible title={t("copy.tripIdeaPricesSection")} id={`idea-prices-${idea.id}`}>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
@@ -403,6 +426,7 @@ export function TripIdeaCard({
           )}
         </div>
       </Collapsible>
+      )}
 
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent>

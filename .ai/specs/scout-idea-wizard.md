@@ -52,9 +52,9 @@ conversation with a well-traveled friend.
 - **Results read editorially.** The `scout_pitch` is surfaced directly under the
   destination in every row (clamped to two lines until expanded), before the
   numbers. The first card carries a **Top Match for You** pill with a gradient
-  border and a thicker gradient rail. The expanded detail separates the trip
-  goal, the per-traveler fare, and the stay total into three labelled stat pills
-  (gradient / blue / magenta) instead of a single block of figures.
+  border and a thicker gradient rail. The expanded detail is a single compact
+  two-column panel (budget total + proportion bar + per-leg amounts next to the
+  savings timeline) instead of stat pills and tabs.
 - **Scout's system prompt** now asks for a candid, well-traveled voice and a
   fixed two-sentence pitch rhythm: sentence one for sensory atmosphere,
   authentic highlights, and vibe fit; sentence two for group ease, travel
