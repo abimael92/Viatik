@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -1264,6 +1264,165 @@ describe("ScoutIdeaWizard", () => {
       expect(info.getByText(/Guadalajara → Kyoto/)).toBeTruthy();
       expect(info.getByText(/airlines and schedules aren't known/)).toBeTruthy();
       expect(info.getByText(/may suggest a different routing/)).toBeTruthy();
+    });
+  });
+
+  describe("progressive waves", () => {
+    function deferred<T>() {
+      let resolve!: (value: T) => void;
+      let reject!: (reason?: unknown) => void;
+      const promise = new Promise<T>((res, rej) => {
+        resolve = res;
+        reject = rej;
+      });
+      return { promise, resolve, reject };
+    }
+
+    function startFirstWave(ideas = fiveIdeas) {
+      mocks.generate.mockResolvedValueOnce({
+        success: true,
+        suggestions: { ideas },
+      });
+      renderWizard();
+      walkToTiming();
+      consent();
+      fireEvent.click(screen.getByRole("button", { name: "Show my trip ideas" }));
+    }
+
+    it("shows the first wave while the rest are still coming", async () => {
+      const second = deferred<unknown>();
+      mocks.generate.mockResolvedValueOnce({
+        success: true,
+        suggestions: { ideas: fiveIdeas.slice(0, 2) },
+      });
+      mocks.generate.mockReturnValueOnce(second.promise);
+      renderWizard();
+      walkToTiming();
+      consent();
+      fireEvent.click(screen.getByRole("button", { name: "Show my trip ideas" }));
+
+      expect(await screen.findByText("Kyoto, Japan")).toBeTruthy();
+      expect(screen.getByText("Porto, Portugal")).toBeTruthy();
+      expect(screen.queryByText("Oaxaca, Mexico")).toBeNull();
+      expect(
+        screen.getByText("Scout is still finding 3 more…")
+      ).toBeTruthy();
+      expect(
+        screen.getByRole("button", { name: "Add 2 more options" })
+      ).toHaveProperty("disabled", true);
+
+      expect(mocks.generate).toHaveBeenCalledTimes(2);
+      expect(mocks.generate).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          count: 3,
+          excludeDestinations: ["Kyoto, Japan", "Porto, Portugal"],
+        })
+      );
+
+      second.resolve({ success: true, suggestions: { ideas: fiveIdeas.slice(2) } });
+      expect(await screen.findByText("Oaxaca, Mexico")).toBeTruthy();
+      expect(screen.queryByText(/Scout is still finding/)).toBeNull();
+      expect(
+        screen.getByRole("button", { name: "Add 2 more options" })
+      ).toHaveProperty("disabled", false);
+    });
+
+    it("does not ask for a second wave when the first is already full", async () => {
+      startFirstWave();
+      expect(await screen.findByText("Montreal, Canada")).toBeTruthy();
+      expect(mocks.generate).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps the first wave when the second fails", async () => {
+      mocks.generate.mockResolvedValueOnce({
+        success: true,
+        suggestions: { ideas: fiveIdeas.slice(0, 2) },
+      });
+      mocks.generate.mockResolvedValueOnce({ success: false, error: "unexpected" });
+      renderWizard();
+      walkToTiming();
+      consent();
+      fireEvent.click(screen.getByRole("button", { name: "Show my trip ideas" }));
+
+      expect(await screen.findByText("Kyoto, Japan")).toBeTruthy();
+      expect((await screen.findAllByRole("alert")).length).toBeGreaterThan(0);
+      expect(screen.queryByText(/Scout is still finding/)).toBeNull();
+      expect(
+        screen.getByRole("button", { name: "Add 2 more options" })
+      ).toHaveProperty("disabled", false);
+    });
+
+    it("drops a stale second wave after Try again", async () => {
+      const second = deferred<unknown>();
+      mocks.generate.mockResolvedValueOnce({
+        success: true,
+        suggestions: { ideas: fiveIdeas.slice(0, 2) },
+      });
+      mocks.generate.mockReturnValueOnce(second.promise);
+      renderWizard();
+      walkToTiming();
+      consent();
+      fireEvent.click(screen.getByRole("button", { name: "Show my trip ideas" }));
+
+      expect(await screen.findByText("Kyoto, Japan")).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+      second.resolve({ success: true, suggestions: { ideas: fiveIdeas.slice(2) } });
+
+      await waitFor(() => expect(mocks.generate).toHaveBeenCalledTimes(2));
+      expect(screen.queryByText("Oaxaca, Mexico")).toBeNull();
+      expect(screen.queryByText("Kyoto, Japan")).toBeNull();
+    });
+
+    it("excludes first-wave routings in route mode", async () => {
+      const second = deferred<unknown>();
+      mocks.generate.mockResolvedValueOnce({
+        success: true,
+        suggestions: { ideas: fiveIdeas.slice(0, 2) },
+      });
+      mocks.generate.mockReturnValueOnce(second.promise);
+      renderWizard();
+      walkRouteModeToTiming();
+      consent();
+      fireEvent.click(screen.getByRole("button", { name: "Show my trip ideas" }));
+
+      expect(await screen.findByText("Kyoto, Japan")).toBeTruthy();
+      expect(mocks.generate).toHaveBeenCalledTimes(2);
+      expect(mocks.generate).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          count: 3,
+          excludeDestinations: [],
+          excludeRoutes: ["guadalajara > kyoto", "guadalajara > kyoto"],
+        })
+      );
+      second.resolve({ success: true, suggestions: { ideas: [] } });
+      await waitFor(() =>
+        expect(screen.queryByText(/Scout is still finding/)).toBeNull()
+      );
+    });
+
+    it("rotates through stage messages while Scout searches", async () => {
+      const pending = deferred<unknown>();
+      mocks.generate.mockReturnValueOnce(pending.promise);
+      renderWizard();
+      walkToTiming();
+      consent();
+      fireEvent.click(screen.getByRole("button", { name: "Show my trip ideas" }));
+
+      expect(await screen.findByText("Scout is matching routes, stays, and vibes...")).toBeTruthy();
+      expect(screen.getByText("Reading your trip vibe…")).toBeTruthy();
+
+      vi.useFakeTimers();
+      try {
+        act(() => {
+          vi.advanceTimersByTime(2900);
+        });
+        expect(screen.getByText("Mapping routes and flight times…")).toBeTruthy();
+      } finally {
+        vi.useRealTimers();
+      }
+
+      pending.resolve({ success: true, suggestions: { ideas: fiveIdeas } });
+      await screen.findByText("Kyoto, Japan");
     });
   });
 });
