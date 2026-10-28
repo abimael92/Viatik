@@ -215,6 +215,16 @@ Also update the topic file whose subject changed:
   "Idea" / "Planned trip" status chip (`convertedToTripId`), converted cards
   hide edit/savings/price sections and show an "Open trip" link + note, and
   the wishlist sorts unconverted first.
+- **Also changed (progressive loading):** `askScout()` now fires wave 1 with
+  `count: SCOUT_FIRST_WAVE_COUNT` (2) and renders those ideas immediately, then
+  fills the rest in a wave-2 call that excludes first-wave destinations (idea
+  mode) or `routeSignature`s (route mode). `pendingCount` drives "Scout is
+  still finding {{count}} more…" + `ScoutSkeletonCard` placeholders inside the
+  results rail, disables "Add more", and a `runId` ref invalidates stale
+  wave-2 responses after Try-again/close. The loading view gained a pulsing
+  gradient Sparkles tile, a 5-stage rotating status line (2.8s, stops on the
+  last), an indeterminate gradient progress bar, and shimmer skeletons — all
+  gated by `useReducedMotion`.
 - **Gotchas:** the group card stays selected via `crewGroupPicked` even when the
   draft is invalid (crewSize null) so the panel doesn't collapse mid-typing;
   editing the number input while in contacts mode switches back to count mode;

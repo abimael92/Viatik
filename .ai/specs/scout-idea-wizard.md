@@ -8,6 +8,7 @@
 **Related work:** [Vacation Planner](./vacation-planner.md), [AI Activity Scout](./ai-activity-scout.md), [Scout — Exact Destination, Dates, Travelers & Flight Routes](./scout-exact-destination-routes.md)
 
 > **Update (2026-10-26):** the newer spec adds a Where step (named step list, 6 screens in idea mode / 5 in route mode), contact-based crews, exact dates, and per-idea flight routes. The "five screens" acceptance notes below describe the pre-Where flow.
+> **Update (2026-10-27):** generation is progressive — the wizard requests a first wave of 2 ideas and renders them immediately, then fills the remaining slots in a second call that excludes first-wave destinations (idea mode) or route signatures (route mode); a second-wave failure keeps the first wave and shows the inline error. The loading view is animated (rotating stage line, indeterminate bar, shimmer skeletons).
 
 ## Conversational co-planner pass (2026-10-25)
 

@@ -309,8 +309,17 @@ and `lib/i18n/error-copy.ts`. Locale persists in `localStorage["viatik-language"
   right = the today → book-by → goal-reached timeline, pinned-dates/shortfall
   lines, and the summary sentence. Flight/Stay detail dialogs and the save CTA
   sit in one action row (`sm:flex-row`, save = `sm:flex-[1.4]` gradient).
-- **Loading:** skeletons are preceded by `copy.scoutWizardThinking` ("Scout is
-  matching routes, stays, and vibes...") inside the `aria-busy` region.
+- **Loading:** the wave-1 wait shows a pulsing gradient `Sparkles` tile, a
+  2.8s rotating stage line (`scoutWizardStage1..5`, stops on the last), an
+  indeterminate gradient bar, and `SCOUT_INITIAL_IDEA_COUNT` `ScoutSkeletonCard`
+  shimmers (all behind `useReducedMotion`, inside `aria-busy`/`aria-live`).
+- **Progressive results:** `askScout()` requests `SCOUT_FIRST_WAVE_COUNT` (2)
+  ideas first, renders them at once, then requests the remainder excluding
+  first-wave destinations (idea mode) or `routeSignature`s (route mode).
+  `pendingCount` renders a "Scout is still finding n more…" `role="status"`
+  line plus shimmer placeholders inside the results rail and disables "Add
+  more"; a `runId` ref drops stale wave-2 responses after Try-again/close.
+  Wave-2 failures keep the first wave and surface the normal inline error.
 
 ## 12. Trips page (`features/trips/components/trip-dashboard.tsx`)
 
