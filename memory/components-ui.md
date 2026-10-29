@@ -365,3 +365,30 @@ and `lib/i18n/error-copy.ts`. Locale persists in `localStorage["viatik-language"
   That method reuses the linked idea when there is one, otherwise builds an idea
   from the trip + `tripBudgets` row, so trips made with "Create trip" also work.
   It is owner-only because the delete branch tombstones a shared trip.
+
+## Wish-list idea card (2026-10-29)
+
+- **Destination is the headline.** `TripIdeaCard` renders `idea.destination` as
+  the `h2` and pushes the rest of `idea.name` ("<destination> - <season>") into a
+  muted subtitle. Never render `idea.name` as the title: it repeats the city.
+- **Fact tiles, not an inline `<dl>`.** Origin / When / Travelers / Duration are
+  four `FactTile` items inside one `<dl>` (`grid-cols-2 sm:grid-cols-4`), each a
+  `rounded-xl border border-border/50 bg-muted/20` tile with a 3.5 icon, an
+  uppercase 11px label, and a 14px value.
+- **Budget block.** One `rounded-2xl` section: an 11px uppercase heading, the
+  total at `text-2xl` tabular-nums, an optional unallocated chip, then a
+  proportional `BudgetBar` (one segment per category, `CATEGORY_BAR_STYLES`)
+  and a two-column legend with amount + rounded percentage. `formatMinorUnits`
+  already prints the currency symbol — never append the ISO code again.
+- **Notes stay out of the card.** `idea.notes` (the mapper stores
+  `"<pitch>\n\nBest season: …"`) is intentionally **not** rendered on the card;
+  the title/season subtitle, facts, budget and map carry the view. Do not
+  re-add a "Scout's note" panel without an explicit request.
+- **Map panel** (`IdeaMapCard`, `features/trip-planner/components/idea-map-card.tsx`):
+  keyless OpenStreetMap embed with a marker when coordinates exist and the device
+  is online; otherwise a static location tile with a status line and an external
+  OSM link. `autoResolve` geocodes once on mount (used by the Scout detail);
+  `onResolveLocation` persists coordinates through
+  `tripIdeaRepository.updateIdea`. Rendering never requires a network round-trip.
+- **Primary CTA** uses `bg-viatik-gradient text-white`, matching the Scout
+  wizard's save button.
