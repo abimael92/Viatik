@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -10,10 +10,13 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Heading } from "@/components/ui/heading";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { normalizeCurrencyCode } from "@/features/domain/money";
 import { useLocalProfile } from "@/features/profile/lib/use-local-profile";
 import { useI18n } from "@/lib/i18n/i18n-provider";
@@ -76,6 +79,10 @@ export function TripPlannerView({
   const [editingIdea, setEditingIdea] = useState<TripIdea | undefined>();
   const [editorOpen, setEditorOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [planIdea, setPlanIdea] = useState<TripIdea | null>(null);
+  const [tripTitle, setTripTitle] = useState("");
+  const [planError, setPlanError] = useState<string | null>(null);
+  const [creatingTrip, setCreatingTrip] = useState(false);
   const [isOnline, setIsOnline] = useState<boolean | null>(null);
 
   useEffect(() => tripIdeaRepository.watchAll((items) => setIdeas(items)), []);
@@ -104,6 +111,34 @@ export function TripPlannerView({
     if (editingIdea) await tripIdeaRepository.updateIdea(editingIdea.id, ideaPatch(input));
     else await tripIdeaRepository.create(input);
     setEditorOpen(false);
+  }
+
+  function openPlan(idea: TripIdea) {
+    setPlanIdea(idea);
+    setTripTitle(idea.name);
+    setPlanError(null);
+  }
+
+  async function submitPlan(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!planIdea) return;
+    const title = tripTitle.trim();
+    if (title.length < 2 || title.length > 80) {
+      setPlanError(t("copy.tripIdeaTripTitleError"));
+      return;
+    }
+    setPlanError(null);
+    setCreatingTrip(true);
+    try {
+      const trip = await tripIdeaRepository.convertToTrip(planIdea.id, { name: title });
+      setPlanIdea(null);
+      if (onTripCreated) onTripCreated(planIdea.id, trip.id);
+      else router.push(`/trips/${encodeURIComponent(trip.id)}`);
+    } catch {
+      setPlanError(t("copy.tripIdeaConvertError"));
+    } finally {
+      setCreatingTrip(false);
+    }
   }
 
   async function saveSavings(
@@ -209,10 +244,9 @@ export function TripPlannerView({
               idea={idea}
               onEdit={() => openEdit(idea)}
               onDelete={() => tripIdeaRepository.remove(idea.id)}
-              onConvert={async () => {
-                const trip = await tripIdeaRepository.convertToTrip(idea.id);
-                if (onTripCreated) onTripCreated(idea.id, trip.id);
-                else router.push(`/trips/${encodeURIComponent(trip.id)}`);
+              onConvert={() => openPlan(idea)}
+              onRevert={async ({ deleteTrip }) => {
+                await tripIdeaRepository.revertToIdea(idea.id, { deleteTrip });
               }}
               onSaveSavings={(input) => saveSavings(idea.id, input)}
               onAddPriceCheck={async (input) => {
@@ -245,6 +279,49 @@ export function TripPlannerView({
             onSave={saveIdea}
             onCancel={() => setEditorOpen(false)}
           />
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={planIdea !== null}
+        onOpenChange={(open) => {
+          if (!open && !creatingTrip) setPlanIdea(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("copy.tripIdeaPlanTripTitle")}</DialogTitle>
+            <DialogDescription>{t("copy.tripIdeaPlanTripDescription")}</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={(event) => void submitPlan(event)} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="planner-trip-title">{t("copy.tripIdeaTripTitleLabel")}</Label>
+              <Input
+                id="planner-trip-title"
+                value={tripTitle}
+                maxLength={80}
+                required
+                onChange={(event) => setTripTitle(event.target.value)}
+              />
+            </div>
+            {planError && (
+              <p role="alert" className="text-sm text-destructive">
+                {planError}
+              </p>
+            )}
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={creatingTrip}
+                onClick={() => setPlanIdea(null)}
+              >
+                {t("common.cancel")}
+              </Button>
+              <Button type="submit" disabled={creatingTrip}>
+                {creatingTrip ? t("copy.tripIdeaCreatingTrip") : t("copy.tripIdeaPlanTripConfirm")}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
       <ScoutIdeaWizard

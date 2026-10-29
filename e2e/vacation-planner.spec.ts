@@ -14,7 +14,7 @@ async function readPlannerDatabase(page: Page) {
         priceChecks: unknown[];
       }>;
       plans: Array<{ currentSavingsMinor: string }>;
-      trips: Array<{ id: string; destination: string | null }>;
+      trips: Array<{ id: string; name: string; destination: string | null }>;
       members: Array<{ role: string }>;
       budgets: Array<{ totalBudgetMinor: string }>;
       outbox: Array<{ entityType: string; operation: string }>;
@@ -41,6 +41,7 @@ async function readPlannerDatabase(page: Page) {
           })),
           trips: tripsRequest.result.map((trip) => ({
             id: trip.id,
+            name: trip.name,
             destination: trip.destination,
           })),
           members: membersRequest.result.map((member) => ({ role: member.role })),
@@ -99,6 +100,8 @@ test("wishlist estimates and savings persist locally and convert once into a tri
   await expect(ideaCard.getByText(/Suggested contribution: \$150\.00 \/ month/)).toBeVisible();
 
   await ideaCard.getByRole("button", { name: "Plan this trip" }).click();
+  await page.getByLabel("Trip title").fill("Kyoto spring break 2027");
+  await page.getByRole("button", { name: "Create trip" }).click();
   await expect(page.getByTestId("converted-trip-id")).toBeVisible();
   await expect(ideaCard.getByRole("link", { name: "Open trip" })).toBeVisible();
   await page.getByRole("button", { name: "Retry conversion" }).click();
@@ -116,6 +119,7 @@ test("wishlist estimates and savings persist locally and convert once into a tri
   expect(stored.plans[0].currentSavingsMinor).toBe("10000");
   expect(stored.trips).toHaveLength(1);
   expect(stored.trips[0].destination).toBe("Kyoto, Japan");
+  expect(stored.trips[0].name).toBe("Kyoto spring break 2027");
   expect(stored.members).toEqual([{ role: "owner" }]);
   expect(stored.budgets).toEqual([{ totalBudgetMinor: "100000" }]);
   expect(stored.outbox.map((item) => item.entityType).sort()).toEqual(["trip", "tripMember"]);

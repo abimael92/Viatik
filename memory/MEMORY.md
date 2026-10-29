@@ -4,7 +4,7 @@
 > before exploring the codebase; update it before ending a task.
 > **Companions:** [`data-models.md`](data-models.md) ·
 > [`components-ui.md`](components-ui.md) · [`roles-abilities.md`](roles-abilities.md)
-> **Last updated:** 2026-10-26 · schema v48 · 224 test files / 1,479 tests
+> **Last updated:** 2026-10-28 · schema v48 · 224 test files / 1,511 tests
 
 ---
 
@@ -178,6 +178,34 @@ Also update the topic file whose subject changed:
 ---
 
 ## 7. Session log (newest first)
+
+### 2026-10-28 — Trip planner: title prompt on convert + "set back as idea"
+
+- **Changed:** `features/trip-planner/data/dexie-trip-planner-repository.ts`
+  (`convertToTrip(id, { name })`, `revertToIdea(id, { deleteTrip })`,
+  `sendTripBackToIdea(tripId, { deleteTrip })`, `getByTripId`, `watchByTripId`,
+  `normalizeTripTitle`, `tripDurationDays`),
+  `features/trip-planner/domain/repositories/trip-idea-repository.ts`
+  (`ConvertTripIdeaOptions`, `RevertTripIdeaOptions`),
+  `features/trips/data/dexie-trip-repository.ts` (extracted exported
+  `deleteTripInTransaction`), `trip-planner-view.tsx` (trip-title dialog),
+  `trip-idea-card.tsx` (`onConvert` is now a void opener + `onRevert`),
+  new `revert-to-idea-dialog.tsx` and `trip-idea-link-section.tsx`,
+  `trip-workspace.tsx` (owner-only header action + Settings section),
+  EN/ES copy, `e2e/vacation-planner.spec.ts`.
+- **Schema:** none (Dexie stays v48; `tripIdeas.convertedToTripId` was already indexed in v47).
+- **Verification:** `pnpm lint` ✅ · `pnpm typecheck` ✅ · `pnpm vitest run features/trip-planner` ✅ (repository 18/18; 3 pre-existing `scout-idea-wizard` "progressive waves" failures reproduce on clean HEAD) · `pnpm test` 1,508 passed · `pnpm build` ✅.
+- **Gotchas:** converting now requires a 2–80 char trip title (idea names allow
+  120, so an over-long idea name is clamped only on the no-title fallback path).
+  `revertToIdea` / `sendTripBackToIdea` run the soft delete in the *same*
+  transaction as the idea write, so `deleteTripInTransaction` must be called
+  with the existing `ctx` — never nest `tripRepository.remove`. Because an
+  unsynced trip insert is still pending, `append` folds the revert's soft delete
+  into the existing `insert` mutation (outbox stays at 2 rows), so tests must
+  assert the payload's `deletedAt`, not an `update` operation.
+  `sendTripBackToIdea` is owner-only in the UI (header + Settings) because its
+  delete branch tombstones a shared trip; the idea card stays available to
+  whoever owns the local idea.
 
 ### 2026-10-27 — Scout wizard: crew-step input & compact idea card
 

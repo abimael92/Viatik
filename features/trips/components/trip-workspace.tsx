@@ -89,6 +89,9 @@ import { DocumentTrackerView } from "@/features/health/components/document-track
 import { TripMapView } from "@/features/maps/components/trip-map-view";
 import { DestinationField } from "@/features/trips/components/destination-field";
 import { TripDetailsSection } from "@/features/trips/components/trip-details-section";
+import { TripIdeaLinkSection } from "@/features/trip-planner/components/trip-idea-link-section";
+import { RevertToIdeaDialog } from "@/features/trip-planner/components/revert-to-idea-dialog";
+import { tripIdeaRepository } from "@/features/trip-planner/data/dexie-trip-planner-repository";
 import { TripGallery } from "@/features/trips/components/trip-gallery";
 // import { TripHealthBar } from "@/features/trips/components/trip-health-bar";
 import { getTripCoverGradient, isTripCoverImage } from "@/features/trips/lib/trip-cover";
@@ -219,6 +222,7 @@ export function TripWorkspace({
     initialAction === "edit-activity" && initialActivityId ? initialActivityId : null,
   );
   const [deleteTripOpen, setDeleteTripOpen] = useState(false);
+  const [backToIdeaOpen, setBackToIdeaOpen] = useState(false);
   const [scoutOpen, setScoutOpen] = useState(false);
   const { toast: notify } = useToast();
   const [shareOpen, setShareOpen] = useState(false);
@@ -598,6 +602,12 @@ export function TripWorkspace({
                     <Button variant="outline" onClick={() => setShareOpen(true)}>
                       <Share2 className="size-5" />
                       {t("common.share")}
+                    </Button>
+                  )}
+                  {isOwner && (
+                    <Button variant="outline" onClick={() => setBackToIdeaOpen(true)}>
+                      <Undo2 className="size-5" aria-hidden />
+                      {t("copy.tripIdeaSetBack")}
                     </Button>
                   )}
                 </div>
@@ -997,6 +1007,7 @@ export function TripWorkspace({
             initialEditing={editIntent > 0}
           />
           <BudgetSettings trip={trip} userId={userId} canEdit={canEdit} />
+          <TripIdeaLinkSection tripId={trip.id} canSendBack={isOwner} />
           {isOwner && (
             <div className="rounded-2xl border border-destructive/30 bg-card p-5">
               <Heading level={3} className="text-base font-semibold text-destructive">
@@ -1064,6 +1075,22 @@ export function TripWorkspace({
       />
 
       <ShareModal open={shareOpen} onOpenChange={setShareOpen} tripId={tripId} userId={userId} />
+      <RevertToIdeaDialog
+        open={backToIdeaOpen}
+        onOpenChange={setBackToIdeaOpen}
+        onRevert={async ({ deleteTrip }) => {
+          await tripIdeaRepository.sendTripBackToIdea(trip.id, { deleteTrip });
+          if (deleteTrip) {
+            router.replace("/trips");
+            return;
+          }
+          notify({
+            title: t("copy.tripIdeaRevertedTitle"),
+            description: t("copy.tripIdeaRevertedDescription"),
+            variant: "success",
+          });
+        }}
+      />
     </div>
   );
 }

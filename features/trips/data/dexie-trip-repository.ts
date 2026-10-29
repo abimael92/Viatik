@@ -88,6 +88,57 @@ export async function createTripInTransaction(
   return trip;
 }
 
+/**
+ * Soft-delete a trip and its travelers inside an existing transaction.
+ *
+ * Requires `trips`, `tripTravelers`, `contacts`, and `stagedTripMedia` in the
+ * transaction scope. Callers that already opened a transaction (for example the
+ * trip-planner revert flow) reuse this instead of nesting a second one.
+ */
+export async function deleteTripInTransaction(id: string, ctx: TransactionContext): Promise<void> {
+  const trip = await ctx.table<Trip>("trips").get(id);
+  if (!trip) return;
+  const deletedAt = new Date().toISOString();
+  const updated = { ...trip, deletedAt, updatedAt: deletedAt };
+  await ctx.table<Trip>("trips").put(updated);
+
+  const travelers = await ctx
+    .table<TripTraveler>("tripTravelers")
+    .where("tripId")
+    .equals(id)
+    .filter((traveler) => traveler.deletedAt === null)
+    .toArray();
+  for (const traveler of travelers) {
+    const deletedTraveler = { ...traveler, deletedAt, updatedAt: deletedAt };
+    await ctx.table<TripTraveler>("tripTravelers").put(deletedTraveler);
+    await append("tripTraveler", "update", deletedTraveler, {
+      tx: ctx,
+      baseUpdatedAt: traveler.updatedAt,
+    });
+
+    const contact = await ctx.table<Contact>("contacts").get(traveler.contactId);
+    if (!contact || contact.linkedProfileId) continue;
+    const stillUsed = await ctx
+      .table<TripTraveler>("tripTravelers")
+      .where("contactId")
+      .equals(contact.id)
+      .filter((candidate) => candidate.deletedAt === null && candidate.tripId !== id)
+      .count();
+    if (stillUsed === 0 && contact.deletedAt === null) {
+      const deletedContact = { ...contact, deletedAt, updatedAt: deletedAt };
+      await ctx.table<Contact>("contacts").put(deletedContact);
+      await append("contact", "update", deletedContact, {
+        tx: ctx,
+        baseUpdatedAt: contact.updatedAt,
+      });
+    }
+  }
+
+  await ctx.table<StagedTripMedia>("stagedTripMedia").where("tripId").equals(id).delete();
+  await append("trip", "update", updated, { tx: ctx, baseUpdatedAt: trip.updatedAt });
+  logger.debug("Trip deleted locally", { tripId: id });
+}
+
 /** Dexie-backed implementation of `TripRepository` — reads/writes IndexedDB only. */
 export class DexieTripRepository implements TripRepository {
   async list(): Promise<Trip[]> {
@@ -156,49 +207,7 @@ export class DexieTripRepository implements TripRepository {
     const db = getDb();
     return TransactionContext.runInTransaction(
       [db.trips, db.tripTravelers, db.contacts, db.stagedTripMedia],
-      async (ctx) => {
-        const trip = await ctx.table<Trip>("trips").get(id);
-        if (!trip) return;
-        const deletedAt = new Date().toISOString();
-        const updated = { ...trip, deletedAt, updatedAt: deletedAt };
-        await ctx.table<Trip>("trips").put(updated);
-
-        const travelers = await ctx
-          .table<TripTraveler>("tripTravelers")
-          .where("tripId")
-          .equals(id)
-          .filter((traveler) => traveler.deletedAt === null)
-          .toArray();
-        for (const traveler of travelers) {
-          const deletedTraveler = { ...traveler, deletedAt, updatedAt: deletedAt };
-          await ctx.table<TripTraveler>("tripTravelers").put(deletedTraveler);
-          await append("tripTraveler", "update", deletedTraveler, {
-            tx: ctx,
-            baseUpdatedAt: traveler.updatedAt,
-          });
-
-          const contact = await ctx.table<Contact>("contacts").get(traveler.contactId);
-          if (!contact || contact.linkedProfileId) continue;
-          const stillUsed = await ctx
-            .table<TripTraveler>("tripTravelers")
-            .where("contactId")
-            .equals(contact.id)
-            .filter((candidate) => candidate.deletedAt === null && candidate.tripId !== id)
-            .count();
-          if (stillUsed === 0 && contact.deletedAt === null) {
-            const deletedContact = { ...contact, deletedAt, updatedAt: deletedAt };
-            await ctx.table<Contact>("contacts").put(deletedContact);
-            await append("contact", "update", deletedContact, {
-              tx: ctx,
-              baseUpdatedAt: contact.updatedAt,
-            });
-          }
-        }
-
-        await ctx.table<StagedTripMedia>("stagedTripMedia").where("tripId").equals(id).delete();
-        await append("trip", "update", updated, { tx: ctx, baseUpdatedAt: trip.updatedAt });
-        logger.debug("Trip deleted locally", { tripId: id });
-      }
+      (ctx) => deleteTripInTransaction(id, ctx)
     );
   }
 

@@ -344,3 +344,24 @@ and `lib/i18n/error-copy.ts`. Locale persists in `localStorage["viatik-language"
   driven by `convertedToTripId`; converted cards drop Edit, savings, and price
   sections, keep the "Open trip" link + delete, and add a muted note. The
   planner list stable-sorts unconverted ideas first.
+- **Convert asks for the trip title.** "Plan this trip" only opens a
+  `TripPlannerView`-owned dialog (`planner-trip-title` input prefilled with the
+  idea name, 2–80 chars, `tripIdeaTripTitleError`); the conversion itself runs
+  from `submitPlan`, so the card's `onConvert` is a plain `() => void` and the
+  card no longer owns conversion state or errors.
+- **`RevertToIdeaDialog`** (`features/trip-planner/components/revert-to-idea-dialog.tsx`)
+  is the single "set back as idea" confirm. It never auto-picks a side: two
+  option cards offer "Keep trip and set back" (`deleteTrip: false`) and
+  "Delete trip and set back" (`deleteTrip: true`), plus Cancel. Both callers
+  (`TripIdeaCard`, `TripIdeaLinkSection`) pass `onRevert` and let the dialog
+  own pending/error state.
+- **`TripIdeaLinkSection`** (`features/trip-planner/components/trip-idea-link-section.tsx`)
+  renders on the trip Settings tab only when `tripIdeaRepository.watchByTripId`
+  finds the idea that created the trip and `canSendBack` (owner) is true.
+  "Keep trip" fires a success toast; "Delete trip" `router.replace("/trips")`.
+- **Trip header action:** the workspace header's owner action row
+  (`trip-workspace.tsx`, next to Share) has "Set back as idea" for **any** trip,
+  wired to `tripIdeaRepository.sendTripBackToIdea(trip.id, { deleteTrip })`.
+  That method reuses the linked idea when there is one, otherwise builds an idea
+  from the trip + `tripBudgets` row, so trips made with "Create trip" also work.
+  It is owner-only because the delete branch tombstones a shared trip.
