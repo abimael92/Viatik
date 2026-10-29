@@ -1,7 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { ExternalLink, Pencil, Trash2, Undo2 } from "lucide-react";
+import {
+  CalendarDays,
+  Clock,
+  ExternalLink,
+  Pencil,
+  PlaneTakeoff,
+  Tag,
+  Trash2,
+  Undo2,
+  UsersRound,
+} from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 
 import {
@@ -24,6 +34,7 @@ import {
 import { formatMinorUnits, parseMinorUnits } from "@/features/domain/money";
 import type {
   TripIdea,
+  TripIdeaEstimate,
   TripIdeaPriceCheck,
   TripSavingsPlan,
 } from "@/features/trip-planner/domain/trip-planner-types";
@@ -31,9 +42,14 @@ import {
   buildGoogleFlightsUrl,
   buildGoogleHotelsUrl,
 } from "@/features/trip-planner/domain/google-travel-links";
-import { tripSavingsPlanRepository } from "@/features/trip-planner/data/dexie-trip-planner-repository";
+import {
+  tripIdeaRepository,
+  tripSavingsPlanRepository,
+} from "@/features/trip-planner/data/dexie-trip-planner-repository";
+import { IdeaMapCard, type IdeaMapCoordinates } from "@/features/trip-planner/components/idea-map-card";
 import { RevertToIdeaDialog } from "@/features/trip-planner/components/revert-to-idea-dialog";
 import { SavingsPlanner } from "@/features/trip-planner/components/savings-planner";
+import { resolveDestinationCoordinates } from "@/app/actions/places";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 import type { TranslationKey } from "@/lib/i18n/translations";
@@ -46,6 +62,63 @@ const CATEGORY_COPY_KEYS: Record<SpendingCategory, TranslationKey> = {
   shopping: "copy.tripPlannerCategoryShopping",
   personal: "copy.tripPlannerCategoryPersonal",
 };
+
+/** One stable color per spending category, shared by the bar and its legend. */
+const CATEGORY_BAR_STYLES: Record<SpendingCategory, string> = {
+  transport: "bg-viatik-blue",
+  stay: "bg-viatik-magenta",
+  food: "bg-amber-500",
+  activities: "bg-emerald-500",
+  shopping: "bg-fuchsia-500",
+  personal: "bg-slate-400",
+};
+
+function percentageOf(amountMinor: bigint, totalMinor: bigint): number {
+  if (totalMinor <= 0n) return 0;
+  return Number((amountMinor * 10_000n) / totalMinor) / 100;
+}
+
+function BudgetBar({
+  estimates,
+  totalMinor,
+}: {
+  estimates: TripIdeaEstimate[];
+  totalMinor: bigint;
+}) {
+  if (totalMinor <= 0n) return null;
+  return (
+    <div aria-hidden className="mt-3 flex h-2 w-full overflow-hidden rounded-full bg-muted">
+      {estimates.map((estimate) => (
+        <span
+          key={estimate.category}
+          className={cn("h-full first:rounded-l-full last:rounded-r-full", CATEGORY_BAR_STYLES[estimate.category])}
+          style={{ width: `${percentageOf(estimate.amountMinor, totalMinor)}%` }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function FactTile({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof CalendarDays;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-xl border border-border/50 bg-muted/20 px-3 py-2.5">
+      <dt className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        <Icon aria-hidden className="size-3.5" />
+        {label}
+      </dt>
+      <dd className="mt-1 text-sm font-medium leading-snug">{value}</dd>
+    </div>
+  );
+}
+
 
 function dateLabel(date: string | null, locale: string): string | null {
   if (!date) return null;
@@ -129,6 +202,35 @@ export function TripIdeaCard({
       ? `${t("copy.tripIdeaFlexible")} · ${monthLabel(idea.targetMonth, locale)}`
       : t("copy.tripIdeaDatesFlexible"));
 
+  // Scout names ideas "<destination> - <season>"; the destination is already the
+  // headline, so only the remainder is worth showing as a subtitle.
+  const nameSuffix = idea.name.toLowerCase().startsWith(idea.destination.toLowerCase())
+    ? idea.name.slice(idea.destination.length).replace(/^[\s\-–—·:]+/, "").trim()
+    : "";
+  const subtitle = nameSuffix || (idea.name !== idea.destination ? idea.name : "");
+
+  const travelers = idea.childCount
+    ? t("copy.tripIdeaTravelers", { adults: idea.adultCount, children: idea.childCount })
+    : t("copy.tripIdeaTravelersAdults", { adults: idea.adultCount });
+
+  const budgetTotal = idea.targetTripCostMinor ?? estimateTotal;
+
+  async function locate(): Promise<IdeaMapCoordinates | null> {
+    try {
+      const coordinates = await resolveDestinationCoordinates(idea.destination);
+      if (!coordinates) return null;
+      await tripIdeaRepository.updateIdea(idea.id, {
+        placeId: coordinates.placeId,
+        latitude: coordinates.latitude,
+        longitude: coordinates.longitude,
+        timeZone: coordinates.timeZone,
+      });
+      return { latitude: coordinates.latitude, longitude: coordinates.longitude };
+    } catch {
+      return null;
+    }
+  }
+
   async function savePrice(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPriceError(null);
@@ -182,138 +284,200 @@ export function TripIdeaCard({
   }
 
   return (
-    <Card className="space-y-4 p-5">
-      {operationError && (
-        <p
-          role="alert"
-          className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
-        >
-          {operationError}
-        </p>
-      )}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-lg font-semibold">{idea.name}</h2>
-            <span
-              className={cn(
-                "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-                converted ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"
-              )}
-            >
-              {t(converted ? "copy.tripIdeaStatusPlanned" : "copy.tripIdeaStatusIdea")}
-            </span>
-          </div>
-          <p className="mt-1 text-sm font-medium">{idea.destination}</p>
-          <dl className="mt-3 grid gap-x-5 gap-y-1 text-sm text-muted-foreground sm:grid-cols-2">
-            <div>
-              <dt className="inline">{t("copy.tripIdeaDeparting")} </dt>
-              <dd className="inline">{idea.origin || t("copy.tripIdeaNotSet")}</dd>
-            </div>
-            <div>
-              <dt className="inline">{t("copy.tripIdeaWhen")} </dt>
-              <dd className="inline">{dates}</dd>
-            </div>
-            <div>
-              <dt className="inline">{t("copy.tripIdeaTravelersLabel")} </dt>
-              <dd className="inline">
-                {idea.childCount
-                  ? t("copy.tripIdeaTravelers", { adults: idea.adultCount, children: idea.childCount })
-                  : t("copy.tripIdeaTravelersAdults", { adults: idea.adultCount })}
-              </dd>
-            </div>
-            <div>
-              <dt className="inline">{t("copy.tripIdeaDuration")} </dt>
-              <dd className="inline">
-                {idea.durationDays
-                  ? t("copy.tripIdeaDurationDays", { days: idea.durationDays })
-                  : t("copy.tripIdeaFlexible")}
-              </dd>
-            </div>
-          </dl>
-          {idea.interests.length > 0 && (
-            <p className="mt-2 text-sm text-muted-foreground">
-              {t("copy.tripIdeaInterests", { interests: idea.interests.join(", ") })}
-            </p>
-          )}
-          {converted && (
-            <p className="mt-3 text-sm text-muted-foreground">
-              {t("copy.tripIdeaConvertedNote")}
-            </p>
-          )}
-          {!converted && idea.targetTripCostMinor != null && (
-            <p className="mt-3 font-semibold tabular-nums">
-              {t("copy.tripIdeaTarget", {
-                amount: formatMinorUnits(idea.targetTripCostMinor, idea.currency),
-                currency: idea.currency,
-              })}
-            </p>
-          )}
-          {!converted && idea.categoryEstimates.length > 0 && (
-            <ul className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
-              {idea.categoryEstimates.map((estimate) => (
-                <li key={estimate.category} className="rounded-full bg-muted px-2.5 py-1">
-                  {t(CATEGORY_COPY_KEYS[estimate.category])}{" "}
-                  {formatMinorUnits(estimate.amountMinor, idea.currency)}
-                </li>
-              ))}
-            </ul>
-          )}
-          {!converted && unallocated != null && unallocated !== 0n && (
-            <p className="mt-2 text-xs text-muted-foreground">
-              {t(unallocated > 0n ? "copy.tripIdeaUnallocated" : "copy.tripIdeaOverAllocated", {
-                amount: formatMinorUnits(unallocated > 0n ? unallocated : -unallocated, idea.currency),
-              })}
-            </p>
-          )}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {!converted && (
-            <Button type="button" variant="outline" onClick={onEdit}>
-              <Pencil aria-hidden />
-              {t("copy.tripIdeaEdit")}
-            </Button>
-          )}
-          {idea.convertedToTripId ? (
-            <>
-              <Button asChild>
-                <Link href={`/trips/${encodeURIComponent(idea.convertedToTripId)}`}>{t("copy.tripIdeaOpenTrip")}</Link>
-              </Button>
-              <Button type="button" variant="outline" onClick={() => setRevertOpen(true)}>
-                <Undo2 aria-hidden />
-                {t("copy.tripIdeaSetBack")}
-              </Button>
-            </>
-          ) : (
-            <Button type="button" onClick={onConvert}>
-              {t("copy.tripIdeaPlanTrip")}
-            </Button>
-          )}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label={t("copy.tripIdeaDeleteAria", { name: idea.name })}
-            onClick={() => setDeleteOpen(true)}
+    <Card className="overflow-hidden">
+      <div
+        aria-hidden
+        className={cn("h-1 w-full", converted ? "bg-success/70" : "bg-viatik-gradient")}
+      />
+
+      <div className="space-y-4 p-5">
+        {operationError && (
+          <p
+            role="alert"
+            className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
           >
-            <Trash2 aria-hidden />
-          </Button>
+            {operationError}
+          </p>
+        )}
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                className={cn(
+                  "rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                  converted ? "bg-success/10 text-success" : "bg-viatik-magenta/10 text-viatik-magenta"
+                )}
+              >
+                {t(converted ? "copy.tripIdeaStatusPlanned" : "copy.tripIdeaStatusIdea")}
+              </span>
+              {idea.durationDays != null && (
+                <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                  {t("copy.tripIdeaDurationDays", { days: idea.durationDays })}
+                </span>
+              )}
+            </div>
+            <h2 className="text-xl font-semibold leading-tight tracking-tight">
+              {idea.destination}
+            </h2>
+            {subtitle && (
+              <p className="text-sm leading-snug text-muted-foreground">{subtitle}</p>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {!converted && (
+              <Button type="button" variant="outline" onClick={onEdit}>
+                <Pencil aria-hidden />
+                {t("copy.tripIdeaEdit")}
+              </Button>
+            )}
+            {idea.convertedToTripId ? (
+              <>
+                <Button asChild>
+                  <Link href={`/trips/${encodeURIComponent(idea.convertedToTripId)}`}>
+                    {t("copy.tripIdeaOpenTrip")}
+                  </Link>
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setRevertOpen(true)}>
+                  <Undo2 aria-hidden />
+                  {t("copy.tripIdeaSetBack")}
+                </Button>
+              </>
+            ) : (
+              <Button
+                type="button"
+                className="bg-viatik-gradient text-white transition-all duration-200 ease-out active:scale-[0.98]"
+                onClick={onConvert}
+              >
+                {t("copy.tripIdeaPlanTrip")}
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={t("copy.tripIdeaDeleteAria", { name: idea.name })}
+              onClick={() => setDeleteOpen(true)}
+            >
+              <Trash2 aria-hidden />
+            </Button>
+          </div>
         </div>
+
+        <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <FactTile
+            icon={PlaneTakeoff}
+            label={t("copy.tripIdeaFactOrigin")}
+            value={idea.origin || t("copy.tripIdeaNotSet")}
+          />
+          <FactTile icon={CalendarDays} label={t("copy.tripIdeaFactWhen")} value={dates} />
+          <FactTile icon={UsersRound} label={t("copy.tripIdeaFactTravelers")} value={travelers} />
+          <FactTile
+            icon={Clock}
+            label={t("copy.tripIdeaFactDuration")}
+            value={
+              idea.durationDays
+                ? t("copy.tripIdeaDurationDays", { days: idea.durationDays })
+                : t("copy.tripIdeaFlexible")
+            }
+          />
+        </dl>
+
+        {idea.interests.length > 0 && (
+          <ul className="flex flex-wrap gap-1.5">
+            {idea.interests.map((interest) => (
+              <li
+                key={interest}
+                className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-card px-2.5 py-1 text-xs text-muted-foreground"
+              >
+                <Tag aria-hidden className="size-3" />
+                {interest}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {converted ? (
+          <p className="text-sm text-muted-foreground">{t("copy.tripIdeaConvertedNote")}</p>
+        ) : (
+          <section className="rounded-2xl border border-border/60 bg-muted/20 p-4">
+            <div className="flex flex-wrap items-end justify-between gap-2">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t("copy.tripIdeaBudgetHeading")}
+                </p>
+                <p className="mt-1 text-2xl font-semibold leading-none tracking-tight tabular-nums">
+                  {idea.targetTripCostMinor != null || estimateTotal > 0n
+                    ? formatMinorUnits(budgetTotal, idea.currency, locale)
+                    : t("copy.tripIdeaBudgetUnset")}
+                </p>
+              </div>
+              {unallocated != null && unallocated !== 0n && (
+                <span className="rounded-full bg-card px-2.5 py-1 text-xs text-muted-foreground tabular-nums">
+                  {t(unallocated > 0n ? "copy.tripIdeaUnallocated" : "copy.tripIdeaOverAllocated", {
+                    amount: formatMinorUnits(
+                      unallocated > 0n ? unallocated : -unallocated,
+                      idea.currency,
+                      locale
+                    ),
+                  })}
+                </span>
+              )}
+            </div>
+
+            {idea.categoryEstimates.length > 0 && (
+              <>
+                <BudgetBar estimates={idea.categoryEstimates} totalMinor={budgetTotal} />
+                <p className="mt-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {t("copy.tripIdeaBudgetBreakdown")}
+                </p>
+                <ul className="mt-2 grid gap-x-4 gap-y-1.5 sm:grid-cols-2">
+                  {idea.categoryEstimates.map((estimate) => (
+                    <li key={estimate.category} className="flex items-center gap-2 text-xs">
+                      <span
+                        aria-hidden
+                        className={cn("size-2 shrink-0 rounded-full", CATEGORY_BAR_STYLES[estimate.category])}
+                      />
+                      <span className="min-w-0 flex-1 truncate text-muted-foreground">
+                        {t(CATEGORY_COPY_KEYS[estimate.category])}
+                      </span>
+                      <span className="font-medium tabular-nums">
+                        {formatMinorUnits(estimate.amountMinor, idea.currency, locale)}
+                      </span>
+                      <span className="w-9 shrink-0 text-right text-muted-foreground tabular-nums">
+                        {Math.round(percentageOf(estimate.amountMinor, budgetTotal))}%
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </section>
+        )}
+
+        {!converted && (
+          <IdeaMapCard
+            destination={idea.destination}
+            latitude={idea.latitude}
+            longitude={idea.longitude}
+            onResolveLocation={locate}
+          />
+        )}
       </div>
 
       {!converted && (
-      <Collapsible title={t("copy.tripIdeaSavingsSection")} id={`idea-savings-${idea.id}`}>
-        <SavingsPlanner
-          key={`${idea.id}-${idea.startDate}-${idea.targetTripCostMinor ?? "unset"}-${plan?.version ?? 0}`}
-          idea={idea}
-          plan={plan}
-          onSave={onSaveSavings}
-        />
-      </Collapsible>
-      )}
+        <div className="space-y-3 border-t border-border/60 bg-muted/10 p-5">
+          <Collapsible title={t("copy.tripIdeaSavingsSection")} id={`idea-savings-${idea.id}`}>
+            <SavingsPlanner
+              key={`${idea.id}-${idea.startDate}-${idea.targetTripCostMinor ?? "unset"}-${plan?.version ?? 0}`}
+              idea={idea}
+              plan={plan}
+              onSave={onSaveSavings}
+            />
+          </Collapsible>
 
-      {!converted && (
-      <Collapsible title={t("copy.tripIdeaPricesSection")} id={`idea-prices-${idea.id}`}>
+          <Collapsible title={t("copy.tripIdeaPricesSection")} id={`idea-prices-${idea.id}`}>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
             {t("copy.tripIdeaPriceDisclosure")}
@@ -424,6 +588,7 @@ export function TripIdeaCard({
           )}
         </div>
       </Collapsible>
+        </div>
       )}
 
       <RevertToIdeaDialog open={revertOpen} onOpenChange={setRevertOpen} onRevert={onRevert} />
