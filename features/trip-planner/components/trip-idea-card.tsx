@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ExternalLink, Pencil, Trash2 } from "lucide-react";
+import { ExternalLink, Pencil, Trash2, Undo2 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 
 import {
@@ -32,6 +32,7 @@ import {
   buildGoogleHotelsUrl,
 } from "@/features/trip-planner/domain/google-travel-links";
 import { tripSavingsPlanRepository } from "@/features/trip-planner/data/dexie-trip-planner-repository";
+import { RevertToIdeaDialog } from "@/features/trip-planner/components/revert-to-idea-dialog";
 import { SavingsPlanner } from "@/features/trip-planner/components/savings-planner";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
@@ -79,6 +80,7 @@ export function TripIdeaCard({
   onEdit,
   onDelete,
   onConvert,
+  onRevert,
   onSaveSavings,
   onAddPriceCheck,
   onRemovePriceCheck,
@@ -86,7 +88,9 @@ export function TripIdeaCard({
   idea: TripIdea;
   onEdit: () => void;
   onDelete: () => Promise<void>;
-  onConvert: () => Promise<void>;
+  /** Opens the trip-title prompt; the parent performs the conversion. */
+  onConvert: () => void;
+  onRevert: (options: { deleteTrip: boolean }) => Promise<void>;
   onSaveSavings: (input: {
     currentSavingsMinor: bigint;
     cadence: TripSavingsPlan["cadence"];
@@ -98,7 +102,7 @@ export function TripIdeaCard({
   const [plan, setPlan] = useState<TripSavingsPlan>();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [converting, setConverting] = useState(false);
+  const [revertOpen, setRevertOpen] = useState(false);
   const [priceCategory, setPriceCategory] = useState<SpendingCategory>("transport");
   const [priceInput, setPriceInput] = useState("");
   const [priceSource, setPriceSource] = useState("");
@@ -174,18 +178,6 @@ export function TripIdeaCard({
       await onRemovePriceCheck(priceCheckId);
     } catch {
       setPriceError(t("copy.tripIdeaPriceRemoveError"));
-    }
-  }
-
-  async function convert() {
-    setOperationError(null);
-    setConverting(true);
-    try {
-      await onConvert();
-    } catch {
-      setOperationError(t("copy.tripIdeaConvertError"));
-    } finally {
-      setConverting(false);
     }
   }
 
@@ -283,12 +275,18 @@ export function TripIdeaCard({
             </Button>
           )}
           {idea.convertedToTripId ? (
-            <Button asChild>
-              <Link href={`/trips/${encodeURIComponent(idea.convertedToTripId)}`}>{t("copy.tripIdeaOpenTrip")}</Link>
-            </Button>
+            <>
+              <Button asChild>
+                <Link href={`/trips/${encodeURIComponent(idea.convertedToTripId)}`}>{t("copy.tripIdeaOpenTrip")}</Link>
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setRevertOpen(true)}>
+                <Undo2 aria-hidden />
+                {t("copy.tripIdeaSetBack")}
+              </Button>
+            </>
           ) : (
-            <Button type="button" onClick={() => void convert()} disabled={converting}>
-              {converting ? t("copy.tripIdeaCreatingTrip") : t("copy.tripIdeaPlanTrip")}
+            <Button type="button" onClick={onConvert}>
+              {t("copy.tripIdeaPlanTrip")}
             </Button>
           )}
           <Button
@@ -427,6 +425,8 @@ export function TripIdeaCard({
         </div>
       </Collapsible>
       )}
+
+      <RevertToIdeaDialog open={revertOpen} onOpenChange={setRevertOpen} onRevert={onRevert} />
 
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent>
