@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   updateIdea: vi.fn(),
   remove: vi.fn(),
   convertToTrip: vi.fn(),
+  revertToIdea: vi.fn(),
   addPriceCheck: vi.fn(),
   removePriceCheck: vi.fn(),
   watchByIdea: vi.fn(),
@@ -51,6 +52,7 @@ vi.mock("@/features/trip-planner/data/dexie-trip-planner-repository", () => ({
     updateIdea: mocks.updateIdea,
     remove: mocks.remove,
     convertToTrip: mocks.convertToTrip,
+    revertToIdea: mocks.revertToIdea,
     addPriceCheck: mocks.addPriceCheck,
     removePriceCheck: mocks.removePriceCheck,
   },
@@ -108,6 +110,7 @@ describe("TripPlannerView", () => {
     });
     mocks.create.mockResolvedValue(idea);
     mocks.convertToTrip.mockResolvedValue({ id: "trip-1" });
+    mocks.revertToIdea.mockResolvedValue({ ...idea, convertedToTripId: null });
     mocks.getByIdea.mockResolvedValue(undefined);
     mocks.upsert.mockResolvedValue(undefined);
   });
@@ -175,15 +178,68 @@ describe("TripPlannerView", () => {
     );
   });
 
-  it("converts locally then navigates to the created trip", async () => {
+  it("asks for the trip title before converting, then navigates to the created trip", async () => {
     mocks.ideas = [idea];
     render(<TripPlannerView userId="user-1" onBack={vi.fn()} />);
     fireEvent.click(await screen.findByRole("button", { name: "Plan this trip" }));
 
+    const titleInput = await screen.findByLabelText("Trip title");
+    expect((titleInput as HTMLInputElement).value).toBe("Kyoto in spring");
+    fireEvent.click(screen.getByRole("button", { name: "Create trip" }));
+
     await waitFor(() => {
-      expect(mocks.convertToTrip).toHaveBeenCalledWith(idea.id);
+      expect(mocks.convertToTrip).toHaveBeenCalledWith(idea.id, { name: "Kyoto in spring" });
       expect(mocks.push).toHaveBeenCalledWith("/trips/trip-1");
     });
+  });
+
+  it("converts with the edited trip title", async () => {
+    mocks.ideas = [idea];
+    render(<TripPlannerView userId="user-1" onBack={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Plan this trip" }));
+    fireEvent.change(await screen.findByLabelText("Trip title"), {
+      target: { value: "Japan with the kids" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create trip" }));
+
+    await waitFor(() =>
+      expect(mocks.convertToTrip).toHaveBeenCalledWith(idea.id, { name: "Japan with the kids" })
+    );
+  });
+
+  it("refuses a too-short trip title without converting", async () => {
+    mocks.ideas = [idea];
+    render(<TripPlannerView userId="user-1" onBack={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Plan this trip" }));
+    fireEvent.change(await screen.findByLabelText("Trip title"), { target: { value: "A" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create trip" }));
+
+    expect(
+      await screen.findByText("Enter a trip title between 2 and 80 characters.")
+    ).toBeTruthy();
+    expect(mocks.convertToTrip).not.toHaveBeenCalled();
+  });
+
+  it("sets a converted idea back while keeping the trip", async () => {
+    mocks.ideas = [{ ...idea, convertedToTripId: "trip-9" }];
+    render(<TripPlannerView userId="user-1" onBack={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Set back as idea" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Keep trip and set back" }));
+
+    await waitFor(() =>
+      expect(mocks.revertToIdea).toHaveBeenCalledWith(idea.id, { deleteTrip: false })
+    );
+  });
+
+  it("sets a converted idea back and deletes the trip when chosen", async () => {
+    mocks.ideas = [{ ...idea, convertedToTripId: "trip-9" }];
+    render(<TripPlannerView userId="user-1" onBack={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Set back as idea" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Delete trip and set back" }));
+
+    await waitFor(() =>
+      expect(mocks.revertToIdea).toHaveBeenCalledWith(idea.id, { deleteTrip: true })
+    );
   });
 
   it("keeps manual creation available while offline and disables the Scout entry point", async () => {
@@ -236,6 +292,7 @@ describe("TripPlannerView", () => {
       "/trips/trip-9"
     );
     expect(screen.getByRole("button", { name: "Delete Kyoto in spring" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Set back as idea" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Plan this trip" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Savings plan" })).toBeNull();

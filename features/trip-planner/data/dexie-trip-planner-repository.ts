@@ -1,7 +1,7 @@
-import { addDays, format, isValid, parseISO } from "date-fns";
+import { addDays, differenceInCalendarDays, format, isValid, parseISO } from "date-fns";
 import { liveQuery } from "dexie";
 
-import type { Trip } from "@/features/domain/entities";
+import type { Trip, TripBudget } from "@/features/domain/entities";
 import { isSpendingCategory, type SpendingCategory } from "@/features/domain/categories";
 import { MAX_MINOR_UNITS, normalizeCurrencyCode } from "@/features/domain/money";
 import type {
@@ -14,7 +14,10 @@ import { getCurrentDatabase, type ViatikDatabase } from "@/lib/db/dexie";
 import { TransactionContext } from "@/lib/db/transaction-context";
 import { getSyncUser } from "@/lib/sync/sync-context";
 import { assertValidTripDates } from "@/features/trips/lib/trip-duration";
-import { createTripInTransaction } from "@/features/trips/data/dexie-trip-repository";
+import {
+  createTripInTransaction,
+  deleteTripInTransaction,
+} from "@/features/trips/data/dexie-trip-repository";
 import type {
   NewTripIdea,
   TripIdea,
@@ -24,6 +27,8 @@ import type {
   TripSavingsPlan,
 } from "@/features/trip-planner/domain/trip-planner-types";
 import type {
+  ConvertTripIdeaOptions,
+  RevertTripIdeaOptions,
   TripIdeaPatch,
   TripIdeaRepository,
 } from "@/features/trip-planner/domain/repositories/trip-idea-repository";
@@ -55,6 +60,23 @@ function assertDateOnly(value: string | null | undefined, name: string): void {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || !isValid(parseISO(value))) {
     throw new Error(`Enter a valid ${name}.`);
   }
+}
+
+/** Trip titles follow the trip-name rules (2–80), not the wider idea-name limit. */
+function normalizeTripTitle(value: string | undefined, fallback: string): string {
+  if (value == null) return fallback.slice(0, 80);
+  const trimmed = value.trim();
+  if (trimmed.length < 2 || trimmed.length > 80) {
+    throw new Error("Enter a trip title between 2 and 80 characters.");
+  }
+  return trimmed;
+}
+
+/** Idea durations are capped at 60 days; longer or open-ended trips keep `null`. */
+function tripDurationDays(startDate: string | null, endDate: string | null): number | null {
+  if (!startDate || !endDate) return null;
+  const days = differenceInCalendarDays(parseISO(endDate), parseISO(startDate)) + 1;
+  return days >= 1 && days <= 60 ? days : null;
 }
 
 function normalizeEstimates(estimates: TripIdeaEstimate[]): TripIdeaEstimate[] {
@@ -211,8 +233,20 @@ export class DexieTripPlannerRepository implements TripIdeaRepository, TripSavin
     return getDb().tripIdeas.get(id);
   }
 
+  async getByTripId(tripId: string): Promise<TripIdea | undefined> {
+    return getDb().tripIdeas.where("convertedToTripId").equals(tripId).first();
+  }
+
   watchAll(onChange: (ideas: TripIdea[]) => void): () => void {
     const subscription = liveQuery(() => this.list()).subscribe({ next: onChange });
+    return () => subscription.unsubscribe();
+  }
+
+  watchByTripId(
+    tripId: string,
+    onChange: (idea: TripIdea | undefined) => void
+  ): () => void {
+    const subscription = liveQuery(() => this.getByTripId(tripId)).subscribe({ next: onChange });
     return () => subscription.unsubscribe();
   }
 
@@ -296,7 +330,7 @@ export class DexieTripPlannerRepository implements TripIdeaRepository, TripSavin
     });
   }
 
-  async convertToTrip(id: string): Promise<Trip> {
+  async convertToTrip(id: string, options?: ConvertTripIdeaOptions): Promise<Trip> {
     const db = getDb();
     return TransactionContext.runInTransaction(
       [db.tripIdeas, db.trips, db.tripMembers, db.tripBudgets],
@@ -322,7 +356,7 @@ export class DexieTripPlannerRepository implements TripIdeaRepository, TripSavin
         const newTrip: NewTrip = {
           id: tripId,
           ownerId,
-          name: idea.name,
+          name: normalizeTripTitle(options?.name, idea.name),
           destination: idea.destination,
           latitude: idea.latitude,
           longitude: idea.longitude,
@@ -356,6 +390,111 @@ export class DexieTripPlannerRepository implements TripIdeaRepository, TripSavin
           version: idea.version + 1,
         });
         return trip;
+      }
+    );
+  }
+
+  async revertToIdea(id: string, options: RevertTripIdeaOptions): Promise<TripIdea> {
+    const db = getDb();
+    return TransactionContext.runInTransaction(
+      [db.tripIdeas, db.trips, db.tripTravelers, db.contacts, db.stagedTripMedia],
+      async (ctx) => {
+        const idea = await ctx.table<TripIdea>("tripIdeas").get(id);
+        if (!idea) throw new Error(`Trip idea ${id} was not found.`);
+        if (!idea.convertedToTripId) return idea;
+
+        if (options.deleteTrip) await deleteTripInTransaction(idea.convertedToTripId, ctx);
+
+        const reverted: TripIdea = {
+          ...idea,
+          convertedToTripId: null,
+          updatedAt: new Date().toISOString(),
+          version: idea.version + 1,
+        };
+        await ctx.table<TripIdea>("tripIdeas").put(reverted);
+        return reverted;
+      }
+    );
+  }
+
+  /**
+   * Send a trip back to the wishlist. Reuses the idea that created the trip when
+   * one exists; otherwise it builds a new idea from the trip and its budget, so
+   * trips created with "Create trip" can be set back too.
+   */
+  async sendTripBackToIdea(tripId: string, options: RevertTripIdeaOptions): Promise<TripIdea> {
+    const db = getDb();
+    return TransactionContext.runInTransaction(
+      [
+        db.tripIdeas,
+        db.tripSavingsPlans,
+        db.tripBudgets,
+        db.trips,
+        db.tripTravelers,
+        db.contacts,
+        db.stagedTripMedia,
+      ],
+      async (ctx) => {
+        const trip = await ctx.table<Trip>("trips").get(tripId);
+        if (!trip || trip.deletedAt !== null) {
+          throw new Error("This trip is no longer available.");
+        }
+        const now = new Date().toISOString();
+        const linked = await ctx
+          .table<TripIdea>("tripIdeas")
+          .where("convertedToTripId")
+          .equals(tripId)
+          .first();
+
+        let idea: TripIdea;
+        if (linked) {
+          idea = {
+            ...linked,
+            convertedToTripId: null,
+            updatedAt: now,
+            version: linked.version + 1,
+          };
+          await ctx.table<TripIdea>("tripIdeas").put(idea);
+        } else {
+          const budget = await ctx
+            .table<TripBudget>("tripBudgets")
+            .where("tripId")
+            .equals(tripId)
+            .first();
+          idea = normalizeTripIdea(
+            {
+              id: crypto.randomUUID(),
+              name: trip.name,
+              destination: trip.destination ?? trip.name,
+              placeId: trip.placeId,
+              latitude: trip.latitude,
+              longitude: trip.longitude,
+              timeZone: trip.timeZone,
+              startDate: trip.startDate,
+              endDate: trip.endDate,
+              durationDays: tripDurationDays(trip.startDate, trip.endDate),
+              adultCount: trip.adultCount,
+              childCount: trip.childCount,
+              currency: trip.baseCurrency,
+              targetTripCostMinor:
+                budget && budget.totalBudgetMinor > 0n ? budget.totalBudgetMinor : null,
+              categoryEstimates: (budget?.categoryAllocations ?? [])
+                .filter((allocation) => isSpendingCategory(allocation.category))
+                .map((allocation) => ({
+                  category: allocation.category,
+                  amountMinor: allocation.allocationMinor,
+                })),
+            },
+            now
+          );
+          await ctx.table<TripIdea>("tripIdeas").add(idea);
+          await ctx
+            .table<TripSavingsPlan>("tripSavingsPlans")
+            .add(newSavingsPlan(crypto.randomUUID(), idea.id, now));
+        }
+
+        if (options.deleteTrip) await deleteTripInTransaction(tripId, ctx);
+        return idea;
       }
     );
   }

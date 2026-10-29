@@ -14,6 +14,7 @@ import {
   tripIdeaRepository,
   tripSavingsPlanRepository,
 } from "@/features/trip-planner/data/dexie-trip-planner-repository";
+import { tripRepository } from "@/features/trips/data/dexie-trip-repository";
 
 const USER_ID = "00000000-0000-4000-8000-000000000001";
 let db: ViatikDatabase;
@@ -219,6 +220,133 @@ describe("DexieTripPlannerRepository", () => {
     expect(await db.tripMembers.count()).toBe(1);
     expect(await db.tripBudgets.count()).toBe(1);
     expect(await db.outboxMutations.count()).toBe(2);
+  });
+
+  it("uses the trip title chosen during conversion", async () => {
+    await tripIdeaRepository.create(newIdea());
+
+    const trip = await tripIdeaRepository.convertToTrip("idea-1", { name: "  Japan 2027  " });
+
+    expect(trip.name).toBe("Japan 2027");
+  });
+
+  it("rejects a trip title outside the trip-name limits without creating a trip", async () => {
+    await tripIdeaRepository.create(newIdea());
+
+    await expect(tripIdeaRepository.convertToTrip("idea-1", { name: "x" })).rejects.toThrow(
+      "between 2 and 80 characters"
+    );
+    expect(await db.trips.count()).toBe(0);
+    expect((await tripIdeaRepository.getById("idea-1"))?.convertedToTripId).toBeNull();
+  });
+
+  it("finds the idea linked to a converted trip", async () => {
+    await tripIdeaRepository.create(newIdea());
+    const trip = await tripIdeaRepository.convertToTrip("idea-1");
+
+    expect((await tripIdeaRepository.getByTripId(trip.id))?.id).toBe("idea-1");
+    expect(await tripIdeaRepository.getByTripId("unknown-trip")).toBeUndefined();
+  });
+
+  it("sets an idea back without touching the trip it created", async () => {
+    await tripIdeaRepository.create(newIdea());
+    const trip = await tripIdeaRepository.convertToTrip("idea-1");
+
+    const reverted = await tripIdeaRepository.revertToIdea("idea-1", { deleteTrip: false });
+
+    expect(reverted.convertedToTripId).toBeNull();
+    expect(reverted.version).toBe(3);
+    expect((await db.trips.get(trip.id))?.deletedAt).toBeNull();
+    expect(await tripIdeaRepository.getByTripId(trip.id)).toBeUndefined();
+  });
+
+  it("deletes the trip when an idea is set back with that choice", async () => {
+    await tripIdeaRepository.create(newIdea());
+    const trip = await tripIdeaRepository.convertToTrip("idea-1");
+
+    const reverted = await tripIdeaRepository.revertToIdea("idea-1", { deleteTrip: true });
+
+    expect(reverted.convertedToTripId).toBeNull();
+    expect((await db.trips.get(trip.id))?.deletedAt).not.toBeNull();
+    // The trip insert has not synced yet, so the outbox keeps its insert
+    // operation and folds the soft delete into that payload.
+    const tripMutation = (await db.outboxMutations.toArray()).find(
+      (mutation) => mutation.entityType === "trip"
+    );
+    expect((tripMutation?.payload as { deletedAt?: string | null } | null)?.deletedAt).toBeTruthy();
+  });
+
+  it("leaves an unconverted idea unchanged when setting it back", async () => {
+    const created = await tripIdeaRepository.create(newIdea());
+
+    const reverted = await tripIdeaRepository.revertToIdea("idea-1", { deleteTrip: true });
+
+    expect(reverted).toEqual(created);
+    expect(await db.trips.count()).toBe(0);
+  });
+
+  it("sends a trip without a source idea back by building one from the trip and its budget", async () => {
+    const trip = await tripRepository.create({
+      id: "trip-direct",
+      ownerId: USER_ID,
+      name: "Cancun winter",
+      destination: "Cancun, Mexico",
+      startDate: "2027-12-20",
+      endDate: "2027-12-27",
+      adultCount: 2,
+      childCount: 1,
+      baseCurrency: "MXN",
+    });
+    await db.tripBudgets.add({
+      id: "budget-direct",
+      tripId: trip.id,
+      totalBudgetMinor: 250_000n,
+      dailyTargetMinor: null,
+      categoryAllocations: [
+        {
+          category: "stay",
+          allocationMinor: 150_000n,
+          createdAt: "2026-10-01T00:00:00.000Z",
+          updatedAt: "2026-10-01T00:00:00.000Z",
+        },
+      ],
+      createdBy: USER_ID,
+      createdAt: "2026-10-01T00:00:00.000Z",
+      updatedAt: "2026-10-01T00:00:00.000Z",
+      deletedAt: null,
+    });
+
+    const idea = await tripIdeaRepository.sendTripBackToIdea(trip.id, { deleteTrip: true });
+
+    expect(idea).toMatchObject({
+      name: "Cancun winter",
+      destination: "Cancun, Mexico",
+      currency: "MXN",
+      startDate: "2027-12-20",
+      endDate: "2027-12-27",
+      durationDays: 8,
+      adultCount: 2,
+      childCount: 1,
+      targetTripCostMinor: 250_000n,
+      categoryEstimates: [{ category: "stay", amountMinor: 150_000n }],
+      convertedToTripId: null,
+    });
+    expect(await tripSavingsPlanRepository.getByIdea(idea.id)).toMatchObject({
+      currentSavingsMinor: 0n,
+    });
+    expect((await db.trips.get(trip.id))?.deletedAt).not.toBeNull();
+  });
+
+  it("reuses the linked idea when a converted trip is sent back and kept", async () => {
+    await tripIdeaRepository.create(newIdea());
+    const trip = await tripIdeaRepository.convertToTrip("idea-1");
+
+    const idea = await tripIdeaRepository.sendTripBackToIdea(trip.id, { deleteTrip: false });
+
+    expect(idea.id).toBe("idea-1");
+    expect(idea.convertedToTripId).toBeNull();
+    expect(await db.tripIdeas.count()).toBe(1);
+    expect((await db.trips.get(trip.id))?.deletedAt).toBeNull();
   });
 
   it("rejects invalid trip dates without creating partial trip records", async () => {
