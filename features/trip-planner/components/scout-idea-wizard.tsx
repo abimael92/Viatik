@@ -10,6 +10,7 @@ import {
   CalendarDays,
   CalendarRange,
   ChevronDown,
+  Clock,
   Compass,
   Heart,
   LoaderCircle,
@@ -22,13 +23,14 @@ import {
   TrendingDown,
   User,
   UsersRound,
+  Wallet,
   Waves,
   type LucideIcon,
 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
-import { reverseGeocodeDestination, type PlaceDetails } from "@/app/actions/places";
+import { reverseGeocodeDestination, resolveDestinationCoordinates, type PlaceDetails } from "@/app/actions/places";
 import { generateScoutTripIdeas } from "@/app/actions/scout-trip-ideas";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -77,6 +79,7 @@ import {
   FlightRouteLegs,
   FlightRouteSummary,
 } from "@/features/trip-planner/components/scout-flight-route-view";
+import { IdeaMapCard } from "@/features/trip-planner/components/idea-map-card";
 import { ScoutWhereStep } from "@/features/trip-planner/components/scout-where-step";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { localizeUserError } from "@/lib/i18n/localize-error";
@@ -424,6 +427,19 @@ function IdeaDetails({
             : t("copy.scoutIdeaSearchStopsAny")}
         </Badge>
       </div>
+
+      <IdeaMapCard
+        destination={suggestion.destination}
+        latitude={null}
+        longitude={null}
+        autoResolve
+        onResolveLocation={async () => {
+          const coordinates = await resolveDestinationCoordinates(suggestion.destination);
+          return coordinates
+            ? { latitude: coordinates.latitude, longitude: coordinates.longitude }
+            : null;
+        }}
+      />
 
       <section className="grid gap-3 rounded-2xl border bg-muted/30 p-3 lg:grid-cols-2">
         <div className="min-w-0">
@@ -1482,6 +1498,22 @@ export function ScoutIdeaWizard({
         currentSavingsMinor: 0n,
         cadence: mapped.cadence,
       });
+      // The idea is already saved locally. Coordinates are an enhancement, so
+      // they are resolved in the background and never block or fail the save.
+      if (!destinationPlace) {
+        void resolveDestinationCoordinates(suggestion.destination)
+          .then((coordinates) =>
+            coordinates
+              ? tripIdeaRepository.updateIdea(saved.id, {
+                  placeId: coordinates.placeId,
+                  latitude: coordinates.latitude,
+                  longitude: coordinates.longitude,
+                  timeZone: coordinates.timeZone,
+                })
+              : undefined
+          )
+          .catch(() => undefined);
+      }
       close(false);
     } catch (cause) {
       setError(
@@ -2467,12 +2499,13 @@ export function ScoutIdeaWizard({
                             {suggestion.scout_pitch}
                           </p>
                           <FlightRouteSummary route={suggestion.flight_route} />
-                          <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground">
-                            <span className="rounded-full bg-muted px-2 py-0.5 font-semibold text-foreground tabular-nums">
+                          <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 font-semibold text-foreground tabular-nums">
+                              <Wallet aria-hidden className="size-3" />
                               {formatMinorUnits(plan.grandTotalMinor, currency)}
                             </span>
-                            <span aria-hidden>·</span>
-                            <span>
+                            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5">
+                              <Clock aria-hidden className="size-3" />
                               {t("copy.tripIdeaDurationDays", {
                                 days: suggestion.ideal_duration_days,
                               })}

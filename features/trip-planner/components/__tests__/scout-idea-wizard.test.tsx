@@ -4,11 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   generate: vi.fn(),
   create: vi.fn(),
+  updateIdea: vi.fn(),
   getByIdea: vi.fn(),
   upsert: vi.fn(),
   onOpenChange: vi.fn(),
   onManualAdd: vi.fn(),
   reverseGeocode: vi.fn(),
+  resolveCoordinates: vi.fn(async () => null),
   getCurrentPosition: vi.fn(),
   watchContacts: vi.fn(() => () => undefined),
 }));
@@ -19,10 +21,11 @@ vi.mock("@/app/actions/scout-trip-ideas", () => ({
 vi.mock("@/app/actions/places", () => ({
   searchDestinations: async () => ({ suggestions: [], configured: true }),
   getPlaceDetails: async () => null,
+  resolveDestinationCoordinates: mocks.resolveCoordinates,
   reverseGeocodeDestination: mocks.reverseGeocode,
 }));
 vi.mock("@/features/trip-planner/data/dexie-trip-planner-repository", () => ({
-  tripIdeaRepository: { create: mocks.create },
+  tripIdeaRepository: { create: mocks.create, updateIdea: mocks.updateIdea },
   tripSavingsPlanRepository: { getByIdea: mocks.getByIdea, upsert: mocks.upsert },
 }));
 vi.mock("@/features/contacts/data/dexie-contact-repository", () => ({
