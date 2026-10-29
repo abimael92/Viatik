@@ -304,14 +304,17 @@ describe("TripPlannerView", () => {
       ...idea,
       id: "idea-2",
       name: "Booked Lisbon",
+      destination: "Lisbon, Portugal",
       convertedToTripId: "trip-9",
     };
     mocks.ideas = [converted, idea];
     render(<TripPlannerView userId="user-1" onBack={vi.fn()} />);
 
     const headings = await screen.findAllByRole("heading", { level: 2 });
-    const names = headings.map((heading) => heading.textContent);
-    expect(names.indexOf("Kyoto in spring")).toBeGreaterThanOrEqual(0);
-    expect(names.indexOf("Kyoto in spring")).toBeLessThan(names.indexOf("Booked Lisbon"));
+    const destinations = headings.map((heading) => heading.textContent);
+    expect(destinations.indexOf("Kyoto, Japan")).toBeGreaterThanOrEqual(0);
+    expect(destinations.indexOf("Kyoto, Japan")).toBeLessThan(
+      destinations.indexOf("Lisbon, Portugal")
+    );
   });
 });
