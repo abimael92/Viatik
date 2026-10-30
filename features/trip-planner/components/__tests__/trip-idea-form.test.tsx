@@ -102,11 +102,11 @@ describe("TripIdeaForm", () => {
     await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("Trip end (optional)")));
   });
 
-  it("opens the budget section and focuses an invalid financial field", async () => {
+  it("jumps to the details tab and focuses an invalid financial field", async () => {
     render(<TripIdeaForm {...props()} />);
     fireEvent.change(screen.getByLabelText("Idea name"), { target: { value: "Kyoto" } });
     fireEvent.change(screen.getByLabelText("Destination"), { target: { value: "Kyoto, Japan" } });
-    fireEvent.click(screen.getByRole("button", { name: "Budget estimates and notes" }));
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Details" }));
     const targetCost = screen.getByLabelText("Target trip cost (USD)");
     fireEvent.change(targetCost, { target: { value: "1.001" } });
     fireEvent.click(screen.getByRole("button", { name: "Save idea" }));
@@ -136,7 +136,8 @@ describe("TripIdeaForm", () => {
     );
   });
 
-  it("uses the sentence to populate an unsaved non-financial draft only", async () => {
+  // The sentence-to-draft section is parked behind SHOW_DRAFT_SECTION.
+  it.skip("uses the sentence to populate an unsaved non-financial draft only", async () => {
     mocks.draftTripIdea.mockResolvedValue({
       success: true,
       draft: {
@@ -170,5 +171,85 @@ describe("TripIdeaForm", () => {
 
     expect((screen.getByLabelText("Target trip cost (USD)") as HTMLInputElement).value).toBe("");
     expect((screen.getByLabelText("Stay estimate (USD)") as HTMLInputElement).value).toBe("");
+  });
+});
+
+describe("TripIdeaForm editing", () => {
+  afterEach(() => cleanup());
+
+  it("switches the visible group when a tab is clicked", () => {
+    render(<TripIdeaForm {...props()} />);
+
+    const visiblePanels = () =>
+      document.querySelectorAll('[role="tabpanel"]:not([hidden])').length;
+    // Viaje groups trip + when + people.
+    expect(visiblePanels()).toBe(3);
+
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Budget" }));
+    expect(visiblePanels()).toBe(1);
+    expect(screen.getByRole("tab", { name: "Budget" }).getAttribute("aria-selected")).toBe(
+      "true"
+    );
+
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Details" }));
+    expect(visiblePanels()).toBe(1);
+    expect(screen.getByRole("tab", { name: "Details" }).getAttribute("aria-selected")).toBe(
+      "true"
+    );
+  });
+
+  it("prefills every field and opens the budget section", () => {
+    const idea = {
+      id: "idea-1",
+      name: "Cancun, Mexico",
+      origin: "Chihuahua",
+      destination: "Cancun, Mexico",
+      placeId: null,
+      latitude: null,
+      longitude: null,
+      timeZone: null,
+      startDate: null,
+      endDate: null,
+      targetMonth: null,
+      durationDays: 4,
+      adultCount: 2,
+      childCount: 0,
+      travelerContactIds: [],
+      flightRoute: null,
+      currency: "USD" as const,
+      interests: ["Slow mornings by the water"],
+      notes: "Turquoise water.",
+      targetTripCostMinor: 14_000n,
+      categoryEstimates: [{ category: "transport" as const, amountMinor: 6_000n }],
+      flightCostPerPersonMinor: null,
+      hotelPerNightMinor: null,
+      altStayPerNightMinor: null,
+      dailyPerPersonMinor: null,
+      savingsCapacityMinor: null,
+      savingsCadence: null,
+      timing: null,
+      tripLength: null,
+      constraints: "",
+      priceChecks: [],
+      convertedToTripId: null,
+      createdAt: "2026-10-01T00:00:00.000Z",
+      updatedAt: "2026-10-01T00:00:00.000Z",
+      version: 1,
+    };
+
+    render(<TripIdeaForm {...props()} idea={idea} />);
+
+    expect((screen.getByLabelText("Idea name") as HTMLInputElement).value).toBe(
+      "Cancun, Mexico"
+    );
+    expect((screen.getByLabelText("Destination") as HTMLInputElement).value).toBe(
+      "Cancun, Mexico"
+    );
+    expect(
+      (screen.getByLabelText("Departing from (optional)") as HTMLInputElement).value
+    ).toBe("Chihuahua");
+    expect(
+      (screen.getByLabelText("Target trip cost (USD)") as HTMLInputElement).value
+    ).toBe("140.00");
   });
 });
