@@ -4,7 +4,7 @@
 > before exploring the codebase; update it before ending a task.
 > **Companions:** [`data-models.md`](data-models.md) ·
 > [`components-ui.md`](components-ui.md) · [`roles-abilities.md`](roles-abilities.md)
-> **Last updated:** 2026-10-28 · schema v48 · 224 test files / 1,511 tests
+> **Last updated:** 2026-10-30 · schema v48 · 230 test files / 1,560 tests
 
 ---
 
@@ -99,9 +99,6 @@ Also update the topic file whose subject changed:
   Keep it in commits or it reappears as an uncommitted change.
 - `pnpm lint` is `eslint --max-warnings 0` — warnings fail the build gate.
 - Husky pre-commit runs `pnpm lint && pnpm typecheck`.
-- Vitest **excludes** `features/trips/lib/home-trips-temporal.test.ts` and
-  `features/trips/components/home/home-page.test.tsx`; changes there have no unit
-  coverage in `pnpm test`.
 - `next.config.ts` sets `images.unoptimized: true` (Capacitor/offline), so
   `next/image` gives no optimization — size images explicitly.
 
@@ -178,6 +175,40 @@ Also update the topic file whose subject changed:
 ---
 
 ## 7. Session log (newest first)
+
+### 2026-10-30 — Pre-trip Home content + command palette data search
+
+- **Changed:** `features/trips/lib/home-trips.ts` (`isWithinDocumentWindow`),
+  new `within-24-hours-banner.tsx` (extracted `isWithinNext24Hours` + markup,
+  visuals unchanged), `day-one-preview.tsx` (first 3 items where
+  `dayDate === trip.startDate`, empty-state `&action=add-activity` link, null
+  `startDate` → nothing), `pre-trip-section.tsx` (document banner + open tasks +
+  Day 1 preview, readiness stays in the hero), `home-page.tsx` (wired for
+  `primaryTrip && !isActive`, 3 hard-coded strings → `t()`). Command palette
+  split: `components/pro/command-search.ts` (pure normalize/match/group/cap-5),
+  `use-palette-data.ts` (liveQuery subscriptions only while open), rewritten
+  `command-palette.tsx` (grouped listbox, contextual trip actions, `userId`
+  prop, `openCommandPalette()` CustomEvent), `CommandPaletteHint` pill in
+  `app-shell.tsx` (sidebar + mobile header, ⌘/Ctrl resolved post-mount),
+  `app/(app)/layout.tsx` passes `data.user.id`. EN/ES keys in
+  `lib/i18n/frontend-copy.ts`. `vitest.config.mjs` no longer excludes the two
+  Home test files; `home-page.test.tsx` gained mocks for finance/expense/feed/
+  health/weather/currency-rate repositories and fresh dynamic dates.
+- **Schema:** none.
+- **Verification:** `pnpm lint` ✅ · `pnpm typecheck` ✅ · `pnpm test` 230 files /
+  1,560 tests — 1,557 pass, only the 3 pre-existing `scout-idea-wizard`
+  "progressive waves" failures reproduce (unchanged from clean HEAD) ·
+  `pnpm build` ✅ (21 routes).
+- **Gotchas:** vault entries persist ciphertext only, so the palette exposes an
+  "Open vault" action and never reads/indexes entries. There is no
+  `activityRepository.watchAll` — the palette fans out `watchByTrip` over the
+  20 most-recent trips by `startDate` desc, only while open. `G H/T/C/S` chords
+  work with the palette closed (guards: no modifiers, no typing target, no
+  other `[role="dialog"][aria-modal="true"]`); the single-key `C` stays
+  palette-open-only. React 19 lint (`react-hooks/set-state-in-effect`,
+  `immutability`) forbids setState-in-effect and render-time variable
+  reassignment — use the render-time "adjust state when props change" reset
+  and precomputed index maps instead.
 
 ### 2026-10-28 — Trip planner: title prompt on convert + "set back as idea"
 
