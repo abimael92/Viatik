@@ -750,6 +750,40 @@ export class ViatikDatabase extends Dexie {
             if (idea.flightRoute === undefined) idea.flightRoute = null;
           });
       });
+
+    // v49: ideas keep the Scout answers that drive the plan (savings pace,
+    // timing, month, trip length, constraints). Older rows get nulls. No index
+    // changes.
+    this.version(49)
+      .stores({})
+      .upgrade(async (transaction) => {
+        await transaction
+          .table("tripIdeas")
+          .toCollection()
+          .modify((idea: Record<string, unknown>) => {
+            if (idea.savingsCapacityMinor === undefined) idea.savingsCapacityMinor = null;
+            if (idea.savingsCadence === undefined) idea.savingsCadence = null;
+            if (idea.timing === undefined) idea.timing = null;
+            if (idea.tripLength === undefined) idea.tripLength = null;
+            if (typeof idea.constraints !== "string") idea.constraints = "";
+          });
+      });
+
+    // v50: ideas keep Scout's per-person flight, nightly stay and daily spend
+    // estimates so the card can show the full breakdown. Older rows get nulls.
+    this.version(50)
+      .stores({})
+      .upgrade(async (transaction) => {
+        await transaction
+          .table("tripIdeas")
+          .toCollection()
+          .modify((idea: Record<string, unknown>) => {
+            if (idea.flightCostPerPersonMinor === undefined) idea.flightCostPerPersonMinor = null;
+            if (idea.hotelPerNightMinor === undefined) idea.hotelPerNightMinor = null;
+            if (idea.altStayPerNightMinor === undefined) idea.altStayPerNightMinor = null;
+            if (idea.dailyPerPersonMinor === undefined) idea.dailyPerPersonMinor = null;
+          });
+      });
   }
 }
 
