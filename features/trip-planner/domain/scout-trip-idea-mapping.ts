@@ -34,8 +34,12 @@ export function mapScoutIdeaToTripIdea({
   cadence,
   originCity = "",
   timing = "asap",
+  targetMonth = null,
   startDate = null,
   endDate = null,
+  tripLength = "any",
+  constraints = "",
+  savingsCapacityMinor = null,
   place = null,
   travelerContactIds = [],
 }: {
@@ -46,8 +50,12 @@ export function mapScoutIdeaToTripIdea({
   cadence: Extract<SavingsCadence, "weekly" | "monthly">;
   originCity?: string;
   timing?: ScoutTripIdeasInput["timing"];
+  targetMonth?: string | null;
   startDate?: string | null;
   endDate?: string | null;
+  tripLength?: ScoutTripIdeasInput["tripLength"];
+  constraints?: string;
+  savingsCapacityMinor?: MinorUnits | null;
   place?: ScoutIdeaPlace | null;
   travelerContactIds?: string[];
 }): {
@@ -81,6 +89,7 @@ export function mapScoutIdeaToTripIdea({
       timeZone: place?.timeZone ?? null,
       startDate: timing === "dates" ? startDate : null,
       endDate: timing === "dates" ? endDate : null,
+      targetMonth: timing === "month" ? targetMonth : null,
       durationDays: suggestion.ideal_duration_days,
       adultCount: crewSize,
       childCount: 0,
@@ -90,6 +99,15 @@ export function mapScoutIdeaToTripIdea({
       interests: vibe.trim() ? [vibe.trim().slice(0, 60)] : [],
       notes: `${suggestion.scout_pitch}\n\nBest season: ${suggestion.best_season}`.slice(0, 500),
       targetTripCostMinor,
+      flightCostPerPersonMinor: flightPerPersonMinor,
+      hotelPerNightMinor: budget.stay.nightlyHotelMinor,
+      altStayPerNightMinor: budget.stay.nightlyAltMinor,
+      dailyPerPersonMinor: dailyPerPersonMinor,
+      savingsCapacityMinor,
+      savingsCadence: cadence,
+      timing,
+      tripLength,
+      constraints: constraints.trim().slice(0, 200),
       categoryEstimates: [
         { category: "transport", amountMinor: budget.flightTotalMinor },
         { category: "stay", amountMinor: budget.stay.hotelTotalMinor },
