@@ -57,6 +57,14 @@ function ideaPatch(input: NewTripIdea): TripIdeaPatch {
     notes: input.notes,
     targetTripCostMinor: input.targetTripCostMinor,
     categoryEstimates: input.categoryEstimates,
+    savingsCapacityMinor: input.savingsCapacityMinor ?? null,
+    savingsCadence: input.savingsCadence ?? null,
+    tripLength: input.tripLength ?? null,
+    constraints: input.constraints ?? "",
+    flightCostPerPersonMinor: input.flightCostPerPersonMinor ?? null,
+    hotelPerNightMinor: input.hotelPerNightMinor ?? null,
+    altStayPerNightMinor: input.altStayPerNightMinor ?? null,
+    dailyPerPersonMinor: input.dailyPerPersonMinor ?? null,
   };
 }
 
