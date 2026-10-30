@@ -5,6 +5,7 @@ import {
   formatTimeInZone,
   getTemporalState,
   inferTimeZoneFromDestination,
+  isWithinDocumentWindow,
   pickPrimaryTrips,
   resolveTripScheduleTimeZone,
 } from "./home-trips";
@@ -321,5 +322,23 @@ describe("pickPrimaryTrips", () => {
     expect(selection.primaryTrip?.id).toBe("arizona");
     expect(selection.activeTrip?.id).toBe("arizona");
     expect(selection.upNext.map((trip) => trip.id)).toEqual(["vegas"]);
+  });
+});
+
+describe("isWithinDocumentWindow", () => {
+  const today = new Date("2026-10-30T12:00:00");
+
+  it("is true for today and dates within the window, false for past or beyond", () => {
+    expect(isWithinDocumentWindow("2026-10-30", today)).toBe(true);
+    expect(isWithinDocumentWindow("2026-11-15", today)).toBe(true);
+    expect(isWithinDocumentWindow("2027-01-28", today)).toBe(true);
+    expect(isWithinDocumentWindow("2027-01-29", today)).toBe(false);
+    expect(isWithinDocumentWindow("2026-10-29", today)).toBe(false);
+  });
+
+  it("returns false without a start date and honours a custom window", () => {
+    expect(isWithinDocumentWindow(null, today)).toBe(false);
+    expect(isWithinDocumentWindow("2026-11-05", today, 6)).toBe(true);
+    expect(isWithinDocumentWindow("2026-11-05", today, 5)).toBe(false);
   });
 });

@@ -40,6 +40,20 @@ export function daysUntil(date: string, today: Date = new Date()): number {
   return Math.round((target - now) / DAY_MS);
 }
 
+/**
+ * True when `startDate` falls on `today` or within the next `days` days
+ * (inclusive). Gates the passport/visa risk banner on Home.
+ */
+export function isWithinDocumentWindow(
+  startDate: string | null,
+  today: Date = new Date(),
+  days = 90
+): boolean {
+  if (!startDate) return false;
+  const delta = daysUntil(startDate, today);
+  return delta >= 0 && delta <= days;
+}
+
 export function isTripActive(trip: Trip, today: Date = new Date()): boolean {
   return resolveTripStatus(trip, today) === "active";
 }

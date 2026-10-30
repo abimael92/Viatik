@@ -74,6 +74,49 @@ vi.mock("@/features/trips/data/dexie-trip-note-repository", () => ({
     remove: vi.fn(),
   },
 }));
+vi.mock("@/features/finance/data/dexie-finance-repository", () => ({
+  tripBudgetRepository: {
+    watchByTrip: vi.fn((_tripId, cb) => { cb(undefined); return () => {}; }),
+    upsert: vi.fn(),
+    update: vi.fn(),
+  },
+  userWalletRepository: {
+    watchByTrip: vi.fn((_tripId, cb) => { cb([]); return () => {}; }),
+  },
+}));
+vi.mock("@/features/finance/data/dexie-currency-rate-repository", () => ({
+  currencyRateRepository: {
+    ensureDefaults: vi.fn(async () => {}),
+    getRate: vi.fn(async () => undefined),
+    saveRate: vi.fn(async () => {}),
+  },
+}));
+vi.mock("@/features/expenses/data/dexie-expense-repository", () => ({
+  expenseRepository: {
+    watchByTrip: vi.fn((_tripId, cb) => { cb([]); return () => {}; }),
+    watchSharesByExpenses: vi.fn((_ids, cb) => { cb([]); return () => {}; }),
+    listSharesByExpense: vi.fn(async () => []),
+    create: vi.fn(),
+    update: vi.fn(),
+    remove: vi.fn(),
+  },
+}));
+vi.mock("@/features/feed/data/dexie-feed-repository", () => ({
+  feedRepository: {
+    watchByTrip: vi.fn((_tripId, cb) => { cb([]); return () => {}; }),
+    watchAll: vi.fn((cb) => { cb([]); return () => {}; }),
+  },
+}));
+vi.mock("@/features/health/data/dexie-health-repository", () => ({
+  healthRepository: {
+    watchByUser: vi.fn((_userId, cb) => { cb([]); return () => {}; }),
+  },
+}));
+vi.mock("@/features/weather/data/dexie-weather-repository", () => ({
+  weatherRepository: {
+    watchForecast: vi.fn((_tripId, cb) => { cb(undefined); return () => {}; }),
+  },
+}));
 vi.mock("@/features/profile/data/dexie-profile-repository", () => ({
   profileRepository: {
     watch: vi.fn((_ownerId, cb) => { cb(null); return () => {}; }),
@@ -206,28 +249,29 @@ describe("HomePage", () => {
     const activeActions = screen.getByRole("heading", { name: "Active Trip Actions" }).parentElement?.parentElement;
     expect(activeActions).toBeTruthy();
     expect(screen.getByRole("link", { name: /Add Expense/ }).getAttribute("href")).toBe("/trips/trip-1?tab=finance&action=add-expense");
-    expect(screen.getByRole("link", { name: /Add Activity/ }).getAttribute("href")).toBe("/trips/trip-1?tab=itinerary&action=add-activity");
+    expect(screen.getByRole("link", { name: /Add activity/ }).getAttribute("href")).toBe("/trips/trip-1?tab=itinerary&action=add-activity");
     expect(screen.getByRole("link", { name: /Add Photo/ }).getAttribute("href")).toBe("/trips/trip-1?tab=gallery&action=add-photo");
 
     // Quick actions
+    expect(screen.getByText("Trip vault")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Notifications/ }).getAttribute("href")).toBe("/notifications");
     const moneyTools = screen.getByRole("button", { name: /Money tools/ });
     fireEvent.click(moneyTools);
     expect(screen.getByRole("dialog")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Money tools" })).toBeTruthy();
-    expect(screen.getByText("Trip vault")).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Notifications/ }).getAttribute("href")).toBe("/notifications");
     // Emergency Center quick action is prominent and present.
     expect(screen.getByText("Emergency")).toBeTruthy();
     expect(screen.getByText("Safety info & contacts")).toBeTruthy();
   });
 
   it("renders active trip action links between the timeline and feed", () => {
+    const today = new Date().toISOString().slice(0, 10);
     render(<HomePage userId="owner-1" />);
-    act(() => state.trips?.([makeTrip({ status: "active" })]));
+    act(() => state.trips?.([makeTrip({ status: "active", startDate: today, endDate: today })]));
 
     expect(screen.getByRole("heading", { name: "Active Trip Actions" })).toBeTruthy();
     expect(screen.getByRole("link", { name: /Add Expense/ }).getAttribute("href")).toBe("/trips/trip-1?tab=finance&action=add-expense");
-    expect(screen.getByRole("link", { name: /Add Activity/ }).getAttribute("href")).toBe("/trips/trip-1?tab=itinerary&action=add-activity");
+    expect(screen.getByRole("link", { name: /Add activity/ }).getAttribute("href")).toBe("/trips/trip-1?tab=itinerary&action=add-activity");
     expect(screen.getByRole("link", { name: /Add Photo/ }).getAttribute("href")).toBe("/trips/trip-1?tab=gallery&action=add-photo");
   });
 
@@ -318,8 +362,14 @@ describe("HomePage", () => {
   });
 
   it("deep-links missing readiness items to the trip management tab", () => {
+    const dateKey = (date: Date) =>
+      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    const start = new Date();
+    start.setDate(start.getDate() + 30);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
     render(<HomePage userId="owner-1" />);
-    act(() => state.trips?.([makeTrip({ startDate: "2026-09-04", endDate: "2026-09-10" })]));
+    act(() => state.trips?.([makeTrip({ startDate: dateKey(start), endDate: dateKey(end) })]));
 
     // The checklist is collapsed by default; open it, then verify the deep link.
     fireEvent.click(screen.getByRole("button", { name: "View checklist" }));
@@ -327,5 +377,58 @@ describe("HomePage", () => {
     expect(budgetLink.getAttribute("href")).toBe("/trips/trip-1?tab=finance");
     const packingLink = screen.getByRole("link", { name: /Packing list/ });
     expect(packingLink.getAttribute("href")).toBe("/trips/trip-1?tab=packing");
+  });
+
+  it("shows pre-trip planning content — readiness once and the Day 1 preview — for a planned trip", () => {
+    const start = new Date();
+    start.setDate(start.getDate() + 20);
+    const dateKey = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`;
+
+    render(<HomePage userId="owner-1" />);
+    act(() => state.trips?.([makeTrip({ startDate: dateKey, endDate: dateKey, status: "planned" })]));
+    act(() => {
+      state.activities?.([makeActivity({ dayDate: dateKey })]);
+      state.packing?.([]);
+      state.vault?.([]);
+    });
+
+    // Readiness renders exactly once, inside the hero.
+    expect(screen.getAllByRole("heading", { name: "Trip readiness" })).toHaveLength(1);
+
+    // Day 1 preview lists the first-day activity and links to the itinerary.
+    expect(screen.getByRole("heading", { name: "Day 1 preview" })).toBeTruthy();
+    expect(screen.getByText("Lunch at Prado")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "View full itinerary" }).getAttribute("href")).toBe(
+      "/trips/trip-1?tab=itinerary"
+    );
+
+    // Active-only widgets stay hidden.
+    expect(screen.queryByRole("heading", { name: "Active Trip Actions" })).toBeNull();
+    expect(screen.queryByText("Recent activity")).toBeNull();
+  });
+
+  it("shows the Day 1 preview empty state for a planned trip without day-1 items", () => {
+    const start = new Date();
+    start.setDate(start.getDate() + 20);
+    const dateKey = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`;
+
+    render(<HomePage userId="owner-1" />);
+    act(() => state.trips?.([makeTrip({ startDate: dateKey, endDate: dateKey, status: "planned" })]));
+    act(() => state.activities?.([]));
+
+    expect(screen.getByText("Nothing planned for day 1 yet.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Plan your first day" }).getAttribute("href")).toBe(
+      "/trips/trip-1?tab=itinerary&action=add-activity"
+    );
+  });
+
+  it("does not render the pre-trip section for an active trip", () => {
+    const today = new Date().toISOString().slice(0, 10);
+    render(<HomePage userId="owner-1" />);
+    act(() => state.trips?.([makeTrip({ status: "active", startDate: today, endDate: today })]));
+    act(() => state.activities?.([makeActivity({ dayDate: today })]));
+
+    expect(screen.queryByRole("heading", { name: "Day 1 preview" })).toBeNull();
+    expect(screen.getByRole("heading", { name: "Today at a glance" })).toBeTruthy();
   });
 });
