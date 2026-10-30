@@ -73,7 +73,7 @@ describe("DexieTripPlannerRepository", () => {
     await upgraded.open();
     setCurrentDatabase(upgraded);
 
-    expect(upgraded.verno).toBe(48);
+    expect(upgraded.verno).toBe(50);
     expect((await upgraded.trips.get("legacy-trip"))?.name).toBe("Old trip");
     expect((await upgraded.tripBudgets.get("legacy-budget"))?.totalBudgetMinor).toBe(2500n);
     expect(await upgraded.tripIdeas.count()).toBe(0);
