@@ -3,15 +3,16 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Compass, ContactRound, Home, LogOut, Map, Menu, Settings, X } from "lucide-react";
+import { Compass, ContactRound, Home, LogOut, Map, Menu, Search, Settings, X } from "lucide-react";
 import { NotificationBell } from "@/features/notifications/components/notification-center";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import { logout } from "@/app/actions/auth";
 import { SyncErrorBanner } from "@/components/app-shell/sync-error-banner";
 import { SyncStatusPill } from "@/components/app-shell/sync-status-pill";
 import { LanguageSwitcher } from "@/components/app-shell/language-switcher";
 import { ThemeToggle } from "@/components/app-shell/theme-toggle";
+import { openCommandPalette } from "@/components/pro/command-palette";
 import { Button } from "@/components/ui/button";
 import { IconTile } from "@/components/ui/icon-tile";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -39,6 +40,51 @@ const links: readonly NavigationLink[] = [
   { href: "/community", labelKey: "navigation.community", icon: Compass, comingSoon: true },
   { href: "/settings", labelKey: "navigation.settings", icon: Settings, comingSoon: false },
 ];
+
+/**
+ * Discovery pill that opens the command palette. The platform modifier symbol
+ * (⌘ vs Ctrl) is resolved after mount to avoid a hydration mismatch.
+ */
+export function CommandPaletteHint({ variant }: { variant: "sidebar" | "header" }) {
+  const { t } = useI18n();
+  const [modifier, setModifier] = useState("Ctrl");
+  useEffect(() => {
+    if (/mac/i.test(navigator.platform) || /mac os/i.test(navigator.userAgent)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- platform symbol is resolved post-mount to avoid a hydration mismatch
+      setModifier("⌘");
+    }
+  }, []);
+
+  const label = t("copy.paletteShortcutPill");
+
+  if (variant === "header") {
+    return (
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => openCommandPalette()}
+        aria-label={label}
+      >
+        <Search aria-hidden />
+      </Button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => openCommandPalette()}
+      aria-label={label}
+      className="flex min-h-11 w-full items-center gap-3 rounded-lg border border-side-border bg-side-hover px-3 text-sm font-semibold text-side-muted transition-colors hover:text-side-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-viatik-magenta"
+    >
+      <Search className="size-4" aria-hidden />
+      <span className="flex-1 text-left">{label}</span>
+      <kbd className="rounded border border-side-border bg-side px-1.5 py-0.5 text-[11px] font-semibold text-side-muted">
+        {modifier} K
+      </kbd>
+    </button>
+  );
+}
 
 export function AppShell({
   children,
@@ -196,8 +242,13 @@ export function AppShell({
           </div>
         </div>
 
+        {/* Command palette entry point — under the brand row, above the user card. */}
+        <div className="relative mt-4">
+          <CommandPaletteHint variant="sidebar" />
+        </div>
+
         {/* User profile card (static) sits before the navigation links, with sync status on it. */}
-        <div className="mt-6">{userCard}</div>
+        <div className="mt-3">{userCard}</div>
 
         {/* Center: navigation fills the middle. */}
         <div className="mt-3 flex-1">{navigation}</div>
@@ -223,6 +274,7 @@ export function AppShell({
           Viatik
         </Link>
         <div className="flex items-center gap-1">
+          <CommandPaletteHint variant="header" />
           <LanguageSwitcher dark />
           <NotificationBell userId={userId} />
           <ThemeToggle />

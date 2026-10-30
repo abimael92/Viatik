@@ -32,7 +32,7 @@ export default async function AuthenticatedLayout({ children }: { children: Reac
           >
             {children}
           </AppShell>
-          <CommandPalette />
+          <CommandPalette userId={data.user.id} />
           <Toaster />
         </ToastProvider>
       </SyncProvider>
