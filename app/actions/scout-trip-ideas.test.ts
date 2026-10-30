@@ -140,6 +140,46 @@ describe("generateScoutTripIdeas", () => {
     expect(systemPrompt).toContain("never minor units or cents");
   });
 
+  it("anchors the search on the departure city instead of a single continent", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(geminiPayload(fiveIdeas()));
+
+    await generateScoutTripIdeas({
+      ...input,
+      vibe: "Slow mornings by the water",
+      originCity: "Chihuahua City, Mexico",
+    });
+
+    const body = JSON.parse(String(fetchSpy.mock.calls[0]![1]?.body));
+    const systemPrompt: string = body.systemInstruction.parts[0].text;
+    expect(systemPrompt).not.toContain("single continent");
+    expect(systemPrompt).toContain("Proximity is a ranking input");
+    expect(systemPrompt).toContain("same country");
+    expect(systemPrompt).toContain("underrated");
+
+    const promptPayload = JSON.parse(body.contents[0].parts[0].text);
+    expect(promptPayload.anchor.departureCity).toBe("Chihuahua City, Mexico");
+    expect(promptPayload.anchor.wideningOrder).toEqual([
+      "same country",
+      "same region or neighboring countries",
+      "same continent",
+    ]);
+    expect(promptPayload.anchor.guidance).toContain("Chihuahua City, Mexico");
+    expect(promptPayload.requirements).toContain("Anchor the search on the departure city");
+    expect(promptPayload.requirements).not.toContain("single continent");
+  });
+
+  it("gives generic radius guidance when no departure city is supplied", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(geminiPayload(fiveIdeas()));
+
+    await generateScoutTripIdeas(input);
+
+    const body = JSON.parse(String(fetchSpy.mock.calls[0]![1]?.body));
+    const promptPayload = JSON.parse(body.contents[0].parts[0].text);
+    expect(promptPayload.anchor.departureCity).toBeNull();
+    expect(promptPayload.anchor.guidance).toContain("No departure city");
+    expect(promptPayload.departureCity).toBeNull();
+  });
+
   it("requests the Spanish language and the exact count when asked", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(geminiPayload(fiveIdeas()));
 

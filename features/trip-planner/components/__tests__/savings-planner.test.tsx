@@ -29,6 +29,15 @@ const idea: TripIdea = {
   notes: "",
   targetTripCostMinor: 10_001n,
   categoryEstimates: [],
+  flightCostPerPersonMinor: null,
+  hotelPerNightMinor: null,
+  altStayPerNightMinor: null,
+  dailyPerPersonMinor: null,
+  savingsCapacityMinor: null,
+  savingsCadence: null,
+  timing: null,
+  tripLength: null,
+  constraints: "",
   priceChecks: [],
   convertedToTripId: null,
   createdAt: "2026-01-01T00:00:00.000Z",
@@ -65,6 +74,35 @@ describe("SavingsPlanner", () => {
     await waitFor(() =>
       expect(onSave).toHaveBeenCalledWith({ currentSavingsMinor: 1n, cadence: "once" })
     );
-    expect(screen.getByText(/\$100\.00 one-time/)).toBeTruthy();
+    expect(screen.getByText(/\$100\.00 in one payment/)).toBeTruthy();
+  });
+
+  it("answers how much, from when to when, when to buy, and when to travel", () => {
+    render(<SavingsPlanner idea={idea} plan={plan} onSave={vi.fn()} />);
+
+    expect(screen.getByText("Start saving")).toBeTruthy();
+    expect(screen.getByText(/\$33\.34 every week/)).toBeTruthy();
+    expect(screen.getByText(/^From today until /)).toBeTruthy();
+    expect(screen.getByText("Buy the flights")).toBeTruthy();
+    expect(screen.getByText(/^By /)).toBeTruthy();
+    expect(screen.getByText("56 days before departure")).toBeTruthy();
+    expect(screen.getByText("You travel")).toBeTruthy();
+    expect(screen.getByText(/5 days/)).toBeTruthy();
+  });
+
+  it("explains what is missing instead of inventing a schedule", () => {
+    render(
+      <SavingsPlanner
+        idea={{ ...idea, startDate: null, targetMonth: null, targetTripCostMinor: null }}
+        plan={plan}
+        onSave={vi.fn()}
+      />
+    );
+
+    expect(
+      screen.getByText(/Add an exact trip start date and target trip cost/)
+    ).toBeTruthy();
+    expect(screen.queryByText("Buy the flights")).toBeNull();
+    expect(screen.queryByText("You travel")).toBeNull();
   });
 });

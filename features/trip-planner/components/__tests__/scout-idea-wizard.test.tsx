@@ -4,11 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   generate: vi.fn(),
   create: vi.fn(),
+  updateIdea: vi.fn(),
   getByIdea: vi.fn(),
   upsert: vi.fn(),
   onOpenChange: vi.fn(),
   onManualAdd: vi.fn(),
   reverseGeocode: vi.fn(),
+  resolveCoordinates: vi.fn(async () => null),
   getCurrentPosition: vi.fn(),
   watchContacts: vi.fn(() => () => undefined),
 }));
@@ -19,10 +21,11 @@ vi.mock("@/app/actions/scout-trip-ideas", () => ({
 vi.mock("@/app/actions/places", () => ({
   searchDestinations: async () => ({ suggestions: [], configured: true }),
   getPlaceDetails: async () => null,
+  resolveDestinationCoordinates: mocks.resolveCoordinates,
   reverseGeocodeDestination: mocks.reverseGeocode,
 }));
 vi.mock("@/features/trip-planner/data/dexie-trip-planner-repository", () => ({
-  tripIdeaRepository: { create: mocks.create },
+  tripIdeaRepository: { create: mocks.create, updateIdea: mocks.updateIdea },
   tripSavingsPlanRepository: { getByIdea: mocks.getByIdea, upsert: mocks.upsert },
 }));
 vi.mock("@/features/contacts/data/dexie-contact-repository", () => ({
@@ -1289,7 +1292,7 @@ describe("ScoutIdeaWizard", () => {
       fireEvent.click(screen.getByRole("button", { name: "Show my trip ideas" }));
     }
 
-    it("shows the first wave while the rest are still coming", async () => {
+    it("keeps the loading animation until all five ideas are on screen", async () => {
       const second = deferred<unknown>();
       mocks.generate.mockResolvedValueOnce({
         success: true,
@@ -1301,17 +1304,11 @@ describe("ScoutIdeaWizard", () => {
       consent();
       fireEvent.click(screen.getByRole("button", { name: "Show my trip ideas" }));
 
-      expect(await screen.findByText("Kyoto, Japan")).toBeTruthy();
-      expect(screen.getByText("Porto, Portugal")).toBeTruthy();
-      expect(screen.queryByText("Oaxaca, Mexico")).toBeNull();
-      expect(
-        screen.getByText("Scout is still finding 3 more…")
-      ).toBeTruthy();
-      expect(
-        screen.getByRole("button", { name: "Add 2 more options" })
-      ).toHaveProperty("disabled", true);
+      // The first wave alone must not be revealed: the search is still running.
+      await waitFor(() => expect(mocks.generate).toHaveBeenCalledTimes(2));
+      expect(screen.queryByText("Kyoto, Japan")).toBeNull();
+      expect(screen.getByText("Scout is matching routes, stays, and vibes...")).toBeTruthy();
 
-      expect(mocks.generate).toHaveBeenCalledTimes(2);
       expect(mocks.generate).toHaveBeenLastCalledWith(
         expect.objectContaining({
           count: 3,
@@ -1320,8 +1317,10 @@ describe("ScoutIdeaWizard", () => {
       );
 
       second.resolve({ success: true, suggestions: { ideas: fiveIdeas.slice(2) } });
-      expect(await screen.findByText("Oaxaca, Mexico")).toBeTruthy();
-      expect(screen.queryByText(/Scout is still finding/)).toBeNull();
+
+      expect(await screen.findByText("Kyoto, Japan")).toBeTruthy();
+      expect(screen.getByText("Oaxaca, Mexico")).toBeTruthy();
+      expect(screen.queryByText("Scout is matching routes, stays, and vibes...")).toBeNull();
       expect(
         screen.getByRole("button", { name: "Add 2 more options" })
       ).toHaveProperty("disabled", false);

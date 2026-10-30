@@ -184,6 +184,62 @@ export async function reverseGeocodeDestination({
   }
 }
 
+export type DestinationCoordinates = {
+  placeId: string;
+  latitude: number;
+  longitude: number;
+  timeZone: string | null;
+};
+
+function comparableCity(value: string): string {
+  return (value.split(",")[0] ?? value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+/**
+ * Turns a Scout "City, Country" label into coordinates for the map panel.
+ * Uses the Places autocomplete first and the keyless geocoder fallback, so it
+ * works without a Google key. Returns `null` instead of throwing: the map is an
+ * optional enhancement and must never block a local write.
+ */
+export async function resolveDestinationCoordinates(
+  label: string
+): Promise<DestinationCoordinates | null> {
+  const input = label.trim().slice(0, 120);
+  if (input.length < 3) return null;
+
+  try {
+    const { suggestions } = await searchDestinations(input);
+    if (suggestions.length === 0) return null;
+
+    const wanted = comparableCity(input);
+    const match =
+      suggestions.find((suggestion) => comparableCity(suggestion.label) === wanted) ??
+      suggestions.find((suggestion) => {
+        const candidate = comparableCity(suggestion.label);
+        return (
+          candidate.length > 0 &&
+          (candidate.startsWith(wanted) || wanted.startsWith(candidate))
+        );
+      }) ??
+      suggestions[0]!;
+
+    const details = await getPlaceDetails(match.placeId, match.label);
+    if (!details) return null;
+    return {
+      placeId: details.placeId,
+      latitude: details.latitude,
+      longitude: details.longitude,
+      timeZone: details.timeZone,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function getPlaceDetails(placeId: string, label: string): Promise<PlaceDetails | null> {
   if (placeId.startsWith("open-meteo:")) {
     const [, latitude, longitude, timeZone] = placeId.split(":");

@@ -6,7 +6,10 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/env.mjs", () => ({ env: mocks.env }));
 
-import { reverseGeocodeDestination } from "@/app/actions/places";
+import {
+  resolveDestinationCoordinates,
+  reverseGeocodeDestination,
+} from "@/app/actions/places";
 
 function jsonResponse(payload: object, ok = true): Response {
   return { ok, status: ok ? 200 : 500, json: async () => payload } as Response;
@@ -124,5 +127,62 @@ describe("reverseGeocodeDestination", () => {
     await expect(
       reverseGeocodeDestination({ latitude: 19.4326, longitude: -99.1332 })
     ).resolves.toEqual({ label: "Mexico City, Mexico" });
+  });
+});
+
+describe("resolveDestinationCoordinates", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+    mocks.env.GOOGLE_MAPS_API_KEY = undefined;
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+  });
+
+  it("resolves a city label through the keyless geocoder", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({
+        results: [
+          { id: 1, name: "Guadalajara", admin1: "Jalisco", country: "Mexico", latitude: 20.6597, longitude: -103.3496, timezone: "America/Mexico_City" },
+        ],
+      })
+    );
+
+    await expect(resolveDestinationCoordinates("Guadalajara, Mexico")).resolves.toEqual({
+      placeId: expect.stringContaining("open-meteo:20.6597:-103.3496"),
+      latitude: 20.6597,
+      longitude: -103.3496,
+      timeZone: "America/Mexico_City",
+    });
+    expect(String(vi.mocked(fetch).mock.calls[0]![0])).toContain(
+      "geocoding-api.open-meteo.com"
+    );
+  });
+
+  it("ignores accents when matching the requested city", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({
+        results: [
+          { id: 2, name: "Mazatlan", admin1: "Sinaloa", country: "Mexico", latitude: 23.2494, longitude: -106.4111 },
+        ],
+      })
+    );
+
+    await expect(resolveDestinationCoordinates("Mazatlán, Mexico")).resolves.toMatchObject({
+      latitude: 23.2494,
+      longitude: -106.4111,
+    });
+  });
+
+  it("returns null instead of throwing when nothing matches", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ results: [] }));
+    await expect(resolveDestinationCoordinates("Nowhereville, Atlantis")).resolves.toBeNull();
+  });
+
+  it("returns null for a label that is too short to search", async () => {
+    await expect(resolveDestinationCoordinates("MX")).resolves.toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
   });
 });
