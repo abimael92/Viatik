@@ -27,7 +27,7 @@ import {
   Waves,
   type LucideIcon,
 } from "lucide-react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { reverseGeocodeDestination, resolveDestinationCoordinates, type PlaceDetails } from "@/app/actions/places";
@@ -80,6 +80,10 @@ import {
   FlightRouteSummary,
 } from "@/features/trip-planner/components/scout-flight-route-view";
 import { IdeaMapCard } from "@/features/trip-planner/components/idea-map-card";
+import {
+  ScoutLoadingState,
+  ScoutSkeletonCard,
+} from "@/features/trip-planner/components/scout-loading-state";
 import { ScoutWhereStep } from "@/features/trip-planner/components/scout-where-step";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { localizeUserError } from "@/lib/i18n/localize-error";
@@ -915,38 +919,6 @@ function SelectableCard({
 
 /** Shimmer placeholder shaped like a result card; shared by the loading view
  *  and the wave-2 "more coming" placeholders. */
-function ScoutSkeletonCard({ index, reducedMotion }: { index: number; reducedMotion: boolean }) {
-  return (
-    <motion.div
-      aria-hidden
-      initial={reducedMotion ? false : { opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, delay: reducedMotion ? 0 : index * 0.08 }}
-      className="relative w-[86vw] shrink-0 snap-center overflow-hidden rounded-2xl border border-border/60 bg-card p-4 sm:w-auto"
-    >
-      <div className="flex items-center gap-3">
-        <div className="size-9 shrink-0 rounded-xl bg-muted" />
-        <div className="flex-1 space-y-2">
-          <div className="h-3 w-1/2 rounded bg-muted" />
-          <div className="h-2.5 w-1/3 rounded bg-muted" />
-        </div>
-      </div>
-      <div className="mt-3 space-y-2">
-        <div className="h-2.5 w-full rounded bg-muted" />
-        <div className="h-2.5 w-3/4 rounded bg-muted" />
-      </div>
-      <div className="mt-3 h-5 w-20 rounded-full bg-muted" />
-      {!reducedMotion && (
-        <motion.div
-          className="absolute inset-0 bg-gradient-to-r from-transparent via-foreground/10 to-transparent"
-          animate={{ x: ["-100%", "100%"] }}
-          transition={{ duration: 1.6, repeat: Infinity, ease: "linear", delay: index * 0.15 }}
-        />
-      )}
-    </motion.div>
-  );
-}
-
 /** Scout's one-line reaction to the answer just picked. */
 function ScoutReaction({ text }: { text: string | null }) {
   return (
@@ -1399,49 +1371,57 @@ export function ScoutIdeaWizard({
     }
 
     setSavingsCapacityMinor(parsedSavings);
-    setSuggestions(first.slice(0, SCOUT_INITIAL_IDEA_COUNT));
     setExpandedIndex(0);
-    const remaining = Math.max(0, SCOUT_INITIAL_IDEA_COUNT - first.length);
-    const wantsMore = remaining > 0 && first.length >= SCOUT_FIRST_WAVE_COUNT;
-    if (wantsMore) setPendingCount(remaining);
-    setLoading(false);
-    if (!wantsMore) return;
+
+    // The loading animation stays up until the first five ideas are on screen.
+    // Partial results would show two cards and three placeholders, which reads
+    // as unfinished work rather than a search in progress.
+    const collected = first.slice(0, SCOUT_INITIAL_IDEA_COUNT);
+    const remaining = Math.max(0, SCOUT_INITIAL_IDEA_COUNT - collected.length);
+    if (remaining === 0) {
+      setSuggestions(collected);
+      setLoading(false);
+      return;
+    }
 
     try {
       const result = await callScout({
         savingsMinor: parsedSavings,
         count: remaining,
         // Route mode excludes the routings already shown; idea mode excludes places.
-        excludeDestinations: routeMode ? [] : first.map((item) => item.destination),
+        excludeDestinations: routeMode ? [] : collected.map((item) => item.destination),
         excludeRoutes: routeMode
-          ? first.map((item) => routeSignature(item.flight_route))
+          ? collected.map((item) => routeSignature(item.flight_route))
           : [],
       });
       if (runId.current !== run) return;
       if (!result.success) {
         setError(localizeUserError(result.error, t, "errors.unexpected"));
-        return;
-      }
-      const fresh = result.suggestions.ideas;
-      if (fresh.length < remaining) setExhausted(true);
-      setSuggestions((current) => {
-        const seenDestinations = new Set(current.map((item) => item.destination));
+      } else {
+        const fresh = result.suggestions.ideas;
+        if (fresh.length < remaining) setExhausted(true);
+        const seenDestinations = new Set(collected.map((item) => item.destination));
         const seenRoutes = new Set(
-          current.map((item) => routeSignature(item.flight_route))
+          collected.map((item) => routeSignature(item.flight_route))
         );
-        const additions = fresh
-          .filter((item) =>
-            routeMode
-              ? !seenRoutes.has(routeSignature(item.flight_route))
-              : !seenDestinations.has(item.destination)
-          )
-          .slice(0, Math.max(0, SCOUT_INITIAL_IDEA_COUNT - current.length));
-        return [...current, ...additions];
-      });
+        collected.push(
+          ...fresh
+            .filter((item) =>
+              routeMode
+                ? !seenRoutes.has(routeSignature(item.flight_route))
+                : !seenDestinations.has(item.destination)
+            )
+            .slice(0, remaining)
+        );
+      }
     } catch {
       if (runId.current === run) setError(t("copy.scoutOfflineError"));
     } finally {
-      if (runId.current === run) setPendingCount(0);
+      if (runId.current === run) {
+        setSuggestions(collected);
+        setPendingCount(0);
+        setLoading(false);
+      }
     }
   }
 
@@ -1485,8 +1465,12 @@ export function ScoutIdeaWizard({
         cadence: savingsCadence,
         originCity: originCity.trim(),
         timing,
+        targetMonth: timing === "month" && targetMonth ? targetMonth : null,
         startDate: timing === "dates" && startDate ? startDate : null,
         endDate: timing === "dates" && endDate ? endDate : null,
+        tripLength,
+        constraints,
+        savingsCapacityMinor: savingsCapacityMinor > 0n ? savingsCapacityMinor : null,
         place: destinationPlace,
         travelerContactIds,
       });
@@ -1660,47 +1644,12 @@ export function ScoutIdeaWizard({
               </Button>
             </div>
           ) : loading ? (
-            <div className="space-y-3" aria-busy="true" aria-live="polite">
-              <div className="flex items-center gap-3">
-                <motion.span
-                  aria-hidden
-                  className="grid size-9 shrink-0 place-items-center rounded-xl bg-viatik-gradient text-white"
-                  animate={
-                    reducedMotion
-                      ? undefined
-                      : { scale: [1, 1.08, 1], rotate: [0, 8, 0] }
-                  }
-                  transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-                >
-                  <Sparkles className="size-4" />
-                </motion.span>
-                <p className="text-sm font-medium">{t("copy.scoutWizardThinking")}</p>
-              </div>
-              <div className="min-h-5">
-                <AnimatePresence mode="wait">
-                  <motion.p
-                    key={loadingStage}
-                    initial={reducedMotion ? false : { opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={reducedMotion ? undefined : { opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="text-xs text-muted-foreground"
-                  >
-                    {t(SCOUT_STAGE_KEYS[loadingStage]!)}
-                  </motion.p>
-                </AnimatePresence>
-              </div>
-              <div className="h-1 overflow-hidden rounded-full bg-muted">
-                <motion.div
-                  className="h-full w-1/3 rounded-full bg-viatik-gradient"
-                  animate={reducedMotion ? undefined : { x: ["-100%", "250%"] }}
-                  transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-                />
-              </div>
-              {Array.from({ length: SCOUT_INITIAL_IDEA_COUNT }).map((_, index) => (
-                <ScoutSkeletonCard key={index} index={index} reducedMotion={reducedMotion} />
-              ))}
-            </div>
+            <ScoutLoadingState
+              stageKeys={SCOUT_STAGE_KEYS}
+              stageIndex={loadingStage}
+              skeletonCount={SCOUT_INITIAL_IDEA_COUNT}
+              reducedMotion={reducedMotion}
+            />
           ) : suggestions.length === 0 ? (
             <div className="space-y-5">
               <motion.div
