@@ -411,3 +411,279 @@ and `lib/i18n/error-copy.ts`. Locale persists in `localStorage["viatik-language"
   That method reuses the linked idea when there is one, otherwise builds an idea
   from the trip + `tripBudgets` row, so trips made with "Create trip" also work.
   It is owner-only because the delete branch tombstones a shared trip.
+
+## Wish-list idea card (2026-10-29)
+
+- **Destination is the headline.** `TripIdeaCard` renders `idea.destination` as
+  the `h2`. Never render `idea.name` as the title: it repeats the city.
+- **The season leads with its value.** Scout stores the recommended window as a
+  `Best season: …` line in `idea.notes`; `extractBestSeason()` reads it and
+  `splitSeason()` separates the month range from the trailing descriptor on `·`.
+  The header renders an amber sun badge, a 10px uppercase label
+  (`Best time to go` / `Mejor época para ir`), the range at 15px semibold in
+  `text-foreground`, and the descriptor at 13px muted underneath. A hand-written
+  name (no `Best season:` line) falls back to a plain muted subtitle with no
+  label. Never dump the raw string unlabeled, and never let the label outweigh
+  the value — "dic – abr · días cálidos" means nothing on its own.
+- **Fact tiles, not an inline `<dl>`.** Origin / When / Travelers / Duration are
+  four `FactTile` items inside one `<dl>` (`auto-rows-fr grid-cols-2 sm:grid-cols-4`),
+  each a `h-full min-h-20 rounded-xl border` tile with an accent color per type
+  (`FACT_ACCENTS`: blue origin, magenta when, emerald travelers, amber duration),
+  a 28px tinted icon badge, a 10px uppercase label, and a 14px semibold value.
+  Labels must stay short enough to fit on one line ("Salida", not "Lugar de
+  salida"); the grid uses `auto-rows-fr` so tiles never end at different heights.
+- **Budget block.** One `rounded-2xl` section: an 11px uppercase heading, the
+  total at `text-2xl` tabular-nums, an optional unallocated chip, then a
+  proportional `BudgetBar` (one segment per category, `CATEGORY_BAR_STYLES`)
+  and a two-column legend with amount + rounded percentage. `formatMinorUnits`
+  already prints the currency symbol — never append the ISO code again.
+- **Notes stay out of the card.** `idea.notes` (the mapper stores
+  `"<pitch>\n\nBest season: …"`) is intentionally **not** rendered on the card;
+  the title/season subtitle, facts, budget and map carry the view. Do not
+  re-add a "Scout's note" panel without an explicit request.
+- **Map panel** (`IdeaMapCard`, `features/trip-planner/components/idea-map-card.tsx`):
+  keyless OpenStreetMap embed with a marker when coordinates exist and the device
+  is online; otherwise a static location tile with a status line and an external
+  OSM link. `autoResolve` geocodes once on mount (used by the Scout detail);
+  `onResolveLocation` persists coordinates through
+  `tripIdeaRepository.updateIdea`. Rendering never requires a network round-trip.
+- **Primary CTA** uses `bg-viatik-gradient text-white`, matching the Scout
+  wizard's save button.
+
+## Savings plan timeline (2026-10-29)
+
+- `SavingsPlanner` reads as three plain sentences in a timeline: **Start saving**
+  (`$2,045 every month` + `From today until <date>`), **Buy the flights**
+  (`By <date>` + booking window), **You travel** (`On <date>`). A goal card on
+  top carries the target, a gradient progress bar, and `{{current}} of
+  {{target}}`. Do not split "how much" from "from when to when" — that was the
+  original complaint: the numbers were there but the sentence was not.
+- When the target is already covered the first step says `Goal already covered`
+  instead of quoting a zero contribution; a past trip shows the remaining amount
+  with `The goal is due now`.
+- `calculateSavingsSuggestion` now returns `readyOn` and `bookBy` (ISO dates) on
+  both `scheduled` and `due-now`, and accepts an optional `bookingWindowDays`.
+  `bookBy` is clamped to today, so it can never quote a past date.
+- The booking window lives in `domain/flight-booking-window.ts`
+  (`flightBookingWindowDays`), shared with `scout-idea-plan` so Scout's timeline
+  and the saved plan never disagree.
+- Missing inputs (no start date or no target) show the explanation and still
+  render the `Trip departs` step — never invent a schedule.
+
+## Idea plan comes from Scout's answers (2026-10-29, schema v49)
+
+- `tripIdeas` now persists `savingsCapacityMinor`, `savingsCadence`, `timing`,
+  `targetMonth`, `tripLength` and `constraints`. **`targetMonth` used to be
+  dropped by `mapScoutIdeaToTripIdea`** — if you add a Scout answer, persist it
+  there or the card can never use it.
+- `buildIdeaSchedule` (`domain/idea-schedule.ts`) is the single source of dates:
+  pace-driven when the idea carries a savings capacity, date-driven otherwise.
+  It returns `contributionMinor`, `periods`, `readyOn`, `bookBy`,
+  `departureStart`/`departureEnd` (≤30 days) and `shortfallMinor`.
+- **Never derive dates from the free-text "best season".** The season is months
+  long and the traveler rejected it as a plan input. If there is no pace and no
+  pinned date/month, the card says what is missing instead of estimating.
+- `flightBookingWindowDays(fare, currency)` converts the fare to USD first; the
+  700 threshold is USD, so raw MXN/JPY amounts used to look long-haul.
+
+## Scout loading state (2026-10-29)
+
+- `features/trip-planner/components/scout-loading-state.tsx` owns the search
+  screen: `ScoutOrbit` (the `Scout.png` fennec inside a rotating conic-gradient
+  ring, with Plane/Bed/MapPin/Compass orbiting and counter-rotating), the stage
+  line, a gradient progress bar with a magenta glow, and brand-tinted shimmer
+  skeletons (`ScoutSkeletonCard`, also used for the "add 2 more" placeholders).
+- Use `--color-viatik-blue` / `--color-viatik-magenta` / `--color-viatik-red` in
+  inline gradients — Tailwind v4 `@theme` tokens, not `--viatik-*`.
+- Everything is transform/opacity only and every animation is gated by
+  `useReducedMotion()`; the reduced-motion path renders a still mascot with no
+  orbit.
+
+## Idea plan sentence (2026-10-29)
+
+- The card states the plan as **one paragraph of three sentences**, in this
+  order: *start setting aside `<amount>` every `<unit>` for `<periods>`* →
+  *book the flights by `<date>`* → *the trip could be `<range>`*. Not a header
+  date line, not separate tiles: `tripIdeaPlanSaveLead/Tail`, `tripIdeaPlanBuy`,
+  `tripIdeaPlanTravel`.
+- It renders only when `buildIdeaSchedule` can produce dates. With a covered
+  goal the first sentence becomes `tripIdeaPlanGoalMet`.
+- Style: `rounded-2xl` panel with a blue→magenta wash, the amount in
+  `font-semibold tabular-nums`, `text-sm leading-relaxed`.
+
+## Scout loading until five ideas (2026-10-29)
+
+- `askScout` accumulates the first wave plus the top-up and only calls
+  `setSuggestions` once five ideas are ready (or the top-up resolves/fails).
+  Partial results are **not** revealed: showing two cards and three placeholders
+  read as unfinished work. `pendingCount` is no longer used for the first wave.
+- Do not reintroduce "still finding N more…" between waves; the loading state
+  owns that period.
+
+## Idea card tabs + colored tags (2026-10-29, schema v50)
+
+- The saved idea card is **tabbed into three**: Overview · Details · Savings (the
+  last one only while the idea is unconverted). **Details merges flights, stay and
+  daily** under small uppercase section headings. Grid follows the visible count
+  (`grid-cols-2` converted, `grid-cols-3` otherwise). Do not split Details again —
+  a Daily tab was added and reverted on request. The **Prices** tab is parked
+  behind `SHOW_PRICE_TAB = false` in `trip-idea-card.tsx` — the trigger, the
+  manual price-check form and its copy are all still wired, so flipping the flag
+  restores it. Its two tests in `trip-planner-view.test.tsx` are `it.skip`ped. Tabs sit directly
+  under the fact tiles; the map moved inside Overview. Triggers share
+  `TAB_TRIGGER` (stacked icon + 11px label, `grid-cols-3 sm:grid-cols-6`) so every
+  cell is the same size. Radix `Tabs` activates on mousedown, so tests must use
+  `fireEvent.mouseDown` on the trigger, not `click`.
+- Action cluster: the secondary actions (Edit / Set back + Delete) live in one
+  **segmented control** — `overflow-hidden rounded-xl border`, inner `Button
+  variant="ghost"` with `rounded-none` and a 1px divider — and the primary CTA
+  (gradient + soft magenta shadow) sits beside it. Everything is `min-h-11`; on
+  mobile the group is `flex-1` so nothing wraps. Each segment carries its own
+  colour: **Edit = viatik-blue**, **Set back = amber**, **Delete = destructive**
+  (tinted `bg-*/5`, stronger `bg-*/15` on hover), so the action type is readable
+  before the label. Icons are `size-4` for weight parity with the labels.
+- The plan is a **single short line above the fact tiles**, never collapsed:
+  `Save <amount> per <unit> for <periods> · trip <range>` with the amount and the
+  range in `<strong>`. Fact tiles are compact (`min-h-16 p-2.5`, 24px badge).
+- Every tab panel uses `TAB_PANEL` (`h-[22rem] overflow-y-auto`) so switching
+  tabs never resizes the card; taller content scrolls inside the panel.
+  `SavingsPlanner` takes `bare` when embedded: no card chrome, no heading, no
+  disclosure, and a **compact** layout — one row for the goal + progress, one
+  1.5px line per step (`amount · cadence · periods`, `buy by`, `travel range`)
+  with no uppercase labels or hints, and the input + save on a single row.
+- Overview puts the **budget in a collapsible** (`Budget · <total>` when closed)
+  and the **map below it**. Label is short: `Budget` / `Objetivo`. The collapse
+  changes only how the section is folded — the inside keeps its heading, bar and
+  breakdown exactly as before.
+- Tabs: one brand accent only — inactive neutral (`text-muted-foreground`),
+  active `bg-card` + `ring-viatik-magenta/30` + soft shadow. Labels are **12px
+  sentence case** (`text-xs font-semibold`, no uppercase), icons 18px, cells
+  `min-h-14`. Uppercase 10px was too small to read. Per-tab colour coding was tried and rejected as too busy; keep a single
+  accent.
+- Budget panel: the header — uppercase `Objetivo` + 24px amount + unallocated
+  chip — is **always visible**. The chevron is an icon button pinned to the
+  section's **top-right corner** (`absolute right-2 top-2`, 36px, `aria-expanded`
+  + `aria-controls`), not a row of its own. Opening it renders, with **no top
+  margins** (label `mt-2`), the `Cómo se reparte` label, the proportional bar and
+  the category rows. The label only exists while open. The panel animates with
+  `AnimatePresence` + `height: 0 → auto` and opacity (`0.26s`,
+  `cubic-bezier(0.23,1,0.32,1)`), gated by `useReducedMotion`; the chevron shares
+  that easing at `duration-300`.
+- Tab column count follows the visible tab count (`grid-cols-2 sm:grid-cols-4`
+  when converted, `grid-cols-3 sm:grid-cols-6` otherwise) and every trigger uses
+  `TAB_TRIGGER` (`h-full min-h-12`, stacked 16px icon + 11px label) so no cell
+  is taller or narrower than its neighbours.
+- The status pill ("Idea" / "Planned trip") is **commented out** on request; the
+  gradient rail already signals the state. Do not re-enable it without asking.
+  Interest chips are colour-coded by vibe through `interestTone()` (beach → blue,
+  city → magenta, nature → emerald, food → amber, default → muted). The matcher
+  covers EN and ES keywords because the vibe is stored in the language Scout
+  answered in.
+- `tripIdeas` (v50) stores `flightCostPerPersonMinor`, `hotelPerNightMinor`,
+  `altStayPerNightMinor` and `dailyPerPersonMinor`, so Flights/Stay/Daily show
+  Scout's own numbers. When they are null (legacy rows) the card derives
+  averages from `categoryEstimates` instead.
+
+## Trip date labels (2026-10-29)
+
+- All trip dates go through `domain/date-format.ts`
+  (`formatTripDay`, `formatIsoTripDay`, `formatTripRange`). **Months are always
+  capitalized**, including in Spanish (`29 Oct 2027`, not `29 oct 2027`), and the
+  trailing dot some locales add is stripped. Do not hand-roll
+  `Intl.DateTimeFormat` in a component.
+- The compact savings rows bold the actionable values: amount, book-by date and
+  travel range. Keep that emphasis — the labels alone are not the information.
+
+## Idea tab content (2026-10-29)
+
+- `DetailStat` takes an `accent` (blue / magenta / emerald / amber) that tints the
+  tile border and background, prints the value at `text-lg font-bold tabular-nums`
+  and the hint at 13px. Use it for every number inside a tab so the panel reads as
+  a grid of comparable figures.
+- Flights legs are cards with a 2px blue rail on the left, `from → to` in
+  semibold and the duration right-aligned in tabular figures; a layover renders as
+  an amber chip with a clock icon.
+- Stay shows hotel and rental side by side (magenta / emerald) plus the total in
+  blue; Daily shows food (amber) and activities (emerald) plus the per-person
+  total in blue.
+
+## Ahorro tab (2026-10-29)
+
+- Compact (`bare`) savings panel: goal card (`OBJETIVO` label, 18px bold amount,
+  `%` in magenta, 6px gradient bar) then three steps with 28px tinted icon badges
+  — PiggyBank magenta (amount + cadence + months), PlaneTakeoff blue (book-by
+  date), CalendarClock amber (travel range + days). Input + save share one row.
+- No bullet dots: the icon badges carry the colour coding, same language as the
+  Flights/Stay/Daily tabs.
+
+## Editing an idea (2026-10-29)
+
+- `TripIdeaForm` already binds every field to the idea, but the **budget section
+  used to start closed**, so the target cost, the estimates and the notes looked
+  missing when editing. It now opens by default whenever the idea carries a
+  target, estimates or notes, and the trigger shows the target as a `badge` so it
+  is visible even when collapsed.
+- Covered by `trip-idea-form.test.tsx` → "prefills every field and opens the
+  budget section".
+
+## Filling the edit form (2026-10-29)
+
+- When editing, `TripIdeaForm` shows a **Scout context** block at the top
+  (magenta panel): savings pace (`MX$2,000 / mes`) and the free-text preferences.
+  The budget section opens by default and its trigger carries the target amount.
+- Every prefilled value must be visible without expanding anything the traveler
+  did not collapse themselves.
+
+## Edit form tabs (2026-10-29)
+
+- `TripIdeaForm` has **two tabs**, and that is intentional: **Viaje** (tinted
+  blue: name/origin/destination/interests, dates/month/duration, adults/children)
+  and **Detalles** (tinted magenta: target, category estimates, per-day figures,
+  notes, savings pace, trip length, preferences, Scout's estimates). Several
+  `role="tabpanel"` divs share one tab (`hidden={tab !== "trip"}`). Do not split
+  this further unless the traveler asks for it.
+  **Do not use Radix `TabsContent` here**: with `forceMount` it keeps the panel
+  mounted but never sets `hidden`, so all five sections render at once. The
+  panels are plain `div[role="tabpanel"]` with `hidden={tab !== value}`, which
+  keeps every field mounted (validation refs, prefilled values, tests) while
+  showing exactly one. A failed submit jumps to the tab that owns the first error
+  (`tabForField`). Each panel is a card surface (`rounded-2xl border bg-card p-5`).
+- The sentence-to-draft section is parked behind `SHOW_DRAFT_SECTION = false`;
+  its test is `it.skip`ped.
+- The **Scout** tab is read-only and shows everything stored: status, savings
+  pace + cadence, best season (from notes), preferences, route chain, coordinates
+  and the per-person/night/day estimates.
+
+## Derived per-day figures in the edit form (2026-10-29)
+
+- The card's Daily tab numbers (food/day, activities/day, daily per person) are
+  **derived**, not stored per day: they come from `categoryEstimates.food` /
+  `.activities` divided by `durationDays`, and `dailyPerPersonMinor` when present.
+  The edit form now shows the same three figures (read-only) at the bottom of the
+  Budget tab, so what the card displays is visible while editing.
+
+## Editable Scout fields (2026-10-29)
+
+- The Scout tab is now **editable**: savings pace + cadence, trip length,
+  preferences, flight per person, hotel per night, rental per night and daily per
+  person. Status, best season, route chain and coordinates stay read-only because
+  they are derived or AI-authored.
+- Those values must be carried by `NewTripIdea` **and** by `ideaPatch` in
+  `trip-planner-view.tsx`; forgetting the patch silently drops them on update.
+
+## Edit idea form (2026-10-29)
+
+- `TripIdeaForm` opens with a **read-only preview header** (gradient panel: "You
+  are editing" + destination + amount · duration · travelers) that updates live
+  as the fields change, so the editor reads as the same object the card shows.
+- The form has **three tabs**: Viaje · Presupuesto (target + category estimates)
+  · Detalles (Scout pace, trip length, per-unit estimates, constraints, notes).
+  `tabForField()` routes a validation error to the right tab: `targetTripCost`
+  and `estimate:*` → budget, `notes` → details, everything else → trip.
+- All labels inside the form are styled by one form-level rule:
+  `[&_label]:text-[11px] [&_label]:uppercase [&_label]:tracking-[0.06em]
+  [&_label]:text-muted-foreground` — same language as the card labels.
+- The preview parses the amount inside a try/catch: rendering must never throw
+  while the traveler is mid-typing an invalid amount.
+- Fields are prefilled from `idea` in `useState` initializers and the dialog keys
+  the form by idea id; the "prefills every field" test covers it.

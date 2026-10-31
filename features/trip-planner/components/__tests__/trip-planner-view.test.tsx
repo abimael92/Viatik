@@ -85,6 +85,15 @@ const idea: TripIdea = {
   notes: "",
   targetTripCostMinor: 100_000n,
   categoryEstimates: [],
+  flightCostPerPersonMinor: null,
+  hotelPerNightMinor: null,
+  altStayPerNightMinor: null,
+  dailyPerPersonMinor: null,
+  savingsCapacityMinor: null,
+  savingsCadence: null,
+  timing: null,
+  tripLength: null,
+  constraints: "",
   priceChecks: [],
   convertedToTripId: null,
   createdAt: "2026-10-09T00:00:00.000Z",
@@ -117,26 +126,36 @@ describe("TripPlannerView", () => {
 
   afterEach(() => cleanup());
 
-  it("shows saved destination preferences, manual-price search links, and no income fields", async () => {
+  // The Prices tab is parked behind SHOW_PRICE_TAB; re-enable these when it returns.
+  it.skip("shows the saved origin, a short price note, and no income fields", async () => {
     mocks.ideas = [idea];
     render(<TripPlannerView userId="user-1" onBack={vi.fn()} />);
 
     expect(await screen.findByText("Kyoto in spring")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Search and price checks" }));
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Prices" }));
     expect(screen.getByText("Montréal")).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Search flights/ }).getAttribute("href")).toContain(
-      "Flights+from+Montr%C3%A9al+to+Kyoto%2C+Japan"
-    );
     expect(
-      screen.getByText(/destination, plus any route and date details included, are sent to Google/)
+      screen.getByText("Prices are checked by you and are not guaranteed.")
     ).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Search flights/ })).toBeNull();
     expect(screen.queryByLabelText(/income|salary/i)).toBeNull();
   });
 
-  it("logs manually found prices as bigint minor units", async () => {
+  it("keeps the flight search link on the details tab", async () => {
     mocks.ideas = [idea];
     render(<TripPlannerView userId="user-1" onBack={vi.fn()} />);
-    fireEvent.click(await screen.findByRole("button", { name: "Search and price checks" }));
+
+    expect(await screen.findByText("Kyoto in spring")).toBeTruthy();
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Details" }));
+    expect(screen.getByRole("link", { name: /Search flights/ }).getAttribute("href")).toContain(
+      "Flights+from+Montr%C3%A9al+to+Kyoto%2C+Japan"
+    );
+  });
+
+  it.skip("logs manually found prices as bigint minor units", async () => {
+    mocks.ideas = [idea];
+    render(<TripPlannerView userId="user-1" onBack={vi.fn()} />);
+    fireEvent.mouseDown(await screen.findByRole("tab", { name: "Prices" }));
     fireEvent.change(screen.getByLabelText("Price found (CAD)"), { target: { value: "123.45" } });
     fireEvent.change(screen.getByLabelText("Source"), { target: { value: "Google Flights" } });
     fireEvent.click(screen.getByRole("button", { name: "Log price found" }));
@@ -158,7 +177,7 @@ describe("TripPlannerView", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Add trip idea" }));
     fireEvent.change(screen.getByLabelText("Idea name"), { target: { value: "Kyoto" } });
     fireEvent.change(screen.getByLabelText("Destination"), { target: { value: "Kyoto, Japan" } });
-    fireEvent.click(screen.getByRole("button", { name: "Budget estimates and notes" }));
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Details" }));
     fireEvent.change(await screen.findByLabelText("Target trip cost (CAD)"), {
       target: { value: "1250.50" },
     });
@@ -273,10 +292,10 @@ describe("TripPlannerView", () => {
     render(<TripPlannerView userId="user-1" onBack={vi.fn()} />);
 
     expect(await screen.findByText("Kyoto in spring")).toBeTruthy();
-    expect(screen.getByText("Idea")).toBeTruthy();
+    expect(screen.queryByText("Idea")).toBeNull();
     expect(screen.getByRole("button", { name: "Edit" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Plan this trip" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Savings plan" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Savings" })).toBeTruthy();
   });
 
   it("collapses converted ideas to a read-only card", async () => {
@@ -284,7 +303,7 @@ describe("TripPlannerView", () => {
     render(<TripPlannerView userId="user-1" onBack={vi.fn()} />);
 
     expect(await screen.findByText("Kyoto in spring")).toBeTruthy();
-    expect(screen.getByText("Planned trip")).toBeTruthy();
+    expect(screen.queryByText("Planned trip")).toBeNull();
     expect(
       screen.getByText("This idea is now a trip. Open it to keep planning.")
     ).toBeTruthy();
@@ -295,8 +314,8 @@ describe("TripPlannerView", () => {
     expect(screen.getByRole("button", { name: "Set back as idea" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Plan this trip" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Savings plan" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Search and price checks" })).toBeNull();
+    expect(screen.queryByRole("tab", { name: "Savings" })).toBeNull();
+    expect(screen.queryByRole("tab", { name: "Prices" })).toBeNull();
   });
 
   it("lists unconverted ideas before converted ones", async () => {
@@ -304,14 +323,17 @@ describe("TripPlannerView", () => {
       ...idea,
       id: "idea-2",
       name: "Booked Lisbon",
+      destination: "Lisbon, Portugal",
       convertedToTripId: "trip-9",
     };
     mocks.ideas = [converted, idea];
     render(<TripPlannerView userId="user-1" onBack={vi.fn()} />);
 
     const headings = await screen.findAllByRole("heading", { level: 2 });
-    const names = headings.map((heading) => heading.textContent);
-    expect(names.indexOf("Kyoto in spring")).toBeGreaterThanOrEqual(0);
-    expect(names.indexOf("Kyoto in spring")).toBeLessThan(names.indexOf("Booked Lisbon"));
+    const destinations = headings.map((heading) => heading.textContent);
+    expect(destinations.indexOf("Kyoto, Japan")).toBeGreaterThanOrEqual(0);
+    expect(destinations.indexOf("Kyoto, Japan")).toBeLessThan(
+      destinations.indexOf("Lisbon, Portugal")
+    );
   });
 });

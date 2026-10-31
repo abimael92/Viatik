@@ -11,12 +11,9 @@ import {
 } from "date-fns";
 
 import { getCurrencyExponent, type CurrencyCode, type MinorUnits } from "@/features/domain/money";
+import { flightBookingWindowDays } from "@/features/trip-planner/domain/flight-booking-window";
 import type { ScoutTripIdeaSuggestion } from "@/features/trip-planner/domain/scout-trip-ideas-schema";
 
-/** Per-traveler fare at or above this many whole units is treated as long-haul. */
-const LONG_HAUL_FARE_THRESHOLD = 700;
-const LONG_HAUL_BOOKING_WINDOW_DAYS = 84;
-const SHORT_HAUL_BOOKING_WINDOW_DAYS = 56;
 /** How far past the earliest feasible departure the flexible window extends. */
 const DEPARTURE_FLEX_DAYS = 13;
 /** Upper bound on displayed savings periods so dates stay representable. */
@@ -188,10 +185,10 @@ export function buildScoutIdeaPlan({
   const ready =
     pinnedMonth && !isBefore(pinnedMonth, readyFromSavings) ? pinnedMonth : readyFromSavings;
 
-  const bookingWindowDays =
-    suggestion.estimated_flight_cost_per_person >= LONG_HAUL_FARE_THRESHOLD
-      ? LONG_HAUL_BOOKING_WINDOW_DAYS
-      : SHORT_HAUL_BOOKING_WINDOW_DAYS;
+  const bookingWindowDays = flightBookingWindowDays(
+    suggestion.estimated_flight_cost_per_person,
+    currency
+  );
   const rawBookBy = addDays(ready, -bookingWindowDays);
 
   const pinnedStart = timing === "dates" && startDate ? parseISO(startDate) : null;

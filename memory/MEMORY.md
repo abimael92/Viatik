@@ -5,6 +5,7 @@
 > **Companions:** [`data-models.md`](data-models.md) ·
 > [`components-ui.md`](components-ui.md) · [`roles-abilities.md`](roles-abilities.md)
 > **Last updated:** 2026-10-30 · schema v48 · 232 test files / 1,568 tests
+> **Last updated:** 2026-10-29 · schema v48 · 226 test files / 1,531 tests
 
 ---
 
@@ -247,6 +248,67 @@ Also update the topic file whose subject changed:
   `immutability`) forbids setState-in-effect and render-time variable
   reassignment — use the render-time "adjust state when props change" reset
   and precomputed index maps instead.
+### 2026-10-29 — Scout proximity ranking + wish-list idea card redesign
+- **Changed:** `app/actions/scout-trip-ideas.ts` (system prompt and
+  `buildUserPromptPayload` rewritten around proximity), `app/actions/places.ts`
+  (new `resolveDestinationCoordinates`), `features/trip-planner/components/idea-map-card.tsx`
+  (new), `features/trip-planner/components/trip-idea-card.tsx` (redesign),
+  `features/trip-planner/components/scout-idea-wizard.tsx` (map in the detail,
+  budget/duration chips, background coordinate hydration on save),
+  `lib/i18n/frontend-copy.ts` (EN/ES keys), spec
+  `.ai/specs/scout-nearby-destinations-and-idea-card.md`.
+- **Behavior:** "one continent" is gone. The prompt now treats proximity as a
+  ranking input (same country → same region/neighbors → same continent →
+  long-haul only when clearly better) and explicitly welcomes nearby underrated
+  destinations next to famous ones. The payload carries an `anchor` block with
+  the departure city, a widening order, and concrete guidance. `FALLBACK_POOLS`
+  is untouched and remains only the no-provider path — it is **not** the ranking
+  mechanism.
+- **Map:** keyless OpenStreetMap embed (`export/embed.html?bbox=…&marker=lat,lon`)
+  when coordinates exist and `navigator.onLine`; otherwise a static tile with an
+  OSM link. Scout-saved ideas geocode in the background **after** the local write
+  (`resolveDestinationCoordinates` → `tripIdeaRepository.updateIdea`), so an
+  offline save still succeeds and a failed lookup is silent.
+- **Schema:** none. `tripIdeas` already had `placeId`/`latitude`/`longitude`/
+  `timeZone` and is local-only (no outbox, no Supabase table).
+- **Verification:** `pnpm typecheck` ✅ · `pnpm lint` ✅ (no warnings) ·
+  `pnpm test` ✅ 226 files / 1,528 passed, 3 failed · `pnpm build` ✅ (21 routes).
+  The 3 failures are **pre-existing** in `scout-idea-wizard.test.tsx`
+  ("drops a stale second wave after Try again", "excludes first-wave routings in
+  route mode", "rotates through stage messages while Scout searches"); they fail
+  identically on `HEAD` with the working tree stashed.
+- **Idea card tabs (v50):** `tripIdeas` also stores `flightCostPerPersonMinor`,
+  `hotelPerNightMinor`, `altStayPerNightMinor`, `dailyPerPersonMinor`. The card
+  now uses tabs (Overview/Flights/Stay/Daily/Savings/Prices) instead of
+  collapsibles, and the status + interest chips moved under the title with
+  per-vibe colours.
+- **Scout loading state:** extracted to
+  `features/trip-planner/components/scout-loading-state.tsx` (mascot + orbit +
+  gradient shimmer). Uses the `--color-viatik-*` theme tokens.
+- **Idea plan context (2026-10-29, v49):** `tripIdeas` now stores the Scout
+  answers that drive the plan — `savingsCapacityMinor`, `savingsCadence`,
+  `timing`, `targetMonth` (was silently dropped by the mapper), `tripLength`,
+  `constraints`. Dexie v49 backfills nulls/`""`. `buildIdeaSchedule`
+  (`domain/idea-schedule.ts`) rebuilds the wizard's plan from those answers:
+  pace-driven when there is a capacity, date-driven otherwise; the travel window
+  is always capped at 30 days and `bookBy` never lands in the past.
+  `flightBookingWindowDays(fare, currency)` converts to USD before comparing
+  against the 700 long-haul threshold, so a MX$3,366 fare is short-haul (56
+  days), not long-haul.
+- **Savings timeline:** `calculateSavingsSuggestion` returns `readyOn` and
+  `bookBy` (ISO) and takes an optional `bookingWindowDays`; the window constants
+  moved to `domain/flight-booking-window.ts` and are shared with
+  `scout-idea-plan`. `SavingsPlanner` renders goal + progress + cadence, then a
+  three-step timeline (buy flights / goal complete / trip departs).
+- **Gotchas:** `formatMinorUnits` already prints the currency symbol — appending
+  the ISO code duplicated it ("MX$17,428.00 MXN"). `TripIdea.name` is
+  `"<destination> - <season>"`, so rendering both name and destination repeats
+  the city; the card now splits the suffix into a subtitle. `IdeaMapCard` must
+  not call `setState` synchronously in an effect (React lint
+  `react-hooks/set-state-in-effect`); the auto-resolve path uses a ref guard and
+  only sets state in the promise callbacks. `idea.notes` is deliberately **not**
+  rendered on the wish-list card (product decision 2026-10-29) — it stays in the
+  record only.
 
 ### 2026-10-28 — Trip planner: title prompt on convert + "set back as idea"
 

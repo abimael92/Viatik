@@ -30,6 +30,11 @@ export interface TripIdeaFlightRoute {
   isEstimate: true;
 }
 
+/** Timing the traveler picked in Scout; drives how the plan is derived. */
+export type IdeaTiming = "asap" | "month" | "cheapest" | "dates";
+export type IdeaTripLength = "any" | "weekend" | "week" | "two-weeks";
+export type IdeaSavingsCadence = Extract<SavingsCadence, "weekly" | "monthly">;
+
 export interface TripIdea {
   id: string;
   name: string;
@@ -53,6 +58,21 @@ export interface TripIdea {
   notes: string;
   targetTripCostMinor: MinorUnits | null;
   categoryEstimates: TripIdeaEstimate[];
+  /** Per-traveler flight estimate from Scout. */
+  flightCostPerPersonMinor: MinorUnits | null;
+  /** Hotel rate per night for the whole group. */
+  hotelPerNightMinor: MinorUnits | null;
+  /** Vacation-rental rate per night for the whole group. */
+  altStayPerNightMinor: MinorUnits | null;
+  /** Daily spend per traveler, excluding lodging. */
+  dailyPerPersonMinor: MinorUnits | null;
+  /** Scout's savings pace; null on ideas created before the wizard stored it. */
+  savingsCapacityMinor: MinorUnits | null;
+  savingsCadence: IdeaSavingsCadence | null;
+  /** Scout's timing answer; null when the idea was written by hand. */
+  timing: IdeaTiming | null;
+  tripLength: IdeaTripLength | null;
+  constraints: string;
   priceChecks: TripIdeaPriceCheck[];
   convertedToTripId: string | null;
   createdAt: string;
@@ -92,6 +112,15 @@ export interface NewTripIdea {
   notes?: string;
   targetTripCostMinor?: MinorUnits | null;
   categoryEstimates?: TripIdeaEstimate[];
+  flightCostPerPersonMinor?: MinorUnits | null;
+  hotelPerNightMinor?: MinorUnits | null;
+  altStayPerNightMinor?: MinorUnits | null;
+  dailyPerPersonMinor?: MinorUnits | null;
+  savingsCapacityMinor?: MinorUnits | null;
+  savingsCadence?: IdeaSavingsCadence | null;
+  timing?: IdeaTiming | null;
+  tripLength?: IdeaTripLength | null;
+  constraints?: string;
 }
 
 export interface SavingsSuggestionInput {
@@ -99,15 +128,28 @@ export interface SavingsSuggestionInput {
   targetTripCostMinor: MinorUnits | null;
   currentSavingsMinor: MinorUnits;
   cadence?: SavingsCadence;
+  /** Days before departure to book flights; defaults to the short-haul window. */
+  bookingWindowDays?: number;
   today?: Date;
 }
 
 export type SavingsSuggestion =
   | { status: "missing-input"; missing: Array<"tripStartDate" | "targetTripCostMinor"> }
-  | { status: "due-now"; amountMinor: MinorUnits }
+  | {
+      status: "due-now";
+      amountMinor: MinorUnits;
+      /** ISO date the goal is reached (today) — kept for a uniform timeline. */
+      readyOn: string;
+      /** ISO date flights should be bought by, never in the past. */
+      bookBy: string;
+    }
   | {
       status: "scheduled";
       cadence: SavingsCadence;
       periods: number;
       contributionMinor: MinorUnits;
+      /** ISO date the goal is reached at this pace. */
+      readyOn: string;
+      /** ISO date flights should be bought by, never in the past. */
+      bookBy: string;
     };
