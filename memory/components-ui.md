@@ -206,19 +206,41 @@ and `lib/i18n/error-copy.ts`. Locale persists in `localStorage["viatik-language"
 - `DestinationField` (`features/trips/components/destination-field.tsx`) takes
   `autoSearch={false}` to suppress the suggestion dropdown while a value is
   filled programmatically (device location). Re-enable it when the traveler types.
-- **Collapsible sidebar (2026-10-30):** `--sidebar-w` (`18rem` / `5rem` under
+- **Collapsible sidebar (2026-10-30, widened 2026-10-31):** `--sidebar-w`
+  (`clamp(20.5rem, 22vw, 22rem)` / `5rem` under
   `html[data-sidebar="collapsed"]`) drives `aside` width and `<main>`'s
-  `lg:pl-[var(--sidebar-w)]`; content is an inner `mx-auto max-w-[96rem]`
-  wrapper. `data-sidebar` is set by `themeInitScript` before paint from
+  `lg:pl-(--sidebar-w)`; content is an inner `mx-auto max-w-384` (96rem)
+  wrapper. Use Tailwind v4's CSS-variable shorthand (`w-(--sidebar-w)`), not
+  `w-[var(--sidebar-w)]` — the built CSS is identical but the IDE flags the
+  bracket form. Nav menu labels are `text-[20px]` in `min-h-12` rows — the profile
+  card, search pill, and mobile tab bar keep their own smaller type. The
+  disabled coming-soon row is a `<button>`, which sizes to content instead of
+  its block width, so it needs `w-full` or it overflows the nav's right padding.
+  `data-sidebar` is set by `themeInitScript` before paint from
   `localStorage["viatik-sidebar"]` — never read storage in render; React state
   only mirrors it for the toggle's aria. Rail layouts use the CSS hook classes
   `.sidebar-expanded-only` / `.sidebar-collapsed-only` / `.sidebar-nav-link` /
-  `.sidebar-label` in `globals.css` (plain CSS, not `in-data-*`).
+  `.sidebar-label` / `.sidebar-brand-actions` in `globals.css` (plain CSS, not
+  `in-data-*`).
   `SyncStatusPill compact` renders the icon-only variant with the same
   rect-anchored dropdown. `CommandPaletteHint variant="sidebar"` has no `kbd`.
   At 5rem the aside drops to `0.75rem` inline padding (56px inner — 44px
   controls fit); the rail user block is chromeless (bordered card chrome
-  clipped it), and `.sidebar-label` hides every label (toggle/brand included).
+  clipped it), and `.sidebar-label` hides every label (brand, search, sign-out).
+- **Sidebar chrome placement (2026-10-31):** the collapse toggle is an icon-only
+  44px ghost button in the brand row (right of `ThemeToggle`) — it is *not* in the
+  bottom bar, so `.sidebar-brand-actions` stacks vertically in the rail. Icon is
+  `ChevronsLeft` expanded / `ChevronsRight` collapsed; `hover:bg-side-hover`
+  because ghost's default `bg-muted` hover is a solid fill unlike the nav rows.
+  The theme toggle's amber/magenta hover comes from `.theme-toggle:hover` in
+  `globals.css` and is intentional — do not override it with a utility.
+  The
+  bottom of the panel holds only the destructive sign-out row (full-width with a
+  label when expanded, icon-only in the rail); the mobile account sheet keeps its
+  own sign-out `AccountMenu` item, so sign-out has two desktop-visible paths on
+  purpose. `app-shell.test.tsx` pins the row (`#app-sidebar`
+  `button[aria-label="Sign out"]`, `text-destructive`, after the toggle in DOM
+  order) and both handlers.
   Visually verified via a temporary `/e2e/shell` Playwright harness (deleted
   after; screenshots under /tmp/viatik-shell/).
 - **Home layout (2026-10-30):** Home uses the shell's width directly (no inner
@@ -372,13 +394,20 @@ and `lib/i18n/error-copy.ts`. Locale persists in `localStorage["viatik-language"
   2.8s rotating stage line (`scoutWizardStage1..5`, stops on the last), an
   indeterminate gradient bar, and `SCOUT_INITIAL_IDEA_COUNT` `ScoutSkeletonCard`
   shimmers (all behind `useReducedMotion`, inside `aria-busy`/`aria-live`).
-- **Progressive results:** `askScout()` requests `SCOUT_FIRST_WAVE_COUNT` (2)
-  ideas first, renders them at once, then requests the remainder excluding
-  first-wave destinations (idea mode) or `routeSignature`s (route mode).
-  `pendingCount` renders a "Scout is still finding n more…" `role="status"`
-  line plus shimmer placeholders inside the results rail and disables "Add
-  more"; a `runId` ref drops stale wave-2 responses after Try-again/close.
-  Wave-2 failures keep the first wave and surface the normal inline error.
+- **Two-wave results (2026-10-29, supersedes "render at once"):** `askScout()`
+  requests `SCOUT_FIRST_WAVE_COUNT` (2) ideas, then the remainder excluding
+  first-wave destinations (idea mode) or `routeSignature`s (route mode). The
+  first wave is **not** revealed until five ideas are ready (or the top-up
+  resolves/fails) — the loading view owns that gap and `pendingCount` is no
+  longer used for wave 1. Wave-2 failures keep the first wave and surface the
+  normal inline error. A `runId` ref drops stale wave-2 responses after the
+  wizard is closed or re-run.
+- **Wave test harness (2026-10-31):** in route mode the card title is
+  `scoutRouteOption` ("Route option N · <destination>"), so match it with a
+  regex instead of the bare destination. The loading stage line advances on a
+  real 2.8s interval and swaps through `AnimatePresence mode="wait"`, whose
+  exit never completes under `vi.useFakeTimers()` — wait on the real clock
+  (`findByText(..., { timeout: 5000 })`) rather than advancing fake timers.
 
 ## 12. Trips page (`features/trips/components/trip-dashboard.tsx`)
 

@@ -371,7 +371,10 @@
  * never renders the wrong state. Only used inside `lg:` utilities, so mobile
  * is unaffected. */
 :root {
-  --sidebar-w: 18rem;
+  /* Fluid so the panel grows with the viewport instead of staying cramped on
+     wide monitors. The 20.5rem floor is what the 20px nav labels plus the
+     "Coming soon" chip need at the `lg` edge; wider monitors get up to 22rem. */
+  --sidebar-w: clamp(20.5rem, 22vw, 22rem);
 }
 html[data-sidebar="collapsed"] {
   --sidebar-w: 5rem;
@@ -400,13 +403,12 @@ html[data-sidebar="collapsed"] {
     padding-left: 0;
     padding-right: 0;
   }
+  html[data-sidebar="collapsed"] .sidebar-brand-actions {
+    /* Two 44px icon buttons cannot sit side by side in the 56px rail. */
+    flex-direction: column;
+  }
   html[data-sidebar="collapsed"] .sidebar-label {
     display: none;
-  }
-  html[data-sidebar="collapsed"] .sidebar-toggle-btn {
-    justify-content: center;
-    padding-left: 0;
-    padding-right: 0;
   }
 }
 @media (max-width: 63.98rem) {
