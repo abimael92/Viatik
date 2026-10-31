@@ -400,7 +400,6 @@ export const translations = {
       addExpense: "Add expense",
       addPhotos: "Add photos",
       stagePhotosPrivately: "Stage photos privately",
-      daysLeft: "{{count}} days left",
       planItinerary: "Plan itinerary",
       addDocuments: "Add documents",
       addPassport: "Add passport",
@@ -412,8 +411,6 @@ export const translations = {
       readinessDocsHint: "Store bookings, insurance, and confirmations in the vault.",
       readinessPassportHint: "Add a passport expiry for your travelers.",
       readinessPackingHint: "Add items to your packing list before you travel.",
-      todayLabel: "Today",
-      startedLabel: "Started",
       dayOf: "Day {{day}} of {{total}}",
       startAvailable: "Start becomes available {{count}} days before departure.",
       activeTrip: "Active trip",
@@ -1288,7 +1285,6 @@ export const translations = {
       addExpense: "Añadir gasto",
       addPhotos: "Añadir fotos",
       stagePhotosPrivately: "Guardar fotos en privado",
-      daysLeft: "Quedan {{count}} días",
       planItinerary: "Planificar itinerario",
       addDocuments: "Añadir documentos",
       addPassport: "Añadir pasaporte",
@@ -1300,8 +1296,6 @@ export const translations = {
       readinessDocsHint: "Guarda reservas, seguros y confirmaciones en la bóveda.",
       readinessPassportHint: "Añade el vencimiento del pasaporte de tus viajeros.",
       readinessPackingHint: "Añade artículos a tu lista de equipaje antes de viajar.",
-      todayLabel: "Hoy",
-      startedLabel: "Comenzado",
       dayOf: "Día {{day}} de {{total}}",
       startAvailable: "El inicio estará disponible {{count}} días antes de la salida.",
       activeTrip: "Viaje activo",
@@ -1792,6 +1786,9 @@ export type TranslationKey =
   | `settings.${keyof TranslationTree["settings"] & string}`
   | `copy.${keyof typeof frontendCopy.en & string}`
   | `errors.${keyof typeof errorCopy.en & string}`;
+
+/** Signature of `useI18n().t` — pass it to pure formatters that emit copy. */
+export type Translate = (key: TranslationKey, variables?: Record<string, string | number>) => string;
 
 export function isLocale(value: string | null | undefined): value is Locale {
   return value === "en" || value === "es";

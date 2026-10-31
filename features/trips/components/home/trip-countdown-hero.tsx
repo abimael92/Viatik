@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import type { Trip } from "@/features/domain/entities";
 import type { TripReadiness } from "@/features/trips/lib/readiness";
 import { TripReadinessSection } from "@/features/trips/components/home/trip-readiness-section";
-import { DAY_MS, daysUntil, tripTabPath } from "@/features/trips/lib/home-trips";
+import { DAY_MS, daysUntil, formatCountdown, tripTabPath } from "@/features/trips/lib/home-trips";
 import { getTripCoverGradient, isTripCoverImage } from "@/features/trips/lib/trip-cover";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
@@ -42,13 +42,7 @@ export function TripCountdownHero({
   const { t } = useI18n();
   const active = trip.status === "active";
   const daysToStart = trip.startDate ? daysUntil(trip.startDate, today) : null;
-  const countdown = daysToStart === null
-    ? ""
-    : daysToStart === 0
-      ? t("common.todayLabel")
-      : daysToStart < 0
-        ? t("common.startedLabel")
-        : t("common.daysLeft", { count: daysToStart });
+  const countdown = trip.startDate ? formatCountdown(trip.startDate, t, today) : "";
   const destination = trip.destination ?? trip.name;
   const dayLabel = active && trip.startDate
     ? (() => {
