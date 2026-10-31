@@ -4,7 +4,7 @@
 > before exploring the codebase; update it before ending a task.
 > **Companions:** [`data-models.md`](data-models.md) ·
 > [`components-ui.md`](components-ui.md) · [`roles-abilities.md`](roles-abilities.md)
-> **Last updated:** 2026-10-30 · schema v48 · 230 test files / 1,560 tests
+> **Last updated:** 2026-10-30 · schema v48 · 232 test files / 1,568 tests
 
 ---
 
@@ -175,6 +175,44 @@ Also update the topic file whose subject changed:
 ---
 
 ## 7. Session log (newest first)
+
+### 2026-10-30 — Collapsible 18rem sidebar + adaptive content width
+
+- **Changed:** `app/globals.css` (`--sidebar-w: 18rem` on `:root`, `5rem` under
+  `html[data-sidebar="collapsed"]`, plus `.sidebar-expanded-only` /
+  `.sidebar-collapsed-only` / `.sidebar-nav-link` / `.sidebar-label` /
+  `.sidebar-brand-row` / `.sidebar-toggle-btn` hook classes — plain CSS chosen
+  over Tailwind `in-data-*` for determinism), `components/theme-initializer.tsx`
+  (`themeInitScript` + `applyStoredPreferences` now set/remove `data-sidebar`
+  from `localStorage["viatik-sidebar"]`), `components/app-shell/app-shell.tsx`
+  (`#app-sidebar`, `w-[var(--sidebar-w)]` + `transition-[width]`, collapse
+  toggle with `PanelLeftClose`/`PanelLeftOpen` + `aria-expanded`/`aria-controls`,
+  expanded type bumps, icon-rail variants with `aria-label`/`title`, kbd removed
+  from the sidebar search pill, `<main>` → `lg:pl-[var(--sidebar-w)]` + inner
+  `mx-auto max-w-[96rem]` wrapper), `sync-status-pill.tsx` (`compact` prop —
+  icon-only with `aria-label`, same trigger/rect dropdown), `language-switcher.tsx`
+  (h-9 w-16 text-sm), `home-page.tsx` (double padding removed, active cockpit
+  `xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]` with secondary widgets in
+  `xl:col-start-2`), `pre-trip-section.tsx` (`xl:grid-cols-2` +
+  only-child col-span), `app/(app)/gemini/page.tsx` (`<main>`→`<div>` nesting
+  fix), new `app-shell.test.tsx` + `theme-initializer.test.ts`, compact test in
+  `sync-status-pill.test.tsx`, EN/ES `sidebarCollapse`/`sidebarExpand`.
+- **Schema:** none.
+- **Verification:** `pnpm lint` ✅ · `pnpm typecheck` ✅ · `pnpm test` 232 files /
+  1,568 tests — 1,565 pass, only the 3 pre-existing `scout-idea-wizard`
+  "progressive waves" failures · `pnpm build` ✅ (21 routes).
+- **Gotchas:** jsdom here has no usable `localStorage` (Node stub) — tests that
+  exercise storage must shim `globalThis.localStorage` with an in-memory map.
+  Collapse state is CSS-driven from `html[data-sidebar]`; React state only
+  mirrors it for the toggle's `aria-expanded`/icon (read post-mount, eslint
+  `set-state-in-effect` disabled). Server render must never read localStorage.
+  Two SyncStatusPill instances mount (expanded + compact rail) — both subscribe,
+  one is `display:none`. The rail shrinks `#app-sidebar` padding to `0.75rem`
+  (56px inner) and the rail user block has **no card chrome** — a bordered p-2
+  card + p-5 padding clipped the 44px avatar/bell at 5rem. All rail labels hide
+  via `.sidebar-label` (toggle/brand too, not just `.sidebar-nav-link`).
+  Visually verified with a temporary `/e2e/shell` harness + Playwright
+  (expanded/collapsed, EN/ES, light/dark, mobile; harness deleted after).
 
 ### 2026-10-30 — Pre-trip Home content + command palette data search
 

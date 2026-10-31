@@ -25,7 +25,7 @@ export function LanguageSwitcher({
         aria-label={t("common.language")}
         value={locale}
         onChange={(event) => setLocale(event.target.value as Locale)}
-        className="h-8 w-14 cursor-pointer rounded-md border border-current/20 bg-transparent px-1 text-xs font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="h-9 w-16 cursor-pointer rounded-md border border-current/20 bg-transparent px-1 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         {SUPPORTED_LOCALES.map((option) => (
           <option key={option} value={option} className="bg-background text-foreground">
