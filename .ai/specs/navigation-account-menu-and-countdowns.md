@@ -103,7 +103,8 @@ require intent, and countdowns must read naturally in both locales.
 - [x] Both Home countdown surfaces use the same formatter.
 - [x] The mobile tab bar shows exactly four tappable tabs and no Community slot.
 - [x] The desktop sidebar keeps the disabled Community entry.
-- [x] Sign-out is reachable only through the profile/account menu.
+- [x] Sign-out is reachable from the avatar/account menu **and** a destructive
+      row at the bottom of the desktop sidebar (see Amendment 2026-10-31).
 - [x] Every interactive element in the new chrome is at least 44px tall.
 - [x] All new strings exist in `en` and `es`.
 
@@ -111,8 +112,27 @@ require intent, and countdowns must read naturally in both locales.
 
 - [x] `home-trips.test.ts` covers EN/ES countdown output.
 - [x] `app-shell.test.tsx` covers the four-tab bar, the sidebar-only Community
-      entry, the absence of a standalone sign-out button, the account menu items,
-      and the sign-out handler.
+      entry, the account menu items, the restored sidebar sign-out row, and both
+      sign-out handlers.
+
+## Amendment 2026-10-31 — sidebar sign-out restored
+
+Owner decision after using the build: sign-out in the avatar menu alone was too
+hidden for a desktop action used at the end of a session.
+
+- The desktop sidebar gets a destructive sign-out row back at the bottom
+  (`Button variant="ghost"`, `border-destructive/40 bg-destructive/10`,
+  `text-destructive`, `min-h-12`, `aria-label`/`title` from `common.signOut`,
+  disabled while `pending`). Expanded: full-width row with label + `LogOut` icon.
+  Rail: icon-only (`sidebar-label` hidden by `.sidebar-label` CSS).
+- The mobile account sheet keeps the `AccountMenu` sign-out item; the sidebar row
+  is desktop-only (it lives inside `#app-sidebar`, which is `hidden lg:flex`).
+- Because the bottom now belongs to sign-out, the collapse toggle moved to the
+  brand row (top-right, icon-only) — see `app-shell-collapsible-sidebar.md`.
+- Tests: `app-shell.test.tsx` asserts the row exists in `#app-sidebar`, carries
+  `text-destructive`, and follows the collapse toggle in document order; both
+  sign-out paths assert exactly one `logout()` call (`vi.clearAllMocks()` in
+  `beforeEach`, since two tests assert call counts).
 
 ## Verification
 

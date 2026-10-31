@@ -4,7 +4,7 @@
 **Owner:** Main agent
 **Status:** In Progress
 **Created:** 2026-10-30
-**Updated:** 2026-10-30
+**Updated:** 2026-10-31
 **Related work:** follow-up to `home-pretrip-and-command-palette.md`
 
 > No Dexie, Supabase, sync, or outbox change. UI shell only.
@@ -22,7 +22,7 @@
 ### What
 
 1. Remove the keyboard-shortcut badge (the `⌘ K` / `Ctrl K` `kbd`) from the sidebar search pill. The pill stays as a plain "Search" button (icon + label). The mobile header search icon, the Cmd/Ctrl+K listener, the palette cheatsheet, and the G-chords are unchanged.
-2. Make the expanded sidebar wider (`w-72`, 18rem) with larger type.
+2. Make the expanded sidebar wider (`clamp(20.5rem, 22vw, 22rem)` — 328px at the `lg` edge, up to 352px on wide monitors) with larger nav type (`text-[20px]`, 48px rows).
 3. Make the sidebar collapsible to an icon rail (`w-20`, 5rem) on `lg+`. Preference persists across reloads with no layout flash.
 4. Make page content adapt to the sidebar width and use the available space: content wrapper is offset by the live sidebar width and centered inside the remaining space, with a larger cap.
 5. Fix page-level distribution problems found above (double padding on Home, two-column rhythm on Home at `xl`).
@@ -35,10 +35,10 @@ The sidebar is the app's main chrome and is cramped; collapsing it gives dense s
 
 ### Sidebar
 
-- **Sizing:** expanded `18rem`, collapsed `5rem`, driven by a CSS variable `--sidebar-w` defined in `app/globals.css` on `:root` (`18rem`) and overridden by `html[data-sidebar="collapsed"]` (`5rem`). Only applies at `lg+` (below `lg` the sidebar is hidden and mobile nav is unchanged).
-- **Type (expanded):** brand text `text-2xl`; nav labels `text-[17px]`; user name `text-[17px]`; email `text-sm`; search pill `text-base`; sign-out label `text-sm`; "Coming soon" pill at least `text-[10px]` with auto width (`w-auto px-2`, no fixed `w-16`); language select `h-9 w-16 text-sm`. Keep nav row `min-h-11` (44px) or taller; icon tiles `size-10`.
+- **Sizing:** expanded `clamp(20.5rem, 22vw, 22rem)` (fluid: 328px at `lg`, capped 352px from ~1600px), collapsed `5rem`, driven by a CSS variable `--sidebar-w` defined in `app/globals.css` on `:root` and overridden by `html[data-sidebar="collapsed"]` (`5rem`). Only applies at `lg+` (below `lg` the sidebar is hidden and mobile nav is unchanged).
+- **Type (expanded):** brand text `text-2xl`; nav labels `text-[20px]` in `min-h-12` (48px) rows; user name `text-[17px]`; email `text-sm`; search pill `text-base`; sign-out label `text-sm`; "Coming soon" pill at least `text-[10px]` with auto width (`w-auto px-1.5`, no fixed `w-16`); language select `h-9 w-16 text-sm`. Icon tiles `size-10`.
 - **Collapsed rail:** brand logo only; nav icons only, centered, each with `aria-label` and `title`; active indicator bar preserved; user shows avatar only (notification bell stacked under it); search is an icon-only button with `aria-label`; theme toggle visible; sync status shown as an icon-only compact pill (add a `compact` prop to `SyncStatusPill` that hides text but keeps the icon, state color, pulse, and the dropdown trigger, so offline-first sync state stays visible); language switcher hidden; sign-out is icon-only with `aria-label`. "Coming soon" Community item shows only the dimmed icon with `title`.
-- **Toggle:** a 44px button with `PanelLeftClose` / `PanelLeftOpen` icons, at the bottom of the sidebar above sign-out (full-width row when expanded with a label, icon-only when collapsed). `aria-expanded`, `aria-controls="app-sidebar"` (give the `<aside>` that id), accessible name from i18n (`copy.sidebarCollapse` = "Collapse sidebar" / "Contraer barra lateral", `copy.sidebarExpand` = "Expand sidebar" / "Expandir barra lateral"). Add `copy.paletteShortcutPill` stays as the search label.
+- **Toggle:** a 44px icon-only button (`size="icon"`, ghost, `hover:bg-side-hover`) with `ChevronsLeft` (expanded) / `ChevronsRight` (collapsed) — chevrons replaced `PanelLeftClose` / `PanelLeftOpen` on 2026-10-31 because the panel glyph is unreadable at 20px (the arrow is ~6px and both states look alike) — in the **brand row** at the top of the panel, immediately right of the theme toggle (it used to be a full-width labeled row at the bottom, which competed with sign-out). `aria-expanded`, `aria-controls="app-sidebar"` (the `<aside>` has that id), accessible name from i18n (`copy.sidebarCollapse` = "Collapse sidebar" / "Contraer barra lateral", `copy.sidebarExpand` = "Expand sidebar" / "Expandir barra lateral") plus `title`. In the rail the `.sidebar-brand-actions` group stacks (two 44px buttons cannot sit side by side in the 56px rail). The bottom of the panel holds sign-out only.
 - **Persistence and no flash:** `localStorage["viatik-sidebar"]` = `"collapsed" | "expanded"` (default expanded). Extend `themeInitScript` in `components/theme-initializer.tsx` and `applyStoredPreferences()` to set/remove `data-sidebar` on `<html>` (same try/catch style; the `<html>` already has `suppressHydrationWarning`). Collapse/expand visuals are CSS-driven from the attribute (use Tailwind v4 `in-data-[sidebar=collapsed]:` / `group` variants, or plain CSS in `globals.css` if a variant is not available) so the server HTML never shows the wrong state. React state is only used for the toggle's `aria-expanded` and icon, read from `document.documentElement` after mount (default expanded on the server). Toggling sets the attribute and `localStorage` (guard storage errors).
 - **Motion:** `transition-[width]` on the aside and `transition-[padding]` on the content wrapper, `duration-300 ease-[cubic-bezier(0.23,1,0.32,1)]`. Global reduced-motion CSS already neutralizes it.
 
@@ -67,8 +67,8 @@ The sidebar is the app's main chrome and is cramped; collapsing it gives dense s
 ## Acceptance Criteria
 
 - [ ] Sidebar search pill no longer renders a shortcut `kbd`; the button still opens the palette; mobile header search icon unchanged.
-- [ ] Expanded sidebar is 18rem with the larger type above; no text truncation of "Coming soon" or the sign-out label in EN or ES.
-- [ ] Toggle collapses to a 5rem icon rail and back; `aria-expanded` and the accessible name reflect state; keyboard operable.
+- [ ] Expanded sidebar is `clamp(20.5rem, 22vw, 22rem)` with the larger type above; no text truncation of "Coming soon" or the sign-out label in EN or ES, and the profile display name fits at the `lg` edge.
+- [ ] Toggle collapses to a 5rem icon rail and back; it sits in the brand row, `aria-expanded` and the accessible name reflect state; keyboard operable.
 - [ ] Preference persists in `localStorage["viatik-sidebar"]` and is applied by the init script before first paint (`document.documentElement.dataset.sidebar === "collapsed"` after a reload with the stored value), with no hydration warning.
 - [ ] Collapsed rail: every nav item keeps an accessible name; sync status icon, notification bell, theme toggle, search, sign-out still usable; language switcher hidden.
 - [ ] Content area follows `--sidebar-w` and is centered with `max-w-[96rem]`; collapsing widens content smoothly at `lg+`; below `lg` layout is unchanged (no sidebar padding).
