@@ -101,10 +101,13 @@ app/layout.tsx                       SERVER  <html> fonts, ThemeInitScript, I18n
 └── app/auth/confirm                 password-recovery link landing
 ```
 
-Nav links (desktop sidebar + mobile bottom bar): `/home`, `/trips`, `/contacts`,
-`/community` (marked *coming soon*, disabled), `/settings`. Root `proxy.ts`
-(Next 16's renamed middleware) refreshes the Supabase session and redirects
-unauthenticated users away from protected paths.
+Nav links: the desktop sidebar renders `/home`, `/trips`, `/contacts`,
+`/community` (marked *coming soon*, disabled), `/settings`. The mobile bottom tab
+bar renders only the four live destinations (`/home`, `/trips`, `/contacts`,
+`/settings`, `grid-cols-4`) — no dead slot. Sign-out lives inside the
+avatar-anchored `AccountMenu` dropdown (Account settings → Sign out), not as a
+sidebar block. Root `proxy.ts` (Next 16's renamed middleware) refreshes the
+Supabase session and redirects unauthenticated users away from protected paths.
 
 ## 5. Client/server split — the hard rules
 
@@ -254,6 +257,16 @@ and `lib/i18n/error-copy.ts`. Locale persists in `localStorage["viatik-language"
   (do not render a second copy). The 24h check-in banner is now
   `WithinNext24HoursBanner` (`isWithinNext24Hours` exported from
   `within-24-hours-banner.tsx`).
+- **Nav + account menu (2026-10-31):** `app-shell.tsx` exports two link lists —
+  `primaryLinks` (Home, Trips, Contacts, Settings) drives the mobile tab bar
+  (`grid-cols-4`, `min-h-14`), `links` adds the disabled Community entry and
+  drives the desktop sidebar only. `AccountMenu` (avatar trigger, `min-h-11`)
+  is the single place for account preferences + sign-out; it renders in the
+  expanded card, the collapsed rail (`side="right"`), and the mobile account
+  sheet (`#mobile-account`, opened from the header button). Its destructive
+  item is a `DropdownMenuItem` with `data-highlighted:bg-destructive/10` —
+  never a full-width red sidebar block. `app-shell.test.tsx` mocks the
+  dropdown primitives (Radix needs pointer events jsdom lacks).
 
 ## 11. Scout wizard patterns (`features/trip-planner/components/scout-idea-wizard.tsx`)
 
