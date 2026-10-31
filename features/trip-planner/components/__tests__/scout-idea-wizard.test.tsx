@@ -1351,25 +1351,48 @@ describe("ScoutIdeaWizard", () => {
       ).toHaveProperty("disabled", false);
     });
 
-    it("drops a stale second wave after Try again", async () => {
-      const second = deferred<unknown>();
+    it("drops a stale second wave after the wizard is reopened and re-run", async () => {
+      const stale = deferred<unknown>();
       mocks.generate.mockResolvedValueOnce({
         success: true,
         suggestions: { ideas: fiveIdeas.slice(0, 2) },
       });
-      mocks.generate.mockReturnValueOnce(second.promise);
+      mocks.generate.mockReturnValueOnce(stale.promise);
       renderWizard();
       walkToTiming();
       consent();
       fireEvent.click(screen.getByRole("button", { name: "Show my trip ideas" }));
 
-      expect(await screen.findByText("Kyoto, Japan")).toBeTruthy();
-      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-      second.resolve({ success: true, suggestions: { ideas: fiveIdeas.slice(2) } });
-
+      // Wave 2 of run 1 is still in flight when the traveler leaves.
       await waitFor(() => expect(mocks.generate).toHaveBeenCalledTimes(2));
-      expect(screen.queryByText("Oaxaca, Mexico")).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: "Close dialog" }));
+      expect(mocks.onOpenChange).toHaveBeenCalledWith(false);
+
+      // Run 2 answers both waves on its own.
+      mocks.generate.mockResolvedValueOnce({
+        success: true,
+        suggestions: { ideas: [fiveIdeas[2], fiveIdeas[3]] },
+      });
+      mocks.generate.mockResolvedValueOnce({
+        success: true,
+        suggestions: { ideas: [fiveIdeas[4]] },
+      });
+      walkToTiming();
+      consent();
+      fireEvent.click(screen.getByRole("button", { name: "Show my trip ideas" }));
+
+      expect(await screen.findByText("Reykjavik, Iceland")).toBeTruthy();
+      expect(screen.getByText("Oaxaca, Mexico")).toBeTruthy();
+      expect(screen.getByText("Montreal, Canada")).toBeTruthy();
+      expect(mocks.generate).toHaveBeenCalledTimes(4);
+
+      // The abandoned top-up lands after the reset; its ideas must be ignored.
+      stale.resolve({ success: true, suggestions: { ideas: fiveIdeas.slice(2) } });
+      await act(async () => {});
+
       expect(screen.queryByText("Kyoto, Japan")).toBeNull();
+      expect(screen.queryByText("Porto, Portugal")).toBeNull();
+      expect(screen.queryByRole("alert")).toBeNull();
     });
 
     it("excludes first-wave routings in route mode", async () => {
@@ -1384,8 +1407,9 @@ describe("ScoutIdeaWizard", () => {
       consent();
       fireEvent.click(screen.getByRole("button", { name: "Show my trip ideas" }));
 
-      expect(await screen.findByText("Kyoto, Japan")).toBeTruthy();
-      expect(mocks.generate).toHaveBeenCalledTimes(2);
+      // The loading view owns the gap between waves: no partial cards yet.
+      await waitFor(() => expect(mocks.generate).toHaveBeenCalledTimes(2));
+      expect(screen.queryByText("Kyoto, Japan")).toBeNull();
       expect(mocks.generate).toHaveBeenLastCalledWith(
         expect.objectContaining({
           count: 3,
@@ -1393,7 +1417,10 @@ describe("ScoutIdeaWizard", () => {
           excludeRoutes: ["guadalajara > kyoto", "guadalajara > kyoto"],
         })
       );
+
       second.resolve({ success: true, suggestions: { ideas: [] } });
+      // Route mode titles cards "Route option N · <destination>".
+      expect(await screen.findByText(/Route option 1 · Kyoto, Japan/)).toBeTruthy();
       await waitFor(() =>
         expect(screen.queryByText(/Scout is still finding/)).toBeNull()
       );
@@ -1410,15 +1437,12 @@ describe("ScoutIdeaWizard", () => {
       expect(await screen.findByText("Scout is matching routes, stays, and vibes...")).toBeTruthy();
       expect(screen.getByText("Reading your trip vibe…")).toBeTruthy();
 
-      vi.useFakeTimers();
-      try {
-        act(() => {
-          vi.advanceTimersByTime(2900);
-        });
-        expect(screen.getByText("Mapping routes and flight times…")).toBeTruthy();
-      } finally {
-        vi.useRealTimers();
-      }
+      // The stage line advances on a real 2.8s interval. The AnimatePresence
+      // exit/enter pair needs real animation frames to swap the line, so this
+      // waits on the clock instead of faking it.
+      expect(
+        await screen.findByText("Mapping routes and flight times…", undefined, { timeout: 5000 })
+      ).toBeTruthy();
 
       pending.resolve({ success: true, suggestions: { ideas: fiveIdeas } });
       await screen.findByText("Kyoto, Japan");

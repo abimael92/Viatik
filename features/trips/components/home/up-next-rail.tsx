@@ -38,7 +38,7 @@ export function UpNextRail({ trips, today }: { trips: Trip[]; today: Date }) {
           >
             <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-viatik-magenta">
               <CalendarDays className="size-3.5" aria-hidden />
-              {formatCountdown(trip.startDate ?? "", today)}
+              {formatCountdown(trip.startDate ?? "", t, today)}
             </p>
             <p className="mt-2 line-clamp-1 font-semibold">{trip.destination ?? trip.name}</p>
             <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">

@@ -1,4 +1,5 @@
 import type { Activity, ActivityAttachment, ActivityChecklistItem, ActivityParticipant, Trip } from "@/features/domain/entities";
+import type { Translate } from "@/lib/i18n/translations";
 import { normalizeActivityAttachments } from "@/features/activities/domain/activity-attachments";
 import { normalizeActivityChecklist } from "@/features/activities/domain/activity-checklist";
 import { calendarDay, resolveTripStatus } from "@/features/trips/lib/trip-status";
@@ -70,12 +71,18 @@ export function isTripUpcoming(trip: Trip, today: Date = new Date()): boolean {
   return trip.startDate >= calendarDay(today);
 }
 
-/** Human countdown for the hero, e.g. "14 days left" or "Today". */
-export function formatCountdown(startDate: string, today: Date = new Date()): string {
+/**
+ * Human countdown for the hero and rails, e.g. "14 days left", "Tomorrow", or
+ * "Started 3 days ago". Copy comes from the active translator so both locales
+ * stay in sync with `lib/i18n/frontend-copy.ts`.
+ */
+export function formatCountdown(startDate: string, t: Translate, today: Date = new Date()): string {
   const days = daysUntil(startDate, today);
-  if (days === 0) return "Today";
-  if (days < 0) return "Started";
-  return `${days} day${days === 1 ? "" : "s"} left`;
+  if (days === 0) return t("copy.countdownToday");
+  if (days === 1) return t("copy.countdownTomorrow");
+  if (days > 1) return t("copy.countdownDaysLeft", { count: days });
+  if (days === -1) return t("copy.countdownStartedYesterday");
+  return t("copy.countdownStartedDaysAgo", { count: Math.abs(days) });
 }
 
 export interface PrimaryTripSelection {

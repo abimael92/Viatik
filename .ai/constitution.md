@@ -77,6 +77,25 @@ AI agents have no exception to this constitution. Every agent must:
 - Keep claims grounded in inspected files and executed verification.
 - Leave the repository in a buildable, reviewable state.
 
+### 7. Removals and behavior changes require an inventory and approval
+
+Deleting, relocating, or silently redefining something that already works is a
+product decision, not a refactor. Before any such change:
+
+- Write a **removal inventory**: every surface, string, translation key, export,
+  route, test, or behavior that disappears or changes meaning.
+- Anything the request does not name explicitly needs approval **before** it is
+  touched. "Unused", "duplicated", "dead code", or "cleanup" is not
+  authorization.
+- Remove only what was asked for. Adjacent cleanup ships as a separate proposal.
+- Prefer additive paths: deprecate, hide, or leave in place when the removal is
+  not required.
+- Never delete tests, translation keys, or user-facing surfaces to make a change
+  compile or pass.
+
+If a requested removal conflicts with a documented invariant, stop and escalate
+instead of deciding.
+
 ## Change Control
 
 Any proposal to relax a rule requires an explicit written decision by the Viatik maintainers and must be recorded in the relevant specification or architecture decision record. Convenience, schedule pressure, or agent limitations are not sufficient reasons to bypass this constitution.

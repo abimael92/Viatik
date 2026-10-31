@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   activityDateTime,
   buildTimeline,
+  formatCountdown,
   formatTimeInZone,
   getTemporalState,
   inferTimeZoneFromDestination,
@@ -10,6 +11,7 @@ import {
   resolveTripScheduleTimeZone,
 } from "./home-trips";
 import type { Activity, Trip, TripStatus } from "@/features/domain/entities";
+import { translate, type TranslationKey } from "@/lib/i18n/translations";
 
 const TEST_NOW = new Date("2024-06-15T12:00:00Z");
 
@@ -72,6 +74,28 @@ describe("buildTimeline participation", () => {
     );
 
     expect(item.participants).toEqual(participants);
+  });
+});
+
+describe("formatCountdown", () => {
+  const today = new Date("2026-10-31T12:00:00");
+  const en = (key: TranslationKey, variables?: Record<string, string | number>) => translate("en", key, variables);
+  const es = (key: TranslationKey, variables?: Record<string, string | number>) => translate("es", key, variables);
+
+  it("formats upcoming and started trips in English", () => {
+    expect(formatCountdown("2026-10-31", en, today)).toBe("Today");
+    expect(formatCountdown("2026-11-01", en, today)).toBe("Tomorrow");
+    expect(formatCountdown("2026-11-14", en, today)).toBe("14 days left");
+    expect(formatCountdown("2026-10-30", en, today)).toBe("Started yesterday");
+    expect(formatCountdown("2026-10-28", en, today)).toBe("Started 3 days ago");
+  });
+
+  it("formats upcoming and started trips in Spanish", () => {
+    expect(formatCountdown("2026-10-31", es, today)).toBe("Hoy");
+    expect(formatCountdown("2026-11-01", es, today)).toBe("Mañana");
+    expect(formatCountdown("2026-11-14", es, today)).toBe("Quedan 14 días");
+    expect(formatCountdown("2026-10-30", es, today)).toBe("Empezó ayer");
+    expect(formatCountdown("2026-10-28", es, today)).toBe("Empezó hace 3 días");
   });
 });
 

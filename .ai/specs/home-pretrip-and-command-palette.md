@@ -43,7 +43,7 @@ Most of a trip's life is spent in the `planned` state, but Home gates nearly all
 - Vault entry search. See "Vault decision" below.
 - Search by travel documents (health), notes, expenses, media. Documented follow-up.
 - Service worker / PWA install work.
-- Localizing the English strings still inside `features/trips/lib/home-trips.ts` (`formatCountdown`). Noted as follow-up.
+- Localizing the English strings still inside `features/trips/lib/home-trips.ts` (`formatCountdown`). **Done 2026-10-31** — see `navigation-account-menu-and-countdowns.md`.
 - Schema, sync, RLS, mapper, outbox changes: none.
 
 ## Constraints and Design
@@ -202,11 +202,11 @@ Baseline measured 2026-10-30 with the two files temporarily un-excluded: `home-t
 
 - **Risk:** per-trip activity subscriptions on large accounts. Mitigation: only while open, capped at 20 trips.
 - **Risk:** the `G` chord could surprise users while a non-modal widget has focus. Mitigation: guards above; `C` stays gated.
-- **Follow-up:** search travel documents (plaintext in `travelDocuments`), expenses, notes; localize `formatCountdown`.
+- **Follow-up:** search travel documents (plaintext in `travelDocuments`), expenses, notes. (`formatCountdown` localization shipped 2026-10-31.)
 
 ## Completion Notes
 
 - **Verification commands:** `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`
 - **Verification results:** to be filled in by QA after implementation
 - **Bug-ledger updates:** only if a production bug is found while fixing the Home tests
-- **Follow-up work:** vault/document search (needs an unlock-aware design), `formatCountdown` i18n
+- **Follow-up work:** vault/document search (needs an unlock-aware design). `formatCountdown` i18n shipped 2026-10-31.

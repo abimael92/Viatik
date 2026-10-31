@@ -1793,6 +1793,9 @@ export type TranslationKey =
   | `copy.${keyof typeof frontendCopy.en & string}`
   | `errors.${keyof typeof errorCopy.en & string}`;
 
+/** Signature of `useI18n().t` — pass it to pure formatters that emit copy. */
+export type Translate = (key: TranslationKey, variables?: Record<string, string | number>) => string;
+
 export function isLocale(value: string | null | undefined): value is Locale {
   return value === "en" || value === "es";
 }

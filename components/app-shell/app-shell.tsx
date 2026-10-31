@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Compass, ContactRound, Home, LogOut, Map, Menu, PanelLeftClose, PanelLeftOpen, Search, Settings, X } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, Compass, ContactRound, Home, LogOut, Map, Menu, Search, Settings, X } from "lucide-react";
 import { NotificationBell } from "@/features/notifications/components/notification-center";
 import { useEffect, useState, useTransition } from "react";
 
@@ -16,6 +16,14 @@ import { LanguageSwitcher } from "@/components/app-shell/language-switcher";
 import { ThemeToggle } from "@/components/app-shell/theme-toggle";
 import { openCommandPalette } from "@/components/pro/command-palette";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { IconTile } from "@/components/ui/icon-tile";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { deleteDatabase } from "@/lib/db/dexie";
@@ -35,13 +43,97 @@ type NavigationLink = {
   comingSoon?: boolean;
 };
 
-const links: readonly NavigationLink[] = [
-  { href: "/home", labelKey: "navigation.home", icon: Home, comingSoon: false },
-  { href: "/trips", labelKey: "navigation.trips", icon: Map, comingSoon: false },
-  { href: "/contacts", labelKey: "navigation.contacts", icon: ContactRound, comingSoon: false },
-  { href: "/community", labelKey: "navigation.community", icon: Compass, comingSoon: true },
-  { href: "/settings", labelKey: "navigation.settings", icon: Settings, comingSoon: false },
+/** The four live destinations. The mobile tab bar renders exactly these. */
+const primaryLinks: readonly NavigationLink[] = [
+  { href: "/home", labelKey: "navigation.home", icon: Home },
+  { href: "/trips", labelKey: "navigation.trips", icon: Map },
+  { href: "/contacts", labelKey: "navigation.contacts", icon: ContactRound },
+  { href: "/settings", labelKey: "navigation.settings", icon: Settings },
 ];
+
+/** Desktop sidebar keeps the coming-soon Community entry; the tab bar does not. */
+const links: readonly NavigationLink[] = [
+  ...primaryLinks.slice(0, 3),
+  { href: "/community", labelKey: "navigation.community", icon: Compass, comingSoon: true },
+  ...primaryLinks.slice(3),
+];
+
+/** Avatar-anchored account menu: preferences first, sign-out behind an explicit open. */
+function AccountMenu({
+  displayName,
+  userEmail,
+  avatarSeed,
+  avatarUrl,
+  pending,
+  onSignOut,
+  onNavigate,
+  variant,
+}: {
+  displayName: string;
+  userEmail?: string;
+  avatarSeed?: string | null;
+  avatarUrl?: string | null;
+  pending: boolean;
+  onSignOut: () => void;
+  onNavigate?: () => void;
+  variant: "card" | "rail";
+}) {
+  const { t } = useI18n();
+  const label = t("copy.openAccountMenu");
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label={label}
+          title={label}
+          className={cn(
+            "flex min-h-11 min-w-0 items-center gap-3 rounded-lg text-left transition-colors",
+            "hover:bg-side-active/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-viatik-magenta",
+            variant === "card" ? "flex-1 px-1" : "justify-center"
+          )}
+        >
+          <UserAvatar seed={avatarSeed} src={avatarUrl} name={displayName} size="md" />
+          {variant === "card" && (
+            <span className="sidebar-label min-w-0 flex-1">
+              <span className="block truncate text-[17px] font-semibold leading-tight text-side-fg" title={displayName}>
+                {displayName}
+              </span>
+              {userEmail && (
+                <span className="mt-1 block truncate text-sm leading-tight text-side-muted" title={userEmail}>
+                  {userEmail}
+                </span>
+              )}
+            </span>
+          )}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" side={variant === "rail" ? "right" : "bottom"} className="w-60">
+        <DropdownMenuLabel className="min-w-0">
+          <span className="block truncate">{displayName}</span>
+          {userEmail && <span className="block truncate text-xs font-normal text-muted-foreground">{userEmail}</span>}
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild className="min-h-11">
+          <Link href="/settings" onClick={onNavigate}>
+            <Settings className="size-4" aria-hidden />
+            {t("copy.accountSettings")}
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          className="min-h-11 text-destructive data-highlighted:bg-destructive/10 data-highlighted:text-destructive"
+          disabled={pending}
+          onSelect={() => onSignOut()}
+        >
+          <LogOut className="size-4" aria-hidden />
+          {t("common.signOut")}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 /** Discovery pill that opens the command palette. */
 export function CommandPaletteHint({ variant }: { variant: "sidebar" | "header" }) {
@@ -133,7 +225,7 @@ export function AppShell({
       // Theme-aware glass nav: brand-magenta glow on the active item.
       // Tighter optical tracking + semibold gives an authored, compact
       // label; active item reads in brand foreground, inactive in muted.
-      "sidebar-nav-link relative flex min-h-11 items-center gap-3 rounded-lg px-3 text-[17px] tracking-tight transition-all",
+      "sidebar-nav-link relative flex min-h-12 items-center gap-3 rounded-lg px-3 text-[20px] tracking-tight transition-all",
       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-viatik-magenta",
       active
         ? "font-bold bg-side-active text-side-active-fg shadow-[var(--side-glow)]"
@@ -159,11 +251,11 @@ export function AppShell({
               aria-disabled="true"
               aria-label={label}
               title={t("common.comingSoon")}
-              className={cn(navLinkClasses(false), "min-w-0 overflow-hidden cursor-not-allowed opacity-60")}
+              className={cn(navLinkClasses(false), "w-full min-w-0 overflow-hidden cursor-not-allowed opacity-60")}
             >
               {navIcon(Icon)}
               <span className="sidebar-label min-w-0 flex-1 truncate">{label}</span>
-              <span className="sidebar-label ml-auto w-auto shrink-0 truncate rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <span className="sidebar-label ml-auto w-auto shrink-0 truncate rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 {t("common.comingSoon")}
               </span>
             </button>
@@ -194,18 +286,21 @@ export function AppShell({
     </nav>
   );
 
-  // Static user profile card — not clickable, no icon, carries the sync status.
+  // Profile card: the avatar anchors the account menu (preferences + sign-out).
   const displayName = userName || t("copy.traveler");
   const userCard = (
     <div className="rounded-xl border border-side-border bg-side-hover p-3">
-      <div className="flex min-w-0 items-center gap-3">
-        <UserAvatar seed={avatarSeed} src={avatarUrl} name={displayName} size="md" />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[17px] font-semibold leading-tight text-side-fg" title={displayName}>{displayName}</span>
-          {userEmail && (
-            <span className="mt-1 block truncate text-sm leading-tight text-side-muted" title={userEmail}>{userEmail}</span>
-          )}
-        </span>
+      <div className="flex min-w-0 items-center gap-2">
+        <AccountMenu
+          displayName={displayName}
+          userEmail={userEmail}
+          avatarSeed={avatarSeed}
+          avatarUrl={avatarUrl}
+          pending={pending}
+          onSignOut={signOut}
+          onNavigate={() => setMenuOpen(false)}
+          variant="card"
+        />
         <NotificationBell userId={userId} />
       </div>
       <div className="mt-3 flex flex-nowrap items-center gap-1.5 border-t border-side-border pt-2.5">
@@ -220,7 +315,15 @@ export function AppShell({
   const collapsedUserCard = (
     <div className="sidebar-collapsed-only">
       <div className="flex flex-col items-center gap-2">
-        <UserAvatar seed={avatarSeed} src={avatarUrl} name={displayName} size="md" />
+        <AccountMenu
+          displayName={displayName}
+          userEmail={userEmail}
+          avatarSeed={avatarSeed}
+          avatarUrl={avatarUrl}
+          pending={pending}
+          onSignOut={signOut}
+          variant="rail"
+        />
         <NotificationBell userId={userId} />
         <SyncStatusPill compact />
       </div>
@@ -252,21 +355,34 @@ export function AppShell({
           crisp 1px hairline borders, and blur. Pinned on scroll. */}
       <aside
         id="app-sidebar"
-        className="fixed inset-y-0 left-0 z-30 hidden w-[var(--sidebar-w)] flex-col overflow-hidden border-r border-side-border bg-side p-5 shadow-[inset_1px_0_0_0_rgba(255,255,255,0.04)] backdrop-blur-xl transition-[width] duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] lg:flex"
+        className="fixed inset-y-0 left-0 z-30 hidden w-(--sidebar-w) flex-col overflow-hidden border-r border-side-border bg-side p-5 shadow-[inset_1px_0_0_0_rgba(255,255,255,0.04)] backdrop-blur-xl transition-[width] duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] lg:flex"
       >
         {/* Faint structural blue depth wash toward the top of the panel. */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-linear-to-b from-viatik-blue/15 via-transparent to-transparent"
         />
-        {/* Top: brand row — logo image untouched, theme toggle sits beside the app name. */}
+        {/* Top: brand row — logo image untouched; theme + collapse sit beside the app name. */}
         <div className="sidebar-brand-row relative flex items-center justify-between gap-2">
           <Link href="/home" aria-label="Viatik" title="Viatik" className="flex items-center gap-3 text-2xl font-bold text-side-fg">
             <Image src="/viatik-logo.png" alt="" width={44} height={44} priority className="size-11 shrink-0 object-contain" />
             <span className="sidebar-label">Viatik</span>
           </Link>
-          <div className="flex items-center gap-1">
+          <div className="sidebar-brand-actions flex items-center gap-1">
             <ThemeToggle />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={toggleSidebar}
+              aria-expanded={!collapsed}
+              aria-controls="app-sidebar"
+              aria-label={collapsed ? t("copy.sidebarExpand") : t("copy.sidebarCollapse")}
+              title={collapsed ? t("copy.sidebarExpand") : t("copy.sidebarCollapse")}
+              className="sidebar-toggle-btn text-side-muted hover:bg-side-hover hover:text-side-fg"
+            >
+              {collapsed ? <ChevronsRight aria-hidden /> : <ChevronsLeft aria-hidden />}
+            </Button>
           </div>
         </div>
 
@@ -275,41 +391,25 @@ export function AppShell({
           <CommandPaletteHint variant="sidebar" />
         </div>
 
-        {/* User profile card (static) sits before the navigation links, with sync status on it. */}
+        {/* Profile card — the avatar opens the account menu; sync status lives here. */}
         <div className="sidebar-expanded-only mt-3">{userCard}</div>
         <div className="mt-3">{collapsedUserCard}</div>
 
         {/* Center: navigation fills the middle. */}
         <div className="mt-3 flex-1">{navigation}</div>
 
-        {/* Bottom: collapse toggle above sign-out. */}
-        <div className="relative mt-8 space-y-2">
-          <button
-            type="button"
-            onClick={toggleSidebar}
-            aria-expanded={!collapsed}
-            aria-controls="app-sidebar"
-            aria-label={collapsed ? t("copy.sidebarExpand") : t("copy.sidebarCollapse")}
-            title={collapsed ? t("copy.sidebarExpand") : t("copy.sidebarCollapse")}
-            className="sidebar-toggle-btn flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-semibold text-side-muted transition-colors hover:bg-side-hover hover:text-side-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-viatik-magenta"
-          >
-            {collapsed ? (
-              <PanelLeftOpen className="size-5 shrink-0" aria-hidden />
-            ) : (
-              <PanelLeftClose className="size-5 shrink-0" aria-hidden />
-            )}
-            <span className="sidebar-label flex-1 text-left">{t("copy.sidebarCollapse")}</span>
-          </button>
+        {/* Bottom: sign-out only. The collapse control lives in the brand row. */}
+        <div className="relative mt-8">
           <Button
             variant="ghost"
             aria-label={t("common.signOut")}
             title={t("common.signOut")}
-            className="sidebar-nav-link w-full justify-between rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-destructive hover:border-destructive/60 hover:bg-destructive/20 hover:text-destructive"
+            className="sidebar-nav-link min-h-12 w-full justify-between rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-destructive hover:border-destructive/60 hover:bg-destructive/20 hover:text-destructive"
             onClick={() => signOut()}
             disabled={pending}
           >
             <span className="sidebar-label text-sm font-semibold">{t("common.signOut")}</span>
-            <LogOut className="size-5 shrink-0" />
+            <LogOut className="size-5 shrink-0" aria-hidden />
           </Button>
         </div>
       </aside>
@@ -330,8 +430,8 @@ export function AppShell({
             size="icon"
             onClick={() => setMenuOpen((open) => !open)}
             aria-expanded={menuOpen}
-            aria-controls="mobile-navigation"
-            aria-label={menuOpen ? t("navigation.close") : t("navigation.open")}
+            aria-controls="mobile-account"
+            aria-label={menuOpen ? t("common.close") : t("copy.openAccountMenu")}
           >
             {menuOpen ? <X aria-hidden /> : <Menu aria-hidden />}
           </Button>
@@ -340,57 +440,37 @@ export function AppShell({
 
       {menuOpen && (
         <div
-          id="mobile-navigation"
+          id="mobile-account"
           className="fixed inset-x-0 top-16 z-30 border-b border-side-border bg-side p-4 shadow-lg backdrop-blur-xl lg:hidden"
         >
-          {navigation}
-          <div className="mt-4 border-t border-side-border pt-3">
-            {userCard}
-            <Button
-              variant="ghost"
-              className="mt-3 w-full justify-between rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-destructive hover:border-destructive/60 hover:bg-destructive/20 hover:text-destructive"
-              onClick={() => void signOut()}
-              disabled={pending}
-            >
-              <span className="text-xs font-semibold">{t("common.signOut")}</span>
-              <LogOut className="size-5" />
-            </Button>
-          </div>
+          {/* Account sheet: navigation lives in the tab bar, so the menu is only
+              the profile card — avatar, language, sync, and sign-out. */}
+          {userCard}
         </div>
       )}
 
-      {/* Mobile bottom tab bar — keeps the main nav always reachable on small screens. */}
+      {/* Mobile bottom tab bar — keeps the four live destinations reachable. */}
       <nav
         aria-label={t("navigation.mobile")}
         className="fixed inset-x-0 bottom-0 z-40 border-t border-side-border bg-side pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden"
       >
-        <div className="grid grid-cols-5">
-          {links.map(({ href, labelKey, icon: Icon, comingSoon = false }) => {
+        <div className="grid grid-cols-4">
+          {primaryLinks.map(({ href, labelKey, icon: Icon }) => {
             const label = t(labelKey);
             const active = pathname === href || pathname.startsWith(`${href}/`);
-            const cls = cn(
-              "flex min-h-14 flex-col items-center justify-center gap-1 py-2 text-[11px] font-semibold tracking-tight",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-viatik-magenta",
-              active ? "text-primary" : "text-side-muted hover:text-side-fg",
-              comingSoon && "cursor-not-allowed opacity-50"
-            );
-            if (comingSoon) {
-              return (
-                <button key={href} type="button" disabled title={t("common.comingSoon")} aria-disabled="true" className={cls}>
-                  <Icon className="size-6" />
-                  {label}
-                </button>
-              );
-            }
             return (
               <Link
                 key={href}
                 href={href}
                 onClick={() => setMenuOpen(false)}
                 aria-current={active ? "page" : undefined}
-                className={cls}
+                className={cn(
+                  "flex min-h-14 flex-col items-center justify-center gap-1 py-2 text-[11px] font-semibold tracking-tight",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-viatik-magenta",
+                  active ? "text-primary" : "text-side-muted hover:text-side-fg"
+                )}
               >
-                <Icon className="size-6" />
+                <Icon className="size-6" aria-hidden />
                 {label}
               </Link>
             );
@@ -400,9 +480,9 @@ export function AppShell({
 
       <main
         id="main-content"
-        className="min-h-dvh transition-[padding] duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] lg:pl-[var(--sidebar-w)]"
+        className="min-h-dvh transition-[padding] duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] lg:pl-(--sidebar-w)"
       >
-        <div className="mx-auto w-full max-w-[96rem] px-4 pb-24 pt-6 sm:px-6 lg:px-8 lg:py-10">
+        <div className="mx-auto w-full max-w-384 px-4 pb-24 pt-6 sm:px-6 lg:px-8 lg:py-10">
           {children}
         </div>
       </main>
