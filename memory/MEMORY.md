@@ -4,8 +4,8 @@
 > before exploring the codebase; update it before ending a task.
 > **Companions:** [`data-models.md`](data-models.md) ·
 > [`components-ui.md`](components-ui.md) · [`roles-abilities.md`](roles-abilities.md)
+> **Last updated:** 2026-10-31 · schema v48 · 239 test files / 1,629 tests
 > **Last updated:** 2026-10-30 · schema v48 · 232 test files / 1,568 tests
-> **Last updated:** 2026-10-29 · schema v48 · 226 test files / 1,531 tests
 
 ---
 
@@ -152,6 +152,14 @@ Also update the topic file whose subject changed:
 - Repositories expose `watch*` (liveQuery) — always return the disposer to
   `useEffect`; there is no generic `useTrip` hook.
 - 44×44px minimum touch targets; `sm` buttons (`h-9`) only in dense toolbars.
+- **Nav + account menu (2026-10-31):** the mobile tab bar renders
+  `primaryLinks` (Home · Trips · Contacts · Settings, `grid-cols-4`); the
+  desktop sidebar renders `links`, which keeps the disabled Community entry.
+  Sign-out is only a destructive `DropdownMenuItem` inside the avatar
+  `AccountMenu` — never a standalone sidebar/drawer button. The mobile menu is
+  an account sheet (profile card + language + sync), not a second nav.
+  Trip countdown copy comes from `formatCountdown(startDate, t, today)`
+  (`copy.countdown*` keys); do not hand-roll countdown strings.
 
 ### Money
 - Only 6 currencies have exponents (`CAD, EUR, GBP, JPY, MXN, USD`) — adding a
@@ -176,6 +184,36 @@ Also update the topic file whose subject changed:
 ---
 
 ## 7. Session log (newest first)
+
+### 2026-10-31 — Localized countdowns + nav/sign-out polish
+
+- **Changed:** `features/trips/lib/home-trips.ts` (`formatCountdown(startDate, t, today)`
+  now takes the translator; "Today" / "Tomorrow" / "{{count}} days left" /
+  "Started yesterday" / "Started {{count}} days ago"),
+  `features/trips/components/home/up-next-rail.tsx` and
+  `trip-countdown-hero.tsx` (both call it — the hero's duplicate inline
+  countdown and `common.todayLabel`/`startedLabel`/`daysLeft` keys are gone),
+  `lib/i18n/translations.ts` (new `Translate` type), `lib/i18n/frontend-copy.ts`
+  (EN/ES `countdown*` + `accountMenu`/`openAccountMenu`/`accountSettings`),
+  `components/app-shell/app-shell.tsx` (new avatar-anchored `AccountMenu`
+  dropdown; sidebar sign-out block removed; mobile tab bar = 4 live tabs;
+  mobile menu is an account sheet with no duplicate nav links),
+  `components/app-shell/app-shell.test.tsx`, `features/trips/lib/home-trips.test.ts`.
+- **Schema:** none.
+- **Verification:** `pnpm lint` ✅ · `pnpm typecheck` ✅ · `pnpm test` 239 files /
+  1,629 tests — 1,623 pass, only the 3 pre-existing `scout-idea-wizard`
+  "progressive waves" failures reproduce · `pnpm build` ✅ (21 routes).
+- **Gotchas:** `formatCountdown` takes `(startDate, t, today = new Date())` —
+  the translator is positional second so `today` stays optional. The
+  `common.todayLabel`/`startedLabel`/`daysLeft` keys were deleted; use the
+  `copy.countdown*` keys. The mobile tab bar renders `primaryLinks` (Home,
+  Trips, Contacts, Settings) while the desktop sidebar still renders `links`
+  (which inserts the disabled Community entry) — do not reuse `links` in the
+  bar or the dead 5th slot comes back. Sign-out exists only as a destructive
+  `DropdownMenuItem` inside `AccountMenu`; there is no standalone sign-out
+  button in the sidebar or drawer. `app-shell.test.tsx` mocks
+  `@/components/ui/dropdown-menu` (Radix needs pointer events jsdom lacks) so
+  the menu items render inline.
 
 ### 2026-10-30 — Collapsible 18rem sidebar + adaptive content width
 

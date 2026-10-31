@@ -16,6 +16,14 @@ import { LanguageSwitcher } from "@/components/app-shell/language-switcher";
 import { ThemeToggle } from "@/components/app-shell/theme-toggle";
 import { openCommandPalette } from "@/components/pro/command-palette";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { IconTile } from "@/components/ui/icon-tile";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { deleteDatabase } from "@/lib/db/dexie";
@@ -35,13 +43,97 @@ type NavigationLink = {
   comingSoon?: boolean;
 };
 
-const links: readonly NavigationLink[] = [
-  { href: "/home", labelKey: "navigation.home", icon: Home, comingSoon: false },
-  { href: "/trips", labelKey: "navigation.trips", icon: Map, comingSoon: false },
-  { href: "/contacts", labelKey: "navigation.contacts", icon: ContactRound, comingSoon: false },
-  { href: "/community", labelKey: "navigation.community", icon: Compass, comingSoon: true },
-  { href: "/settings", labelKey: "navigation.settings", icon: Settings, comingSoon: false },
+/** The four live destinations. The mobile tab bar renders exactly these. */
+const primaryLinks: readonly NavigationLink[] = [
+  { href: "/home", labelKey: "navigation.home", icon: Home },
+  { href: "/trips", labelKey: "navigation.trips", icon: Map },
+  { href: "/contacts", labelKey: "navigation.contacts", icon: ContactRound },
+  { href: "/settings", labelKey: "navigation.settings", icon: Settings },
 ];
+
+/** Desktop sidebar keeps the coming-soon Community entry; the tab bar does not. */
+const links: readonly NavigationLink[] = [
+  ...primaryLinks.slice(0, 3),
+  { href: "/community", labelKey: "navigation.community", icon: Compass, comingSoon: true },
+  ...primaryLinks.slice(3),
+];
+
+/** Avatar-anchored account menu: preferences first, sign-out behind an explicit open. */
+function AccountMenu({
+  displayName,
+  userEmail,
+  avatarSeed,
+  avatarUrl,
+  pending,
+  onSignOut,
+  onNavigate,
+  variant,
+}: {
+  displayName: string;
+  userEmail?: string;
+  avatarSeed?: string | null;
+  avatarUrl?: string | null;
+  pending: boolean;
+  onSignOut: () => void;
+  onNavigate?: () => void;
+  variant: "card" | "rail";
+}) {
+  const { t } = useI18n();
+  const label = t("copy.openAccountMenu");
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label={label}
+          title={label}
+          className={cn(
+            "flex min-h-11 min-w-0 items-center gap-3 rounded-lg text-left transition-colors",
+            "hover:bg-side-active/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-viatik-magenta",
+            variant === "card" ? "flex-1 px-1" : "justify-center"
+          )}
+        >
+          <UserAvatar seed={avatarSeed} src={avatarUrl} name={displayName} size="md" />
+          {variant === "card" && (
+            <span className="sidebar-label min-w-0 flex-1">
+              <span className="block truncate text-[17px] font-semibold leading-tight text-side-fg" title={displayName}>
+                {displayName}
+              </span>
+              {userEmail && (
+                <span className="mt-1 block truncate text-sm leading-tight text-side-muted" title={userEmail}>
+                  {userEmail}
+                </span>
+              )}
+            </span>
+          )}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" side={variant === "rail" ? "right" : "bottom"} className="w-60">
+        <DropdownMenuLabel className="min-w-0">
+          <span className="block truncate">{displayName}</span>
+          {userEmail && <span className="block truncate text-xs font-normal text-muted-foreground">{userEmail}</span>}
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild className="min-h-11">
+          <Link href="/settings" onClick={onNavigate}>
+            <Settings className="size-4" aria-hidden />
+            {t("copy.accountSettings")}
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          className="min-h-11 text-destructive data-highlighted:bg-destructive/10 data-highlighted:text-destructive"
+          disabled={pending}
+          onSelect={() => onSignOut()}
+        >
+          <LogOut className="size-4" aria-hidden />
+          {t("common.signOut")}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 /** Discovery pill that opens the command palette. */
 export function CommandPaletteHint({ variant }: { variant: "sidebar" | "header" }) {
@@ -194,18 +286,21 @@ export function AppShell({
     </nav>
   );
 
-  // Static user profile card — not clickable, no icon, carries the sync status.
+  // Profile card: the avatar anchors the account menu (preferences + sign-out).
   const displayName = userName || t("copy.traveler");
   const userCard = (
     <div className="rounded-xl border border-side-border bg-side-hover p-3">
-      <div className="flex min-w-0 items-center gap-3">
-        <UserAvatar seed={avatarSeed} src={avatarUrl} name={displayName} size="md" />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[17px] font-semibold leading-tight text-side-fg" title={displayName}>{displayName}</span>
-          {userEmail && (
-            <span className="mt-1 block truncate text-sm leading-tight text-side-muted" title={userEmail}>{userEmail}</span>
-          )}
-        </span>
+      <div className="flex min-w-0 items-center gap-2">
+        <AccountMenu
+          displayName={displayName}
+          userEmail={userEmail}
+          avatarSeed={avatarSeed}
+          avatarUrl={avatarUrl}
+          pending={pending}
+          onSignOut={signOut}
+          onNavigate={() => setMenuOpen(false)}
+          variant="card"
+        />
         <NotificationBell userId={userId} />
       </div>
       <div className="mt-3 flex flex-nowrap items-center gap-1.5 border-t border-side-border pt-2.5">
@@ -220,7 +315,15 @@ export function AppShell({
   const collapsedUserCard = (
     <div className="sidebar-collapsed-only">
       <div className="flex flex-col items-center gap-2">
-        <UserAvatar seed={avatarSeed} src={avatarUrl} name={displayName} size="md" />
+        <AccountMenu
+          displayName={displayName}
+          userEmail={userEmail}
+          avatarSeed={avatarSeed}
+          avatarUrl={avatarUrl}
+          pending={pending}
+          onSignOut={signOut}
+          variant="rail"
+        />
         <NotificationBell userId={userId} />
         <SyncStatusPill compact />
       </div>
@@ -275,15 +378,15 @@ export function AppShell({
           <CommandPaletteHint variant="sidebar" />
         </div>
 
-        {/* User profile card (static) sits before the navigation links, with sync status on it. */}
+        {/* Profile card — the avatar opens the account menu; sync status lives here. */}
         <div className="sidebar-expanded-only mt-3">{userCard}</div>
         <div className="mt-3">{collapsedUserCard}</div>
 
         {/* Center: navigation fills the middle. */}
         <div className="mt-3 flex-1">{navigation}</div>
 
-        {/* Bottom: collapse toggle above sign-out. */}
-        <div className="relative mt-8 space-y-2">
+        {/* Bottom: collapse toggle. Sign-out lives in the profile card menu. */}
+        <div className="relative mt-8">
           <button
             type="button"
             onClick={toggleSidebar}
@@ -300,17 +403,6 @@ export function AppShell({
             )}
             <span className="sidebar-label flex-1 text-left">{t("copy.sidebarCollapse")}</span>
           </button>
-          <Button
-            variant="ghost"
-            aria-label={t("common.signOut")}
-            title={t("common.signOut")}
-            className="sidebar-nav-link w-full justify-between rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-destructive hover:border-destructive/60 hover:bg-destructive/20 hover:text-destructive"
-            onClick={() => signOut()}
-            disabled={pending}
-          >
-            <span className="sidebar-label text-sm font-semibold">{t("common.signOut")}</span>
-            <LogOut className="size-5 shrink-0" />
-          </Button>
         </div>
       </aside>
 
@@ -330,8 +422,8 @@ export function AppShell({
             size="icon"
             onClick={() => setMenuOpen((open) => !open)}
             aria-expanded={menuOpen}
-            aria-controls="mobile-navigation"
-            aria-label={menuOpen ? t("navigation.close") : t("navigation.open")}
+            aria-controls="mobile-account"
+            aria-label={menuOpen ? t("common.close") : t("copy.openAccountMenu")}
           >
             {menuOpen ? <X aria-hidden /> : <Menu aria-hidden />}
           </Button>
@@ -340,57 +432,37 @@ export function AppShell({
 
       {menuOpen && (
         <div
-          id="mobile-navigation"
+          id="mobile-account"
           className="fixed inset-x-0 top-16 z-30 border-b border-side-border bg-side p-4 shadow-lg backdrop-blur-xl lg:hidden"
         >
-          {navigation}
-          <div className="mt-4 border-t border-side-border pt-3">
-            {userCard}
-            <Button
-              variant="ghost"
-              className="mt-3 w-full justify-between rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-destructive hover:border-destructive/60 hover:bg-destructive/20 hover:text-destructive"
-              onClick={() => void signOut()}
-              disabled={pending}
-            >
-              <span className="text-xs font-semibold">{t("common.signOut")}</span>
-              <LogOut className="size-5" />
-            </Button>
-          </div>
+          {/* Account sheet: navigation lives in the tab bar, so the menu is only
+              the profile card — avatar, language, sync, and sign-out. */}
+          {userCard}
         </div>
       )}
 
-      {/* Mobile bottom tab bar — keeps the main nav always reachable on small screens. */}
+      {/* Mobile bottom tab bar — keeps the four live destinations reachable. */}
       <nav
         aria-label={t("navigation.mobile")}
         className="fixed inset-x-0 bottom-0 z-40 border-t border-side-border bg-side pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden"
       >
-        <div className="grid grid-cols-5">
-          {links.map(({ href, labelKey, icon: Icon, comingSoon = false }) => {
+        <div className="grid grid-cols-4">
+          {primaryLinks.map(({ href, labelKey, icon: Icon }) => {
             const label = t(labelKey);
             const active = pathname === href || pathname.startsWith(`${href}/`);
-            const cls = cn(
-              "flex min-h-14 flex-col items-center justify-center gap-1 py-2 text-[11px] font-semibold tracking-tight",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-viatik-magenta",
-              active ? "text-primary" : "text-side-muted hover:text-side-fg",
-              comingSoon && "cursor-not-allowed opacity-50"
-            );
-            if (comingSoon) {
-              return (
-                <button key={href} type="button" disabled title={t("common.comingSoon")} aria-disabled="true" className={cls}>
-                  <Icon className="size-6" />
-                  {label}
-                </button>
-              );
-            }
             return (
               <Link
                 key={href}
                 href={href}
                 onClick={() => setMenuOpen(false)}
                 aria-current={active ? "page" : undefined}
-                className={cls}
+                className={cn(
+                  "flex min-h-14 flex-col items-center justify-center gap-1 py-2 text-[11px] font-semibold tracking-tight",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-viatik-magenta",
+                  active ? "text-primary" : "text-side-muted hover:text-side-fg"
+                )}
               >
-                <Icon className="size-6" />
+                <Icon className="size-6" aria-hidden />
                 {label}
               </Link>
             );
