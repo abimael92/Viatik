@@ -62,7 +62,7 @@ export function HomePage({ userId }: { userId: string }) {
 
   if (loading) {
     return (
-      <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="w-full">
         <HomeSkeleton />
       </div>
     );
@@ -112,7 +112,7 @@ export function HomePage({ userId }: { userId: string }) {
 
   return (
     <>
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8 pb-32 sm:px-6 lg:px-8">
+      <div className="flex w-full flex-col gap-6 pb-32">
         {primaryTrip ? (
           <>
             <WithinNext24HoursBanner startDate={primaryTrip.startDate} />
@@ -139,39 +139,44 @@ export function HomePage({ userId }: { userId: string }) {
               <>
                 <DocumentRiskBanner userId={userId} destination={primaryTrip.destination} travelDate={primaryTrip.startDate} />
 
-                <LiveTimelineHud
-                  trip={primaryTrip}
-                  items={timeline}
-                  active
-                  userId={userId}
-                  canManageExpenses={canManageExpenses}
-                />
-
-                <TripNotesBoard tripId={primaryTrip.id} userId={userId} />
-
-                <OpenTasksWidget tripId={primaryTrip.id} userId={userId} />
-
-                <ActiveTripActions activeTrip={activeTrip} />
-
-                {primaryTrip.startedAt && primaryTrip.endDate && (
-                  <TripStepsWidget
-                    tripId={primaryTrip.id}
+                {/* Active cockpit: timeline wide left, secondary widgets right at xl+. */}
+                <div className="xl:grid xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] xl:gap-6">
+                  <LiveTimelineHud
+                    trip={primaryTrip}
+                    items={timeline}
+                    active
                     userId={userId}
-                    startedAt={primaryTrip.startedAt}
-                    endDate={primaryTrip.endDate}
-                    compact
+                    canManageExpenses={canManageExpenses}
                   />
-                )}
 
-                <section className="rounded-2xl border bg-card p-5 sm:p-6">
-                  <SharedTripFeed
-                    tripId={primaryTrip.id}
-                    userId={userId}
-                    limit={4}
-                    heading={t("copy.recentActivity")}
-                    emptyMessage={t("copy.recentActivityEmpty")}
-                  />
-                </section>
+                  <div className="mt-6 flex flex-col gap-6 xl:col-start-2 xl:mt-0">
+                    <TripNotesBoard tripId={primaryTrip.id} userId={userId} />
+
+                    <OpenTasksWidget tripId={primaryTrip.id} userId={userId} />
+
+                    <ActiveTripActions activeTrip={activeTrip} />
+
+                    {primaryTrip.startedAt && primaryTrip.endDate && (
+                      <TripStepsWidget
+                        tripId={primaryTrip.id}
+                        userId={userId}
+                        startedAt={primaryTrip.startedAt}
+                        endDate={primaryTrip.endDate}
+                        compact
+                      />
+                    )}
+
+                    <section className="rounded-2xl border bg-card p-5 sm:p-6">
+                      <SharedTripFeed
+                        tripId={primaryTrip.id}
+                        userId={userId}
+                        limit={4}
+                        heading={t("copy.recentActivity")}
+                        emptyMessage={t("copy.recentActivityEmpty")}
+                      />
+                    </section>
+                  </div>
+                </div>
               </>
             )}
           </>

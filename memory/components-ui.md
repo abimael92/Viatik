@@ -203,6 +203,29 @@ and `lib/i18n/error-copy.ts`. Locale persists in `localStorage["viatik-language"
 - `DestinationField` (`features/trips/components/destination-field.tsx`) takes
   `autoSearch={false}` to suppress the suggestion dropdown while a value is
   filled programmatically (device location). Re-enable it when the traveler types.
+- **Collapsible sidebar (2026-10-30):** `--sidebar-w` (`18rem` / `5rem` under
+  `html[data-sidebar="collapsed"]`) drives `aside` width and `<main>`'s
+  `lg:pl-[var(--sidebar-w)]`; content is an inner `mx-auto max-w-[96rem]`
+  wrapper. `data-sidebar` is set by `themeInitScript` before paint from
+  `localStorage["viatik-sidebar"]` — never read storage in render; React state
+  only mirrors it for the toggle's aria. Rail layouts use the CSS hook classes
+  `.sidebar-expanded-only` / `.sidebar-collapsed-only` / `.sidebar-nav-link` /
+  `.sidebar-label` in `globals.css` (plain CSS, not `in-data-*`).
+  `SyncStatusPill compact` renders the icon-only variant with the same
+  rect-anchored dropdown. `CommandPaletteHint variant="sidebar"` has no `kbd`.
+  At 5rem the aside drops to `0.75rem` inline padding (56px inner — 44px
+  controls fit); the rail user block is chromeless (bordered card chrome
+  clipped it), and `.sidebar-label` hides every label (toggle/brand included).
+  Visually verified via a temporary `/e2e/shell` Playwright harness (deleted
+  after; screenshots under /tmp/viatik-shell/).
+- **Home layout (2026-10-30):** Home uses the shell's width directly (no inner
+  max-w/padding — it had double padding before). `PreTripSection` pairs
+  tasks/day-1 in `xl:grid-cols-2` with only-child spanning; the active cockpit
+  is `xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]` (HUD left, secondaries in a
+  `xl:col-start-2` wrapper — DOM order unchanged). `gemini/page.tsx` uses a
+  `<div>`, not a nested `<main>`.
+- **Testing:** jsdom lacks a functional `localStorage` (Node 22 stub) — shim
+  `globalThis.localStorage` with a Map in tests that touch storage.
 - `Collapsible` accepts controlled `open` / `onOpenChange` (added 2026-10-25) as
   well as `defaultOpen`. Its panel stays mounted through the motion exit
   animation, so jsdom tests assert `aria-expanded` rather than DOM absence after

@@ -29,8 +29,10 @@ export function PreTripSection({
           travelDate={trip.startDate}
         />
       )}
-      <OpenTasksWidget tripId={trip.id} userId={userId} />
-      <DayOnePreview trip={trip} items={timeline} />
+      <div className="grid gap-6 xl:grid-cols-2 xl:[&>*:only-child]:col-span-2">
+        <OpenTasksWidget tripId={trip.id} userId={userId} />
+        <DayOnePreview trip={trip} items={timeline} />
+      </div>
     </>
   );
 }

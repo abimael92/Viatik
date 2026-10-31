@@ -1593,6 +1593,8 @@ export const frontendCopy = {
     paletteConvertCurrency: "Convert currency",
     paletteSearchPlaceholder: "Search trips, activities, contacts, or run a command",
     paletteShortcutPill: "Search",
+    sidebarCollapse: "Collapse sidebar",
+    sidebarExpand: "Expand sidebar",
   },
   es: {
     emergencyCenter: "Centro de emergencias",
@@ -3188,5 +3190,7 @@ export const frontendCopy = {
     paletteConvertCurrency: "Convertir moneda",
     paletteSearchPlaceholder: "Busca viajes, actividades, contactos o ejecuta un comando",
     paletteShortcutPill: "Buscar",
+    sidebarCollapse: "Contraer barra lateral",
+    sidebarExpand: "Expandir barra lateral",
   },
 } as const;
