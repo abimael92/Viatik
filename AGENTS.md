@@ -159,9 +159,36 @@ changes.
 ## 8. Do not
 
 - Do not refactor unrelated code, reformat whole files, or "clean up" while fixing.
+- **Do not delete, relocate, or change the meaning of anything the request did
+  not name.** See §9 — a removal inventory and approval are required first.
 - Do not weaken or skip tests to make a change pass.
 - Do not bypass pre-commit hooks, force-push, or rewrite history.
 - Do not add `tailwind.config.ts`, a second styling system, or a second state library.
 - Do not import Dexie/repositories into server components or server actions.
 - Do not run destructive database commands (`supabase db reset`, `Dexie.delete`)
   against user data without explicit approval.
+
+## 9. Change & removal protocol (hard gate)
+
+Deleting or redefining working behavior is a product decision, not a refactor.
+Before touching anything that already ships:
+
+1. **Inventory first.** List every surface, string, translation key, export,
+   route, test, or behavior that will be removed, relocated, or change meaning —
+   including copy that reads differently after a "localization" or a formatting
+   refactor.
+2. **Split by authorization.** Mark each item *requested* (named in the task) or
+   *adjacent* (the agent's own judgment). Adjacent items need explicit approval
+   before the edit; if the task does not name it, it is not authorized.
+3. **Stop when in doubt.** "Unused", "duplicated", "dead", "inconsistent", or
+   "cleanup" are reasons to *propose* a change, never to delete.
+4. **Remove only what was named.** A relocation counts as a removal from the old
+   place — say so in the inventory, and keep the capability reachable unless the
+   request says otherwise.
+5. **Never trade away functionality to go green.** No deleting tests, copy keys,
+   or UI to make lint/typecheck/tests/build pass.
+6. **Record the decision.** Put the approved inventory in the spec and the
+   outcome in `memory/MEMORY.md`.
+
+A task that says "remove X" authorizes removing X only — not its neighbours,
+helpers, or the copy it no longer appears to use.

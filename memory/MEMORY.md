@@ -46,6 +46,11 @@ Zustand (UI only) · Vitest 4 + Playwright · Capacitor 8 · pnpm 11.3.0.
    `profiles`, `tripPins`, `feedItems`, `packingItems`, `travelDocuments`, `polls`,
    `pollVotes`, `currencyRates`, `transitSegments`, `journalDayEntries`,
    `dailyStepCounts`, `stagedTripMedia`, `sync*` — never append outbox entries.
+9. **Removals are product decisions (process).** Deleting, relocating, or
+   redefining working UI, copy keys, exports, routes, tests, or behavior needs a
+   written removal inventory and explicit approval for anything the task did not
+   name. "Unused", "duplicated", "dead", or "cleanup" is not authorization.
+   See `AGENTS.md` §9 and `.ai/constitution.md` rule 7.
 
 ---
 
@@ -184,6 +189,99 @@ Also update the topic file whose subject changed:
 ---
 
 ## 7. Session log (newest first)
+
+### 2026-10-31 — Sidebar bottom bar: sign-out restored, collapse control moved to the header
+
+- **Changed:** `components/app-shell/app-shell.tsx` — destructive sign-out row is
+  back at the bottom of `#app-sidebar` (`min-h-12`, `border-destructive/40
+  bg-destructive/10 text-destructive`, `aria-label`/`title` = `common.signOut`,
+  disabled while `pending`; icon-only in the rail because `.sidebar-label` is
+  hidden there). The collapse toggle left the bottom bar and is now an icon-only
+  44px ghost button in the brand row, right of `ThemeToggle` (same
+  `aria-expanded` / `aria-controls` / i18n labels), drawn with `ChevronsLeft`
+  (expanded) / `ChevronsRight` (collapsed) — `PanelLeftClose`/`Open` were
+  unreadable at 20px. `app/globals.css` — the
+  orphaned `html[data-sidebar="collapsed"] .sidebar-toggle-btn` rule was replaced
+  by `.sidebar-brand-actions { flex-direction: column }` (two 44px buttons do not
+  fit the 56px rail side by side).
+- **Schema:** none.
+- **Verification:** `pnpm lint` ✅ · `pnpm typecheck` ✅ · `pnpm test` 239 files /
+  1,631 tests — 1,628 pass, 3 skipped ✅ · `pnpm build` ✅. Visual check at 1024px
+  (expanded + rail, ES) via a temporary `app/e2e-shell` route (deleted after;
+  screenshots in `/tmp/viatik-sidebar/`): toggle 44×44 at the brand row's right
+  edge, sign-out 287×48 expanded / 55×48 in the rail, keyboard Tab reaches the
+  toggle in 4 presses with a visible focus ring.
+- **Gotchas:** the collapse button carries `hover:bg-side-hover` because
+  `Button variant="ghost"` hovers with `bg-muted` (a *solid* `oklch(0.26 …)`
+  fill in dark) instead of the nav rows' `white/5%`. Do **not** try to "fix" the
+  theme toggle the same way: `.theme-toggle:hover` in `globals.css` deliberately
+  paints amber (dark) / magenta (light) and beats any utility, so a
+  `hover:bg-side-hover` class on it is dead weight. Deleting the temporary
+  `app/e2e-shell` route leaves a stale
+  `app/e2e-shell/page.js` import in `.next/types/validator.ts`, so `pnpm
+  typecheck` fails with TS2307 until types are regenerated — `pnpm build` fixes
+  it (hitting the dev server does not). Two `app-shell` tests assert exact
+  `logout()` call counts, so `beforeEach` now calls `vi.clearAllMocks()`.
+
+### 2026-10-31 — Scout wave tests: stale expectations repaired (suite green)
+
+- **Changed:** `features/trip-planner/components/__tests__/scout-idea-wizard.test.tsx`
+  only (no production code): the three "progressive waves" failures were stale
+  tests, not a component bug.
+  - `drops a stale second wave after Try again` → `drops a stale second wave
+    after the wizard is reopened and re-run`: closes the dialog mid-top-up
+    (`runId` reset), re-runs Scout, then resolves the abandoned top-up and
+    asserts its ideas/errors never reach the DOM. The old version clicked a
+    "Try again" button that has never existed (the copy is "Try different
+    answers").
+  - `excludes first-wave routings in route mode`: asserts the loading view
+    hides partial cards while the top-up is in flight, keeps the
+    `count/excludeDestinations/excludeRoutes` payload assertions, and then
+    matches the route-mode card title (`/Route option 1 · Kyoto, Japan/`).
+  - `rotates through stage messages while Scout searches`: waits on the real
+    2.8s interval (`findByText(..., { timeout: 5000 })`).
+- **Schema:** none.
+- **Verification:** `pnpm typecheck` ✅ · scoped
+  `pnpm exec eslint features/trip-planner/components/__tests__/scout-idea-wizard.test.tsx`
+  ✅ · `pnpm vitest run …/scout-idea-wizard.test.tsx` 56/56 ✅ · `pnpm test`
+  239 files / 1,629 tests — 1,625 pass; the only failure is
+  `i18n-coverage` flagging a *concurrent session's* temporary
+  `app/e2e-shell/page.tsx` ("Content preview"), and repo-wide `pnpm lint` also
+  fails on that session's `tmp-nav.cjs` / `tmp-probe.cjs` scratch files.
+- **Gotchas:** the root cause was doc/implementation drift, not a bug —
+  `memory/components-ui.md` §"Scout loading until five ideas (2026-10-29)" is
+  the contract (first wave is hidden until five are ready). The three tests
+  predate it and had **never** passed (one even referenced a non-existent
+  button). Don't reintroduce "Scout is still finding N more…" between waves.
+  `AnimatePresence mode="wait"` deadlocks under `vi.useFakeTimers()`: the state
+  advances (verified stage 0→2) but the exiting child never completes, so the
+  new line never mounts. `act()` + `advanceTimersByTimeAsync` cannot fix it;
+  use real timers for that assertion.
+
+### 2026-10-31 — Wider fluid sidebar + larger nav menu type
+
+- **Changed:** `app/globals.css` (`--sidebar-w` is now
+  `clamp(20.5rem, 22vw, 22rem)` instead of a flat `18rem`; collapsed rail stays
+  `5rem`), `components/app-shell/app-shell.tsx` (`navLinkClasses` labels
+  `text-[17px]` → `text-[20px]`, rows `min-h-11` → `min-h-12`; the disabled
+  coming-soon row gets `w-full` and its chip `px-2` → `px-1.5`). Only the
+  destination menu got bigger — profile card, search pill, sync pill, and mobile
+  tab bar are untouched.
+- **Schema:** none.
+- **Verification:** `pnpm lint` ✅ · `pnpm typecheck` ✅ · `pnpm test` 239 files /
+  1,629 tests — 1,623 pass, only the 3 pre-existing `scout-idea-wizard`
+  "progressive waves" failures reproduce · `pnpm build` ✅ (21 routes).
+  Visual check at 1024/1600px in EN + ES via a temporary `app/e2e-shell` route
+  (deleted after; screenshots in `/tmp/viatik-sidebar/`): sidebar 328px → 352px,
+  nav labels 20px/48px rows, no truncated nav label in either locale, chip stays
+  inside the panel padding, profile name fits at the `lg` edge, collapsed rail
+  unchanged (all five rows 55×48, icons centered).
+- **Gotchas:** `--sidebar-w` also pads `<main>`, so widening it shrinks content
+  space at `lg`. The floor is now `20.5rem` (328px) because 20px labels plus the
+  "Próximamente" chip need it; at `19.5rem` the profile name and the Community
+  label ellipsize. A `<button>` inside the nav sizes to content (form controls
+  ignore block width), so the coming-soon row overflowed the nav's right padding
+  until it was given `w-full` — keep that class if the row is ever restyled.
 
 ### 2026-10-31 — Localized countdowns + nav/sign-out polish
 
