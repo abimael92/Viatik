@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Compass, ContactRound, Home, LogOut, Map, Menu, PanelLeftClose, PanelLeftOpen, Search, Settings, X } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, Compass, ContactRound, Home, LogOut, Map, Menu, Search, Settings, X } from "lucide-react";
 import { NotificationBell } from "@/features/notifications/components/notification-center";
 import { useEffect, useState, useTransition } from "react";
 
@@ -225,7 +225,7 @@ export function AppShell({
       // Theme-aware glass nav: brand-magenta glow on the active item.
       // Tighter optical tracking + semibold gives an authored, compact
       // label; active item reads in brand foreground, inactive in muted.
-      "sidebar-nav-link relative flex min-h-11 items-center gap-3 rounded-lg px-3 text-[17px] tracking-tight transition-all",
+      "sidebar-nav-link relative flex min-h-12 items-center gap-3 rounded-lg px-3 text-[20px] tracking-tight transition-all",
       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-viatik-magenta",
       active
         ? "font-bold bg-side-active text-side-active-fg shadow-[var(--side-glow)]"
@@ -251,11 +251,11 @@ export function AppShell({
               aria-disabled="true"
               aria-label={label}
               title={t("common.comingSoon")}
-              className={cn(navLinkClasses(false), "min-w-0 overflow-hidden cursor-not-allowed opacity-60")}
+              className={cn(navLinkClasses(false), "w-full min-w-0 overflow-hidden cursor-not-allowed opacity-60")}
             >
               {navIcon(Icon)}
               <span className="sidebar-label min-w-0 flex-1 truncate">{label}</span>
-              <span className="sidebar-label ml-auto w-auto shrink-0 truncate rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <span className="sidebar-label ml-auto w-auto shrink-0 truncate rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 {t("common.comingSoon")}
               </span>
             </button>
@@ -355,21 +355,34 @@ export function AppShell({
           crisp 1px hairline borders, and blur. Pinned on scroll. */}
       <aside
         id="app-sidebar"
-        className="fixed inset-y-0 left-0 z-30 hidden w-[var(--sidebar-w)] flex-col overflow-hidden border-r border-side-border bg-side p-5 shadow-[inset_1px_0_0_0_rgba(255,255,255,0.04)] backdrop-blur-xl transition-[width] duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] lg:flex"
+        className="fixed inset-y-0 left-0 z-30 hidden w-(--sidebar-w) flex-col overflow-hidden border-r border-side-border bg-side p-5 shadow-[inset_1px_0_0_0_rgba(255,255,255,0.04)] backdrop-blur-xl transition-[width] duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] lg:flex"
       >
         {/* Faint structural blue depth wash toward the top of the panel. */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-linear-to-b from-viatik-blue/15 via-transparent to-transparent"
         />
-        {/* Top: brand row — logo image untouched, theme toggle sits beside the app name. */}
+        {/* Top: brand row — logo image untouched; theme + collapse sit beside the app name. */}
         <div className="sidebar-brand-row relative flex items-center justify-between gap-2">
           <Link href="/home" aria-label="Viatik" title="Viatik" className="flex items-center gap-3 text-2xl font-bold text-side-fg">
             <Image src="/viatik-logo.png" alt="" width={44} height={44} priority className="size-11 shrink-0 object-contain" />
             <span className="sidebar-label">Viatik</span>
           </Link>
-          <div className="flex items-center gap-1">
+          <div className="sidebar-brand-actions flex items-center gap-1">
             <ThemeToggle />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={toggleSidebar}
+              aria-expanded={!collapsed}
+              aria-controls="app-sidebar"
+              aria-label={collapsed ? t("copy.sidebarExpand") : t("copy.sidebarCollapse")}
+              title={collapsed ? t("copy.sidebarExpand") : t("copy.sidebarCollapse")}
+              className="sidebar-toggle-btn text-side-muted hover:bg-side-hover hover:text-side-fg"
+            >
+              {collapsed ? <ChevronsRight aria-hidden /> : <ChevronsLeft aria-hidden />}
+            </Button>
           </div>
         </div>
 
@@ -385,24 +398,19 @@ export function AppShell({
         {/* Center: navigation fills the middle. */}
         <div className="mt-3 flex-1">{navigation}</div>
 
-        {/* Bottom: collapse toggle. Sign-out lives in the profile card menu. */}
+        {/* Bottom: sign-out only. The collapse control lives in the brand row. */}
         <div className="relative mt-8">
-          <button
-            type="button"
-            onClick={toggleSidebar}
-            aria-expanded={!collapsed}
-            aria-controls="app-sidebar"
-            aria-label={collapsed ? t("copy.sidebarExpand") : t("copy.sidebarCollapse")}
-            title={collapsed ? t("copy.sidebarExpand") : t("copy.sidebarCollapse")}
-            className="sidebar-toggle-btn flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-semibold text-side-muted transition-colors hover:bg-side-hover hover:text-side-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-viatik-magenta"
+          <Button
+            variant="ghost"
+            aria-label={t("common.signOut")}
+            title={t("common.signOut")}
+            className="sidebar-nav-link min-h-12 w-full justify-between rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-destructive hover:border-destructive/60 hover:bg-destructive/20 hover:text-destructive"
+            onClick={() => signOut()}
+            disabled={pending}
           >
-            {collapsed ? (
-              <PanelLeftOpen className="size-5 shrink-0" aria-hidden />
-            ) : (
-              <PanelLeftClose className="size-5 shrink-0" aria-hidden />
-            )}
-            <span className="sidebar-label flex-1 text-left">{t("copy.sidebarCollapse")}</span>
-          </button>
+            <span className="sidebar-label text-sm font-semibold">{t("common.signOut")}</span>
+            <LogOut className="size-5 shrink-0" aria-hidden />
+          </Button>
         </div>
       </aside>
 
@@ -472,9 +480,9 @@ export function AppShell({
 
       <main
         id="main-content"
-        className="min-h-dvh transition-[padding] duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] lg:pl-[var(--sidebar-w)]"
+        className="min-h-dvh transition-[padding] duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] lg:pl-(--sidebar-w)"
       >
-        <div className="mx-auto w-full max-w-[96rem] px-4 pb-24 pt-6 sm:px-6 lg:px-8 lg:py-10">
+        <div className="mx-auto w-full max-w-384 px-4 pb-24 pt-6 sm:px-6 lg:px-8 lg:py-10">
           {children}
         </div>
       </main>

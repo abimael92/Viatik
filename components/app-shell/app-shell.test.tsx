@@ -102,6 +102,9 @@ const storage = {
 };
 
 beforeEach(() => {
+  // Sign-out is reachable from two places, so both tests assert an exact call
+  // count — clear recorded calls (implementations stay intact).
+  vi.clearAllMocks();
   Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true });
 });
 
@@ -134,6 +137,7 @@ describe("AppShell sidebar", () => {
     const toggle = screen.getByRole("button", { name: "Collapse sidebar" });
     expect(toggle.getAttribute("aria-expanded")).toBe("true");
     expect(toggle.getAttribute("aria-controls")).toBe("app-sidebar");
+    expect(toggle.closest(".sidebar-brand-row")).toBeTruthy();
     expect(document.getElementById("app-sidebar")).toBeTruthy();
 
     fireEvent.click(toggle);
@@ -179,18 +183,36 @@ describe("AppShell navigation and account menu", () => {
     expect(screen.getByRole("navigation", { name: "Main navigation (mobile)" }).textContent).not.toContain("Community");
   });
 
-  it("moves sign-out into the profile menu instead of a sidebar block", () => {
+  it("restores a destructive sign-out row at the bottom of the sidebar", () => {
     renderShell();
     const sidebar = document.getElementById("app-sidebar");
     expect(sidebar).toBeTruthy();
-    expect(sidebar!.querySelector('button[aria-label="Sign out"]')).toBeNull();
 
+    const signOut = sidebar!.querySelector<HTMLButtonElement>('button[aria-label="Sign out"]');
+    expect(signOut).toBeTruthy();
+    expect(signOut!.className).toContain("text-destructive");
+
+    const toggle = sidebar!.querySelector<HTMLButtonElement>('button[aria-controls="app-sidebar"]');
+    expect(toggle).toBeTruthy();
+    expect(toggle!.compareDocumentPosition(signOut!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("keeps sign-out in the account menu so the mobile sheet still has it", () => {
+    renderShell();
     const accountTrigger = screen.getAllByRole("button", { name: "Open account menu" })[0];
     expect(accountTrigger.closest("#app-sidebar")).toBeTruthy();
 
     const menuItems = screen.getAllByRole("menuitem");
     expect(menuItems.some((item) => item.textContent?.includes("Account settings"))).toBe(true);
     expect(menuItems.some((item) => item.textContent?.includes("Sign out"))).toBe(true);
+  });
+
+  it("signs out from the sidebar row", async () => {
+    renderShell();
+    const signOut = document.getElementById("app-sidebar")!.querySelector<HTMLButtonElement>('button[aria-label="Sign out"]');
+
+    fireEvent.click(signOut!);
+    await waitFor(() => expect(vi.mocked(logout)).toHaveBeenCalledTimes(1));
   });
 
   it("signs out from the account menu item", async () => {
