@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
  */
 const pillSize = "min-h-10 min-w-0 max-w-full gap-1.5 px-2.5 py-2 text-base font-semibold normal-case tracking-normal lg:min-h-9 lg:px-2 lg:py-1.5 lg:text-sm xl:min-h-10 xl:px-2.5 xl:py-2 xl:text-base";
 
-export function SyncStatusPill() {
+export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
   const sync = useSyncStatus();
   const { t } = useI18n();
   const db = useDatabase();
@@ -52,12 +52,25 @@ export function SyncStatusPill() {
   const interactive =
     offline || sync.status === "error" || sync.conflicts > 0 || sync.pending > 0 || queue.length > 0;
 
+  // Accessible name for the icon-only compact pill used in the collapsed rail.
+  const statusLabel = offline
+    ? t("common.offlineSaved")
+    : sync.status === "syncing"
+      ? t("common.syncing")
+      : sync.status === "error"
+        ? t("common.syncIssue")
+        : sync.pending > 0
+          ? t("common.pendingChanges")
+          : sync.conflicts > 0
+            ? t("common.resolveConflicts")
+            : t("common.synced");
+
   function renderPill() {
     if (offline) {
       return (
         <Badge variant="success" className={pillSize}>
           <StatusDot tone="success" pulse />
-          <PillLabel>{t("common.offlineSaved")}</PillLabel>
+          <PillLabel hidden={compact}>{t("common.offlineSaved")}</PillLabel>
         </Badge>
       );
     }
@@ -65,7 +78,7 @@ export function SyncStatusPill() {
       return (
         <Badge variant="muted" className={pillSize}>
           <LoaderCircle className="size-4 shrink-0 animate-spin text-primary" />
-          <PillLabel>{t("common.syncing")}</PillLabel>
+          <PillLabel hidden={compact}>{t("common.syncing")}</PillLabel>
         </Badge>
       );
     }
@@ -73,7 +86,7 @@ export function SyncStatusPill() {
       return (
         <Badge variant="warning" className={pillSize}>
           <StatusDot tone="warning" pulse />
-          <PillLabel>{t("common.syncIssue")}</PillLabel>
+          <PillLabel hidden={compact}>{t("common.syncIssue")}</PillLabel>
           <RefreshCw className="size-4 shrink-0" aria-hidden />
         </Badge>
       );
@@ -84,7 +97,7 @@ export function SyncStatusPill() {
           <span className="grid size-5 shrink-0 place-items-center rounded-full bg-primary px-1 text-xs font-bold text-primary-foreground animate-pulse">
             {sync.pending}
           </span>
-          <PillLabel>{t("common.pendingChanges")}</PillLabel>
+          <PillLabel hidden={compact}>{t("common.pendingChanges")}</PillLabel>
         </Badge>
       );
     }
@@ -92,14 +105,14 @@ export function SyncStatusPill() {
       return (
         <Badge variant="warning" className={pillSize}>
           <StatusDot tone="warning" pulse />
-          <PillLabel>{t("common.resolveConflicts")}</PillLabel>
+          <PillLabel hidden={compact}>{t("common.resolveConflicts")}</PillLabel>
         </Badge>
       );
     }
     return (
       <StatusBadge className="min-w-0 gap-1.5 px-2.5 lg:px-2 xl:px-2.5">
         <span className="inline-block size-2.5 shrink-0 rounded-full bg-green-700 sm:size-3" aria-hidden />
-        <PillLabel>{t("common.synced")}</PillLabel>
+        <PillLabel hidden={compact}>{t("common.synced")}</PillLabel>
       </StatusBadge>
     );
   }
@@ -111,6 +124,7 @@ export function SyncStatusPill() {
         onClick={() => interactive && setOpen((value) => !value)}
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-label={compact ? statusLabel : undefined}
         className={cn(
           "inline-flex min-w-0 max-w-full rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           !interactive && "cursor-default"
@@ -189,7 +203,8 @@ export function SyncStatusPill() {
   );
 }
 
-function PillLabel({ children }: { children: React.ReactNode }) {
+function PillLabel({ children, hidden = false }: { children: React.ReactNode; hidden?: boolean }) {
+  if (hidden) return null;
   return <span className="min-w-0 truncate">{children}</span>;
 }
 

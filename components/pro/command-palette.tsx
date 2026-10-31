@@ -3,31 +3,57 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import {
+  ArrowRightLeft,
+  CalendarPlus,
   CirclePlus,
   ContactRound,
   CornerDownLeft,
+  Home,
   Keyboard,
-  Map,
+  Lock,
+  Map as MapIcon,
   Moon,
+  Receipt,
   RefreshCw,
   Search,
   Settings,
 } from "lucide-react";
 
+import {
+  buildPaletteGroups,
+  flattenPaletteGroups,
+  paletteSearchText,
+  type PaletteGroupId,
+  type PaletteItem,
+} from "@/components/pro/command-search";
+import { usePaletteData } from "@/components/pro/use-palette-data";
+import { pickPrimaryTrips, tripActivityEditPath, tripTabPath } from "@/features/trips/lib/home-trips";
 import { syncNow } from "@/lib/sync/sync-engine";
 import { useI18n } from "@/lib/i18n/i18n-provider";
+import type { TranslationKey } from "@/lib/i18n/translations";
 import { cn } from "@/lib/utils";
 
 const THEME_KEY = "viatik-theme";
+const OPEN_EVENT = "viatik:open-command-palette";
 
-type Command = {
-  id: string;
-  label: string;
-  hint?: string;
+type PaletteEntry = PaletteItem & {
   icon: React.ComponentType<{ className?: string }>;
-  keywords?: string;
   run: () => void;
 };
+
+const GROUP_LABEL_KEYS: Record<PaletteGroupId, TranslationKey> = {
+  actions: "copy.paletteGroupActions",
+  navigation: "copy.paletteGroupNavigation",
+  trips: "copy.paletteGroupTrips",
+  activities: "copy.paletteGroupActivities",
+  contacts: "copy.paletteGroupContacts",
+};
+
+/** Ask the mounted palette to open (sidebar pill, future entry points). */
+export function openCommandPalette() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(OPEN_EVENT));
+}
 
 function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -36,6 +62,12 @@ function isTypingTarget(target: EventTarget | null): boolean {
     target.tagName === "INPUT" ||
     target.tagName === "TEXTAREA" ||
     target.tagName === "SELECT"
+  );
+}
+
+function anotherModalDialogOpen(except: HTMLElement | null): boolean {
+  return Array.from(document.querySelectorAll('[role="dialog"][aria-modal="true"]')).some(
+    (element) => element !== except
   );
 }
 
@@ -52,7 +84,7 @@ function toggleTheme() {
   }
 }
 
-export function CommandPalette() {
+export function CommandPalette({ userId }: { userId: string }) {
   const router = useRouter();
   const { t } = useI18n();
   const [view, setView] = React.useState<null | "palette" | "cheatsheet">(null);
@@ -61,9 +93,17 @@ export function CommandPalette() {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const dialogRef = React.useRef<HTMLDivElement>(null);
 
+  const open = view !== null;
+
+  // Live Dexie data — subscribed only while the palette view is visible and
+  // disposed on close/unmount. Vault entries are ciphertext-only and are never
+  // read here: the vault is reachable only through the "Open vault" action.
+  const { trips, activitiesByTrip, contacts } = usePaletteData(view === "palette", userId);
+
+  const featuredTrip = React.useMemo(() => pickPrimaryTrips(trips).primaryTrip, [trips]);
+
   // While the palette is open, remember what had focus so we can restore it on
   // close. Keying on `open` (not `view`) keeps focus across palette <-> cheatsheet.
-  const open = view !== null;
   React.useEffect(() => {
     if (!open) return;
     const previous = document.activeElement as HTMLElement | null;
@@ -98,24 +138,131 @@ export function CommandPalette() {
     }
   }, []);
 
-  const commands: Command[] = React.useMemo(
+  const close = React.useCallback(() => setView(null), []);
+
+  const actions: PaletteEntry[] = React.useMemo(() => {
+    if (!featuredTrip) return [];
+    const id = featuredTrip.id;
+    const subtitle = featuredTrip.name;
+    return [
+      {
+        id: "action-add-expense",
+        group: "actions",
+        label: t("copy.paletteAddExpense"),
+        subtitle,
+        icon: Receipt,
+        searchText: paletteSearchText(t("copy.paletteAddExpense"), "expense money spend"),
+        run: () => router.push(`${tripTabPath(id, "money")}&action=add-expense`),
+      },
+      {
+        id: "action-add-activity",
+        group: "actions",
+        label: t("copy.paletteAddActivity"),
+        subtitle,
+        icon: CalendarPlus,
+        searchText: paletteSearchText(t("copy.paletteAddActivity"), "activity itinerary plan"),
+        run: () => router.push(`${tripTabPath(id, "itinerary")}&action=add-activity`),
+      },
+      {
+        id: "action-open-vault",
+        group: "actions",
+        label: t("copy.paletteOpenVault"),
+        subtitle,
+        icon: Lock,
+        searchText: paletteSearchText(t("copy.paletteOpenVault"), "vault documents secure"),
+        run: () => router.push(tripTabPath(id, "vault")),
+      },
+      {
+        id: "action-convert-currency",
+        group: "actions",
+        label: t("copy.paletteConvertCurrency"),
+        subtitle,
+        icon: ArrowRightLeft,
+        searchText: paletteSearchText(t("copy.paletteConvertCurrency"), "currency convert exchange money"),
+        run: () => router.push(`${tripTabPath(id, "money")}&action=money-tools`),
+      },
+    ];
+  }, [featuredTrip, router, t]);
+
+  const navigation: PaletteEntry[] = React.useMemo(
     () => [
-      { id: "trips", label: t("common.goToTrips"), hint: "G T", icon: Map, keywords: "trips journeys dashboard", run: () => router.push("/trips") },
-      { id: "contacts", label: t("common.goToContacts"), hint: "G C", icon: ContactRound, keywords: "people contacts travelers", run: () => router.push("/contacts") },
-      { id: "settings", label: t("common.goToSettings"), hint: "G S", icon: Settings, keywords: "account profile settings", run: () => router.push("/settings") },
-      { id: "new-trip", label: t("common.createNewTrip"), hint: "C", icon: CirclePlus, keywords: "create new trip start plan", run: () => router.push("/trips") },
-      { id: "sync", label: t("common.syncNow"), hint: "", icon: RefreshCw, keywords: "sync cloud push retry", run: () => void syncNow() },
-      { id: "theme", label: t("common.toggleTheme"), hint: "", icon: Moon, keywords: "theme dark light mode", run: toggleTheme },
-      { id: "shortcuts", label: t("common.keyboardShortcuts"), hint: "?", icon: Keyboard, keywords: "keys shortcuts help cheatsheet", run: () => setView("cheatsheet") },
+      { id: "home", group: "navigation", label: t("copy.paletteGoToHome"), hint: "G H", icon: Home, keywords: "home start dashboard", searchText: paletteSearchText(t("copy.paletteGoToHome")), run: () => router.push("/home") },
+      { id: "trips", group: "navigation", label: t("common.goToTrips"), hint: "G T", icon: MapIcon, keywords: "trips journeys dashboard", searchText: paletteSearchText(t("common.goToTrips")), run: () => router.push("/trips") },
+      { id: "contacts", group: "navigation", label: t("common.goToContacts"), hint: "G C", icon: ContactRound, keywords: "people contacts travelers", searchText: paletteSearchText(t("common.goToContacts")), run: () => router.push("/contacts") },
+      { id: "settings", group: "navigation", label: t("common.goToSettings"), hint: "G S", icon: Settings, keywords: "account profile settings", searchText: paletteSearchText(t("common.goToSettings")), run: () => router.push("/settings") },
+      { id: "new-trip", group: "navigation", label: t("common.createNewTrip"), hint: "C", icon: CirclePlus, keywords: "create new trip start plan", searchText: paletteSearchText(t("common.createNewTrip")), run: () => router.push("/trips") },
+      { id: "sync", group: "navigation", label: t("common.syncNow"), icon: RefreshCw, keywords: "sync cloud push retry", searchText: paletteSearchText(t("common.syncNow")), run: () => void syncNow() },
+      { id: "theme", group: "navigation", label: t("common.toggleTheme"), icon: Moon, keywords: "theme dark light mode", searchText: paletteSearchText(t("common.toggleTheme")), run: toggleTheme },
+      { id: "shortcuts", group: "navigation", label: t("common.keyboardShortcuts"), hint: "?", icon: Keyboard, keywords: "keys shortcuts help cheatsheet", searchText: paletteSearchText(t("common.keyboardShortcuts")), run: () => setView("cheatsheet") },
     ],
     [router, t]
   );
 
-  const results = React.useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return commands;
-    return commands.filter((c) => `${c.label} ${c.keywords ?? ""}`.toLowerCase().includes(q));
-  }, [commands, query]);
+  const tripItems = React.useMemo<PaletteEntry[]>(
+    () =>
+      trips
+        .filter((trip) => trip.deletedAt === null)
+        .map((trip) => ({
+          id: `trip-${trip.id}`,
+          group: "trips",
+          label: trip.name,
+          subtitle: trip.destination ?? undefined,
+          icon: MapIcon,
+          searchText: paletteSearchText(trip.name, trip.destination, trip.status),
+          run: () => router.push(`/trips/${trip.id}`),
+        })),
+    [trips, router]
+  );
+
+  const activityItems = React.useMemo<PaletteEntry[]>(() => {
+    const tripById = new Map(trips.map((trip) => [trip.id, trip]));
+    const items: PaletteEntry[] = [];
+    for (const [tripId, activities] of Object.entries(activitiesByTrip)) {
+      const parent = tripById.get(tripId);
+      for (const activity of activities) {
+        if (activity.deletedAt !== null) continue;
+        items.push({
+          id: `activity-${activity.id}`,
+          group: "activities",
+          label: activity.title,
+          subtitle: parent?.name ?? undefined,
+          icon: CalendarPlus,
+          searchText: paletteSearchText(activity.title, activity.placeName, activity.dayDate),
+          run: () => router.push(tripActivityEditPath(tripId, activity.id)),
+        });
+      }
+    }
+    return items;
+  }, [activitiesByTrip, trips, router]);
+
+  const contactItems = React.useMemo<PaletteEntry[]>(
+    () =>
+      contacts
+        .filter((contact) => contact.deletedAt === null)
+        .map((contact) => ({
+          id: `contact-${contact.id}`,
+          group: "contacts",
+          label: contact.fullName,
+          subtitle: contact.email ?? undefined,
+          icon: ContactRound,
+          searchText: paletteSearchText(contact.fullName, contact.email, contact.relationship),
+          run: () => router.push("/contacts"),
+        })),
+    [contacts, router]
+  );
+
+  const groups = React.useMemo(
+    () =>
+      buildPaletteGroups(query, {
+        actions,
+        navigation,
+        trips: tripItems,
+        activities: activityItems,
+        contacts: contactItems,
+      }),
+    [query, actions, navigation, tripItems, activityItems, contactItems]
+  );
+  const results = React.useMemo(() => flattenPaletteGroups(groups), [groups]);
 
   React.useEffect(() => {
     if (view !== "palette") return;
@@ -125,6 +272,12 @@ export function CommandPalette() {
       inputRef.current?.focus();
     });
   }, [view]);
+
+  React.useEffect(() => {
+    const onOpen = () => setView("palette");
+    window.addEventListener(OPEN_EVENT, onOpen);
+    return () => window.removeEventListener(OPEN_EVENT, onOpen);
+  }, []);
 
   React.useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -139,31 +292,39 @@ export function CommandPalette() {
         return;
       }
       if (isTypingTarget(event.target)) return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
       if (event.key === "?") {
         event.preventDefault();
         setView("cheatsheet");
         return;
       }
-      // The single-key navigation shortcuts are only meaningful inside the
-      // palette ("C" = create trip, "G T/C/S" = go to). Keeping them gated on
-      // the palette being open stops a stray keypress on a normal page (e.g. the
-      // trip workspace) from hijacking navigation and sending the user back to
-      // /trips while they're just clicking around.
-      if (!open) return;
-      // Sequential G → T / C / S navigation.
+      // Two-key chords (G → H/T/C/S) work even with the palette closed — they
+      // are deliberate sequences, unlike a stray single key. They stay guarded:
+      // no modifiers, no typing targets, and no other modal dialog open.
       if (event.key.toLowerCase() === "g") {
+        if (anotherModalDialogOpen(dialogRef.current)) return;
         const onNext = (e: KeyboardEvent) => {
           window.clearTimeout(timeout);
           window.removeEventListener("keydown", onNext);
-          if (e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return;
-          if (e.key.toLowerCase() === "t") router.push("/trips");
-          else if (e.key.toLowerCase() === "c") router.push("/contacts");
-          else if (e.key.toLowerCase() === "s") router.push("/settings");
+          if (e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target) || anotherModalDialogOpen(dialogRef.current)) return;
+          const key = e.key.toLowerCase();
+          const destination =
+            key === "h" ? "/home" :
+            key === "t" ? "/trips" :
+            key === "c" ? "/contacts" :
+            key === "s" ? "/settings" : null;
+          if (destination) {
+            setView(null);
+            router.push(destination);
+          }
         };
         const timeout = window.setTimeout(() => window.removeEventListener("keydown", onNext), 800);
         window.addEventListener("keydown", onNext);
         return;
       }
+      // The single-key "C" shortcut stays palette-open only: a bare keypress on
+      // a normal page (e.g. the trip workspace) must not hijack navigation.
+      if (!open) return;
       if (event.key.toLowerCase() === "c") {
         event.preventDefault();
         router.push("/trips");
@@ -174,6 +335,8 @@ export function CommandPalette() {
   }, [router, open]);
 
   if (view === null) return null;
+
+  const indexById = new Map(results.map((item, index) => [item.id, index]));
 
   return (
     <div
@@ -188,7 +351,7 @@ export function CommandPalette() {
       onKeyDown={trapTab}
     >
       {view === "cheatsheet" ? (
-        <Cheatsheet onClose={() => setView(null)} onOpenPalette={() => setView("palette")} />
+        <Cheatsheet onClose={close} onOpenPalette={() => setView("palette")} />
       ) : (
         <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-border/60 bg-card/90 text-card-foreground shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_24px_60px_-12px_rgba(15,23,42,0.3)] backdrop-blur-2xl">
           <div className="flex items-center gap-3 border-b border-border/60 px-4">
@@ -213,9 +376,9 @@ export function CommandPalette() {
                   setView(null);
                 }
               }}
-              placeholder={t("common.searchCommands")}
+              placeholder={t("copy.paletteSearchPlaceholder")}
               className="h-14 w-full bg-transparent text-sm text-card-foreground outline-none placeholder:text-muted-foreground"
-              aria-label={t("common.searchCommands")}
+              aria-label={t("copy.paletteSearchPlaceholder")}
               role="combobox"
               aria-expanded="true"
               aria-controls="command-palette-listbox"
@@ -228,24 +391,46 @@ export function CommandPalette() {
             {results.length === 0 && (
               <li className="px-3 py-8 text-center text-sm text-muted-foreground">{t("common.noMatchingCommands")}</li>
             )}
-            {results.map((command, index) => (
-              <li key={command.id} id={`command-${command.id}`} role="option" aria-selected={index === active}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    command.run();
-                    setView(null);
-                  }}
-                  onMouseEnter={() => setActive(index)}
-                  className={cn(
-                    "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors",
-                    index === active ? "bg-viatik-magenta/15 text-card-foreground" : "text-muted-foreground hover:bg-muted/60 hover:text-card-foreground"
-                  )}
-                >
-                  <command.icon className={cn("size-5", index === active ? "text-viatik-magenta" : "text-muted-foreground")} />
-                  <span className="flex-1">{command.label}</span>
-                  {command.hint && <kbd className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{command.hint}</kbd>}
-                </button>
+            {groups.map((group) => (
+              <li key={group.id} role="presentation">
+                <div role="group" aria-labelledby={`command-palette-group-${group.id}`}>
+                  <p
+                    id={`command-palette-group-${group.id}`}
+                    className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground"
+                  >
+                    {t(GROUP_LABEL_KEYS[group.id])}
+                  </p>
+                  <ul role="presentation">
+                    {group.items.map((command) => {
+                      const index = indexById.get(command.id) ?? -1;
+                      return (
+                        <li key={command.id} id={`command-${command.id}`} role="option" aria-selected={index === active}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              command.run();
+                              setView(null);
+                            }}
+                            onMouseEnter={() => setActive(index)}
+                            className={cn(
+                              "flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors",
+                              index === active ? "bg-viatik-magenta/15 text-card-foreground" : "text-muted-foreground hover:bg-muted/60 hover:text-card-foreground"
+                            )}
+                          >
+                            <command.icon className={cn("size-5", index === active ? "text-viatik-magenta" : "text-muted-foreground")} />
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate">{command.label}</span>
+                              {command.subtitle && (
+                                <span className="block truncate text-xs text-muted-foreground">{command.subtitle}</span>
+                              )}
+                            </span>
+                            {command.hint && <kbd className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{command.hint}</kbd>}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
               </li>
             ))}
           </ul>
@@ -263,10 +448,11 @@ function Cheatsheet({ onClose, onOpenPalette }: { onClose: () => void; onOpenPal
   const { t } = useI18n();
   const rows: Array<[string, string]> = [
     [t("common.openCommandPalette"), "⌘ K"],
+    [t("copy.paletteGoToHome"), "G H"],
     [t("common.goToTrips"), "G T"],
     [t("common.goToContacts"), "G C"],
     [t("common.goToSettings"), "G S"],
-    [t("common.createNewTrip"), "C"],
+    [`${t("common.createNewTrip")} · ${t("common.commandPalette")}`, "C"],
     [t("common.toggleTheme"), "⌘ K → Theme"],
     [t("common.close"), "ESC"],
   ];

@@ -2,7 +2,7 @@
 
 import { useLayoutEffect } from "react";
 
-export const themeInitScript = `(function(){try{var s=localStorage.getItem("viatik-theme");var r=document.documentElement;if(s==="dark"||s==="light"){r.setAttribute("data-theme",s);}else{r.removeAttribute("data-theme");}var l=localStorage.getItem("viatik-language");if(l==="en"||l==="es"){r.lang=l;}}catch(e){}})();`;
+export const themeInitScript = `(function(){try{var s=localStorage.getItem("viatik-theme");var r=document.documentElement;if(s==="dark"||s==="light"){r.setAttribute("data-theme",s);}else{r.removeAttribute("data-theme");}var l=localStorage.getItem("viatik-language");if(l==="en"||l==="es"){r.lang=l;}var b=localStorage.getItem("viatik-sidebar");if(b==="collapsed"){r.setAttribute("data-sidebar","collapsed");}else{r.removeAttribute("data-sidebar");}}catch(e){}})();`;
 
 function applyStoredPreferences() {
   try {
@@ -12,6 +12,9 @@ function applyStoredPreferences() {
     else root.removeAttribute("data-theme");
     const language = localStorage.getItem("viatik-language");
     if (language === "en" || language === "es") root.lang = language;
+    const sidebar = localStorage.getItem("viatik-sidebar");
+    if (sidebar === "collapsed") root.setAttribute("data-sidebar", "collapsed");
+    else root.removeAttribute("data-sidebar");
   } catch {
     // Storage or the document may be unavailable.
   }

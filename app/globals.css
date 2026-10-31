@@ -364,3 +364,53 @@
     animation: none !important;
   }
 }
+
+/* Collapsible sidebar — `--sidebar-w` drives the aside width and the content
+ * left padding. `data-sidebar="collapsed"` is set by the blocking init script
+ * (components/theme-initializer.tsx) before first paint, so the server HTML
+ * never renders the wrong state. Only used inside `lg:` utilities, so mobile
+ * is unaffected. */
+:root {
+  --sidebar-w: 18rem;
+}
+html[data-sidebar="collapsed"] {
+  --sidebar-w: 5rem;
+}
+
+@media (min-width: 64rem) {
+  html[data-sidebar="collapsed"] #app-sidebar {
+    /* 5rem rail with 0.75rem gutters leaves ~56px inner, so 44px (size-11)
+       icon buttons and avatars fit centered without clipping. */
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+  html[data-sidebar="collapsed"] .sidebar-expanded-only {
+    display: none;
+  }
+  html:not([data-sidebar="collapsed"]) .sidebar-collapsed-only {
+    display: none;
+  }
+  html[data-sidebar="collapsed"] .sidebar-brand-row {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  html[data-sidebar="collapsed"] .sidebar-nav-link {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  html[data-sidebar="collapsed"] .sidebar-label {
+    display: none;
+  }
+  html[data-sidebar="collapsed"] .sidebar-toggle-btn {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+@media (max-width: 63.98rem) {
+  .sidebar-collapsed-only {
+    display: none;
+  }
+}

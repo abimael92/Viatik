@@ -4,7 +4,7 @@ import { localizeThrownError } from "@/lib/i18n/localize-error";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowRight, Luggage, Plane, Sparkles } from "lucide-react";
+import { ArrowRight, Plane, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { WrapUpSheet } from "@/features/trips/components/home/wrap-up-sheet";
@@ -30,6 +30,8 @@ import { TripNotesBoard } from "@/features/trips/components/home/trip-notes-boar
 import { OpenTasksWidget } from "@/features/trips/components/home/open-tasks-widget";
 import { ActiveTripActions } from "@/features/trips/components/home/active-trip-actions";
 import { OngoingTripsQuickView } from "@/features/trips/components/home/ongoing-trips-quick-view";
+import { PreTripSection } from "@/features/trips/components/home/pre-trip-section";
+import { WithinNext24HoursBanner } from "@/features/trips/components/home/within-24-hours-banner";
 import { TripStepsWidget } from "@/features/steps/components/trip-steps-widget";
 import { QuickActionHub } from "@/features/trips/components/home/quick-action-hub";
 import { SuggestionsDrawer } from "@/features/community/components/suggestions-drawer";
@@ -60,7 +62,7 @@ export function HomePage({ userId }: { userId: string }) {
 
   if (loading) {
     return (
-      <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="w-full">
         <HomeSkeleton />
       </div>
     );
@@ -89,7 +91,7 @@ export function HomePage({ userId }: { userId: string }) {
     setPending(true);
     void tripRepository.endTrip(primaryTrip.id)
       .then(() => toast({ title: t("copy.tripEnded"), description: t("copy.tripMovedPast"), variant: "success" }))
-      .catch((cause) => toast({ title: t("copy.unableEndTrip"), description: localizeThrownError(cause, t, "Please try again."), variant: "error" }))
+      .catch((cause) => toast({ title: t("copy.unableEndTrip"), description: localizeThrownError(cause, t, t("copy.pleaseTryAgain")), variant: "error" }))
       .finally(() => setPending(false));
   }
 
@@ -110,17 +112,10 @@ export function HomePage({ userId }: { userId: string }) {
 
   return (
     <>
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8 pb-32 sm:px-6 lg:px-8">
+      <div className="flex w-full flex-col gap-6 pb-32">
         {primaryTrip ? (
           <>
-            {isWithinNext24Hours(primaryTrip.startDate) && (
-              <section className="relative overflow-hidden rounded-3xl border border-primary/30 bg-linear-to-r from-primary via-viatik-magenta to-viatik-red p-6 text-primary-foreground shadow-xl sm:p-8" aria-label={t("common.checkInPack")}>
-                <div className="relative z-10 flex flex-wrap items-center justify-between gap-5">
-                  <div><p className="text-xs font-bold uppercase tracking-[0.2em] text-primary-foreground/75">{t("common.checkInPack")}</p><h2 className="mt-2 text-2xl font-bold sm:text-3xl">{t("common.checkInPackTitle")}</h2><p className="mt-2 max-w-xl text-sm text-primary-foreground/85">{t("common.checkInPackDescription")}</p></div>
-                  <Luggage className="size-16 shrink-0 opacity-80" aria-hidden />
-                </div>
-              </section>
-            )}
+            <WithinNext24HoursBanner startDate={primaryTrip.startDate} />
             <TripCountdownHero
               trip={primaryTrip}
               today={new Date()}
@@ -136,43 +131,52 @@ export function HomePage({ userId }: { userId: string }) {
               onStartTrip={handleStart}
             />
 
+            {!isActive && (
+              <PreTripSection trip={primaryTrip} timeline={timeline} userId={userId} />
+            )}
+
             {isActive && (
               <>
                 <DocumentRiskBanner userId={userId} destination={primaryTrip.destination} travelDate={primaryTrip.startDate} />
 
-                <LiveTimelineHud
-                  trip={primaryTrip}
-                  items={timeline}
-                  active
-                  userId={userId}
-                  canManageExpenses={canManageExpenses}
-                />
-
-                <TripNotesBoard tripId={primaryTrip.id} userId={userId} />
-
-                <OpenTasksWidget tripId={primaryTrip.id} userId={userId} />
-
-                <ActiveTripActions activeTrip={activeTrip} />
-
-                {primaryTrip.startedAt && primaryTrip.endDate && (
-                  <TripStepsWidget
-                    tripId={primaryTrip.id}
+                {/* Active cockpit: timeline wide left, secondary widgets right at xl+. */}
+                <div className="xl:grid xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] xl:gap-6">
+                  <LiveTimelineHud
+                    trip={primaryTrip}
+                    items={timeline}
+                    active
                     userId={userId}
-                    startedAt={primaryTrip.startedAt}
-                    endDate={primaryTrip.endDate}
-                    compact
+                    canManageExpenses={canManageExpenses}
                   />
-                )}
 
-                <section className="rounded-2xl border bg-card p-5 sm:p-6">
-                  <SharedTripFeed
-                    tripId={primaryTrip.id}
-                    userId={userId}
-                    limit={4}
-                    heading="Recent activity"
-                    emptyMessage="No activity yet. Changes you make on this trip appear here."
-                  />
-                </section>
+                  <div className="mt-6 flex flex-col gap-6 xl:col-start-2 xl:mt-0">
+                    <TripNotesBoard tripId={primaryTrip.id} userId={userId} />
+
+                    <OpenTasksWidget tripId={primaryTrip.id} userId={userId} />
+
+                    <ActiveTripActions activeTrip={activeTrip} />
+
+                    {primaryTrip.startedAt && primaryTrip.endDate && (
+                      <TripStepsWidget
+                        tripId={primaryTrip.id}
+                        userId={userId}
+                        startedAt={primaryTrip.startedAt}
+                        endDate={primaryTrip.endDate}
+                        compact
+                      />
+                    )}
+
+                    <section className="rounded-2xl border bg-card p-5 sm:p-6">
+                      <SharedTripFeed
+                        tripId={primaryTrip.id}
+                        userId={userId}
+                        limit={4}
+                        heading={t("copy.recentActivity")}
+                        emptyMessage={t("copy.recentActivityEmpty")}
+                      />
+                    </section>
+                  </div>
+                </div>
               </>
             )}
           </>
@@ -253,10 +257,4 @@ export function HomePage({ userId }: { userId: string }) {
       {primaryTrip && !isActive && <SuggestionsDrawer userId={userId} />}
     </>
   );
-}
-
-function isWithinNext24Hours(startDate: string | null): boolean {
-  if (!startDate) return false;
-  const delta = Date.parse(`${startDate}T00:00:00`) - Date.now();
-  return delta >= 0 && delta < 24 * 60 * 60 * 1000;
 }

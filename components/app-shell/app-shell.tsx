@@ -3,15 +3,18 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Compass, ContactRound, Home, LogOut, Map, Menu, Settings, X } from "lucide-react";
+import { Compass, ContactRound, Home, LogOut, Map, Menu, PanelLeftClose, PanelLeftOpen, Search, Settings, X } from "lucide-react";
 import { NotificationBell } from "@/features/notifications/components/notification-center";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+
+const SIDEBAR_KEY = "viatik-sidebar";
 
 import { logout } from "@/app/actions/auth";
 import { SyncErrorBanner } from "@/components/app-shell/sync-error-banner";
 import { SyncStatusPill } from "@/components/app-shell/sync-status-pill";
 import { LanguageSwitcher } from "@/components/app-shell/language-switcher";
 import { ThemeToggle } from "@/components/app-shell/theme-toggle";
+import { openCommandPalette } from "@/components/pro/command-palette";
 import { Button } from "@/components/ui/button";
 import { IconTile } from "@/components/ui/icon-tile";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -40,6 +43,38 @@ const links: readonly NavigationLink[] = [
   { href: "/settings", labelKey: "navigation.settings", icon: Settings, comingSoon: false },
 ];
 
+/** Discovery pill that opens the command palette. */
+export function CommandPaletteHint({ variant }: { variant: "sidebar" | "header" }) {
+  const { t } = useI18n();
+  const label = t("copy.paletteShortcutPill");
+
+  if (variant === "header") {
+    return (
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => openCommandPalette()}
+        aria-label={label}
+      >
+        <Search aria-hidden />
+      </Button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => openCommandPalette()}
+      aria-label={label}
+      title={label}
+      className="sidebar-nav-link flex min-h-11 w-full items-center gap-3 rounded-lg border border-side-border bg-side-hover px-3 text-base font-semibold text-side-muted transition-colors hover:text-side-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-viatik-magenta"
+    >
+      <Search className="size-5 shrink-0" aria-hidden />
+      <span className="sidebar-label flex-1 text-left">{label}</span>
+    </button>
+  );
+}
+
 export function AppShell({
   children,
   userId,
@@ -58,7 +93,28 @@ export function AppShell({
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const [pending, startTransition] = useTransition();
+
+  // The `data-sidebar` attribute is applied by the blocking init script before
+  // paint; sync React state with it after mount (server always renders expanded).
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time read of the attribute applied by themeInitScript
+    setCollapsed(document.documentElement.dataset.sidebar === "collapsed");
+  }, []);
+
+  function toggleSidebar() {
+    const next = !collapsed;
+    setCollapsed(next);
+    const root = document.documentElement;
+    if (next) root.setAttribute("data-sidebar", "collapsed");
+    else root.removeAttribute("data-sidebar");
+    try {
+      localStorage.setItem(SIDEBAR_KEY, next ? "collapsed" : "expanded");
+    } catch {
+      // Storage may be unavailable; the in-page attribute still applies.
+    }
+  }
   const sync = useSyncStatus();
   const { countdown: syncRetryCountdown, retryNow } = useSyncRetryCountdown(sync);
   const { t } = useI18n();
@@ -77,7 +133,7 @@ export function AppShell({
       // Theme-aware glass nav: brand-magenta glow on the active item.
       // Tighter optical tracking + semibold gives an authored, compact
       // label; active item reads in brand foreground, inactive in muted.
-      "relative flex min-h-11 items-center gap-3 rounded-lg px-3 text-[15px] tracking-tight transition-all",
+      "sidebar-nav-link relative flex min-h-11 items-center gap-3 rounded-lg px-3 text-[17px] tracking-tight transition-all",
       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-viatik-magenta",
       active
         ? "font-bold bg-side-active text-side-active-fg shadow-[var(--side-glow)]"
@@ -85,7 +141,7 @@ export function AppShell({
     );
 
   const navIcon = (Icon: (typeof links)[number]["icon"]) => (
-    <IconTile aria-hidden className="size-9 text-inherit">
+    <IconTile aria-hidden className="size-10 shrink-0 text-inherit">
       <Icon className="size-6" />
     </IconTile>
   );
@@ -100,13 +156,14 @@ export function AppShell({
               key={href}
               type="button"
               disabled
-              title={t("common.comingSoon")}
               aria-disabled="true"
+              aria-label={label}
+              title={t("common.comingSoon")}
               className={cn(navLinkClasses(false), "min-w-0 overflow-hidden cursor-not-allowed opacity-60")}
             >
               {navIcon(Icon)}
-              <span className="min-w-0 flex-1 truncate">{label}</span>
-              <span className="ml-auto w-16 min-w-0 max-w-16 shrink-0 truncate rounded-full bg-muted px-2 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <span className="sidebar-label min-w-0 flex-1 truncate">{label}</span>
+              <span className="sidebar-label ml-auto w-auto shrink-0 truncate rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 {t("common.comingSoon")}
               </span>
             </button>
@@ -119,6 +176,8 @@ export function AppShell({
             href={href}
             onClick={() => setMenuOpen(false)}
             aria-current={active ? "page" : undefined}
+            aria-label={label}
+            title={label}
             className={navLinkClasses(active)}
           >
             {active && (
@@ -128,7 +187,7 @@ export function AppShell({
               />
             )}
             {navIcon(Icon)}
-            {label}
+            <span className="sidebar-label">{label}</span>
           </Link>
         );
       })}
@@ -142,9 +201,9 @@ export function AppShell({
       <div className="flex min-w-0 items-center gap-3">
         <UserAvatar seed={avatarSeed} src={avatarUrl} name={displayName} size="md" />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[15px] font-semibold leading-tight text-side-fg" title={displayName}>{displayName}</span>
+          <span className="block truncate text-[17px] font-semibold leading-tight text-side-fg" title={displayName}>{displayName}</span>
           {userEmail && (
-            <span className="mt-1 block truncate text-[13px] leading-tight text-side-muted" title={userEmail}>{userEmail}</span>
+            <span className="mt-1 block truncate text-sm leading-tight text-side-muted" title={userEmail}>{userEmail}</span>
           )}
         </span>
         <NotificationBell userId={userId} />
@@ -152,6 +211,18 @@ export function AppShell({
       <div className="mt-3 flex flex-nowrap items-center gap-1.5 border-t border-side-border pt-2.5">
         <LanguageSwitcher dark compact />
         <SyncStatusPill />
+      </div>
+    </div>
+  );
+
+  // Collapsed rail variant: avatar + bell stacked, icon-only sync pill. No card
+  // chrome — at 56px inner width a border+p-2 would clip the 44px controls.
+  const collapsedUserCard = (
+    <div className="sidebar-collapsed-only">
+      <div className="flex flex-col items-center gap-2">
+        <UserAvatar seed={avatarSeed} src={avatarUrl} name={displayName} size="md" />
+        <NotificationBell userId={userId} />
+        <SyncStatusPill compact />
       </div>
     </div>
   );
@@ -179,39 +250,66 @@ export function AppShell({
 
       {/* Arc-inspired dark glass sidebar — structural viatik-blue depth,
           crisp 1px hairline borders, and blur. Pinned on scroll. */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col overflow-hidden border-r border-side-border bg-side p-5 shadow-[inset_1px_0_0_0_rgba(255,255,255,0.04)] backdrop-blur-xl lg:flex">
+      <aside
+        id="app-sidebar"
+        className="fixed inset-y-0 left-0 z-30 hidden w-[var(--sidebar-w)] flex-col overflow-hidden border-r border-side-border bg-side p-5 shadow-[inset_1px_0_0_0_rgba(255,255,255,0.04)] backdrop-blur-xl transition-[width] duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] lg:flex"
+      >
         {/* Faint structural blue depth wash toward the top of the panel. */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-linear-to-b from-viatik-blue/15 via-transparent to-transparent"
         />
         {/* Top: brand row — logo image untouched, theme toggle sits beside the app name. */}
-        <div className="relative flex items-center justify-between gap-2">
-          <Link href="/home" className="flex items-center gap-3 text-xl font-bold text-side-fg">
-            <Image src="/viatik-logo.png" alt="" width={44} height={44} priority className="size-11 object-contain" />
-            Viatik
+        <div className="sidebar-brand-row relative flex items-center justify-between gap-2">
+          <Link href="/home" aria-label="Viatik" title="Viatik" className="flex items-center gap-3 text-2xl font-bold text-side-fg">
+            <Image src="/viatik-logo.png" alt="" width={44} height={44} priority className="size-11 shrink-0 object-contain" />
+            <span className="sidebar-label">Viatik</span>
           </Link>
           <div className="flex items-center gap-1">
             <ThemeToggle />
           </div>
         </div>
 
+        {/* Command palette entry point — under the brand row, above the user card. */}
+        <div className="relative mt-4">
+          <CommandPaletteHint variant="sidebar" />
+        </div>
+
         {/* User profile card (static) sits before the navigation links, with sync status on it. */}
-        <div className="mt-6">{userCard}</div>
+        <div className="sidebar-expanded-only mt-3">{userCard}</div>
+        <div className="mt-3">{collapsedUserCard}</div>
 
         {/* Center: navigation fills the middle. */}
         <div className="mt-3 flex-1">{navigation}</div>
 
-        {/* Bottom: logout lives only here in the sidebar. */}
-        <div className="relative mt-8">
+        {/* Bottom: collapse toggle above sign-out. */}
+        <div className="relative mt-8 space-y-2">
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            aria-expanded={!collapsed}
+            aria-controls="app-sidebar"
+            aria-label={collapsed ? t("copy.sidebarExpand") : t("copy.sidebarCollapse")}
+            title={collapsed ? t("copy.sidebarExpand") : t("copy.sidebarCollapse")}
+            className="sidebar-toggle-btn flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-semibold text-side-muted transition-colors hover:bg-side-hover hover:text-side-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-viatik-magenta"
+          >
+            {collapsed ? (
+              <PanelLeftOpen className="size-5 shrink-0" aria-hidden />
+            ) : (
+              <PanelLeftClose className="size-5 shrink-0" aria-hidden />
+            )}
+            <span className="sidebar-label flex-1 text-left">{t("copy.sidebarCollapse")}</span>
+          </button>
           <Button
             variant="ghost"
-            className="w-full justify-between rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-destructive hover:border-destructive/60 hover:bg-destructive/20 hover:text-destructive"
+            aria-label={t("common.signOut")}
+            title={t("common.signOut")}
+            className="sidebar-nav-link w-full justify-between rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-destructive hover:border-destructive/60 hover:bg-destructive/20 hover:text-destructive"
             onClick={() => signOut()}
             disabled={pending}
           >
-            <span className="text-xs font-semibold">{t("common.signOut")}</span>
-            <LogOut className="size-5" />
+            <span className="sidebar-label text-sm font-semibold">{t("common.signOut")}</span>
+            <LogOut className="size-5 shrink-0" />
           </Button>
         </div>
       </aside>
@@ -223,6 +321,7 @@ export function AppShell({
           Viatik
         </Link>
         <div className="flex items-center gap-1">
+          <CommandPaletteHint variant="header" />
           <LanguageSwitcher dark />
           <NotificationBell userId={userId} />
           <ThemeToggle />
@@ -301,9 +400,11 @@ export function AppShell({
 
       <main
         id="main-content"
-        className="mx-auto min-h-dvh max-w-7xl px-4 pb-24 pt-6 sm:px-6 lg:ml-64 lg:px-8 lg:py-10"
+        className="min-h-dvh transition-[padding] duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] lg:pl-[var(--sidebar-w)]"
       >
-        {children}
+        <div className="mx-auto w-full max-w-[96rem] px-4 pb-24 pt-6 sm:px-6 lg:px-8 lg:py-10">
+          {children}
+        </div>
       </main>
     </div>
   );

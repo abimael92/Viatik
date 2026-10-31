@@ -49,4 +49,13 @@ describe("SyncStatusPill", () => {
     expect(status.className).toContain("xl:text-base");
     expect(status.className).not.toContain("text-[8px]");
   });
+
+  it("compact renders icon-only with an accessible name for the collapsed rail", () => {
+    render(<SyncStatusPill compact />);
+
+    const trigger = screen.getByRole("button", { name: "Up to date" });
+    expect(trigger).toBeTruthy();
+    // The visible text label is hidden; the trigger keeps its state color/icon.
+    expect(trigger.textContent).not.toContain("Up to date");
+  });
 });

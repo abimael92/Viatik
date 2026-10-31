@@ -77,7 +77,9 @@ Radii: `--radius: 0.75rem`; `rounded-lg` = default for buttons/inputs,
 
 `components/app-shell/`: `app-shell.tsx` (sidebar + mobile bottom nav + skip link),
 `sync-status-pill.tsx`, `sync-error-banner.tsx`, `theme-toggle.tsx`,
-`language-switcher.tsx`. `components/pro/command-palette.tsx` is the ⌘K palette.
+`language-switcher.tsx`. `components/pro/command-palette.tsx` is the ⌘K palette
+(split: `command-search.ts` pure grouping/matching, `use-palette-data.ts`
+live data, plus the `CommandPaletteHint` discovery pill in `app-shell.tsx`).
 `components/error-boundary.tsx` wraps the app.
 
 ## 4. Layout hierarchy
@@ -181,9 +183,6 @@ and `lib/i18n/error-copy.ts`. Locale persists in `localStorage["viatik-language"
 - Vitest + jsdom + Testing Library (`vitest.config.mjs`, `vitest.setup.mjs`),
   `fake-indexeddb` for repository tests.
 - Tests are colocated: `component.test.tsx`, `repository.test.ts`.
-- Two files are intentionally excluded from Vitest:
-  `features/trips/lib/home-trips-temporal.test.ts` and
-  `features/trips/components/home/home-page.test.tsx` (see `exclude` in `vitest.config.mjs`).
 - E2E: Playwright (`e2e/`, `pnpm test:e2e`), plus a smoke route at `/e2e`.
 
 ## 10. UI gotchas
@@ -204,10 +203,57 @@ and `lib/i18n/error-copy.ts`. Locale persists in `localStorage["viatik-language"
 - `DestinationField` (`features/trips/components/destination-field.tsx`) takes
   `autoSearch={false}` to suppress the suggestion dropdown while a value is
   filled programmatically (device location). Re-enable it when the traveler types.
+- **Collapsible sidebar (2026-10-30):** `--sidebar-w` (`18rem` / `5rem` under
+  `html[data-sidebar="collapsed"]`) drives `aside` width and `<main>`'s
+  `lg:pl-[var(--sidebar-w)]`; content is an inner `mx-auto max-w-[96rem]`
+  wrapper. `data-sidebar` is set by `themeInitScript` before paint from
+  `localStorage["viatik-sidebar"]` — never read storage in render; React state
+  only mirrors it for the toggle's aria. Rail layouts use the CSS hook classes
+  `.sidebar-expanded-only` / `.sidebar-collapsed-only` / `.sidebar-nav-link` /
+  `.sidebar-label` in `globals.css` (plain CSS, not `in-data-*`).
+  `SyncStatusPill compact` renders the icon-only variant with the same
+  rect-anchored dropdown. `CommandPaletteHint variant="sidebar"` has no `kbd`.
+  At 5rem the aside drops to `0.75rem` inline padding (56px inner — 44px
+  controls fit); the rail user block is chromeless (bordered card chrome
+  clipped it), and `.sidebar-label` hides every label (toggle/brand included).
+  Visually verified via a temporary `/e2e/shell` Playwright harness (deleted
+  after; screenshots under /tmp/viatik-shell/).
+- **Home layout (2026-10-30):** Home uses the shell's width directly (no inner
+  max-w/padding — it had double padding before). `PreTripSection` pairs
+  tasks/day-1 in `xl:grid-cols-2` with only-child spanning; the active cockpit
+  is `xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]` (HUD left, secondaries in a
+  `xl:col-start-2` wrapper — DOM order unchanged). `gemini/page.tsx` uses a
+  `<div>`, not a nested `<main>`.
+- **Testing:** jsdom lacks a functional `localStorage` (Node 22 stub) — shim
+  `globalThis.localStorage` with a Map in tests that touch storage.
 - `Collapsible` accepts controlled `open` / `onOpenChange` (added 2026-10-25) as
   well as `defaultOpen`. Its panel stays mounted through the motion exit
   animation, so jsdom tests assert `aria-expanded` rather than DOM absence after
   collapsing.
+- **Command palette (2026-10-30):** `components/pro/command-palette.tsx` takes a
+  `userId` prop (passed `data.user.id` from `app/(app)/layout.tsx`). Data comes
+  from `use-palette-data.ts`: `tripRepository.watchAll`,
+  `contactRepository.watch(userId)`, and `activityRepository.watchByTrip`
+  fanned out over the 20 most-recent trips by `startDate` desc (no `watchAll`
+  exists for activities) — all subscribed only while the view is `"palette"`
+  and disposed on close/unmount. `command-search.ts` is pure: NFD accent
+  stripping, grouped results (`actions` → `navigation` → `trips` →
+  `activities` → `contacts`), cap 5 per group, data groups need a ≥1-char query
+  (activities ≥2). Rows with `deletedAt` are excluded; vault entries are
+  ciphertext-only and never indexed — "Open vault" is an action only.
+  `G H/T/C/S` chords work with the palette closed (guarded by modifiers, typing
+  targets, and other open `[role="dialog"][aria-modal="true"]` elements); `C`
+  stays palette-open-only. `openCommandPalette()` dispatches
+  `viatik:open-command-palette` — the `CommandPaletteHint` pill in
+  `app-shell.tsx` calls it (sidebar + mobile header; ⌘/Ctrl resolved in
+  `useEffect` post-mount, default `Ctrl`).
+- **Home pre-trip (2026-10-30):** for `primaryTrip && !isActive`,
+  `home-page.tsx` renders `PreTripSection` (document banner gated by
+  `isWithinDocumentWindow(startDate, today, 90)` → open tasks →
+  `DayOnePreview`). The readiness card still lives inside `TripCountdownHero`
+  (do not render a second copy). The 24h check-in banner is now
+  `WithinNext24HoursBanner` (`isWithinNext24Hours` exported from
+  `within-24-hours-banner.tsx`).
 
 ## 11. Scout wizard patterns (`features/trip-planner/components/scout-idea-wizard.tsx`)
 
