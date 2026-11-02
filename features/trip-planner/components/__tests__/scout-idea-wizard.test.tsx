@@ -82,7 +82,7 @@ function renderWizard(isOnline: boolean | null = true) {
 /** where → vibe → crew → savings → takeoff → timing (the last screen). */
 function walkToTiming() {
   fireEvent.click(screen.getByRole("button", { name: "Next" }));
-  fireEvent.click(screen.getByRole("button", { name: "Fresh mountain air & quiet trails" }));
+  fireEvent.click(screen.getByRole("button", { name: /Fresh mountain air & quiet trails/ }));
   fireEvent.click(screen.getByRole("button", { name: "Next" }));
   fireEvent.click(screen.getByRole("button", { name: /Traveling duo/ }));
   fireEvent.click(screen.getByRole("button", { name: "Next" }));
@@ -116,7 +116,7 @@ function openTripDetails() {
 /** where → vibe → crew, stopping on the savings screen. */
 function walkToBudget() {
   fireEvent.click(screen.getByRole("button", { name: "Next" }));
-  fireEvent.click(screen.getByRole("button", { name: "Fresh mountain air & quiet trails" }));
+  fireEvent.click(screen.getByRole("button", { name: /Fresh mountain air & quiet trails/ }));
   fireEvent.click(screen.getByRole("button", { name: "Next" }));
   fireEvent.click(screen.getByRole("button", { name: /Traveling duo/ }));
   fireEvent.click(screen.getByRole("button", { name: "Next" }));
@@ -546,7 +546,7 @@ describe("ScoutIdeaWizard", () => {
   it("lets the traveler brainstorm without a savings pace", async () => {
     renderWizard();
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    fireEvent.click(screen.getByRole("button", { name: "Fresh mountain air & quiet trails" }));
+    fireEvent.click(screen.getByRole("button", { name: /Fresh mountain air & quiet trails/ }));
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     fireEvent.click(screen.getByRole("button", { name: /Traveling duo/ }));
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
@@ -604,7 +604,7 @@ describe("ScoutIdeaWizard", () => {
     renderWizard();
 
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    fireEvent.click(screen.getByRole("button", { name: "Slow mornings by the water" }));
+    fireEvent.click(screen.getByRole("button", { name: /Slow mornings by the water/ }));
     expect(screen.getByText("Nothing beats ocean air.")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
@@ -614,10 +614,56 @@ describe("ScoutIdeaWizard", () => {
     expect(screen.getByText("Solo trips are the best for recharging.")).toBeTruthy();
   });
 
+  it("offers five vibe cards with what Scout does and a 5-day cost estimate", () => {
+    renderWizard();
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+
+    const group = screen.getByRole("group", {
+      name: "Picture your next getaway. What's the main feeling you're craving?",
+    });
+    expect(within(group).getAllByRole("button")).toHaveLength(5);
+
+    const nature = within(group).getByRole("button", { name: /Fresh mountain air & quiet trails/ });
+    expect(nature.textContent).toContain("Trailheads, lakes, and quiet nights away from the city.");
+    expect(nature.textContent).toContain("≈$1,758 per traveler");
+    expect(nature.textContent).toContain("5-day trip, leaving 3–5 months out");
+
+    // The city label mentions food, so the card must keep the city price band.
+    const city = within(group).getByRole("button", { name: /Vibrant streets, culture & good food/ });
+    const food = within(group).getByRole("button", { name: /A food-first trip, market to table/ });
+    expect(city.textContent).toContain("≈$1,503 per traveler");
+    expect(food.textContent).toContain("≈$1,469 per traveler");
+
+    expect(screen.getByText(/Historical estimates for 2 travelers on a 5-day trip/)).toBeTruthy();
+  });
+
+  it("prices the vibe from the ideas Scout already returned", async () => {
+    await loadIdeas();
+    fireEvent.click(screen.getByRole("button", { name: "Change the vibe" }));
+
+    expect(screen.getByText("Step 2 of 6 · Vibe")).toBeTruthy();
+    const group = screen.getByRole("group", {
+      name: "Picture your next getaway. What's the main feeling you're craving?",
+    });
+    const card = within(group).getByRole("button", { name: /Fresh mountain air & quiet trails/ });
+    expect(card.getAttribute("aria-pressed")).toBe("true");
+    expect(card.textContent).toContain("≈$2,200 per traveler");
+    expect(card.textContent).toContain("priced from your last search");
+
+    const beach = within(group).getByRole("button", { name: /Slow mornings by the water/ });
+    expect(beach.textContent).toContain("5-day trip, leaving 3–5 months out");
+
+    // Switching the answer must not relabel the old run as the new vibe.
+    fireEvent.click(beach);
+    expect(beach.textContent).toContain("≈$1,382 per traveler");
+    expect(beach.textContent).toContain("5-day trip, leaving 3–5 months out");
+    expect(card.textContent).toContain("priced from your last search");
+  });
+
   it("presents the crew as selected cards", () => {
     renderWizard();
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    fireEvent.click(screen.getByRole("button", { name: "Fresh mountain air & quiet trails" }));
+    fireEvent.click(screen.getByRole("button", { name: /Fresh mountain air & quiet trails/ }));
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
 
     const group = screen.getByRole("group", { name: "Who are we scheming this trip for?" });
@@ -639,7 +685,7 @@ describe("ScoutIdeaWizard", () => {
   it("shows the crew options without a counting-mode toggle", () => {
     renderWizard();
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    fireEvent.click(screen.getByRole("button", { name: "Fresh mountain air & quiet trails" }));
+    fireEvent.click(screen.getByRole("button", { name: /Fresh mountain air & quiet trails/ }));
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
 
     expect(screen.queryByRole("button", { name: "Enter a number" })).toBeNull();
@@ -650,7 +696,7 @@ describe("ScoutIdeaWizard", () => {
   it("sends the typed crew size when a small crew is picked", async () => {
     renderWizard();
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    fireEvent.click(screen.getByRole("button", { name: "Fresh mountain air & quiet trails" }));
+    fireEvent.click(screen.getByRole("button", { name: /Fresh mountain air & quiet trails/ }));
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     fireEvent.click(screen.getByRole("button", { name: /Small crew/ }));
 
@@ -675,7 +721,7 @@ describe("ScoutIdeaWizard", () => {
   it("blocks Next when the typed crew size is out of range or empty", () => {
     renderWizard();
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    fireEvent.click(screen.getByRole("button", { name: "Fresh mountain air & quiet trails" }));
+    fireEvent.click(screen.getByRole("button", { name: /Fresh mountain air & quiet trails/ }));
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     fireEvent.click(screen.getByRole("button", { name: /Small crew/ }));
 
@@ -693,7 +739,7 @@ describe("ScoutIdeaWizard", () => {
   it("hides the crew size input for solo and duo picks", () => {
     renderWizard();
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    fireEvent.click(screen.getByRole("button", { name: "Fresh mountain air & quiet trails" }));
+    fireEvent.click(screen.getByRole("button", { name: /Fresh mountain air & quiet trails/ }));
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
 
     fireEvent.click(screen.getByRole("button", { name: /Small crew/ }));
@@ -1125,7 +1171,7 @@ describe("ScoutIdeaWizard", () => {
     function openContactsPicker() {
       renderWizard();
       fireEvent.click(screen.getByRole("button", { name: "Next" }));
-      fireEvent.click(screen.getByRole("button", { name: "Fresh mountain air & quiet trails" }));
+      fireEvent.click(screen.getByRole("button", { name: /Fresh mountain air & quiet trails/ }));
       fireEvent.click(screen.getByRole("button", { name: "Next" }));
       fireEvent.click(screen.getByRole("button", { name: /Small crew/ }));
       fireEvent.click(screen.getByRole("button", { name: "Pick from my contacts" }));
