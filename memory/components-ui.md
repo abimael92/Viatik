@@ -337,12 +337,34 @@ and `lib/i18n/error-copy.ts`. Locale persists in `localStorage["viatik-language"
   are `lucide-react` icons (Waves / Building2 / Trees, User / Heart / Users,
   PiggyBank / CalendarDays / TrendingDown), always `aria-hidden`, and the
   primary CTA is plain text.
-- **Answer primitives:** vibe is a row of chips (icon + label, where the label
-  *is* the value sent to Scout); crew and timing use `SelectableCard`
+- **Answer primitives:** vibe, crew, and timing all use `SelectableCard`
   (`rounded-xl border border-border/80 bg-card/60 p-4`, selected
   `ring-2 ring-primary border-primary bg-primary/5 shadow-sm`) with a
-  `LucideIcon` anchor and an optional subtitle. Both expose `aria-pressed`;
-  never convey selection with color alone.
+  `LucideIcon` anchor, an optional subtitle, and an optional `meta` slot. All
+  expose `aria-pressed`; never convey selection with color alone.
+- **Five vibes (2026-11-01).** The vibe step is a grid of five cards
+  (`minmax(15rem, 1fr)`): beach / city / nature / food / surprise. Each card
+  declares its `ScoutVibeCategory` explicitly (`VIBE_CHIPS` in the wizard)
+  because the keyword classifier reads the city label's "good food" as a food
+  trip; only typed answers go through `selectFallbackCategory`
+  (`features/trip-planner/domain/scout-vibe-category.ts`, shared with the
+  server action). The card's label *is* the value sent to Scout, so the
+  accessible name is title + description + cost line — tests must match it with
+  a regex, not an exact string.
+- **Vibe cost line.** `scoutVibeCostEstimate` (`domain/scout-vibe-cost-estimate.ts`)
+  prices a **5-day** trip (`SCOUT_VIBE_TRIP_DAYS`) leaving **3–5 months** out
+  (`SCOUT_VIBE_WINDOW_MONTHS`) for `SCOUT_VIBE_REFERENCE_CREW` travelers, in the
+  planner currency, as `bigint` minor units. It uses the reference destination
+  set per vibe, and switches to the ideas Scout already returned (re-priced at
+  exactly 5 days) once a run exists — reachable through the results footer's
+  **Change the vibe** action, which walks back with `suggestions` intact
+  (`editingAnswers` state, not a cleared run). Currency conversion is an exact
+  rational (`SCOUT_CURRENCY_RATIO`), never a float; unsupported currencies
+  return `null` and the card omits the line.
+- **`showingResults` gates the view**, not `suggestions.length > 0`: header
+  subtitle, progress rail, question body, and footer all read
+  `completedQuestion && !editingAnswers`, so a traveler can revise answers while
+  the results they already paid for stay in state.
 - **Micro-feedback:** `ScoutReaction` renders one line in an `aria-live` region
   inside the bubble. It is *derived* from the current answer (custom vibe text
   clears it) and timing needs the `timingTouched` flag because `asap` is the
@@ -729,3 +751,25 @@ and `lib/i18n/error-copy.ts`. Locale persists in `localStorage["viatik-language"
   while the traveler is mid-typing an invalid amount.
 - Fields are prefilled from `idea` in `useState` initializers and the dialog keys
   the form by idea id; the "prefills every field" test covers it.
+
+## Home travel ideas sheet (`features/community/components/suggestions-drawer.tsx`)
+
+- **Trigger:** Home's **Travel ideas** button (`common.travelIdeas`) opens this
+  bottom sheet; it is also mounted inline in the empty state with
+  `showTrigger={false}`. The sheet lists `publicTemplates` horizontally.
+- **Five cards, `w-72`:** gradient header (name + destination), a two-line
+  description, a detail row (duration · travelers · activities), a **Trip cost**
+  block, and up to three tags. Cards keep the horizontal snap-scroll on mobile
+  with the next card peeking at 430px.
+- **Cost block** shows the whole-party total from `templateCostEstimate`
+  (`features/community/domain/template-cost-estimate.ts`) plus the per-month
+  figure for a 3-month and a 5-month window, both rounded up. The display
+  currency is `budgetUserCurrency(profile.preferredCurrency, template.baseCurrency)`
+  and the conversion is the offline `convertBudget`; when either currency is
+  outside the money domain the block is omitted entirely.
+- **Do not reuse `common.estimatedBudget`** for this figure. The `/community`
+  page preview prints `budgetMinor` (activities × 85.00) under that label, which
+  is a different number. The card label is `copy.communityIdeaTripCost`.
+- **Estimate note** sits under the sheet title
+  (`copy.communityIdeasEstimateNote`) and states the figures cover the whole
+  party in the traveler's currency.

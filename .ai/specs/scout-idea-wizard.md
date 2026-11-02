@@ -83,6 +83,63 @@ Acceptance criteria for this pass:
       deterministic fallback keeps mapping it to the matching pool (the beach
       matcher now accepts "water").
 
+## Vibe expansion and 3–5 month cost benchmarks (2026-11-01)
+
+Requested change: the vibe question offered three options with no explanation of
+what Scout does with an answer, and no sense of what the trip costs. The step
+now offers **five** vibes and each one carries a one-line description plus a
+per-traveler cost estimate.
+
+- **Five vibes.** `beach`, `city`, `nature`, `food`, and `default` (surprise me).
+  Each option declares its `ScoutVibeCategory` explicitly instead of relying on
+  the free-text classifier, because "Vibrant streets, culture & good food"
+  classifies as `food` under the keyword matcher — the chip must keep the
+  meaning the traveler tapped. Free-text answers still go through
+  `selectFallbackCategory`, so the deterministic generator keeps one classifier.
+- **Each vibe card carries what Scout does with it.** A one-line description
+  states the concrete behaviour for that vibe (dry-season weeks and walkable
+  coasts, markets and late-night kitchens, trailheads and quiet nights, a wide
+  net across regions and price bands). It is copy, not a claim about the model's
+  reasoning, and it renders in English and Spanish.
+- **Cost line semantics.** Every card shows the average **per-traveler** cost of
+  a **5-day trip departing 3–5 months from now** — the booking window the
+  wizard already treats as the fare sweet spot. Trips are normalised to 5 days
+  (`SCOUT_VIBE_TRIP_DAYS`), so the five options are comparable, and the crew
+  assumption is 2 travelers (`SCOUT_VIBE_REFERENCE_CREW`) because the crew
+  question comes after the vibe question.
+- **Two sources, one shape.** `scoutVibeCostEstimate` returns the same
+  `perTravelerMinor` figure either way:
+  - **From Scout's own estimates** when the traveler already ran the wizard and
+    came back to the vibe step: every generated idea is re-priced at exactly 5
+    days (flight × crew + daily × 5 × crew + hotel × 4) and averaged. This only
+    applies to the vibe that produced that run, so no destination classifier is
+    guessed.
+  - **From Scout's reference destination set** for that vibe otherwise, which is
+    the same historical baseline data the deterministic generator uses. The card
+    says which source it used.
+- **Money stays integer.** Averages are `bigint` minor units; currency baselines
+  are applied as an exact rational (`SCOUT_CURRENCY_RATIO`, numerator/
+  denominator) instead of the server's floating multiplier, so no float ever
+  enters a total. Currency support matches the planner currencies the wizard
+  already accepts.
+- **Offline and privacy.** The benchmark is pure local math over data already in
+  the bundle; it makes no network call and sends nothing to the AI provider
+  before consent.
+
+Acceptance criteria for this pass:
+
+- [x] The vibe step offers five options, each with a description and a
+      per-traveler 5-day cost estimate.
+- [x] Each option's category is declared, so the `food` chip and the `city`
+      chip never share an estimate.
+- [x] `scoutVibeCostEstimate` averages generated ideas at exactly 5 days when a
+      run exists, and falls back to the reference set when it does not.
+- [x] Every estimate is integer `bigint` minor units in the planner currency;
+      unsupported currencies return `null` instead of a wrong number.
+- [x] The card states the 5-day / 3–5 month window and whether the figure came
+      from the traveler's own search.
+- [x] All new copy renders in English and Spanish through `lib/i18n`.
+
 ## What & Why
 
 Add a conversational Scout flow to the existing Want to Go planner. Scout asks
@@ -412,6 +469,19 @@ Record actual results and known limitations in Completion Notes before release.
   surface (stubbed locally, because the `/e2e` harness has no signed-in session)
   were reviewed in a real browser at 1000×900 and 430×900, in English and
   Spanish.
+- **2026-11-01 vibe expansion pass:** five vibe cards with a description and a
+  5-day / 3–5 month per-traveler cost estimate, plus the **Change the vibe**
+  return path that lets the cards re-price from a finished run.
+  `pnpm lint` ✅ · `pnpm typecheck` ✅ · `pnpm build` ✅ (21 routes) ·
+  `scout-idea-wizard.test.tsx` 58/58 ✅ · new `scout-vibe-cost-estimate.test.ts`
+  and `scout-vibe-category.test.ts` ✅ · `app/actions/scout-trip-ideas.test.ts`
+  and `lib/i18n` 39/39 ✅. Full `pnpm test` = 241 files / 1,644 tests: 1,638
+  pass, 3 skipped, and **3 failures that predate this pass** in
+  `features/trips/components/home/home-page.test.tsx` (commit `3e7bc6e` removed
+  the `Active Trip Actions` heading and the `Active · Day N of M` line the tests
+  still assert). Those were left untouched: repairing them is a product decision
+  about the home hero, not part of this change. No live-browser review of the
+  new cards was performed in this pass.
 - **Security review:** Server Action authentication, input/output validation,
   consent, server-only key handling (`GEMINI_API_KEY` primary, `OPENAI_API_KEY`
   fallback), and data minimization reviewed during implementation. The exclusion

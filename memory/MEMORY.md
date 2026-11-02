@@ -4,6 +4,7 @@
 > before exploring the codebase; update it before ending a task.
 > **Companions:** [`data-models.md`](data-models.md) ·
 > [`components-ui.md`](components-ui.md) · [`roles-abilities.md`](roles-abilities.md)
+> **Last updated:** 2026-11-01 · schema v49 · 243 test files / 1,654 tests
 > **Last updated:** 2026-10-31 · schema v48 · 239 test files / 1,629 tests
 > **Last updated:** 2026-10-30 · schema v48 · 232 test files / 1,568 tests
 
@@ -189,6 +190,86 @@ Also update the topic file whose subject changed:
 ---
 
 ## 7. Session log (newest first)
+
+### 2026-11-01 — Home travel ideas: five community cards with real trip details
+
+- **Changed:** `features/community/components/suggestions-drawer.tsx` — the Home
+  "Travel ideas" sheet now lists **five** ideas and every card shows the details
+  that are set on the idea: duration, travelers, activity count, a whole-party
+  **Trip cost**, and the per-month figure for a **3-month** and **5-month**
+  saving window. Cards widened `w-56` → `w-72`, the description is two lines,
+  and the sheet states the figures are estimates for the whole party in the
+  traveler's currency.
+- **Data:** `features/community/data/public-templates.ts` —
+  `PublicTripTemplate` gained `durationDays` and a `cost` baseline
+  (`flightPerPerson` / `dailyPerPerson` / `hotelPerNight`, whole units of
+  `baseCurrency`), plus a fifth template **Marrakech & the Atlas** (5 days,
+  culture / adventure / food). `budgetMinor` was left exactly as it was.
+- **New domain module:** `features/community/domain/template-cost-estimate.ts`
+  (`templateCostEstimate`, `TEMPLATE_SAVINGS_HORIZONS = [3, 5]`). Flights and
+  daily spending are per traveler, the nightly rate covers the party, nights are
+  `max(1, days - 1)`, all `bigint`; currency comes from
+  `budgetUserCurrency(preferred, baseCurrency)` + `convertBudget` (offline
+  default rates) and an unsupported currency returns `null` so the card omits
+  the block. Saving windows round **up**.
+- **Copy:** `communityIdeaTravelers`, `communityIdeaTripCost`,
+  `communityIdeaSavePerMonth`, `communityIdeasEstimateNote` (en + es). Reuses
+  `copy.tripIdeaDurationDays` and `common.activities`.
+- **Schema:** none.
+- **Verification:** `pnpm lint` ✅ · `pnpm typecheck` ✅ ·
+  `template-cost-estimate.test.ts` 7/7 ✅ · `suggestions-drawer.test.tsx` 3/3 ✅ ·
+  full `pnpm test` = 243 files / 1,654 tests: 1,648 pass, 3 skipped, plus the
+  same **3 pre-existing** `home-page.test.tsx` failures from commit `3e7bc6e`.
+  Visually checked at 1280×900 and 430×900 through the dev `/e2e` harness
+  (temporary render, reverted).
+- **Gotchas:** the `/community` page preview still prints `budgetMinor`
+  (activities × 85.00) under `common.estimatedBudget`, which is **not** the same
+  number as the card's trip cost — do not reuse `common.estimatedBudget` for the
+  new figure. `templateCostEstimate` throws for `days < 1` or `travelers < 1`;
+  the drawer always passes the authored party size
+  (`adultCount + childCount`). See `.ai/specs/community-idea-cards.md`.
+
+### 2026-11-01 — Scout vibe step: five options, what each one does, and a 5-day cost estimate
+
+- **Changed:** `features/trip-planner/components/scout-idea-wizard.tsx` — the
+  vibe question went from three chips to five `SelectableCard`s (beach, city,
+  nature, food, surprise) in a `minmax(15rem, 1fr)` grid. Each card carries a
+  one-line description of what Scout does with that vibe and a per-traveler
+  cost line. `SelectableCard` gained an optional `meta` slot for that line.
+  Results now gate on `showingResults = completedQuestion && !editingAnswers`,
+  and the results footer gained **Change the vibe**, which walks back to the vibe
+  step with `suggestions` intact so the cards can re-price from a real run.
+- **New domain modules:**
+  `domain/scout-vibe-category.ts` (`SCOUT_VIBE_CATEGORIES` +
+  `selectFallbackCategory`, moved out of `app/actions/scout-trip-ideas.ts` so
+  the wizard and the deterministic generator share one classifier) and
+  `domain/scout-vibe-cost-estimate.ts` (`SCOUT_VIBE_TRIP_DAYS = 5`,
+  `SCOUT_VIBE_WINDOW_MONTHS = 3–5`, `SCOUT_VIBE_REFERENCE_CREW = 2`,
+  `scoutVibeCostEstimate`). The estimate averages Scout's reference
+  destinations per vibe, or the ideas Scout already returned re-priced at
+  exactly 5 days, and converts currency with an exact rational
+  (`SCOUT_CURRENCY_RATIO`) — never a float. Unsupported currency returns `null`.
+- **Copy:** `scoutWizardVibeFood`, `scoutWizardVibeSurprise`, five
+  `...Detail` keys, two `...Reaction` keys, `scoutWizardVibeCostLine`,
+  `scoutWizardVibeCostFromSearch`, `scoutWizardVibeCostHint`, and
+  `scoutWizardChangeVibe` in `en` + `es`.
+- **Schema:** none.
+- **Verification:** `pnpm lint` ✅ · `pnpm typecheck` ✅ · `pnpm build` ✅ (21
+  routes) · `scout-idea-wizard.test.tsx` 58/58 ✅ · new domain suites
+  (`scout-vibe-cost-estimate`, `scout-vibe-category`) ✅ ·
+  `app/actions/scout-trip-ideas.test.ts` + `lib/i18n` 39/39 ✅. Full `pnpm test`
+  = 241 files / 1,644 tests: 1,638 pass, 3 skipped, **3 pre-existing failures**
+  in `features/trips/components/home/home-page.test.tsx` (`Active · Day 1 of 1`,
+  `Active Trip Actions`, `Start trip`) that commit `3e7bc6e` introduced by
+  removing that UI — untouched here because it is a product decision, not this
+  task.
+- **Gotchas:** the vibe card's accessible name is title + description + cost
+  line (the label is still the value sent to Scout), so tests must query it with
+  a regex. The city chip's label contains "good food", which
+  `selectFallbackCategory` classifies as `food` — that is why each chip declares
+  its `category` instead of being re-classified from its label. `showResults`
+  must stay the view gate; gating on `suggestions.length > 0` hides the
+  questions and makes **Change the vibe** look broken.
 
 ### 2026-10-31 — Sidebar bottom bar: sign-out restored, collapse control moved to the header
 

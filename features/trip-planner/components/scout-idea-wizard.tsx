@@ -23,6 +23,7 @@ import {
   TrendingDown,
   User,
   UsersRound,
+  UtensilsCrossed,
   Wallet,
   Waves,
   type LucideIcon,
@@ -49,6 +50,16 @@ import {
   tripSavingsPlanRepository,
 } from "@/features/trip-planner/data/dexie-trip-planner-repository";
 import { scoutBudgetPresets } from "@/features/trip-planner/domain/scout-budget-presets";
+import {
+  SCOUT_VIBE_REFERENCE_CREW,
+  SCOUT_VIBE_TRIP_DAYS,
+  SCOUT_VIBE_WINDOW_MONTHS,
+  scoutVibeCostEstimate,
+} from "@/features/trip-planner/domain/scout-vibe-cost-estimate";
+import {
+  selectFallbackCategory,
+  type ScoutVibeCategory,
+} from "@/features/trip-planner/domain/scout-vibe-category";
 import {
   buildScoutIdeaPlan,
   type ScoutIdeaPlan,
@@ -90,29 +101,58 @@ import { localizeUserError } from "@/lib/i18n/localize-error";
 import type { TranslationKey } from "@/lib/i18n/translations";
 import { cn } from "@/lib/utils";
 
+/**
+ * The vibe question's answer cards. Each option declares the destination pool
+ * it means, because the keyword classifier reads "good food" in the city label
+ * as a food trip; the label is also the string sent to Scout.
+ */
 const VIBE_CHIPS: Array<{
   value: string;
   key: TranslationKey;
+  detailKey: TranslationKey;
+  category: ScoutVibeCategory;
   Icon: LucideIcon;
   reactionKey: TranslationKey;
 }> = [
   {
     value: "Slow mornings by the water",
     key: "copy.scoutWizardVibeBeach",
+    detailKey: "copy.scoutWizardVibeBeachDetail",
+    category: "beach",
     Icon: Waves,
     reactionKey: "copy.scoutWizardVibeBeachReaction",
   },
   {
     value: "Vibrant streets, culture & good food",
     key: "copy.scoutWizardVibeCity",
+    detailKey: "copy.scoutWizardVibeCityDetail",
+    category: "city",
     Icon: Building2,
     reactionKey: "copy.scoutWizardVibeCityReaction",
   },
   {
     value: "Fresh mountain air & quiet trails",
     key: "copy.scoutWizardVibeNature",
+    detailKey: "copy.scoutWizardVibeNatureDetail",
+    category: "nature",
     Icon: Trees,
     reactionKey: "copy.scoutWizardVibeNatureReaction",
+  },
+  {
+    value: "A food-first trip, market to table",
+    key: "copy.scoutWizardVibeFood",
+    detailKey: "copy.scoutWizardVibeFoodDetail",
+    category: "food",
+    Icon: UtensilsCrossed,
+    reactionKey: "copy.scoutWizardVibeFoodReaction",
+  },
+  {
+    value: "Surprise me — somewhere new",
+    key: "copy.scoutWizardVibeSurprise",
+    detailKey: "copy.scoutWizardVibeSurpriseDetail",
+    category: "default",
+    Icon: Compass,
+    reactionKey: "copy.scoutWizardVibeSurpriseReaction",
   },
 ];
 
@@ -850,14 +890,16 @@ function ChoiceChips<T extends string>({
 }
 
 /**
- * A tactile answer card: an icon anchor, a title, and an optional one-line
- * explainer. Selection is conveyed by both `aria-pressed` and the ring/fill
- * treatment, so it never depends on color alone.
+ * A tactile answer card: an icon anchor, a title, an optional one-line
+ * explainer, and an optional metric line. Selection is conveyed by both
+ * `aria-pressed` and the ring/fill treatment, so it never depends on color
+ * alone.
  */
 function SelectableCard({
   selected,
   title,
   subtitle,
+  meta,
   icon,
   onSelect,
   groupAnchor = false,
@@ -866,6 +908,7 @@ function SelectableCard({
   selected: boolean;
   title: string;
   subtitle?: string;
+  meta?: ReactNode;
   icon: ReactNode;
   onSelect: () => void;
   groupAnchor?: boolean;
@@ -912,6 +955,7 @@ function SelectableCard({
             {subtitle}
           </span>
         )}
+        {meta && <span className="mt-1.5 block">{meta}</span>}
       </span>
     </button>
   );
@@ -1017,6 +1061,9 @@ export function ScoutIdeaWizard({
   const [savingsCapacityMinor, setSavingsCapacityMinor] = useState(0n);
   const [consented, setConsented] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  /** The vibe the ideas on screen were generated from, not the current answer. */
+  const [generatedVibe, setGeneratedVibe] = useState<string | null>(null);
+  const [editingAnswers, setEditingAnswers] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<WizardField, string>>>({});
   const [loading, setLoading] = useState(false);
@@ -1083,6 +1130,8 @@ export function ScoutIdeaWizard({
     setSavingsCapacityMinor(0n);
     setConsented(false);
     setSuggestions([]);
+    setGeneratedVibe(null);
+    setEditingAnswers(false);
     setError(null);
     setFieldErrors({});
     setLoading(false);
@@ -1347,6 +1396,7 @@ export function ScoutIdeaWizard({
     }
 
     const run = ++runId.current;
+    setEditingAnswers(false);
     setLoading(true);
     setExhausted(false);
     setLoadingStage(0);
@@ -1380,6 +1430,7 @@ export function ScoutIdeaWizard({
     const remaining = Math.max(0, SCOUT_INITIAL_IDEA_COUNT - collected.length);
     if (remaining === 0) {
       setSuggestions(collected);
+      setGeneratedVibe(routeMode ? null : vibe);
       setLoading(false);
       return;
     }
@@ -1419,6 +1470,7 @@ export function ScoutIdeaWizard({
     } finally {
       if (runId.current === run) {
         setSuggestions(collected);
+        setGeneratedVibe(routeMode ? null : vibe);
         setPendingCount(0);
         setLoading(false);
       }
@@ -1509,9 +1561,51 @@ export function ScoutIdeaWizard({
   }
 
   const completedQuestion = suggestions.length > 0;
+  /**
+   * Results stay in state while the traveler walks the questions again, so the
+   * vibe cards can price themselves from the run they already paid for.
+   */
+  const showingResults = completedQuestion && !editingAnswers;
   const exactDuration = parsedDurationDays();
   const budgetPresets = scoutBudgetPresets(currency);
   const currentSavings = readSavings();
+  /** The crew question comes after this one, so the cards price a duo. */
+  const vibeCrewSize = crewSize ?? SCOUT_VIBE_REFERENCE_CREW;
+  /**
+   * A finished run priced exactly one vibe, so only that card may claim its
+   * figures came from the traveler's own search.
+   */
+  const generatedVibeCategory =
+    suggestions.length > 0 && generatedVibe && generatedVibe.trim().length > 0
+      ? (VIBE_CHIPS.find((option) => option.value === generatedVibe)?.category ??
+        selectFallbackCategory(generatedVibe))
+      : null;
+
+  function vibeCostLine(category: ScoutVibeCategory) {
+    const estimate = scoutVibeCostEstimate({
+      category,
+      currency,
+      crewSize: vibeCrewSize,
+      suggestions: generatedVibeCategory === category ? suggestions : [],
+    });
+    if (!estimate) return null;
+    return (
+      <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] font-medium text-muted-foreground">
+        <Wallet aria-hidden className="size-3 shrink-0" />
+        {t(
+          estimate.fromGeneratedIdeas
+            ? "copy.scoutWizardVibeCostFromSearch"
+            : "copy.scoutWizardVibeCostLine",
+          {
+            amount: formatWholeAmount(estimate.perTravelerMinor, currency, locale),
+            days: estimate.tripDays,
+            from: SCOUT_VIBE_WINDOW_MONTHS.from,
+            to: SCOUT_VIBE_WINDOW_MONTHS.to,
+          }
+        )}
+      </span>
+    );
+  }
   const reactionKey =
     stepId === "vibe"
       ? VIBE_CHIPS.find((option) => option.value === vibe)?.reactionKey
@@ -1609,7 +1703,7 @@ export function ScoutIdeaWizard({
               <div className="min-w-0">
                 <DialogTitle>{t("copy.scoutWizardTitle")}</DialogTitle>
                 <p className="mt-1 truncate text-sm text-muted-foreground">
-                  {completedQuestion
+                  {showingResults
                     ? t("copy.scoutWizardOptionsHeading", { count: suggestions.length })
                     : t("copy.scoutWizardStepProgress", {
                         current: step + 1,
@@ -1622,7 +1716,7 @@ export function ScoutIdeaWizard({
           </DialogHeader>
         </header>
 
-        {!completedQuestion && !loading && isOnline !== false && (
+        {!showingResults && !loading && isOnline !== false && (
           <WizardProgress steps={steps} step={step} />
         )}
 
@@ -1650,7 +1744,7 @@ export function ScoutIdeaWizard({
               skeletonCount={SCOUT_INITIAL_IDEA_COUNT}
               reducedMotion={reducedMotion}
             />
-          ) : suggestions.length === 0 ? (
+          ) : !showingResults ? (
             <div className="space-y-5">
               <motion.div
                 key={step}
@@ -1715,26 +1809,37 @@ export function ScoutIdeaWizard({
                 )}
 
                 {stepId === "vibe" && (
-                  <section className="space-y-4" aria-labelledby="scout-vibe-question">
-                    <div className="flex flex-wrap gap-2">
+                  <section className="space-y-3" aria-labelledby="scout-vibe-question">
+                    <div
+                      className="grid gap-2.5"
+                      style={{ gridTemplateColumns: "repeat(auto-fit, minmax(15rem, 1fr))" }}
+                      role="group"
+                      aria-label={t("copy.scoutWizardVibeQuestion")}
+                    >
                       {VIBE_CHIPS.map((option) => (
-                        <Button
+                        <SelectableCard
                           key={option.value}
-                          type="button"
-                          variant={vibe === option.value ? "default" : "outline"}
-                          aria-pressed={vibe === option.value}
-                          className="min-h-11 gap-2 whitespace-normal px-3.5 text-left transition-all duration-200 ease-out active:scale-[0.98]"
-                          onClick={() => {
+                          selected={vibe === option.value}
+                          icon={<option.Icon aria-hidden className="size-4" />}
+                          title={t(option.key)}
+                          subtitle={t(option.detailKey)}
+                          meta={vibeCostLine(option.category)}
+                          onSelect={() => {
                             setVibe(option.value);
                             setConsented(false);
                             clearFieldError("vibe");
                           }}
-                        >
-                          <option.Icon aria-hidden className="text-muted-foreground" />
-                          {t(option.key)}
-                        </Button>
+                        />
                       ))}
                     </div>
+                    <p className="text-[11px] leading-snug text-muted-foreground">
+                      {t("copy.scoutWizardVibeCostHint", {
+                        crew: SCOUT_VIBE_REFERENCE_CREW,
+                        days: SCOUT_VIBE_TRIP_DAYS,
+                        from: SCOUT_VIBE_WINDOW_MONTHS.from,
+                        to: SCOUT_VIBE_WINDOW_MONTHS.to,
+                      })}
+                    </p>
                     <div className="space-y-2">
                       <Label htmlFor="scout-vibe">{t("copy.scoutWizardVibeCustomLabel")}</Label>
                       <Input
@@ -2561,6 +2666,7 @@ export function ScoutIdeaWizard({
                   className="min-h-11 flex-1"
                   onClick={() => {
                     setSuggestions([]);
+                    setGeneratedVibe(null);
                     setExhausted(false);
                     setError(null);
                     setExpandedIndex(0);
@@ -2571,12 +2677,27 @@ export function ScoutIdeaWizard({
                 >
                   <ArrowLeft aria-hidden /> {t("copy.scoutWizardTryAgain")}
                 </Button>
+                {steps.includes("vibe") && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="min-h-11 flex-1"
+                    onClick={() => {
+                      setDirection(-1);
+                      setExpandedIndex(0);
+                      setEditingAnswers(true);
+                      setStep(steps.indexOf("vibe"));
+                    }}
+                  >
+                    {t("copy.scoutWizardChangeVibe")}
+                  </Button>
+                )}
               </div>
             </div>
           )}
         </div>
 
-        {!completedQuestion && !loading && isOnline !== false && (
+        {!showingResults && !loading && isOnline !== false && (
           <footer className="shrink-0 border-t border-border/60 bg-card/95 px-6 py-3 backdrop-blur-md">
             <div className="flex items-center justify-between gap-3">
               <Button
