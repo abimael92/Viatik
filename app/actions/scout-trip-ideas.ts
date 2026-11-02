@@ -20,6 +20,10 @@ import {
   routeSignature,
 } from "@/features/trip-planner/domain/scout-flight-route";
 import {
+  selectFallbackCategory,
+  type ScoutVibeCategory,
+} from "@/features/trip-planner/domain/scout-vibe-category";
+import {
   MAX_MINOR_UNITS,
   decimalFromMinorUnits,
   getCurrencyExponent,
@@ -517,7 +521,7 @@ function normalizeSuggestionsPayload(raw: unknown): unknown {
  * Deterministic fallback: curated destinations ranked by how closely they fit.
  * ------------------------------------------------------------------------- */
 
-type VibeCategory = "beach" | "city" | "nature" | "food" | "default";
+type VibeCategory = ScoutVibeCategory;
 type SeasonNote = "dry" | "mild" | "warm" | "cool" | "any";
 
 type FallbackSeed = {
@@ -598,26 +602,6 @@ const SEASON_NOTE: Record<SeasonNote, Record<"en" | "es", string>> = {
   cool: { en: "cooler days", es: "días frescos" },
   any: { en: "good year-round", es: "bueno todo el año" },
 };
-
-function selectFallbackCategory(vibe: string): VibeCategory {
-  if (
-    /\b(beach|coast|coastal|island|ocean|sea|resort|tropical|sun|surf|water|waterside|shore|seaside)\b/i.test(
-      vibe
-    )
-  ) {
-    return "beach";
-  }
-  if (/\b(nature|mountain|mountains|hike|hiking|forest|park|fresh air|outdoors|outdoor|scenic|lake|trail)\b/i.test(vibe)) {
-    return "nature";
-  }
-  if (/\b(food|foodie|culinary|eat|dining|wine|coffee|cafe|market|ramen|tacos|bakery)\b/i.test(vibe)) {
-    return "food";
-  }
-  if (/\b(city|urban|nightlife|museum|museums|art|architecture|lively|metro|shopping)\b/i.test(vibe)) {
-    return "city";
-  }
-  return "default";
-}
 
 function formatSeason(
   seed: FallbackSeed,

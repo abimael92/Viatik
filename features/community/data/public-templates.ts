@@ -19,6 +19,17 @@ export interface PublicTripTemplate {
   tags: string[];
   /** Sum of activity estimated costs + a small buffer, shown as a template budget. */
   budgetMinor: bigint;
+  /** Trip length in days, as authored by the template owner. */
+  durationDays: number;
+  /**
+   * Historical cost baselines in whole units of `baseCurrency`, used to price
+   * the whole trip (flights + stay + daily spending) before a traveler commits.
+   */
+  cost: {
+    flightPerPerson: number;
+    dailyPerPerson: number;
+    hotelPerNight: number;
+  };
   source: TripCloneSource;
 }
 
@@ -48,6 +59,12 @@ interface TemplateSpec {
   tags: string[];
   startDate: string; // yyyy-mm-dd
   durationDays: number;
+  /** Whole units of `baseCurrency`. */
+  cost: {
+    flightPerPerson: number;
+    dailyPerPerson: number;
+    hotelPerNight: number;
+  };
   days: TemplateDay[];
 }
 
@@ -140,6 +157,7 @@ const SPECS: TemplateSpec[] = [
     tags: ["culture", "food", "slow-travel"],
     startDate: "2026-04-05",
     durationDays: 5,
+    cost: { flightPerPerson: 1050, dailyPerPerson: 95, hotelPerNight: 200 },
     days: [
       {
         title: "Arrival & Old Town",
@@ -181,6 +199,7 @@ const SPECS: TemplateSpec[] = [
     tags: ["city", "food", "weekend"],
     startDate: "2026-05-18",
     durationDays: 3,
+    cost: { flightPerPerson: 720, dailyPerPerson: 95, hotelPerNight: 190 },
     days: [
       {
         title: "Old Lisbon",
@@ -214,6 +233,7 @@ const SPECS: TemplateSpec[] = [
     tags: ["adventure", "outdoors", "trekking"],
     startDate: "2026-11-02",
     durationDays: 6,
+    cost: { flightPerPerson: 1200, dailyPerPerson: 110, hotelPerNight: 180 },
     days: [
       {
         title: "Base & Refugio",
@@ -254,6 +274,7 @@ const SPECS: TemplateSpec[] = [
     tags: ["food", "city", "nightlife"],
     startDate: "2026-06-12",
     durationDays: 4,
+    cost: { flightPerPerson: 1100, dailyPerPerson: 110, hotelPerNight: 220 },
     days: [
       {
         title: "Shibuya & Shinjuku",
@@ -269,6 +290,48 @@ const SPECS: TemplateSpec[] = [
           { time: "06:30", title: "Tsukiji outer market breakfast", location: "Tsukiji", category: "food" },
           { time: "10:00", title: "Ginza depachika food halls", location: "Ginza", category: "food" },
           { time: "18:30", title: "Sushi omakase dinner", location: "Ginza", category: "food" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "marrakech-atlas",
+    name: "Marrakech & the Atlas",
+    description: "Souks, rooftop mint tea and a High Atlas day trip across five days.",
+    destination: "Marrakech, Morocco",
+    authorName: "Yasmine El Amrani",
+    likes: 1342,
+    forks: 468,
+    gradient: "bg-linear-to-br from-amber-500 via-orange-600 to-rose-700",
+    baseCurrency: "USD",
+    timeZone: "Africa/Casablanca",
+    tags: ["culture", "adventure", "food"],
+    startDate: "2026-10-14",
+    durationDays: 5,
+    cost: { flightPerPerson: 720, dailyPerPerson: 70, hotelPerNight: 150 },
+    days: [
+      {
+        title: "Medina & Souks",
+        activities: [
+          { time: "10:00", title: "Check in at a riad inside the medina", category: "logistics" },
+          { time: "12:30", title: "Lunch at Jemaa el-Fna stalls", location: "Jemaa el-Fna", category: "food" },
+          { time: "17:00", title: "Souk Semmarine bargaining walk", location: "Medina", category: "culture" },
+        ],
+      },
+      {
+        title: "Palaces & Gardens",
+        activities: [
+          { time: "09:00", title: "Bahia Palace and Saadian Tombs", category: "culture" },
+          { time: "13:00", title: "Mint tea at a rooftop café", location: "Medina", category: "food" },
+          { time: "16:00", title: "Jardin Majorelle and YSL museum", location: "Gueliz", category: "culture" },
+        ],
+      },
+      {
+        title: "High Atlas Day Trip",
+        activities: [
+          { time: "08:00", title: "Drive to Imlil trailhead", location: "Imlil", category: "logistics" },
+          { time: "10:30", title: "Village hike with a local guide", category: "adventure" },
+          { time: "15:00", title: "Tagine lunch by the river", category: "food" },
         ],
       },
     ],
@@ -292,6 +355,8 @@ export const publicTemplates: PublicTripTemplate[] = SPECS.map((spec) => {
     baseCurrency: spec.baseCurrency,
     tags: spec.tags,
     budgetMinor,
+    durationDays: spec.durationDays,
+    cost: spec.cost,
     source,
   };
 });
