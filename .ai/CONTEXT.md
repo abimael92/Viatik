@@ -66,6 +66,9 @@ pnpm test:e2e       # Playwright
 pnpm lint           # ESLint
 pnpm typecheck      # tsc --noEmit
 pnpm build          # production build
+pnpm agent:verify   # lint + typecheck + full Vitest (the one-command gate)
+pnpm agent:schema   # additive Dexie migrations + outbox write guard
+pnpm agent:audit-i18n  # raw copy in TSX + en/es parity
 supabase start      # local Supabase stack
 supabase db reset   # recreate local DB + apply migrations
 ```
