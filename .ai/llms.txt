@@ -161,6 +161,8 @@ For the current Viatik implementation, agents must additionally inspect:
 | [`skills/ui-component-generator.md`](./skills/ui-component-generator.md) | UI-building protocol (`READ→SCAN→ASSEMBLE→TEST`) | Constitution, agents, design system |
 | [`specs/design-system.md`](./specs/design-system.md) | UI tokens, surfaces, component conventions | UI skill, globals.css, agents |
 | [`llms.txt`](./llms.txt) | Framework entry point and workflow | All framework files |
+| [`../.agents/skills/README.md`](../.agents/skills/README.md) | Agent skill cards + guard scripts (`pnpm agent:*`) | Root `AGENTS.md` §10, `memory/MEMORY.md` |
+| [`../.agents/mcp.md`](../.agents/mcp.md) | MCP servers, version pins, trust and disable steps | `mcp.json`, root `AGENTS.md` §10 |
 
 ## Placeholder Policy
 
