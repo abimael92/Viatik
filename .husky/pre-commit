@@ -1,4 +1,7 @@
 #!/usr/bin/env sh
 export PATH="/opt/homebrew/bin:$PATH"
 
-pnpm lint && pnpm typecheck
+# Staged files first (fast feedback), then the full repo-wide gate. The full
+# lint and typecheck are kept so a commit cannot land on a tree that fails the
+# same checks `pnpm agent:verify` runs. See .ai/specs/agent-tooling-ecosystem.md.
+pnpm exec lint-staged && pnpm lint && pnpm typecheck

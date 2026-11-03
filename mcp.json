@@ -1,0 +1,25 @@
+{
+  "$comment": "Portable MCP manifest for this repository. Trust notes, version pins and the disable procedure live in .agents/mcp.md. Never add env/API keys here — they belong in a client's user-level or gitignored local config.",
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@0.0.84", "--headless", "--isolated"]
+    },
+    "git": {
+      "command": "npx",
+      "args": ["-y", "@cyanheads/git-mcp-server@2.15.3"]
+    },
+    "codegraph": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@astudioplus/codegraph-mcp@0.21.0",
+        "--workspace",
+        ".",
+        "--profile",
+        "graph",
+        "--graph-only"
+      ]
+    }
+  }
+}

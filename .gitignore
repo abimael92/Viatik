@@ -69,3 +69,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+
+# Agent tooling
+# repomix writes a full-source snapshot; it must never be committed.
+.ai/codebase-snapshot.xml
+# Personal MCP overrides can hold API keys.
+.devin/mcp_config.local.json
+.cursor/mcp.local.json

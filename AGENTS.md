@@ -98,6 +98,8 @@ supabase/       migrations/, functions/, config.toml, *-security.test.ts
 e2e/            Playwright specs
 memory/         persistent agent memory (this system)
 .ai/            constitution, agents, specs, skills, templates
+.agents/        agent skills (cards + guard scripts), MCP trust notes
+mcp.json        portable MCP server manifest (.cursor/mcp.json mirrors it)
 ```
 
 ## 5. Standard verification (run before claiming completion)
@@ -111,10 +113,26 @@ pnpm build            # next build (21 routes)
 pnpm test:e2e         # playwright (when touching flows covered by e2e/)
 ```
 
+The one-command gate — lint, typecheck, and the full suite:
+
+```bash
+pnpm agent:verify     # pnpm lint && pnpm typecheck && pnpm test
+```
+
+Two guards cover rules that lint and tests cannot see:
+
+```bash
+pnpm agent:schema       # additive Dexie migrations + no outbox writes outside lib/sync
+pnpm agent:audit-i18n   # raw copy in TSX + en/es parity
+pnpm agent:test:affected  # only the suites that cover this diff (--dry-run to plan)
+```
+
 - Run lint, typecheck, and the **relevant** tests for every change; run `pnpm build`
   for routing/server-component/schema changes.
 - Never report a command as passing unless it was actually run in this session.
-- Husky pre-commit (`.husky/pre-commit`) runs `pnpm lint && pnpm typecheck`.
+- Husky pre-commit (`.husky/pre-commit`) runs `lint-staged` on the staged files,
+  then `pnpm lint && pnpm typecheck` repo-wide. Full lint is kept on purpose: the
+  repository has no CI, so the hook is the only enforcement point.
 - Baseline at 2026-10-22: all four commands pass with no warnings.
 
 ## 6. Change protocols
@@ -192,3 +210,135 @@ Before touching anything that already ships:
 
 A task that says "remove X" authorizes removing X only — not its neighbours,
 helpers, or the copy it no longer appears to use.
+
+## 10. Agent skills, MCP, and the context map
+
+Prose states the rule; the scripts under `.agents/skills/` check it. Prefer running
+the guard over re-deriving the rule from the codebase.
+
+| Skill | Card | Command |
+|---|---|---|
+| Spec first | [`.agents/skills/spec-design.md`](.agents/skills/spec-design.md) | — (writing gate) |
+| Dexie guardian | [`.agents/skills/db-guardian.md`](.agents/skills/db-guardian.md) | `pnpm agent:schema` |
+| i18n checker | [`.agents/skills/README.md`](.agents/skills/README.md) | `pnpm agent:audit-i18n` |
+| Visual UI reviewer | [`.agents/skills/ui-standards.md`](.agents/skills/ui-standards.md) | `pnpm agent:audit-i18n` |
+| Smart test runner | [`.agents/skills/README.md`](.agents/skills/README.md) | `pnpm agent:test:affected` |
+| Session closer | [`.agents/skills/session-close.md`](.agents/skills/session-close.md) | `pnpm agent:verify` |
+
+Index: [`.agents/skills/README.md`](.agents/skills/README.md). Each skill also has
+an agent-discoverable `.agents/skills/<skill>/SKILL.md` wrapper (the `.agents`
+skills standard, read by Devin CLI, Claude Code, Cursor, and others). The card is
+the source of truth; the wrapper is frontmatter plus a pointer.
+
+### Context map — read the smallest file that answers the question
+
+| Need | File |
+|---|---|
+| Fast snapshot: stack, auth, features, commands | [`.ai/CONTEXT.md`](.ai/CONTEXT.md) |
+| Non-negotiable rules | [`.ai/constitution.md`](.ai/constitution.md) |
+| Roles and handoffs | [`.ai/AGENTS.md`](.ai/AGENTS.md) |
+| Durable memory, invariants, session log | [`memory/MEMORY.md`](memory/MEMORY.md) |
+| Schema, sync, migrations | [`memory/data-models.md`](memory/data-models.md) |
+| UI, hooks, design tokens | [`memory/components-ui.md`](memory/components-ui.md) |
+| Roles, permissions, RLS | [`memory/roles-abilities.md`](memory/roles-abilities.md) |
+| UI tokens and surfaces | [`.ai/specs/design-system.md`](.ai/specs/design-system.md) |
+| Bug-derived invariants | [`.ai/specs/bug-ledger.md`](.ai/specs/bug-ledger.md) |
+| MCP servers, trust, disable steps | [`.agents/mcp.md`](.agents/mcp.md) |
+
+### MCP
+
+`mcp.json` is the portable manifest; `.cursor/mcp.json` mirrors it. Servers are
+pinned to exact versions and carry no secrets. Read
+[`.agents/mcp.md`](.agents/mcp.md) before enabling `codegraph` — it downloads a
+native engine on first start. MCP access never overrides §3 or §8: no
+force-pushes, no direct Supabase domain writes, no commits with secrets.
+
+### Memory loop
+
+[`memory/MEMORY.md`](memory/MEMORY.md) §7 is the session log (newest first) and §8
+is the system component/data-flow reference. Dedupe before adding: update the
+existing entry when the discovery is the same, and bump `Last updated` at the top.
+
+## 11. Mandatory agent skills lifecycle
+
+Every task runs through six phases. The phase skills are installed from the open
+community registry with the Skills CLI (`npx skills`, recorded in
+[`skills-lock.json`](skills-lock.json)); the local cards and guards in
+[`.agents/skills/`](.agents/skills/README.md) enforce the Viatik-specific rules
+inside each phase. **When a third-party skill and this repository disagree, this
+repository wins** — the constitution, §3 invariants, and §9 removal gate are not
+overridable by a skill.
+
+| Phase | Skills | Viatik gate |
+|---|---|---|
+| 1. Scope & spec | `to-spec` · `domain-modeling` · `spec-first-design` | spec in `.ai/specs/<feature>.md` before code |
+| 2. Plan | `writing-plans` · `executing-plans` | ordered checklist with file refs + test gates |
+| 3. Implement | `frontend-design` · `tdd` · `implement` · `visual-ui-reviewer` | failing test first; `TransactionContext.append()` |
+| 4. Debug | `systematic-debugging` · `diagnosing-bugs` | reproduction before any fix |
+| 5. Verify | `verification-before-completion` · `smart-test-runner` | `pnpm agent:verify` + `agent:schema` + `agent:audit-i18n` |
+| 6. Handoff | `handoff` · `code-review` · `git-session-closer` | `memory/MEMORY.md` entry + conventional commit |
+
+**Phase 1 — Scope & spec.** For any new feature or substantial change, invoke
+`to-spec` and `domain-modeling`. Write the technical specification to
+`.ai/specs/<feature-name>.md` and state the entity impact before touching code:
+Dexie tables/indexes (schema v50 as of 2026-11-02), Supabase tables + RLS
+policies, `SYNC_TABLE_DEFINITIONS` / `OutboxEntityType`, and which tables are
+local-only. Viatik's §9 removal inventory still applies.
+
+**Phase 2 — Plan.** Invoke `writing-plans` to produce an ordered checklist with
+file references and a test gate per stage, then `executing-plans` to work through
+it. A plan that skips the failing-test gate is not a plan.
+
+**Phase 3 — Implementation & design.** UI work: apply `frontend-design` **and**
+the local [`ui-standards.md`](.agents/skills/ui-standards.md) card — ≥44px touch
+targets, Radix `aria-expanded`/`aria-controls`, Tailwind v4 `@theme` tokens from
+`app/globals.css`, no `tailwind.config.ts`. Logic and data: follow `tdd` (failing
+Vitest test first, then the minimal implementation). Every domain write goes
+through `TransactionContext.runInTransaction(...)` + `append()`; money is `bigint`
+minor units; databases stay isolated per user (`viatik_<userId>` /
+`viatik_anonymous`).
+
+**Phase 4 — Debugging.** On any failure, apply `systematic-debugging` or
+`diagnosing-bugs`. Speculative fixes are prohibited: reproduce, isolate, explain
+the root cause, then patch. Record a durable invariant in
+`.ai/specs/bug-ledger.md` when the bug teaches something permanent.
+
+**Phase 5 — Verification gate (mandatory).** Run `verification-before-completion`
+before claiming anything is done, fixed, or passing. You must actually run:
+
+```bash
+pnpm agent:verify        # pnpm lint && pnpm typecheck && pnpm test
+pnpm agent:schema        # additive Dexie migrations + outbox write guard
+pnpm agent:audit-i18n    # raw copy in TSX + en/es parity
+```
+
+Plus `pnpm build` for routing, server-component, or schema changes. Report only
+commands that ran in this session, with their numbers.
+
+**Phase 6 — Session handoff & memory loop.** Run `handoff` and `code-review` over
+the staged diff, then append what changed — new tables, components, gotchas — to
+`memory/MEMORY.md` §7 (dedupe first, bump `Last updated`), and commit with a
+conventional message describing the why.
+
+### Installed skills (pinned in `skills-lock.json`)
+
+| Source | Skills |
+|---|---|
+| `vercel-labs/skills` | `find-skills` |
+| `mattpocock/skills` | `to-spec` · `domain-modeling` · `tdd` · `implement` · `diagnosing-bugs` · `improve-codebase-architecture` · `code-review` · `handoff` |
+| `obra/superpowers` | `writing-plans` · `executing-plans` · `systematic-debugging` · `verification-before-completion` |
+| `anthropics/skills` | `frontend-design` |
+| this repository | `spec-first-design` · `dexie-schema-guardian` · `i18n-checker` · `visual-ui-reviewer` · `smart-test-runner` · `git-session-closer` |
+
+Management:
+
+```bash
+pnpm skills:list     # what is installed, and from where
+pnpm skills:update   # bump to upstream latest — review the diff before committing
+npx skills find      # search the registry for a new skill
+```
+
+Skills are third-party instructions that run with full agent permissions. They
+are reviewed at install time, pinned by content hash in `skills-lock.json`, and
+installed into `.agents/skills/` only (no `.claude/`, no per-agent copies).
+Re-read a skill's `SKILL.md` before trusting an update.
