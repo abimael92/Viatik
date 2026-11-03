@@ -4,9 +4,23 @@
 > before exploring the codebase; update it before ending a task.
 > **Companions:** [`data-models.md`](data-models.md) ·
 > [`components-ui.md`](components-ui.md) · [`roles-abilities.md`](roles-abilities.md)
+> **Last updated:** 2026-11-02 · schema v50 · agent skills suite + 14 community skills
 > **Last updated:** 2026-11-01 · schema v49 · 243 test files / 1,654 tests
 > **Last updated:** 2026-10-31 · schema v48 · 239 test files / 1,629 tests
 > **Last updated:** 2026-10-30 · schema v48 · 232 test files / 1,568 tests
+
+> **Section map.** Other agent frameworks ask for four canonical memory sections.
+> This file has always been organized slightly differently; the mapping is:
+>
+> | Canonical name | Section here |
+> |---|---|
+> | Project Domain & Architecture Invariants | §1 Project identity · §2 Architectural invariants |
+> | System Component & Data Flow Reference | §8 (added 2026-11-02) · §3 Current state snapshot · §6 Where to look first |
+> | Session Changelog & Context History | §7 Session log (newest first) |
+> | Known Gotchas, Quirks & Framework Exceptions | §5 Known gotchas & quirks |
+>
+> Sections were not renamed: other files cite them by number, and renaming would
+> relocate content no task asked to move. See `AGENTS.md` §9.
 
 ---
 
@@ -190,6 +204,116 @@ Also update the topic file whose subject changed:
 ---
 
 ## 7. Session log (newest first)
+
+### 2026-11-02 — Community skills installed via the Skills CLI + six-phase lifecycle
+
+- **Changed:** 14 community skills installed into `.agents/skills/<name>/` with
+  `npx skills@1.7.4 add <repo> --skill <names> -a universal -y`:
+  `find-skills` (vercel-labs/skills); `to-spec`, `domain-modeling`, `tdd`,
+  `implement`, `diagnosing-bugs`, `improve-codebase-architecture`, `code-review`,
+  `handoff` (mattpocock/skills); `writing-plans`, `executing-plans`,
+  `systematic-debugging`, `verification-before-completion` (obra/superpowers);
+  `frontend-design` (anthropics/skills). `skills-lock.json` (14 entries, each
+  pinned by `computedHash`). `package.json` gained `skills:list` / `skills:update`
+  (`agent:verify` already existed — not duplicated). `AGENTS.md` gained §11, the
+  mandatory six-phase lifecycle plus an installed-skills table.
+  `.agents/skills/README.md` documents the community set and the rules for
+  trusting updates. `tsconfig.json` now lists `.agents/skills/verify-schema.ts`
+  explicitly (see Gotchas).
+- **Schema:** none (Dexie v50 is current — the task brief said v47; the code is
+  the authority).
+- **Verification:** `pnpm lint` ✅ · `pnpm typecheck` ✅ (and the guard is now
+  genuinely in the type graph — `tsc --listFiles` lists it) · `pnpm test` **243
+  files / 1,654 tests, 3 failing** in
+  `features/trips/components/home/home-page.test.tsx` — **pre-existing and
+  time-zone dependent, not caused by this change**: `TZ=UTC pnpm exec vitest run
+  <that file>` → 13/13 pass. Cause below. `pnpm agent:verify` therefore exits 1
+  at this hour; lint and typecheck are green.
+- **Gotchas:**
+  - **`**/*.ts` in `tsconfig.json` does not traverse dot-directories.** The
+    `verify-schema.ts` guard was never typechecked even though `pnpm typecheck`
+    passed; `tsc --listFiles` showed no `.agents/` entry. Fixed by adding the file
+    to `include` explicitly (only our guard — the third-party `.ts` payloads stay
+    out). ESLint *does* traverse `.agents/` and lints it clean.
+  - **`home-page.test.tsx` fails every day between 18:00 and 24:00 CST.** Three
+    tests (`composes the hero…`, `renders active trip action links…`,
+    `offers Start trip seven days before departure`) mix local getters
+    (`getFullYear/getMonth/getDate`) with `setUTCDate` + `toISOString()`. Once the
+    UTC date rolls past the local date, a trip "+7 days" reads as 8 days out and
+    the `Start trip` button never renders. Not fixed here (unrelated to this
+    change, and §9 forbids trading tests to go green) — the fix is to build those
+    date keys from local components like the neighbouring tests do.
+  - Skills CLI facts: `-a universal` writes real copies into `.agents/skills/`
+    and creates **no** `.claude/` symlinks (the default install does create
+    `.claude/skills/*` and skips Devin/Windsurf when their dirs are absent).
+    It produces `skills-lock.json` only — **there is no `.skills.json`** in 1.7.4
+    or 1.7.5. It sends telemetry unless `DISABLE_TELEMETRY=1` / `DO_NOT_TRACK=1`.
+    Installs were run pinned to `1.7.4` because `1.7.5` was published hours before.
+  - `pnpm skills:list` labels this repo's own six skills as source `local` — that
+    is expected, not a broken install.
+  - Installed skills ship non-markdown payloads (a `.ts` example, `.sh` scripts,
+    `agents/openai.yaml`). They are lint-clean but outside the type graph; do not
+    copy them into `app/`, `lib/`, or `features/`.
+  - The previous commit in this branch (`chore(agents): establish enterprise AI
+    skills suite…`) was dropped by an external `git reset HEAD~` between turns —
+    `git reflog` shows it. Its files were re-committed with this change.
+
+
+### 2026-11-02 — Agent skills suite, MCP manifest, and context engine
+
+- **Changed:** new `.agents/` tree — six instruction cards (`spec-design.md`,
+  `db-guardian.md`, `ui-standards.md`, `session-close.md`, index `README.md`),
+  three dependency-free guards (`verify-schema.ts`, `i18n-audit.sh`,
+  `test-runner.sh`), and six agent-discoverable wrappers at
+  `.agents/skills/<skill>/SKILL.md`. `mcp.json` + `.cursor/mcp.json` (playwright,
+  git, codegraph — exact pins, no secrets) and `.agents/mcp.md` (trust + disable
+  steps). `lint-staged.config.mjs`, `.husky/pre-commit` now runs
+  `pnpm exec lint-staged && pnpm lint && pnpm typecheck`. `package.json` gained
+  `agent:verify`, `agent:schema`, `agent:audit-i18n`, `agent:test:affected`,
+  `repomix:pack`. `CLAUDE.md` imports `AGENTS.md` + `memory/MEMORY.md`.
+  `AGENTS.md` §4/§5 gained the one-command gate and §10 the skill/context/MCP map.
+  This file gained the section map at the top and §8 (system component &
+  data-flow reference). `.gitignore` covers `.ai/codebase-snapshot.xml` and local
+  MCP overrides. Spec: `.ai/specs/agent-tooling-ecosystem.md`.
+- **Deps:** `lint-staged@17.6.0`, `@vitest/coverage-v8@4.1.11` (exact, matches
+  `vitest@4.1.11`; `pnpm peers check` clean). No runtime dependency added.
+- **Schema:** none. `lib/db/dexie.ts` untouched (v50 is still the latest).
+- **Verification:** `pnpm agent:verify` ✅ (lint, typecheck, 243 files / 1,654
+  tests — 1,651 pass, 3 skipped) · `pnpm build` ✅ · `pnpm agent:schema` ✅ ·
+  `pnpm agent:audit-i18n` ✅ (i18n parity suite green) ·
+  `test-runner.sh --full --coverage` ✅ 75.18% lines, baseline written to
+  `.agents/skills/coverage-baseline.json` · each guard also exercised against a
+  deliberately broken tree (see Gotchas).
+- **Gotchas:**
+  - **Three requested MCP packages do not exist** (`@codegraph/mcp-server`,
+    `@modelcontextprotocol/server-git`, `@modelcontextprotocol/server-playwright`
+    → all 404 on npm). Shipped instead: `@astudioplus/codegraph-mcp@0.21.0`,
+    `@cyanheads/git-mcp-server@2.15.3`, `@playwright/mcp@0.0.84`. The git server
+    was smoke-tested over stdio (28 tools); codegraph was **not** run — it
+    downloads a native engine on first start.
+  - **`verify-schema.ts` must slice a version block through its chained
+    `.stores(...)` / `.upgrade(...)`.** The first implementation stopped at
+    `this.version(N)`'s own `)`, so editing an index string passed silently. It
+    now walks parens with a string/comment-aware scanner; verified against a
+    mutated `v1` index (fails), an appended `v51` (passes), a `v53` gap (fails),
+    and a probe repository calling `outboxMutations.add` (fails).
+  - **`.agents/skills/<name>/SKILL.md` is the discoverable layout** (the `.agents`
+    skills standard Devin CLI/Claude/Cursor read); the flat `.agents/skills/*.md`
+    cards are the source of truth and the wrappers only point at them. A flat
+    `.md` alone is not auto-discovered.
+  - Node runs the TS guard through native type stripping but prints
+    `MODULE_TYPELESS_PACKAGE_JSON`; the `agent:schema` script passes
+    `--disable-warning=MODULE_TYPELESS_PACKAGE_JSON` instead of adding
+    `"type": "module"` to `package.json` (which would break the CommonJS scripts).
+  - macOS `/bin/bash` is 3.2: no `mapfile`, no associative arrays, and `set -u`
+    breaks empty array expansion. Both shell scripts avoid arrays entirely.
+  - **Coverage is only gated on full-suite runs.** Comparing a subset run against
+    a whole-repo baseline would report false regressions, so `test-runner.sh`
+    reports subset coverage without failing.
+  - The full lint is deliberately kept in `pre-commit` after `lint-staged`: this
+    repo has no CI workflow, so the hook is the only enforcement point. Removing
+    it would weaken the gate.
+
 
 ### 2026-11-01 — Home travel ideas: five community cards with real trip details
 
@@ -764,3 +888,41 @@ Also update the topic file whose subject changed:
 - **Gotchas:** documented in §5. Notable: `proxy.ts` replaces middleware;
   Vitest excludes two home-trips tests; invitation accept/reject is remote-first;
   `mediaTranscripts` PK is `mediaId`.
+
+---
+
+## 8. System component & data-flow reference
+
+Where a write goes, end to end. Read this before tracing a bug across layers.
+
+```text
+UI (client component)
+  └─ useLiveQuery / watch*            ← features/*/data/dexie-*-repository.ts
+       └─ TransactionContext.runInTransaction(...)      lib/db/transaction-context.ts
+            ├─ domain table write     (Dexie, source of truth)
+            └─ append(entityType, op, data)             lib/sync/outbox-transactional.ts
+                 └─ outboxMutations row  ← only lib/sync writes here
+                      └─ SyncEngine      lib/sync/engine.ts
+                           └─ CAS RPC    supabase/migrations/*.sql  (RLS enforced)
+                                └─ pull by updated_at cursor → mappers → Dexie
+                                     └─ Realtime per table → other tabs/devices
+```
+
+| Stage | Owns | Never does |
+|---|---|---|
+| `app/` routes, `(app)` shell | auth gating, server components, redirects | touch Dexie; import repositories |
+| `features/*/components` | rendering, `t()` copy, `canEdit` UX | query Supabase domain tables |
+| `features/*/data/dexie-*-repository.ts` | every domain read/write, `watch*` | write `outboxMutations` directly |
+| `lib/db/` | Dexie schema, versions, `TransactionContext`, per-user DB names | hold domain rules |
+| `lib/sync/` | outbox, retries, lease, conflict resolution | decide permissions |
+| `lib/supabase/` | clients, mappers, auth/profile RPCs | be imported by server components for domain data |
+| `supabase/migrations/` | tables, RLS policies, CAS RPCs | be skipped for a synced Dexie change |
+
+**Failure path.** A failed push keeps the row local and retries 5× with
+1/5/15/30/60s backoff; an RLS error resets the attempt counter instead of
+exhausting it; a missing remote table is skipped with a warning, so an unapplied
+migration never blocks the app. Conflicts auto-resolve remote-wins.
+
+**Entry points when lost.** `lib/db/dexie.ts` (schema) · `lib/sync/outbox.ts` and
+`lib/sync/engine.ts` (sync) · `features/domain/entities.ts` (types) ·
+`features/domain/money.ts` (money) · `supabase/migrations/` (authorization).
