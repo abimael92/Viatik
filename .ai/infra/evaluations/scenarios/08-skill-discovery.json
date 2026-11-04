@@ -1,0 +1,29 @@
+{
+  "id": "skill-discovery",
+  "title": "Pick the skill that matches the phase instead of improvising",
+  "category": "skill-selection",
+  "prompt": "A test started failing after a repository change; find the cause and fix it.",
+  "initialContext": ["AGENTS.md §11", ".agents/skills/README.md", "skills-lock.json"],
+  "expectedBehavior": [
+    "Use systematic-debugging or diagnosing-bugs to reproduce before patching",
+    "Use tdd for the regression test",
+    "Use smart-test-runner to select suites and verification-before-completion before claiming success",
+    "Prefer a local card when a third-party skill disagrees with AGENTS.md"
+  ],
+  "prohibitedBehavior": [
+    "Guessing at a fix without a reproduction",
+    "Skipping the failing test or marking it todo",
+    "Installing a new skill without reviewing it and pinning it in skills-lock.json"
+  ],
+  "criteria": [
+    "The chosen skills match the phase",
+    "The reproduction precedes the patch",
+    "No unpinned skill is added"
+  ],
+  "deterministicChecks": [
+    { "type": "file-exists", "path": ".agents/skills/README.md" },
+    { "type": "file-exists", "path": "skills-lock.json" },
+    { "type": "file-contains", "path": "AGENTS.md", "pattern": "Mandatory agent skills lifecycle" },
+    { "type": "json-field", "path": "skills-lock.json", "field": "skills" }
+  ]
+}

@@ -58,9 +58,14 @@ pnpm agent:schema                                  # node .agents/skills/verify-
 pnpm agent:audit-i18n                              # bash .agents/skills/i18n-audit.sh
 pnpm agent:test:affected                           # bash .agents/skills/test-runner.sh
 pnpm agent:test:affected --full --coverage         # whole suite + coverage gate
+pnpm agent:test:affected --health                  # + ingest the test-health ledger
 pnpm skills:list                                   # installed community skills
 pnpm repomix:pack                                  # .ai/codebase-snapshot.xml (gitignored)
 ```
+
+The infrastructure checks (`pnpm agent:infra`, `agent:drift`, `agent:security`,
+`agent:context`, `agent:eval`, …) live in [`.ai/infra/`](../../.ai/infra/README.md)
+and are documented in `AGENTS.md` §12.
 
 Direct invocation works too and takes the same flags:
 

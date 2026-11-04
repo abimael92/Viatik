@@ -4,6 +4,7 @@
 > before exploring the codebase; update it before ending a task.
 > **Companions:** [`data-models.md`](data-models.md) ·
 > [`components-ui.md`](components-ui.md) · [`roles-abilities.md`](roles-abilities.md)
+> **Last updated:** 2026-11-03 · schema v50 · AI infrastructure quality layer (validation, drift, security, evaluations)
 > **Last updated:** 2026-11-02 · schema v50 · agent skills suite + 14 community skills
 > **Last updated:** 2026-11-01 · schema v49 · 243 test files / 1,654 tests
 > **Last updated:** 2026-10-31 · schema v48 · 239 test files / 1,629 tests
@@ -204,6 +205,64 @@ Also update the topic file whose subject changed:
 ---
 
 ## 7. Session log (newest first)
+
+### 2026-11-03 — AI infrastructure quality layer (validation, drift, security, evaluations)
+
+- **Changed:** new `.ai/infra/` layer — 9 dependency-free scripts under
+  `.ai/infra/scripts/` (`validate-infra`, `drift-report`, `security-audit`,
+  `context-manifest`, `delegate`, `usage-log`, `test-health`, `review-checklist`,
+  `run-evaluations`) plus `lib.mjs`; 6 Vitest suites (39 tests); 6 documents + evaluations README
+  (`README`, `permission-model`, `delegation-protocol`, `context-routing`,
+  `usage-observability`, `review-checklist`); 10 evaluation scenarios;
+  `drift-baseline.json` (one accepted finding). Spec:
+  `.ai/specs/ai-infra-quality-layer.md`. CI:
+  `.github/workflows/ai-infra.yml` (path-filtered; no CI existed before).
+  `package.json` gained 13 `agent:*` scripts (`agent:infra`, `agent:drift`,
+  `agent:security`, `agent:context`, `agent:impact`, `agent:delegate`,
+  `agent:usage`, `agent:test-health`, `agent:review`, `agent:eval`,
+  `agent:infra:probe`, `agent:infra:all`). `AGENTS.md` §12 added; `.ai/llms.txt`
+  and `.ai/CONTEXT.md` cross-references added; `.agents/skills/README.md`
+  command list extended; `.gitignore` ignores usage log, delegation claims,
+  test-health ledger and generated reports. `.agents/skills/test-runner.sh`
+  extended additively: `--health` writes a JSON report and ingests the ledger,
+  `.ai/infra/scripts/*` maps to its suites, and root plumbing (`.github/`,
+  `.husky/`, `.gitignore`, `mcp.json`, `skills-lock.json`) is skipped.
+  `memory/data-models.md` corrected from the stale schema v48 claim to v50.
+- **Schema:** none (Dexie stays v50; no Supabase change).
+- **Verification:** `pnpm lint` ✅ · `pnpm typecheck` ✅ ·
+  `pnpm exec vitest run .ai/infra` ✅ 6 files / 39 tests ·
+  `pnpm test` 249 files / 1,692 tests — **1,686 passed, 3 failed, 3 skipped**;
+  the 3 failures are the **pre-existing time-zone-dependent**
+  `features/trips/components/home/home-page.test.tsx` cases documented on
+  2026-11-02 (`TZ=UTC` → 13/13 pass) · `pnpm agent:schema` ✅ (v50, 17 append
+  sites) · `pnpm agent:audit-i18n` ✅ · `node .ai/infra/scripts/validate-infra.mjs`
+  ✅ · `drift-report` ✅ (1 known finding) · `security-audit` ✅ ·
+  `run-evaluations` ✅ 10/10 · `pnpm agent:infra:all` ✅ ·
+  `bash .agents/skills/test-runner.sh --health` ✅ (ingested 1,692 tests).
+  `pnpm build` not run: no routing, server-component or schema change.
+- **Gotchas:**
+  - **ESLint traverses `.ai/` and lints `.mjs` with the TypeScript rules.**
+    `pnpm lint` is `--max-warnings 0`, so every new script must be lint-clean
+    (no unused imports, no unused bindings).
+  - **Vitest rewrites `import.meta.url` to a non-file URL.** `lib.mjs` therefore
+    falls back to `process.cwd()` for `ROOT`; tests spawn scripts via
+    `path.join(process.cwd(), ".ai/infra/scripts", …)`, never `fileURLToPath`.
+  - **`test-runner.sh` used to treat every `.ai/*` file as documentation.** That
+    would silently run zero suites for this layer; the mapping now has an
+    explicit `.ai/infra/scripts/*` row. `package.json` still maps to the full
+    suite on purpose (a dependency change can affect anything).
+  - **The Skills CLI `computedHash` is not sha256(`SKILL.md`)** (verified
+    2026-11-03), so `validate-infra` checks lock provenance/presence and does
+    **not** claim content-hash verification.
+  - **Documented `SYNC_TABLE_DEFINITIONS` does not exist** — the implementation is
+    `const tableDefinitions` in `lib/sync/cloud-sync.ts`. It is recorded in
+    `drift-baseline.json` until 2027-02-03 rather than silently rewritten.
+  - **No AI provider telemetry exists.** `usage-log.mjs` records counts-only
+    data supplied by an agent or wrapper (`source: "manual"`) and never invents a
+    cost; the report prints cost coverage.
+  - Delegation claims are machine-local and gitignored: they coordinate agents in
+    one working tree, not across machines. `delegate.mjs` is coordination, not a
+    mutex (see `.ai/infra/permission-model.md`).
 
 ### 2026-11-02 — Community skills installed via the Skills CLI + six-phase lifecycle
 
@@ -926,3 +985,8 @@ migration never blocks the app. Conflicts auto-resolve remote-wins.
 **Entry points when lost.** `lib/db/dexie.ts` (schema) · `lib/sync/outbox.ts` and
 `lib/sync/engine.ts` (sync) · `features/domain/entities.ts` (types) ·
 `features/domain/money.ts` (money) · `supabase/migrations/` (authorization).
+
+**Agent-infrastructure checks.** `.ai/infra/` validates the instructions, skills,
+lockfile, MCP manifests, drift, security posture and evaluation scenarios
+(`pnpm agent:infra`, `agent:drift`, `agent:security`, `agent:eval`); the product
+gate remains `pnpm agent:verify`. See `AGENTS.md` §12.

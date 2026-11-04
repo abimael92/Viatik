@@ -10,6 +10,7 @@
 #   bash .agents/skills/test-runner.sh --full          # whole suite
 #   bash .agents/skills/test-runner.sh --full --coverage
 #   bash .agents/skills/test-runner.sh --full --coverage --update-baseline
+#   bash .agents/skills/test-runner.sh --health            # + ingest .ai/infra/test-health.json
 #
 # Exit 0 = green (or nothing to run), 1 = failures / coverage regression /
 # focused test found. Works on the bash 3.2 that ships with macOS: no arrays,
@@ -24,19 +25,21 @@ DRY_RUN=0
 FULL=0
 COVERAGE=0
 UPDATE_BASELINE=0
+HEALTH=0
 BASE="HEAD"
 while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run) DRY_RUN=1 ;;
     --full) FULL=1 ;;
     --coverage) COVERAGE=1 ;;
+    --health) HEALTH=1 ;;
     --update-baseline) UPDATE_BASELINE=1; COVERAGE=1; FULL=1 ;;
     --base)
       shift
       BASE="${1:-HEAD}"
       ;;
     -h | --help)
-      sed -n '2,17p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+      sed -n '2,15p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *)
@@ -97,6 +100,10 @@ unmapped=0
 while IFS= read -r file; do
   [ -z "$file" ] && continue
   case "$file" in
+    # Repository plumbing that cannot break a suite.
+    .github/* | .husky/* | .gitignore | mcp.json | skills-lock.json) continue ;;
+    # AI-infrastructure scripts carry their own Vitest suites.
+    .ai/infra/scripts/*) add_suite '^\.ai/infra/scripts/.*\.test\.mjs$' ;;
     # Documentation and agent metadata cannot break behavior.
     *.md | .ai/* | .agents/* | memory/*) continue ;;
     lib/db/*) add_suite '^lib/db/.*\.test\.ts$' ;;
@@ -121,12 +128,18 @@ if [ "$unmapped" -gt 0 ]; then
   FULL=1
 fi
 
+HEALTH_ARGS=""
+[ "$HEALTH" -eq 1 ] && HEALTH_ARGS="--reporter=json --outputFile=.ai/infra/.test-report.json"
+
 if [ "$FULL" -eq 1 ]; then
   echo "· plan: full suite (pnpm test)"
   [ "$DRY_RUN" -eq 1 ] && exit 0
   if [ "$COVERAGE" -eq 1 ]; then
     echo "· running: pnpm exec vitest run --coverage"
-    pnpm exec vitest run --coverage --coverage.reporter=json-summary --coverage.reportsDirectory=coverage
+    pnpm exec vitest run --coverage --coverage.reporter=json-summary --coverage.reportsDirectory=coverage $HEALTH_ARGS
+  elif [ "$HEALTH" -eq 1 ]; then
+    echo "· running: pnpm exec vitest run --reporter=json"
+    pnpm exec vitest run $HEALTH_ARGS
   else
     echo "· running: pnpm test"
     pnpm test
@@ -143,8 +156,14 @@ else
   sed 's/^/    /' "$SUITES"
   [ "$DRY_RUN" -eq 1 ] && exit 0
   echo "· running: pnpm exec vitest run <$suite_count files>"
-  xargs pnpm exec vitest run < "$SUITES"
+  xargs pnpm exec vitest run $HEALTH_ARGS < "$SUITES"
   status=$?
+fi
+
+# ---- test-health ledger (opt-in) ---------------------------------------------
+if [ "$HEALTH" -eq 1 ] && [ -f .ai/infra/.test-report.json ]; then
+  echo "· ingesting test-health report"
+  node .ai/infra/scripts/test-health.mjs ingest .ai/infra/.test-report.json || true
 fi
 
 # ---- coverage gate ------------------------------------------------------------

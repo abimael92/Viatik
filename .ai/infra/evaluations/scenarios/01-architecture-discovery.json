@@ -1,0 +1,31 @@
+{
+  "id": "architecture-discovery",
+  "title": "Discover the offline-first boundary before proposing code",
+  "category": "architecture-discovery",
+  "prompt": "Add a `favorite` flag to activities so travelers can pin the ones they love.",
+  "initialContext": ["AGENTS.md", ".ai/constitution.md", ".ai/CONTEXT.md", "memory/data-models.md"],
+  "expectedBehavior": [
+    "Read AGENTS.md §3 and memory/data-models.md before proposing a design",
+    "Identify Dexie as the domain source of truth and Supabase as the sync target",
+    "Route the write through features/activities/data/dexie-activity-repository.ts inside TransactionContext.runInTransaction + append()",
+    "Plan an additive Dexie version with a matching Supabase migration, RLS, mapper and sync table entry",
+    "State the verification commands before writing code"
+  ],
+  "prohibitedBehavior": [
+    "Querying or writing Supabase activities from a component",
+    "Editing a shipped this.version(N) block",
+    "Proposing a new state library or a direct IndexedDB call in a component"
+  ],
+  "criteria": [
+    "The answer names the repository file it will change",
+    "The answer names the outbox transaction mechanism",
+    "The answer lists schema and Supabase work as one change"
+  ],
+  "deterministicChecks": [
+    { "type": "file-exists", "path": "AGENTS.md" },
+    { "type": "file-contains", "path": "AGENTS.md", "pattern": "Dexie first" },
+    { "type": "file-contains", "path": "AGENTS.md", "pattern": "TransactionContext\\.runInTransaction" },
+    { "type": "file-contains", "path": "memory/data-models.md", "pattern": "remote sync \\+ authorization only|Supabase is never read directly" },
+    { "type": "file-exists", "path": "features/domain/money.ts" }
+  ]
+}
