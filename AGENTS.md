@@ -342,3 +342,41 @@ Skills are third-party instructions that run with full agent permissions. They
 are reviewed at install time, pinned by content hash in `skills-lock.json`, and
 installed into `.agents/skills/` only (no `.claude/`, no per-agent copies).
 Re-read a skill's `SKILL.md` before trusting an update.
+
+## 12. AI infrastructure quality layer
+
+`.ai/infra/` validates the infrastructure itself — the instructions, skills,
+manifests, memory and evaluation scenarios that this file depends on. It does not
+re-implement `pnpm agent:verify`, `agent:schema` or `agent:audit-i18n`; those stay
+the authorities for code. Index: [`.ai/infra/README.md`](.ai/infra/README.md).
+
+| Command | Answers |
+|---|---|
+| `pnpm agent:infra` | Are instruction files, links, skill frontmatter, `skills-lock.json` and the MCP manifests valid and consistent? |
+| `pnpm agent:drift` | Does the documentation still match `package.json`, the Dexie schema, documented commands and code symbols? |
+| `pnpm agent:security` | Secrets, unpinned MCP packages, unsafe shell in agent assets, over-broad guard permissions, skill provenance |
+| `pnpm agent:context` / `pnpm agent:impact` | What must I read, which skills apply, and which suites cover these files? |
+| `pnpm agent:delegate` | Which task owns which files right now? |
+| `pnpm agent:eval` | Do the ten agent-behavior scenarios still pass deterministically? |
+| `pnpm agent:review` | What evidence is missing before a reviewer reads the diff? |
+| `pnpm agent:test-health` | Repeated failures, flaky candidates, slow tests, duration trend |
+| `pnpm agent:usage` | Counts-only usage/cost report (opt-in; no provider telemetry exists) |
+| `pnpm agent:infra:all` | The CI job (validation + drift + security), runnable locally |
+
+Rules for this layer:
+
+- **Report, do not rewrite.** Drift findings are actionable output; no script
+  edits a document or restructures code.
+- **Accepted drift is explicit.** `.ai/infra/drift-baseline.json` entries need a
+  reason and an `expiresAt`; an expired entry fails again.
+- **Derive versions from configuration.** `package.json` and
+  `lib/db/dexie.ts` are the sources of truth; the checks compare the docs to them.
+- **No new dependencies and no mandatory LLM calls.** Node builtins only; the
+  model grader is opt-in (`--model-cmd`) and absent from CI.
+- **Permissions are documented honestly.** See
+  [`.ai/infra/permission-model.md`](.ai/infra/permission-model.md) for the split
+  between what a hook enforces and what is instruction only.
+- **Delegation is coordination, not a lock.** See
+  [`.ai/infra/delegation-protocol.md`](.ai/infra/delegation-protocol.md).
+- **CI covers infrastructure only.** `.github/workflows/ai-infra.yml` runs on
+  infrastructure path changes; the product gate remains `pnpm agent:verify`.

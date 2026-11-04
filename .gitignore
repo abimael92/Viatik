@@ -73,6 +73,13 @@ yarn-error.log*
 # Agent tooling
 # repomix writes a full-source snapshot; it must never be committed.
 .ai/codebase-snapshot.xml
+# AI-infrastructure local state: counts-only usage log, delegation claims,
+# test-health ledger, generated evaluation/test reports.
+.ai/infra/usage/
+.ai/infra/delegation/claims.json
+.ai/infra/test-health.json
+.ai/infra/.test-report.json
+.ai/infra/evaluations/results/
 # Personal MCP overrides can hold API keys.
 .devin/mcp_config.local.json
 .cursor/mcp.local.json
