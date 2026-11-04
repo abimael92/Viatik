@@ -1,12 +1,12 @@
 # Viatik Data Models & Offline Persistence
 
-> **Authoritative source:** [`lib/db/dexie.ts`](../lib/db/dexie.ts) (schema v48),
+> **Authoritative source:** [`lib/db/dexie.ts`](../lib/db/dexie.ts) (schema v50),
 > [`features/domain/entities.ts`](../features/domain/entities.ts) (domain types),
 > [`lib/sync/`](../lib/sync/) (outbox + sync engine), [`lib/supabase/mappers.ts`](../lib/supabase/mappers.ts)
 > (row ⇄ entity mapping). If this document and the code disagree, **the code wins** —
 > correct this file.
 >
-> Last audited: 2026-10-22 against Dexie schema version **48**.
+> Last audited: 2026-11-03 against Dexie schema version **50**.
 
 ## 1. Storage topology
 

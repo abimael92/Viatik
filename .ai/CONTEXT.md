@@ -69,6 +69,9 @@ pnpm build          # production build
 pnpm agent:verify   # lint + typecheck + full Vitest (the one-command gate)
 pnpm agent:schema   # additive Dexie migrations + outbox write guard
 pnpm agent:audit-i18n  # raw copy in TSX + en/es parity
+pnpm agent:infra    # validate instructions, skills, lockfile, MCP manifests
+pnpm agent:drift    # documentation vs package.json / Dexie schema / code
+pnpm agent:eval     # ten deterministic agent-behavior scenarios
 supabase start      # local Supabase stack
 supabase db reset   # recreate local DB + apply migrations
 ```
@@ -86,3 +89,4 @@ A change isn't done until `pnpm lint`, `pnpm typecheck`, relevant `pnpm test`, a
 - `app/(app)/settings/settings-client.tsx` — profile settings.
 - `app/(auth)/onboarding/onboarding-form.tsx` — traveler onboarding form.
 - `lib/sync/`, `lib/db/`, `lib/supabase/` — offline sync + persistence boundaries.
+- `.ai/infra/README.md` — agent-infrastructure validation, drift, security, context and evaluations.

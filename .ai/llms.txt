@@ -163,6 +163,8 @@ For the current Viatik implementation, agents must additionally inspect:
 | [`llms.txt`](./llms.txt) | Framework entry point and workflow | All framework files |
 | [`../.agents/skills/README.md`](../.agents/skills/README.md) | Agent skill cards + guard scripts (`pnpm agent:*`) | Root `AGENTS.md` §10, `memory/MEMORY.md` |
 | [`../.agents/mcp.md`](../.agents/mcp.md) | MCP servers, version pins, trust and disable steps | `mcp.json`, root `AGENTS.md` §10 |
+| [`infra/README.md`](./infra/README.md) | AI-infrastructure validation, drift, security, context, evaluations | Root `AGENTS.md` §12, `memory/MEMORY.md` |
+| [`infra/permission-model.md`](./infra/permission-model.md) | What is enforced by a hook vs. instruction only | `AGENTS.md` §8, `.ai/constitution.md` |
 
 ## Placeholder Policy
 

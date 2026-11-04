@@ -1,0 +1,76 @@
+name: AI infrastructure
+
+# Validates the agent layer — instructions, skills, lockfile, MCP manifests,
+# drift, security and evaluation scenarios — not the application. The product
+# gates stay local (`pnpm agent:verify`) until the repository adopts CI for them.
+on:
+  pull_request:
+    paths:
+      - "AGENTS.md"
+      - "CLAUDE.md"
+      - ".ai/**"
+      - ".agents/**"
+      - "memory/**"
+      - "mcp.json"
+      - ".cursor/mcp.json"
+      - "skills-lock.json"
+      - "package.json"
+      - ".github/workflows/ai-infra.yml"
+  push:
+    branches: [main]
+    paths:
+      - "AGENTS.md"
+      - "CLAUDE.md"
+      - ".ai/**"
+      - ".agents/**"
+      - "memory/**"
+      - "mcp.json"
+      - ".cursor/mcp.json"
+      - "skills-lock.json"
+      - "package.json"
+      - ".github/workflows/ai-infra.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-infra-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate agent infrastructure
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      # Node builtins only: no install step needed for these checks.
+      - name: Validate instructions, skills and MCP manifests
+        run: node .ai/infra/scripts/validate-infra.mjs
+      - name: Report instruction and architecture drift
+        run: node .ai/infra/scripts/drift-report.mjs
+      - name: Security and supply-chain audit
+        run: node .ai/infra/scripts/security-audit.mjs
+      - name: Agent evaluation scenarios
+        run: node .ai/infra/scripts/run-evaluations.mjs
+
+  script-tests:
+    name: Script unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.3.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Run the infrastructure script suites
+        run: pnpm exec vitest run .ai/infra
