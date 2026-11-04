@@ -4,6 +4,7 @@
 > before exploring the codebase; update it before ending a task.
 > **Companions:** [`data-models.md`](data-models.md) ·
 > [`components-ui.md`](components-ui.md) · [`roles-abilities.md`](roles-abilities.md)
+> **Last updated:** 2026-11-04 · schema v50 · critical dependency remediation; full audit still has unrelated high findings
 > **Last updated:** 2026-11-03 · schema v50 · AI infrastructure quality layer (validation, drift, security, evaluations)
 > **Last updated:** 2026-11-02 · schema v50 · agent skills suite + 14 community skills
 > **Last updated:** 2026-11-01 · schema v49 · 243 test files / 1,654 tests
@@ -35,7 +36,7 @@ health, share read-only links with family, and keep working with no network.
 `Activity` (per day) → `Expense`/`ExpenseShare`/`ExpenseSettlement`; plus media,
 decisions (polls), notes, tasks, travelers, contacts, vault entries, share links.
 
-**Stack:** Next.js 16.3.3 (App Router, `proxy.ts`) · React 19.2.8 · TypeScript
+**Stack:** Next.js 16.4.1 (App Router, `proxy.ts`) · React 19.2.8 · TypeScript
 strict · Tailwind v4 · Dexie 4.4.5 · Supabase (Postgres/Auth/Storage/Realtime) ·
 Zustand (UI only) · Vitest 4 + Playwright · Capacitor 8 · pnpm 11.3.0.
 
@@ -205,6 +206,12 @@ Also update the topic file whose subject changed:
 ---
 
 ## 7. Session log (newest first)
+
+### 2026-11-04 — Critical dependency vulnerability remediation
+- **Changed:** `next` / `eslint-config-next` 16.3.3 → 16.4.1; `dompurify` 3.4.14 → 3.4.17; refreshed `pnpm-lock.yaml`; aligned the Next.js version in `AGENTS.md`.
+- **Schema:** None.
+- **Verification:** `pnpm agent:verify` passed (lint, typecheck, 249 test files; 1,690 tests passed, 3 skipped); `pnpm build` passed (21 routes); `pnpm agent:schema`, `pnpm agent:audit-i18n`, affected-suite runner, frozen-lockfile check, and `pnpm audit --audit-level=critical` passed. Full `pnpm audit` exited 1 with 47 findings (18 high, 25 moderate, 4 low; zero critical); neither requested vulnerable package appears in the findings.
+- **Gotchas:** A first full audit showed Next.js 16.3.6 still had two critical advisories, so the upgrade target was raised to 16.4.1. The full audit still blocks the requested commit/push condition because unrelated high findings remain; do not expand this dependency-only change without approval.
 
 ### 2026-11-03 — AI infrastructure quality layer (validation, drift, security, evaluations)
 
