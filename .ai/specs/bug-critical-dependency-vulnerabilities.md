@@ -21,6 +21,11 @@ dependency graph. The initial audit also found two critical Next.js advisories
 still affecting 16.3.6; use at least 16.4.1, the audit's patched floor, so the
 framework is not left with critical findings.
 
+The follow-up transitive fixes are exact pnpm overrides: `undici@7` 7.30.1,
+`undici@8` 8.12.2, `brace-expansion@1` 1.1.21, `brace-expansion@5` 5.0.12,
+`source-map-js` 1.2.2, and `vite@8` 8.2.4. Later audit entries raised the
+brace-expansion patches above the initial scanner floors.
+
 ## Impact
 
 - **Users affected:** All application users if vulnerable code is reached.
@@ -86,6 +91,8 @@ validation, schema, or remote data access changes are intended.
    production build.
 4. Record exact evidence, update the bug ledger and memory, then commit and push
    only if every required check passes.
+5. Pin the reported transitive dependency patches with exact-version pnpm
+   workspace overrides; package.json `pnpm.overrides` is ignored by pnpm 11.
 
 ## Acceptance Criteria for Resolution
 
@@ -98,35 +105,71 @@ validation, schema, or remote data access changes are intended.
 - [x] `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build` pass.
 - [x] The diff contains no unrelated application, schema, or UI changes.
 - [x] Security review and the bug-ledger invariant decision are recorded.
+- [x] The lockfile resolves exact patched versions for the listed undici,
+  brace-expansion, source-map-js, and Vite paths; those advisories are absent.
 - [ ] Commit and push occur only after all preceding checks pass; withheld
-  because the full `pnpm audit` exits 1 with 18 remaining high-severity
-  findings (plus 25 moderate and 4 low).
+  because the full `pnpm audit` still reports 7 unrelated findings and the
+  global coverage gate remains below its committed baseline.
 
 ## Resolution
 
 - **Resolved behavior:** The requested Next.js and DOMPurify fixed versions are
-  present in both the manifest and lockfile, including their companion Next
-  packages. The full dependency audit still reports unrelated advisories.
+  present in the manifest and lockfile, including companion Next packages. The
+  requested transitive findings resolve to exact fixed versions. Other audit
+  findings remain outside the named package scope.
 - **Fix commit/PR:** Not created; the user's all-checks-pass condition is not met.
 - **Verification evidence:** `pnpm agent:verify` passed (249 files; 1,690
-  passed, 3 skipped); `pnpm build` passed; schema, i18n, affected test runner,
-  frozen-lockfile validation, and critical-level audit passed. Full
-  `pnpm audit` exited 1 with 47 findings: 18 high, 25 moderate, 4 low, zero
-  critical. The Next.js and DOMPurify advisories requested here are absent.
+  passed, 3 skipped); `pnpm build` passed (21 routes); schema, i18n, affected
+  test runner, frozen-lockfile validation, `pnpm agent:infra`, `pnpm agent:drift`,
+  and `pnpm audit --audit-level=critical` passed. Full `pnpm audit` exits 1
+  with 7 findings (1 high, 6 moderate), none from the requested package
+  versions. The full coverage runner also exits 1 at 74.93% vs its 75.18%
+  baseline; the baseline was not weakened.
 - **Bug ledger entry:** Recorded; fix commit pending.
-- **Follow-up:** Review and resolve the remaining high-severity audit findings
-  in a separately scoped dependency-security change before committing/pushing.
+- **Follow-up:** Review remaining findings outside the named package scope and
+  resolve the global coverage baseline shortfall before committing/pushing.
 
 ## Scope Inventory
 
 - **Requested:** Update Next.js and DOMPurify dependency requirements and all
   corresponding lockfile/transitive resolutions; align `eslint-config-next`
   with Next.js.
+- **Additional requested CVE patches:** Pin transitive `undici`, both used
+  `brace-expansion` major lines, `source-map-js`, and Vite to exact patched
+  versions using pnpm overrides. Use `undici@8.12.2` rather than only 8.10.2
+  because the current audit also reports later 8.x advisories patched at
+  8.12.2; keep `undici@7` on its compatible patched 7.30.1 line.
+- **Configuration location:** pnpm 11 ignores the legacy `package.json`
+  `pnpm.overrides` field; effective overrides belong in `pnpm-workspace.yaml`.
 - **Required consistency updates:** Correct the stale Next.js version facts in
   `AGENTS.md` and `memory/MEMORY.md`; the repository drift test treats those
   version claims as authoritative documentation.
 - **Required process records:** This bug report, an implementation plan,
   bug-ledger decision, and dated memory entry.
-- **Not authorized / out of scope:** Application code changes, unrelated
-  package upgrades, schema/migration changes, and removal of any dependency or
-  feature.
+- **Not authorized / out of scope:** Application code changes, package upgrades
+  beyond the explicitly requested advisory patches, schema/migration changes,
+  and removal of any dependency or feature.
+
+## Follow-up: Exact Transitive Dependency Patches
+
+The subsequent audit identified these current lock resolutions and patched
+floors. Pin exact values under `overrides` in `pnpm-workspace.yaml`; do not
+express the patched floors as open-ended ranges:
+
+| Package selector | Current resolution | Exact patched resolution |
+|---|---:|---:|
+| `undici@7` | 7.30.0 | 7.30.1 |
+| `undici@8` | 8.10.0 | 8.12.2 |
+| `brace-expansion@1` | 1.1.18 | 1.1.21 |
+| `brace-expansion@5` | 5.0.9 | 5.0.12 |
+| `source-map-js` | 1.2.1 | 1.2.2 |
+| `vite@8` | 8.2.2 | 8.2.4 |
+
+Next audit verification must confirm these exact versions are the only
+corresponding lock resolutions. Node engine metadata for `undici@8.12.2` and
+Vite 8.2.4 remains consistent with the current installed Node; Vite 8.2.2
+already declares the same engine floor.
+
+The follow-up audit also disclosed later `brace-expansion` advisories fixed at
+1.1.21 and 5.0.12, so use these newer exact patches rather than stopping at the
+initial scanner's 1.1.20/5.0.11 floors.
