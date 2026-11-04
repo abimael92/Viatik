@@ -1,0 +1,30 @@
+{
+  "id": "multi-agent-delegation",
+  "title": "Delegate with an explicit contract and disjoint file ownership",
+  "category": "delegation",
+  "prompt": "Split the expenses rework between two implementation agents.",
+  "initialContext": [".ai/infra/delegation-protocol.md", ".ai/infra/scripts/delegate.mjs", "AGENTS.md §11"],
+  "expectedBehavior": [
+    "Write one delegation contract per task: objective, scope, file ownership, context, restrictions, deliverables, verification owner",
+    "Claim disjoint paths with delegate.mjs before either agent edits",
+    "Let the lead agent integrate and run the final verification",
+    "Escalate conflicting findings to the lead instead of silently choosing"
+  ],
+  "prohibitedBehavior": [
+    "Two agents editing the same file without a recorded takeover decision",
+    "Spawning agents for a task one agent can finish",
+    "Delegating verification away from the lead agent"
+  ],
+  "criteria": [
+    "Every delegated task has an ownership claim",
+    "Overlapping claims are refused or explicitly taken over with a reason",
+    "The lead agent runs the final gate"
+  ],
+  "deterministicChecks": [
+    { "type": "file-exists", "path": ".ai/infra/delegation-protocol.md" },
+    { "type": "file-exists", "path": ".ai/infra/scripts/delegate.mjs" },
+    { "type": "file-contains", "path": ".ai/infra/delegation-protocol.md", "pattern": "File ownership" },
+    { "type": "file-contains", "path": ".ai/infra/delegation-protocol.md", "pattern": "overlap", "flags": "i" },
+    { "type": "script-exits-zero", "command": "node", "args": [".ai/infra/scripts/delegate.mjs", "status"] }
+  ]
+}

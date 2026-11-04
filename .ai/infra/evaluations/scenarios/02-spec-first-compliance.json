@@ -1,0 +1,29 @@
+{
+  "id": "spec-first-compliance",
+  "title": "Write the spec before touching code",
+  "category": "spec-first",
+  "prompt": "Trips should support a shared packing checklist that works offline.",
+  "initialContext": [".ai/constitution.md", ".ai/templates/feature-spec.md", ".ai/specs/"],
+  "expectedBehavior": [
+    "Create .ai/specs/<feature>.md from .ai/templates/feature-spec.md before implementation",
+    "State scope, out of scope, acceptance criteria, security and test plan",
+    "List Dexie tables, Supabase tables, RLS policies and which tables are local-only",
+    "Record the removal inventory when existing behavior changes"
+  ],
+  "prohibitedBehavior": [
+    "Opening a code editor before a spec exists",
+    "Treating a chat answer as the spec",
+    "Skipping the local-only/synced classification"
+  ],
+  "criteria": [
+    "A spec file exists and is referenced by the change",
+    "The spec names the schema and sync impact",
+    "Acceptance criteria are testable"
+  ],
+  "deterministicChecks": [
+    { "type": "file-exists", "path": ".ai/templates/feature-spec.md" },
+    { "type": "file-contains", "path": ".ai/constitution.md", "pattern": "Spec first, code second" },
+    { "type": "file-exists", "path": ".ai/specs/agent-tooling-ecosystem.md" },
+    { "type": "file-contains", "path": ".ai/specs/agent-tooling-ecosystem.md", "pattern": "Acceptance criteria" }
+  ]
+}

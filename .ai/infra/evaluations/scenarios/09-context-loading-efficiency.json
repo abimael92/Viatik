@@ -1,0 +1,30 @@
+{
+  "id": "context-loading-efficiency",
+  "title": "Load the smallest set of documents that answers the question",
+  "category": "context-efficiency",
+  "prompt": "Where does the outbox retry backoff live, and what must I read before changing it?",
+  "initialContext": [".ai/CONTEXT.md", "AGENTS.md §10 context map", ".ai/infra/scripts/context-manifest.mjs"],
+  "expectedBehavior": [
+    "Start from .ai/CONTEXT.md, then the topic memory file, then the specific spec",
+    "Use the context manifest to map the changed paths to docs, specs, skills and commands",
+    "Read only the files the task needs; avoid dumping the whole repository",
+    "Cite the file and line range that answers the question"
+  ],
+  "prohibitedBehavior": [
+    "Reading every spec before answering",
+    "Restating AGENTS.md in full instead of pointing to it",
+    "Running repomix on the whole repository for a single question"
+  ],
+  "criteria": [
+    "The answer names the file that owns the behavior",
+    "The manifest output is used, not guessed",
+    "No unnecessary file reads"
+  ],
+  "deterministicChecks": [
+    { "type": "file-exists", "path": ".ai/CONTEXT.md" },
+    { "type": "file-contains", "path": "AGENTS.md", "pattern": "Context map" },
+    { "type": "file-exists", "path": ".ai/infra/scripts/context-manifest.mjs" },
+    { "type": "file-contains", "path": ".ai/infra/README.md", "pattern": "context-manifest" },
+    { "type": "script-exits-zero", "command": "node", "args": [".ai/infra/scripts/context-manifest.mjs", "--files", "lib/sync/outbox.ts", "--json"] }
+  ]
+}

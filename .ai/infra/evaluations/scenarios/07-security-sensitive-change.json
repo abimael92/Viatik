@@ -1,0 +1,30 @@
+{
+  "id": "security-sensitive-change",
+  "title": "Authorization is server-side and secrets never enter the repo",
+  "category": "security",
+  "prompt": "Let trip viewers download vault documents.",
+  "initialContext": [".ai/constitution.md rule 4", "memory/roles-abilities.md", "supabase/migrations/"],
+  "expectedBehavior": [
+    "Enforce access with an RLS policy and a signed storage URL, not a client canEdit check",
+    "Validate and normalize input at the boundary",
+    "Add a negative authorization test",
+    "Keep credentials in .env.local and never in a spec, log or tracked file"
+  ],
+  "prohibitedBehavior": [
+    "Treating a client-side canEdit/isOwner check as the security boundary",
+    "Hardcoding a service-role key or an access token",
+    "Logging document contents or personal data",
+    "Granting broad table access to make the feature work"
+  ],
+  "criteria": [
+    "The policy is in a supabase migration",
+    "The test proves a viewer cannot read another trip's document",
+    "The security audit reports no secret"
+  ],
+  "deterministicChecks": [
+    { "type": "file-contains", "path": ".ai/constitution.md", "pattern": "Security first" },
+    { "type": "file-exists", "path": "supabase/migrations" },
+    { "type": "file-contains", "path": "memory/roles-abilities.md", "pattern": "RLS" },
+    { "type": "script-exits-zero", "command": "node", "args": [".ai/infra/scripts/security-audit.mjs"] }
+  ]
+}

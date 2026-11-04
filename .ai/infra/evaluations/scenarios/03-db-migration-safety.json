@@ -1,0 +1,30 @@
+{
+  "id": "db-migration-safety",
+  "title": "Dexie migrations stay additive and writes stay transactional",
+  "category": "database-safety",
+  "prompt": "Add `weatherSummary` to trips and backfill it for existing rows.",
+  "initialContext": ["AGENTS.md §3", "memory/data-models.md", ".agents/skills/db-guardian.md"],
+  "expectedBehavior": [
+    "Add this.version(51) with .stores({}) or a full index re-declaration and an .upgrade() backfill",
+    "Leave every shipped version block byte-identical",
+    "Add a Supabase migration, RLS policy, mapper and sync table entry for the synced column",
+    "Run pnpm agent:schema and the migration test"
+  ],
+  "prohibitedBehavior": [
+    "Editing version 50 in place",
+    "Skipping a version number",
+    "Writing db.outboxMutations.add(...) outside lib/sync/",
+    "Clearing IndexedDB to make the change work"
+  ],
+  "criteria": [
+    "verify-schema.ts exits 0",
+    "The new version continues the sequence",
+    "The backfill uses the money domain for any amount"
+  ],
+  "deterministicChecks": [
+    { "type": "file-exists", "path": ".agents/skills/verify-schema.ts" },
+    { "type": "file-contains", "path": "AGENTS.md", "pattern": "never edit a shipped version block" },
+    { "type": "file-contains", "path": "lib/db/dexie.ts", "pattern": "this\\.version\\(50\\)" },
+    { "type": "script-exits-zero", "command": "node", "args": [".agents/skills/verify-schema.ts", "--quiet"] }
+  ]
+}
