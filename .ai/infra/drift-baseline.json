@@ -1,0 +1,13 @@
+{
+  "$comment": "Accepted drift for .ai/infra/scripts/drift-report.mjs. Every entry needs a reason, a reviewedAt, and an expiresAt (YYYY-MM-DD). Once expiresAt passes the finding fails again, so a baseline cannot become a permanent excuse. Remove an entry as soon as the underlying drift is fixed — a stale entry is reported as a warning.",
+  "version": 1,
+  "accepted": [
+    {
+      "code": "contract-symbol-drift",
+      "file": "AGENTS.md",
+      "reason": "AGENTS.md §3/§11 and .agents/skills/db-guardian.md call the sync table list SYNC_TABLE_DEFINITIONS; the implementation is `const tableDefinitions` in lib/sync/cloud-sync.ts. Renaming the code or the docs is a separate, reviewed change — this layer reports the mismatch instead of rewriting either side.",
+      "reviewedAt": "2026-11-03",
+      "expiresAt": "2027-02-03"
+    }
+  ]
+}
