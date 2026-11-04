@@ -150,6 +150,29 @@ validation, schema, or remote data access changes are intended.
   beyond the explicitly requested advisory patches, schema/migration changes,
   and removal of any dependency or feature.
 
+## Additional Requested Finding — Zod Memory Exhaustion
+
+The full audit left a high-severity Zod advisory unresolved. The user has now
+explicitly authorized that specific finding; it is no longer out of scope.
+
+- **Observed:** `package.json` and `pnpm-lock.yaml` resolve Zod 4.5.4, below
+  the fixed floor 4.6.6. Validating oversized constrained collections can
+  exhaust memory.
+- **Expected:** The direct Zod requirement and every locked Zod resolution are
+  at or above 4.6.6, and the high-severity Zod audit finding is absent.
+- **Scope:** Update only the direct Zod development dependency and its lockfile
+  resolution. The direct bump alone leaves an affected transitive Zod 4.5.4
+  under `eslint-plugin-react-hooks`; use a pnpm workspace override to ensure
+  all Zod 4 paths resolve to a patched version. Other outstanding audit
+  findings remain out of scope.
+- **Data impact:** None. No Dexie/Supabase schema, sync, or money behavior
+  changes.
+- **Verification:** Run `pnpm typecheck` and rerun `pnpm audit`; report any
+  remaining unrelated findings without expanding scope.
+- **Inventory:** Requested: Zod dependency range and corresponding lockfile
+  resolution. Adjacent changes, including unrelated dependency upgrades or
+  application-code changes, are not authorized.
+
 ## Follow-up: Exact Transitive Dependency Patches
 
 The subsequent audit identified these current lock resolutions and patched
