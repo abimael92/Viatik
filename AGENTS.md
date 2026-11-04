@@ -39,7 +39,7 @@ If a spec does not exist for the change, write one from
 | Area | Version / choice |
 |---|---|
 | Runtime | Node 20+, **pnpm 11.3.0** (`packageManager` field) |
-| Framework | Next.js **16.3.3** App Router (`proxy.ts` replaces `middleware.ts`) |
+| Framework | Next.js **16.4.1** App Router (`proxy.ts` replaces `middleware.ts`) |
 | UI | React **19.2.8**, TypeScript strict, Tailwind CSS **v4** (no `tailwind.config.ts`) |
 | Local DB | Dexie **4.4.5** + `dexie-react-hooks`, `fake-indexeddb` in tests |
 | Remote | Supabase (`@supabase/ssr` 0.12, `@supabase/supabase-js` 2.112) — Postgres, Auth, Storage, Realtime |
