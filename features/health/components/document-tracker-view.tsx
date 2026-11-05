@@ -90,6 +90,7 @@ export function DocumentTrackerView({
 }) {
   const { t } = useI18n();
   const [documents, setDocuments] = useState<TravelDocument[]>([]);
+  const [removalError, setRemovalError] = useState<string | null>(null);
   const [dialog, setDialog] = useState<{ open: boolean; editing: TravelDocument | null }>({ open: false, editing: null });
   const statusLabels: Record<DocumentValidationResult["status"], string> = {
     valid: t("copy.valid"),
@@ -109,6 +110,15 @@ export function DocumentTrackerView({
 
   const openAdd = () => setDialog({ open: true, editing: null });
   const openEdit = (document: TravelDocument) => setDialog({ open: true, editing: document });
+
+  async function removeDocument(documentId: string) {
+    setRemovalError(null);
+    try {
+      await healthRepository.remove(documentId);
+    } catch {
+      setRemovalError(t("errors.unexpected"));
+    }
+  }
 
   return (
     <section aria-labelledby="health-heading" className="space-y-5">
@@ -137,6 +147,12 @@ export function DocumentTrackerView({
           <SummaryChip label={t("copy.expiringSoon")} count={summary.warning} className="bg-amber-500/10 text-amber-600" />
           <SummaryChip label={t("copy.actionNeeded")} count={summary.invalid} className="bg-destructive/10 text-destructive" />
         </div>
+      )}
+
+      {removalError && (
+        <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+          {removalError}
+        </p>
       )}
 
       {documents.length === 0 ? (
@@ -192,7 +208,7 @@ export function DocumentTrackerView({
                     size="sm"
                     variant="ghost"
                     className="text-muted-foreground hover:text-destructive"
-                    onClick={() => void healthRepository.remove(document.id)}
+                    onClick={() => void removeDocument(document.id)}
                   >
                     <Trash2 className="size-4" /> {t("copy.remove")}
                   </Button>

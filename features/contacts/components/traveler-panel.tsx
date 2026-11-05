@@ -60,6 +60,15 @@ export function TravelerPanel({
     }
   }
 
+  async function removeTraveler(travelerId: string) {
+    try {
+      await tripTravelerRepository.remove(travelerId);
+      setMessage(null);
+    } catch (cause) {
+      setMessage(localizeThrownError(cause, t, "errors.unexpected"));
+    }
+  }
+
   return (
     <section className="space-y-5">
       <div>
@@ -105,7 +114,7 @@ export function TravelerPanel({
                   variant="ghost"
                   size="icon"
                   aria-label={t("common.removeContact", { name: traveler.displayName })}
-                  onClick={() => void tripTravelerRepository.remove(traveler.id)}
+                  onClick={() => void removeTraveler(traveler.id)}
                 >
                   <Trash2 className="size-5 text-destructive" />
                 </Button>
