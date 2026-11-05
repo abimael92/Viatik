@@ -24,6 +24,10 @@ function applyTheme(dark: boolean) {
   }
 }
 
+export function toggleTheme() {
+  applyTheme(!isDarkTheme());
+}
+
 /**
  * Sun/Moon theme switch. Both icons are always rendered so the server HTML
  * matches hydration; visibility follows `data-theme` and the OS preference.
@@ -39,7 +43,7 @@ export function ThemeToggle({ className }: { className?: string }) {
       className={cn("theme-toggle text-side-muted hover:text-side-fg", className)}
       aria-label={t("common.toggleTheme")}
       title={t("common.toggleTheme")}
-      onClick={() => applyTheme(!isDarkTheme())}
+      onClick={toggleTheme}
     >
       <Sun
         className="theme-toggle-sun size-5 fill-amber-400/30 text-amber-400 drop-shadow-[0_0_6px_rgb(251_191_36_/_0.55)]"

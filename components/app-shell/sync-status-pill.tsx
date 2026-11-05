@@ -51,6 +51,15 @@ export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
   const offline = !sync.isOnline;
   const interactive =
     offline || sync.status === "error" || sync.conflicts > 0 || sync.pending > 0 || queue.length > 0;
+  const compactStatusBorder = offline
+    ? "border-success"
+    : sync.status === "syncing"
+      ? "border-primary"
+      : sync.status === "error" || sync.conflicts > 0
+        ? "border-accent"
+        : sync.pending > 0
+          ? "border-primary"
+          : "border-success";
 
   // Accessible name for the icon-only compact pill used in the collapsed rail.
   const statusLabel = offline
@@ -66,11 +75,13 @@ export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
             : t("common.synced");
 
   function renderPill() {
+    if (compact) return null;
+
     if (offline) {
       return (
         <Badge variant="success" className={pillSize}>
           <StatusDot tone="success" pulse />
-          <PillLabel hidden={compact}>{t("common.offlineSaved")}</PillLabel>
+          <PillLabel>{t("common.offlineSaved")}</PillLabel>
         </Badge>
       );
     }
@@ -78,7 +89,7 @@ export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
       return (
         <Badge variant="muted" className={pillSize}>
           <LoaderCircle className="size-4 shrink-0 animate-spin text-primary" />
-          <PillLabel hidden={compact}>{t("common.syncing")}</PillLabel>
+          <PillLabel>{t("common.syncing")}</PillLabel>
         </Badge>
       );
     }
@@ -86,7 +97,7 @@ export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
       return (
         <Badge variant="warning" className={pillSize}>
           <StatusDot tone="warning" pulse />
-          <PillLabel hidden={compact}>{t("common.syncIssue")}</PillLabel>
+          <PillLabel>{t("common.syncIssue")}</PillLabel>
           <RefreshCw className="size-4 shrink-0" aria-hidden />
         </Badge>
       );
@@ -97,7 +108,7 @@ export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
           <span className="grid size-5 shrink-0 place-items-center rounded-full bg-primary px-1 text-xs font-bold text-primary-foreground animate-pulse">
             {sync.pending}
           </span>
-          <PillLabel hidden={compact}>{t("common.pendingChanges")}</PillLabel>
+          <PillLabel>{t("common.pendingChanges")}</PillLabel>
         </Badge>
       );
     }
@@ -105,20 +116,27 @@ export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
       return (
         <Badge variant="warning" className={pillSize}>
           <StatusDot tone="warning" pulse />
-          <PillLabel hidden={compact}>{t("common.resolveConflicts")}</PillLabel>
+          <PillLabel>{t("common.resolveConflicts")}</PillLabel>
         </Badge>
       );
     }
     return (
       <StatusBadge className="min-w-0 gap-1.5 px-2.5 lg:px-2 xl:px-2.5">
         <span className="inline-block size-2.5 shrink-0 rounded-full bg-green-700 sm:size-3" aria-hidden />
-        <PillLabel hidden={compact}>{t("common.synced")}</PillLabel>
+        <PillLabel>{t("common.synced")}</PillLabel>
       </StatusBadge>
     );
   }
 
   return (
-    <div className="relative min-w-0 max-w-full" ref={triggerRef}>
+    <div
+      className={
+        compact
+          ? "absolute inset-x-0 top-1/2 z-0 flex -translate-y-1/2 justify-center"
+          : "relative min-w-0 max-w-full"
+      }
+      ref={triggerRef}
+    >
       <button
         type="button"
         onClick={() => interactive && setOpen((value) => !value)}
@@ -126,7 +144,9 @@ export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
         aria-expanded={open}
         aria-label={compact ? statusLabel : undefined}
         className={cn(
-          "inline-flex min-w-0 max-w-full rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          compact
+            ? cn("size-[3.25rem] shrink-0 rounded-full border-4 bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", compactStatusBorder)
+            : "inline-flex min-w-0 max-w-full rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           !interactive && "cursor-default"
         )}
       >
@@ -203,8 +223,7 @@ export function SyncStatusPill({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function PillLabel({ children, hidden = false }: { children: React.ReactNode; hidden?: boolean }) {
-  if (hidden) return null;
+function PillLabel({ children }: { children: React.ReactNode }) {
   return <span className="min-w-0 truncate">{children}</span>;
 }
 

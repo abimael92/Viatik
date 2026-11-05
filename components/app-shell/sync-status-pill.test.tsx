@@ -50,12 +50,13 @@ describe("SyncStatusPill", () => {
     expect(status.className).not.toContain("text-[8px]");
   });
 
-  it("compact renders icon-only with an accessible name for the collapsed rail", () => {
+  it("compact renders a hollow status-color ring with an accessible name", () => {
     render(<SyncStatusPill compact />);
 
     const trigger = screen.getByRole("button", { name: "Up to date" });
-    expect(trigger).toBeTruthy();
-    // The visible text label is hidden; the trigger keeps its state color/icon.
-    expect(trigger.textContent).not.toContain("Up to date");
+    expect(trigger.className).toContain("size-[3.25rem]");
+    expect(trigger.className).toContain("border-success");
+    expect(trigger.className).toContain("bg-transparent");
+    expect(trigger.textContent).toBe("");
   });
 });

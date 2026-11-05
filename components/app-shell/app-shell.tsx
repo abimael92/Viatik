@@ -13,7 +13,7 @@ import { logout } from "@/app/actions/auth";
 import { SyncErrorBanner } from "@/components/app-shell/sync-error-banner";
 import { SyncStatusPill } from "@/components/app-shell/sync-status-pill";
 import { LanguageSwitcher } from "@/components/app-shell/language-switcher";
-import { ThemeToggle } from "@/components/app-shell/theme-toggle";
+import { ThemeToggle, toggleTheme } from "@/components/app-shell/theme-toggle";
 import { openCommandPalette } from "@/components/pro/command-palette";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,7 +21,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { IconTile } from "@/components/ui/icon-tile";
@@ -29,6 +34,7 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import { deleteDatabase } from "@/lib/db/dexie";
 import { useSyncRetryCountdown, useSyncStatus } from "@/lib/sync/use-sync-status";
 import { useI18n } from "@/lib/i18n/i18n-provider";
+import { SUPPORTED_LOCALES, type Locale } from "@/lib/i18n/translations";
 import { cn } from "@/lib/utils";
 
 type NavigationLink = {
@@ -78,7 +84,7 @@ function AccountMenu({
   onNavigate?: () => void;
   variant: "card" | "rail";
 }) {
-  const { t } = useI18n();
+  const { locale, setLocale, t } = useI18n();
   const label = t("copy.openAccountMenu");
 
   return (
@@ -121,6 +127,38 @@ function AccountMenu({
             {t("copy.accountSettings")}
           </Link>
         </DropdownMenuItem>
+        {variant === "rail" && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger className="min-h-11">
+                {t("copy.viewOptions")}
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="w-48">
+                <DropdownMenuItem onSelect={toggleTheme} className="min-h-11">
+                  {t("common.toggleTheme")}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>{t("common.language")}</DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={locale}
+                  onValueChange={(value) => setLocale(value as Locale)}
+                >
+                  {SUPPORTED_LOCALES.map((option) => (
+                    <DropdownMenuRadioItem key={option} value={option} className="min-h-11">
+                      {option.toUpperCase()}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => openCommandPalette()} className="min-h-11">
+                  <Search className="size-4" aria-hidden />
+                  {t("common.searchCommands")}
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          </>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="min-h-11 text-destructive data-highlighted:bg-destructive/10 data-highlighted:text-destructive"
@@ -310,11 +348,16 @@ export function AppShell({
     </div>
   );
 
-  // Collapsed rail variant: avatar + bell stacked, icon-only sync pill. No card
-  // chrome — at 56px inner width a border+p-2 would clip the 44px controls.
+  // The avatar anchors this portrait dock; notification and sync controls
+  // float at opposite corners without changing their independent actions.
   const collapsedUserCard = (
-    <div className="sidebar-collapsed-only">
-      <div className="flex flex-col items-center gap-2">
+    <div
+      role="group"
+      aria-label={t("copy.sidebarAccountCluster")}
+      className="sidebar-collapsed-only relative mx-auto grid h-28 w-14 place-items-center"
+    >
+      <SyncStatusPill compact />
+      <div className="relative z-10">
         <AccountMenu
           displayName={displayName}
           userEmail={userEmail}
@@ -324,8 +367,9 @@ export function AppShell({
           onSignOut={signOut}
           variant="rail"
         />
-        <NotificationBell userId={userId} />
-        <SyncStatusPill compact />
+      </div>
+      <div className="absolute right-0 top-2 z-20">
+        <NotificationBell userId={userId} compact />
       </div>
     </div>
   );
@@ -362,14 +406,14 @@ export function AppShell({
           aria-hidden
           className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-linear-to-b from-viatik-blue/15 via-transparent to-transparent"
         />
-        {/* Top: brand row — logo image untouched; theme + collapse sit beside the app name. */}
+        {/* Expanded theme/collapse controls share the brand row; collapsed expander moves to the corner. */}
         <div className="sidebar-brand-row relative flex items-center justify-between gap-2">
           <Link href="/home" aria-label="Viatik" title="Viatik" className="flex items-center gap-3 text-2xl font-bold text-side-fg">
             <Image src="/viatik-logo.png" alt="" width={44} height={44} priority className="size-11 shrink-0 object-contain" />
             <span className="sidebar-label">Viatik</span>
           </Link>
           <div className="sidebar-brand-actions flex items-center gap-1">
-            <ThemeToggle />
+            <ThemeToggle className="sidebar-expanded-only" />
             <Button
               type="button"
               variant="ghost"
@@ -387,7 +431,7 @@ export function AppShell({
         </div>
 
         {/* Command palette entry point — under the brand row, above the user card. */}
-        <div className="relative mt-4">
+        <div className="sidebar-expanded-only relative mt-4">
           <CommandPaletteHint variant="sidebar" />
         </div>
 
