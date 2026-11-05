@@ -39,7 +39,7 @@ const tones: Record<NotificationType, string> = {
   trip_added: "bg-primary/10 text-primary",
 };
 
-export function NotificationBell({ userId }: { userId: string }) {
+export function NotificationBell({ userId, compact = false }: { userId: string; compact?: boolean }) {
   const { t } = useI18n();
   const [count, setCount] = useState(0);
   useEffect(() => {
@@ -67,15 +67,20 @@ export function NotificationBell({ userId }: { userId: string }) {
       href="/notifications"
       aria-label={count ? t("copy.unreadNotifications", { count }) : t("copy.notificationsTitle")}
       className={cn(
-        "relative grid size-11 place-items-center rounded-lg text-viatik-magenta transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-viatik-magenta",
-        count > 0 ? "bg-viatik-magenta/20 hover:bg-viatik-magenta/30" : "hover:bg-side-hover",
+        "relative grid size-11 place-items-center text-viatik-magenta transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-viatik-magenta",
+        compact ? "rounded-full" : "rounded-lg",
+        !compact && (count > 0 ? "bg-viatik-magenta/20 hover:bg-viatik-magenta/30" : "hover:bg-side-hover"),
       )}
     >
-      <Bell className="size-5" aria-hidden />
+      {!compact && <Bell className="size-5" aria-hidden />}
       {count > 0 && (
         <span
           aria-hidden
-          className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-viatik-red px-1 text-[10px] font-bold leading-none text-white ring-2 ring-side"
+          className={cn(
+            "absolute flex h-5 min-w-5 items-center justify-center rounded-full bg-viatik-red px-1 text-[10px] font-bold leading-none text-white",
+            !compact && "ring-2 ring-side",
+            compact ? "right-0 top-6" : "-right-0.5 -top-0.5",
+          )}
         >
           {label}
         </span>

@@ -42,4 +42,16 @@ describe("NotificationBell", () => {
     expect(link.className).toContain("bg-viatik-magenta/20");
     expect(link.textContent).toContain("2");
   });
+
+  it("shows only the unread count over the avatar without shrinking the hit target", () => {
+    render(<NotificationBell userId="user-1" compact />);
+
+    const link = screen.getByRole("link", { name: "2 unread notifications" });
+    expect(link.className).toContain("size-11");
+    expect(link.className).toContain("rounded-full");
+    expect(link.querySelector("svg")).toBeNull();
+    expect(screen.getByText("2").className).toContain("right-0");
+    expect(screen.getByText("2").className).toContain("top-6");
+    expect(screen.getByText("2").className).not.toContain("ring-2");
+  });
 });
