@@ -8,7 +8,7 @@ import { requestPasswordReset } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { localizeUserError } from "@/lib/i18n/localize-error";
+import { localizeThrownError, localizeUserError } from "@/lib/i18n/localize-error";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 
 function maskEmail(email: string) {
@@ -42,15 +42,19 @@ export function ForgotPasswordForm() {
     event?.preventDefault();
     setMessage(null);
     startTransition(async () => {
-      const result = await requestPasswordReset(email);
-      if (!result.success) {
-        setMessage(localizeUserError(result.error, t, "errors.unexpected"));
-        if (result.retryAfter) setCooldown(result.retryAfter);
-        return;
+      try {
+        const result = await requestPasswordReset(email);
+        if (!result.success) {
+          setMessage(localizeUserError(result.error, t, "errors.unexpected"));
+          if (result.retryAfter) setCooldown(result.retryAfter);
+          return;
+        }
+        setEmail(email.trim().toLowerCase());
+        setSent(true);
+        setCooldown(60);
+      } catch (error) {
+        setMessage(localizeThrownError(error, t, "errors.unexpected"));
       }
-      setEmail(email.trim().toLowerCase());
-      setSent(true);
-      setCooldown(60);
     });
   }
 

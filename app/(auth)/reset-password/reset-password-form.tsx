@@ -10,7 +10,7 @@ import { passwordRejection } from "@/lib/auth/password-recovery";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { localizeUserError } from "@/lib/i18n/localize-error";
+import { localizeThrownError, localizeUserError } from "@/lib/i18n/localize-error";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
@@ -54,13 +54,17 @@ export function ResetPasswordForm({ canReset }: { canReset: boolean }) {
       return;
     }
     startTransition(async () => {
-      const result = await updatePassword(password);
-      if (!result.success) {
-        setMessage(localizeUserError(result.error, t, "errors.unexpected"));
-        return;
+      try {
+        const result = await updatePassword(password);
+        if (!result.success) {
+          setMessage(localizeUserError(result.error, t, "errors.unexpected"));
+          return;
+        }
+        router.replace("/home");
+        router.refresh();
+      } catch (error) {
+        setMessage(localizeThrownError(error, t, "errors.unexpected"));
       }
-      router.replace("/home");
-      router.refresh();
     });
   }
 

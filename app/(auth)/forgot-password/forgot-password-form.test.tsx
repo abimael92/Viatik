@@ -37,4 +37,14 @@ describe("ForgotPasswordForm", () => {
 
     expect((await screen.findByRole("alert")).textContent).toBe("Enter a valid email address.");
   });
+
+  it("shows a localized error when requesting a reset link rejects", async () => {
+    mocks.requestPasswordReset.mockRejectedValue(new Error("Failed to fetch"));
+    render(<ForgotPasswordForm />);
+    fireEvent.change(screen.getByLabelText(/email address/i), { target: { value: "ada@example.com" } });
+    fireEvent.click(screen.getByRole("button", { name: /send reset link/i }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe("We couldn't reach the server. Check your connection and try again.");
+    expect(screen.queryByRole("heading", { name: /check your email/i })).toBeNull();
+  });
 });

@@ -37,4 +37,15 @@ describe("ResetPasswordForm", () => {
     expect(mocks.replace).toHaveBeenCalledWith("/home");
     expect(mocks.refresh).toHaveBeenCalledOnce();
   });
+
+  it("shows a localized error and stays on the form when saving rejects", async () => {
+    mocks.updatePassword.mockRejectedValue(new Error("Failed to fetch"));
+    render(<ResetPasswordForm canReset />);
+    fireEvent.change(screen.getByLabelText(/^new password$/i), { target: { value: "Str0ngPass!9" } });
+    fireEvent.change(screen.getByLabelText(/confirm password/i), { target: { value: "Str0ngPass!9" } });
+    fireEvent.click(screen.getByRole("button", { name: /save new password/i }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe("We couldn't reach the server. Check your connection and try again.");
+    expect(mocks.replace).not.toHaveBeenCalled();
+  });
 });

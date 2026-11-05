@@ -145,19 +145,23 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
     setFieldErrors(next);
     if (Object.keys(next).length > 0) return;
     startTransition(async () => {
-      if (mode === "register") {
-        const result = await registerWithPassword(email, password, fullName, phone, birthDate, avatarFile, avatarSeed);
-        if (!result.success) return setMessage(localizeUserError(result.error, t, "errors.unexpected"));
-        // With email confirmation enabled, a new signup has no session yet.
-        if (result.data?.confirmRequired) {
-          setRegistered(true);
-          return;
+      try {
+        if (mode === "register") {
+          const result = await registerWithPassword(email, password, fullName, phone, birthDate, avatarFile, avatarSeed);
+          if (!result.success) return setMessage(localizeUserError(result.error, t, "errors.unexpected"));
+          // With email confirmation enabled, a new signup has no session yet.
+          if (result.data?.confirmRequired) {
+            setRegistered(true);
+            return;
+          }
+        } else {
+          const result = await loginWithPassword(email, password);
+          if (!result.success) return setMessage(localizeUserError(result.error, t, "errors.unexpected"));
         }
-      } else {
-        const result = await loginWithPassword(email, password);
-        if (!result.success) return setMessage(localizeUserError(result.error, t, "errors.unexpected"));
+        goHome();
+      } catch (error) {
+        setMessage(localizeThrownError(error, t, "errors.unexpected"));
       }
-      goHome();
     });
   }
 
@@ -168,23 +172,27 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
     setFieldErrors(next);
     if (Object.keys(next).length > 0) return;
     startTransition(async () => {
-      const result = await sendEmailOtp(email, mode === "register", mode === "register" ? fullName : undefined, mode === "register" ? phone : undefined);
-      if (!result.success) {
-        setMessage(localizeUserError(result.error, t, "errors.unexpected"));
-        if (result.retryAfter) setCooldown(result.retryAfter);
-        return;
+      try {
+        const result = await sendEmailOtp(email, mode === "register", mode === "register" ? fullName : undefined, mode === "register" ? phone : undefined);
+        if (!result.success) {
+          setMessage(localizeUserError(result.error, t, "errors.unexpected"));
+          if (result.retryAfter) setCooldown(result.retryAfter);
+          return;
+        }
+        setEmail(email.trim().toLowerCase());
+        // Development-only: the account was created without sending an email, so
+        // verify immediately with the returned magic-link token instead of showing
+        // the OTP entry screen.
+        if (result.data?.devTokenHash) {
+          verifyEmail(result.data.devTokenHash);
+          return;
+        }
+        setSent(true);
+        setCooldown(60);
+        window.setTimeout(() => refs.current[0]?.focus(), 0);
+      } catch (error) {
+        setMessage(localizeThrownError(error, t, "errors.unexpected"));
       }
-      setEmail(email.trim().toLowerCase());
-      // Development-only: the account was created without sending an email, so
-      // verify immediately with the returned magic-link token instead of showing
-      // the OTP entry screen.
-      if (result.data?.devTokenHash) {
-        verifyEmail(result.data.devTokenHash);
-        return;
-      }
-      setSent(true);
-      setCooldown(60);
-      window.setTimeout(() => refs.current[0]?.focus(), 0);
     });
   }
 
@@ -212,10 +220,14 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
     setMessage(null);
     setSuccess(null);
     startTransition(async () => {
-      const result = await developmentLogin();
-      if (!result.success) return setMessage(localizeUserError(result.error, t, "errors.unexpected"));
-      router.replace(result.data.onboarded ? safeNext(next) : `/onboarding?next=${encodeURIComponent(safeNext(next))}`);
-      router.refresh();
+      try {
+        const result = await developmentLogin();
+        if (!result.success) return setMessage(localizeUserError(result.error, t, "errors.unexpected"));
+        router.replace(result.data.onboarded ? safeNext(next) : `/onboarding?next=${encodeURIComponent(safeNext(next))}`);
+        router.refresh();
+      } catch (error) {
+        setMessage(localizeThrownError(error, t, "errors.unexpected"));
+      }
     });
   }
 
@@ -223,16 +235,20 @@ export function LoginForm({ mode = "login", next, initialError }: LoginFormProps
     setMessage(null);
     setSuccess(null);
     startTransition(async () => {
-      const result = await verifyEmailOtp(email, codeOrToken);
-      if (!result.success) return setMessage(localizeUserError(result.error, t, "errors.unexpected"));
-      router.replace(
-        mode === "register"
-          ? safeNext(next)
-          : result.data.onboarded
+      try {
+        const result = await verifyEmailOtp(email, codeOrToken);
+        if (!result.success) return setMessage(localizeUserError(result.error, t, "errors.unexpected"));
+        router.replace(
+          mode === "register"
             ? safeNext(next)
-            : `/onboarding?next=${encodeURIComponent(safeNext(next))}`
-      );
-      router.refresh();
+            : result.data.onboarded
+              ? safeNext(next)
+              : `/onboarding?next=${encodeURIComponent(safeNext(next))}`
+        );
+        router.refresh();
+      } catch (error) {
+        setMessage(localizeThrownError(error, t, "errors.unexpected"));
+      }
     });
   }
 
