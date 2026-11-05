@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -223,5 +223,31 @@ describe("ActivityAttachmentsEditor", () => {
     expect(screen.getByRole("status").textContent).toMatch(/could not be uploaded/i);
     fireEvent.click(screen.getByRole("button", { name: "Retry upload" }));
     expect(retry).toHaveBeenCalledWith("media-fail");
+  });
+
+  it("announces a rejected upload retry and keeps the photo visibly failed", async () => {
+    retry.mockRejectedValueOnce(new Error("retry failed"));
+    render(
+      <ActivityAttachmentsEditor
+        attachments={[
+          {
+            id: "img-1",
+            kind: "image",
+            mediaId: "media-fail",
+            caption: "Menu photo",
+            altText: null,
+          },
+        ]}
+        pendingImages={[]}
+        onChange={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry upload" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe("Photo could not be uploaded");
+    expect(screen.getByRole("status").textContent).toContain("Photo could not be uploaded");
+    expect(screen.getByRole("button", { name: "Retry upload" })).toBeTruthy();
+    await waitFor(() => expect(retry).toHaveBeenCalledWith("media-fail"));
   });
 });

@@ -34,6 +34,7 @@ export function VoiceNoteCard({
   );
   const transcriptId = useId();
   const [transcriptOpen, setTranscriptOpen] = useState(false);
+  const [retryError, setRetryError] = useState<string | null>(null);
   const blob = media?.blob ?? null;
   const objectUrl = useMemo(() => (blob ? URL.createObjectURL(blob) : null), [blob]);
   useEffect(() => () => {
@@ -51,10 +52,19 @@ export function VoiceNoteCard({
   }).format(new Date(note.createdAt));
 
   let status: string | null = null;
-  if (!src) status = t("copy.voiceNoteAvailableOnline");
+  if (ownClip && media?.uploadStatus === "failed") status = t("copy.voiceNoteUploadFailed");
+  else if (!src) status = t("copy.voiceNoteAvailableOnline");
   else if (ownClip && media?.uploadStatus === "pending") status = t("copy.voiceNoteSavedLocally");
   else if (ownClip && media?.uploadStatus === "uploading") status = t("copy.voiceNoteUploading");
-  else if (ownClip && media?.uploadStatus === "failed") status = t("copy.voiceNoteUploadFailed");
+
+  async function retryUpload(retryMediaId: string) {
+    setRetryError(null);
+    try {
+      await mediaRepository.retry(retryMediaId);
+    } catch {
+      setRetryError(t("copy.voiceNoteUploadFailed"));
+    }
+  }
 
   return (
     <article
@@ -102,11 +112,12 @@ export function VoiceNoteCard({
           </span>
         ) : null}
         {ownClip && media?.uploadStatus === "failed" ? (
-          <Button type="button" variant="ghost" onClick={() => void mediaRepository.retry(media.id)} className="h-11 px-3 text-xs">
+          <Button type="button" variant="ghost" onClick={() => void retryUpload(media.id)} className="h-11 px-3 text-xs">
             <RotateCcw className="size-4!" aria-hidden />
             {t("copy.retryUpload")}
           </Button>
         ) : null}
+        {retryError ? <span role="alert" className="text-xs text-destructive">{retryError}</span> : null}
       </div>
       {src ? <TranscriptPanel id={transcriptId} open={transcriptOpen} transcript={transcript ?? null} /> : null}
     </article>
