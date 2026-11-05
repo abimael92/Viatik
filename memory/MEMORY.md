@@ -4,6 +4,7 @@
 > before exploring the codebase; update it before ending a task.
 > **Companions:** [`data-models.md`](data-models.md) ·
 > [`components-ui.md`](components-ui.md) · [`roles-abilities.md`](roles-abilities.md)
+> **Last updated:** 2026-11-04 · avatar sync ring, count badge, and top-corner rail expander
 > **Last updated:** 2026-11-04 · schema v50 · exact transitive CVE overrides; unrelated audit findings remain
 > **Last updated:** 2026-11-03 · schema v50 · AI infrastructure quality layer (validation, drift, security, evaluations)
 > **Last updated:** 2026-11-02 · schema v50 · agent skills suite + 14 community skills
@@ -206,6 +207,26 @@ Also update the topic file whose subject changed:
 ---
 
 ## 7. Session log (newest first)
+
+### 2026-11-04 — Collapsed sidebar avatar and expander polish
+- **Changed:** Reworked the collapsed desktop rail into an unframed portrait
+  composition with the avatar centered. The compact
+  notification shows only its unread count in the upper-right (no bell glyph);
+  sync status is a hollow active-color ring around the avatar, with the account
+  action above it. Both controls retain their behavior and accessible names; the
+  sync ring is 52px and the notification link is 44px. The group has a localized
+  EN/ES accessible name. The collapsed expand toggle is flush to the brand row's
+  top-right with a 14px chevron inside its transparent 44px hit target; 16px of
+  clearance above the logo is enough to avoid overlap. Expanded toggle placement
+  is unchanged. Collapsed Theme and Search controls move into the avatar's
+  localized `View options` submenu alongside EN/ES selection; the global search
+  shortcut and expanded/mobile controls stay unchanged.
+- **Schema:** None; no Dexie, Supabase, sync, or outbox changes.
+- **Verification:** AppShell/notification-bell/sync-status tests (15 passed),
+  i18n coverage tests (5 passed),
+  `pnpm lint`, `pnpm typecheck`, and `bash .agents/skills/i18n-audit.sh` passed.
+- **Visual:** Theme tokens and 44px sizing were checked in code; no authenticated
+  browser screenshot review was performed.
 
 ### 2026-11-04 — Critical dependency vulnerability remediation
 - **Changed:** `next` / `eslint-config-next` 16.3.3 → 16.4.1; `dompurify` 3.4.14 → 3.4.17; added exact `pnpm-workspace.yaml` overrides for undici 7/8, brace-expansion 1/5, source-map-js, and Vite; refreshed `pnpm-lock.yaml`; aligned the Next.js version in `AGENTS.md`.
