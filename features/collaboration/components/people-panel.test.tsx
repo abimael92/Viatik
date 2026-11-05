@@ -17,11 +17,12 @@ vi.mock("@/features/collaboration/data/dexie-collaboration-repository", () => ({
     watchMembers: vi.fn(),
     watchInvitations: vi.fn(),
     listProfiles: vi.fn(),
+    revokeInvitation: vi.fn(),
   },
 }));
 vi.mock("@/features/contacts/data/dexie-contact-repository", () => ({
   contactRepository: { watch: vi.fn() },
-  tripTravelerRepository: { watch: vi.fn() },
+  tripTravelerRepository: { watch: vi.fn(), remove: vi.fn() },
 }));
 vi.mock("@/features/trips/data/dexie-trip-repository", () => ({
   tripRepository: { watchById: vi.fn(), update: vi.fn() },
@@ -128,6 +129,40 @@ describe("PeoplePanel", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Set as crew confirmed" }));
     await waitFor(() => expect(tripRepository.update).toHaveBeenCalledWith("trip-1", { crewConfirmed: true }));
+  });
+
+  it("shows a localized error when removing a traveler fails", async () => {
+    const contact = { id: "contact-1", ownerId: "user-1", fullName: "Alex Traveler", linkedProfileId: null };
+    const traveler = { id: "traveler-1", tripId: "trip-1", contactId: "contact-1", displayName: "Alex Traveler", travelerType: "adult", createdBy: "user-1" };
+    vi.mocked(contactRepository.watch).mockImplementation((_userId, callback) => {
+      callback([contact as never]);
+      return () => undefined;
+    });
+    vi.mocked(tripTravelerRepository.watch).mockImplementation((_tripId, callback) => {
+      callback([traveler as never]);
+      return () => undefined;
+    });
+    vi.mocked(tripTravelerRepository.remove).mockRejectedValue(new Error(""));
+
+    render(<PeoplePanel tripId="trip-1" userId="user-1" canEdit />);
+    fireEvent.click(await screen.findByRole("button", { name: "Remove Alex Traveler" }));
+
+    expect((await screen.findByRole("alert")).textContent).toContain("Something went wrong. Please try again.");
+    expect(tripTravelerRepository.remove).toHaveBeenCalledWith("traveler-1");
+  });
+
+  it("shows a localized error when revoking an invitation fails", async () => {
+    vi.mocked(collaborationRepository.watchInvitations).mockImplementation((_tripId, callback) => {
+      callback([{ id: "invitation-1", email: "friend@example.com", role: "editor", status: "pending" } as never]);
+      return () => undefined;
+    });
+    vi.mocked(collaborationRepository.revokeInvitation).mockRejectedValue(new Error(""));
+
+    render(<PeoplePanel tripId="trip-1" userId="user-1" canEdit />);
+    fireEvent.click(await screen.findByRole("button", { name: "Revoke" }));
+
+    expect((await screen.findByRole("alert")).textContent).toContain("Something went wrong. Please try again.");
+    expect(collaborationRepository.revokeInvitation).toHaveBeenCalledWith("invitation-1");
   });
 
   it("shows Viatik members even when they have no traveler contact row", async () => {

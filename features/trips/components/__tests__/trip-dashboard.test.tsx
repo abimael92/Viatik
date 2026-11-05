@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Trip } from "@/features/domain/entities";
+import { collaborationRepository } from "@/features/collaboration/data/dexie-collaboration-repository";
 import { TripDashboard } from "@/features/trips/components/trip-dashboard";
 import { tripRepository } from "@/features/trips/data/dexie-trip-repository";
 import { tripIdeaRepository } from "@/features/trip-planner/data/dexie-trip-planner-repository";
@@ -23,6 +24,7 @@ vi.mock("@/features/collaboration/data/dexie-collaboration-repository", () => ({
       callback([]);
       return () => undefined;
     }),
+    rejectInvitation: vi.fn(),
   },
 }));
 vi.mock("@/features/trip-planner/components/trip-planner-view", () => ({
@@ -66,6 +68,35 @@ describe("TripDashboard", () => {
     render(<TripDashboard userId="user-1" />);
     expect(await screen.findByText("Your next trip starts here")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Create your first trip" })).toBeTruthy();
+  });
+
+  it("shows a localized error when declining an invitation fails", async () => {
+    vi.mocked(tripRepository.watchAll).mockImplementation((callback) => {
+      callback([]);
+      return () => undefined;
+    });
+    vi.mocked(collaborationRepository.watchInvitations).mockImplementation((_tripId, callback) => {
+      callback([
+        {
+          id: "invitation-1",
+          tripId: "trip-1",
+          email: "friend@example.com",
+          role: "editor",
+          status: "pending",
+          expiresAt: "2030-01-01T00:00:00.000Z",
+        },
+      ] as never);
+      return () => undefined;
+    });
+    vi.mocked(collaborationRepository.rejectInvitation).mockRejectedValue(
+      new Error("")
+    );
+
+    render(<TripDashboard userId="user-1" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Decline" }));
+
+    expect((await screen.findByRole("alert")).textContent).toContain("Something went wrong. Please try again.");
+    expect(collaborationRepository.rejectInvitation).toHaveBeenCalledWith("invitation-1");
   });
 
   it("shows the local wishlist on the same page, below the trips", async () => {
