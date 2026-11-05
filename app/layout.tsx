@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import LayoutProps from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import type { ReactNode } from "react";
 import "./globals.css";
 import { RecoveryLinkCatcher } from "@/components/auth/recovery-link-catcher";
 import { ErrorBoundary } from "@/components/error-boundary";
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   description: "Plan trips with friends, even offline. Viatik syncs your itinerary, expenses, and gallery whenever you are back online.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html
       lang="en"
