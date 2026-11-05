@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { parseActivityDragPayload } from "@/features/community/lib/activity-drag-payload";
 import { buildEditedSuggestionSource } from "@/features/community/lib/build-edited-suggestion";
 import { persistTripClone } from "@/features/community/lib/duplicate-trip";
 import type { PublicTripTemplate } from "@/features/community/data/public-templates";
@@ -150,10 +151,8 @@ function ItineraryPreview({
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={(e) => {
                           e.preventDefault();
-                          try {
-                            const data = JSON.parse(e.dataTransfer.getData("application/json"));
-                            onActivityMove?.(data.activityId, dayDate);
-                          } catch {}
+                          const activityId = parseActivityDragPayload(e.dataTransfer.getData("application/json"));
+                          if (activityId) onActivityMove?.(activityId, dayDate);
                         }}
                       >
                         {activity.startTime && (
