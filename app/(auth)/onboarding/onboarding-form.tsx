@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useI18n } from "@/lib/i18n/i18n-provider";
-import { localizeUserError } from "@/lib/i18n/localize-error";
+import { localizeThrownError, localizeUserError } from "@/lib/i18n/localize-error";
 import { cn } from "@/lib/utils";
 
 const STEPS = ["Identity", "Contact details", "Travel details"];
@@ -169,10 +169,14 @@ export function OnboardingForm({ email, next, initialName = "" }: { email: strin
     };
     setMessage(null);
     startTransition(async () => {
-      const result = await completeOnboarding(values.fullName.trim(), avatar, details);
-      if (!result.success) return setMessage(localizeUserError(result.error, t, "errors.profileSaveFailed"));
-      router.replace(next);
-      router.refresh();
+      try {
+        const result = await completeOnboarding(values.fullName.trim(), avatar, details);
+        if (!result.success) return setMessage(localizeUserError(result.error, t, "errors.profileSaveFailed"));
+        router.replace(next);
+        router.refresh();
+      } catch (error) {
+        setMessage(localizeThrownError(error, t, "errors.profileSaveFailed"));
+      }
     });
   }
 

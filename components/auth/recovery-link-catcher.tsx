@@ -18,8 +18,8 @@ export function RecoveryLinkCatcher() {
     if (!session) return;
 
     const supabase = getSupabaseBrowserClient();
-    void supabase.auth
-      .setSession({ access_token: session.accessToken, refresh_token: session.refreshToken })
+    void Promise.resolve()
+      .then(() => supabase.auth.setSession({ access_token: session.accessToken, refresh_token: session.refreshToken }))
       .then(async ({ error }) => {
         if (error) {
           window.location.replace(`/login?error=${encodeURIComponent(expiredLink)}`);
@@ -27,6 +27,9 @@ export function RecoveryLinkCatcher() {
         }
         const result = await grantPasswordRecovery();
         window.location.replace(result.success ? "/reset-password" : `/login?error=${encodeURIComponent(result.error)}`);
+      })
+      .catch(() => {
+        window.location.replace(`/login?error=${encodeURIComponent(expiredLink)}`);
       });
   }, []);
 
