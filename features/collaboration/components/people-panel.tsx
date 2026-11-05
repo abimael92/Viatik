@@ -119,6 +119,24 @@ export function PeoplePanel({ tripId, userId, canEdit }: { tripId: string; userI
     }
   }
 
+  async function removeTraveler(travelerId: string) {
+    setMessage(null);
+    try {
+      await tripTravelerRepository.remove(travelerId);
+    } catch (cause) {
+      setMessage(localizeThrownError(cause, t, "errors.unexpected"));
+    }
+  }
+
+  async function revokeInvitation(invitationId: string) {
+    setMessage(null);
+    try {
+      await collaborationRepository.revokeInvitation(invitationId);
+    } catch (cause) {
+      setMessage(localizeThrownError(cause, t, "errors.unexpected"));
+    }
+  }
+
   async function invite(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
@@ -207,7 +225,7 @@ export function PeoplePanel({ tripId, userId, canEdit }: { tripId: string; userI
                 </Button>
               )}
               {canEdit && (
-                <Button variant="ghost" size="icon" aria-label={t("common.removeContact", { name: traveler.displayName })} onClick={() => void tripTravelerRepository.remove(traveler.id)}>
+                <Button variant="ghost" size="icon" aria-label={t("common.removeContact", { name: traveler.displayName })} onClick={() => void removeTraveler(traveler.id)}>
                   <Trash2 className="size-5 text-destructive" />
                 </Button>
               )}
@@ -300,7 +318,7 @@ export function PeoplePanel({ tripId, userId, canEdit }: { tripId: string; userI
                 <span className="flex-1">{invitation.email}</span>
                 <span className="capitalize text-muted-foreground">{invitation.role}</span>
                 {canEdit && (
-                  <Button variant="ghost" size="sm" onClick={() => void collaborationRepository.revokeInvitation(invitation.id)}>{t("copy.revoke")}</Button>
+                  <Button variant="ghost" size="sm" onClick={() => void revokeInvitation(invitation.id)}>{t("copy.revoke")}</Button>
                 )}
               </div>
             ))}

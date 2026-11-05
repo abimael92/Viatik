@@ -239,7 +239,14 @@ export function TripDashboard({ userId }: { userId: string }) {
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => void collaborationRepository.rejectInvitation(invitation.id)}
+                    onClick={() => {
+                      setError(null);
+                      void collaborationRepository
+                        .rejectInvitation(invitation.id)
+                        .catch((cause) =>
+                          setError(localizeThrownError(cause, t, "errors.unexpected"))
+                        );
+                    }}
                   >
                     {t("common.decline")}
                   </Button>
