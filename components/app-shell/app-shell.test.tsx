@@ -5,9 +5,20 @@ import { logout } from "@/app/actions/auth";
 import { AppShell } from "@/components/app-shell/app-shell";
 import { openCommandPalette } from "@/components/pro/command-palette";
 
+const mocks = vi.hoisted(() => ({
+  logout: vi.fn(async () => ({ success: true })),
+  deleteDatabase: vi.fn(async () => {}),
+  toast: vi.fn(),
+  replace: vi.fn(),
+}));
+
+vi.mock("@/components/ui/toast", () => ({
+  useToast: () => ({ toast: mocks.toast }),
+}));
+
 vi.mock("next/navigation", () => ({
   usePathname: () => "/home",
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), replace: mocks.replace }),
 }));
 
 vi.mock("next/image", () => ({
@@ -24,7 +35,7 @@ vi.mock("next/link", () => ({
 }));
 
 vi.mock("@/app/actions/auth", () => ({
-  logout: vi.fn(async () => ({ success: true })),
+  logout: mocks.logout,
 }));
 
 vi.mock("@/components/pro/command-palette", () => ({
@@ -74,7 +85,7 @@ vi.mock("@/components/ui/dropdown-menu", () => ({
 }));
 
 vi.mock("@/lib/db/dexie", () => ({
-  deleteDatabase: vi.fn(async () => {}),
+  deleteDatabase: mocks.deleteDatabase,
 }));
 
 vi.mock("@/lib/sync/use-sync-status", () => ({
@@ -129,6 +140,8 @@ beforeEach(() => {
   // Sign-out is reachable from two places, so both tests assert an exact call
   // count — clear recorded calls (implementations stay intact).
   vi.clearAllMocks();
+  mocks.logout.mockResolvedValue({ success: true });
+  mocks.deleteDatabase.mockResolvedValue(undefined);
   Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true });
 });
 
@@ -301,5 +314,27 @@ describe("AppShell navigation and account menu", () => {
 
     fireEvent.click(signOutItem!);
     await waitFor(() => expect(vi.mocked(logout)).toHaveBeenCalledTimes(1));
+  });
+
+  it("shows a localized toast when logout rejects", async () => {
+    mocks.logout.mockRejectedValue(new Error("Failed to fetch"));
+    renderShell();
+    fireEvent.click(document.getElementById("app-sidebar")!.querySelector<HTMLButtonElement>('button[aria-label="Sign out"]')!);
+
+    await waitFor(() => expect(mocks.toast).toHaveBeenCalledWith({
+      description: "We couldn't reach the server. Check your connection and try again.",
+      variant: "error",
+    }));
+  });
+
+  it("shows a localized toast when local database cleanup rejects", async () => {
+    mocks.deleteDatabase.mockRejectedValue(new Error("Failed to fetch"));
+    renderShell();
+    fireEvent.click(document.getElementById("app-sidebar")!.querySelector<HTMLButtonElement>('button[aria-label="Sign out"]')!);
+
+    await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith(
+      `/login?error=${encodeURIComponent("We couldn't reach the server. Check your connection and try again.")}`
+    ));
+    expect(mocks.logout).toHaveBeenCalledOnce();
   });
 });
