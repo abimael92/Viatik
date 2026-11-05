@@ -14,6 +14,7 @@ const state = vi.hoisted(() => ({
   vault: null as ((entries: VaultEntry[]) => void) | null,
   contacts: null as ((contacts: Contact[]) => void) | null,
   packing: null as ((items: unknown[]) => void) | null,
+  toast: vi.fn(),
 }));
 
 vi.mock("next/link", () => ({
@@ -26,6 +27,7 @@ vi.mock("@/features/trips/data/dexie-trip-repository", () => ({
   tripRepository: {
     watchAll: vi.fn((cb) => { state.trips = cb; return () => {}; }),
     startTrip: vi.fn(async () => undefined),
+    cancelTrip: vi.fn(async () => undefined),
   },
 }));
 vi.mock("@/features/steps/data/dexie-step-repository", () => ({
@@ -130,6 +132,9 @@ vi.mock("@/app/actions/profile", () => ({
 vi.mock("@/app/actions/trip-notifications", () => ({
   notifyTripStarted: vi.fn(async () => ({ success: true, sent: 0, failed: 0, skipped: 0, configured: false })),
 }));
+vi.mock("@/components/ui/toast", () => ({
+  useToast: () => ({ toast: state.toast }),
+}));
 vi.mock("@/lib/security/web-crypto-vault", () => ({
   webCryptoVault: {
     getSession: vi.fn(() => undefined),
@@ -204,6 +209,7 @@ afterEach(() => {
   state.vault = null;
   state.contacts = null;
   state.packing = null;
+  state.toast.mockClear();
 });
 
 describe("HomePage", () => {
@@ -309,6 +315,44 @@ describe("HomePage", () => {
     });
     expect(tripRepository.startTrip).toHaveBeenCalledWith("trip-1");
     expect(screen.queryByRole("heading", { name: "Active Trip Actions" })).toBeNull();
+  });
+
+  it("shows a failure toast when starting a trip rejects", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    vi.mocked(tripRepository.startTrip).mockRejectedValueOnce(new Error("offline failure"));
+    render(<HomePage userId="owner-1" />);
+    act(() => state.trips?.([makeTrip({ startDate: today, endDate: today })]));
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Start trip/ }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(state.toast).toHaveBeenCalledWith({
+      title: "Unable to start trip",
+      description: "offline failure",
+      variant: "error",
+    });
+  });
+
+  it("shows a failure toast when cancelling a trip rejects", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    vi.mocked(tripRepository.cancelTrip).mockRejectedValueOnce(new Error("offline failure"));
+    render(<HomePage userId="owner-1" />);
+    act(() => state.trips?.([makeTrip({ startDate: today, endDate: today })]));
+
+    fireEvent.click(screen.getByRole("button", { name: "More options" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Cancel trip" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Cancel trip" }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(state.toast).toHaveBeenCalledWith({
+      title: "Unable to cancel trip",
+      description: "offline failure",
+      variant: "error",
+    });
   });
 
   it("shows a Start trip action for another planned trip in the ongoing quick view", async () => {

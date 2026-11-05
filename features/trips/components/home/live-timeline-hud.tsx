@@ -174,6 +174,11 @@ export function LiveTimelineHud({
             setWeather(result.forecast);
           }
         })
+        .catch(() => {
+          if (!cancelled) {
+            toast({ title: t("errors.weatherUnavailable"), variant: "error" });
+          }
+        })
         .finally(() => {
           if (!cancelled) setWeatherLoading(false);
         });
@@ -184,7 +189,7 @@ export function LiveTimelineHud({
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [trip, userId]);
+  }, [t, toast, trip, userId]);
 
   useEffect(() => {
     const reconcile = window.setTimeout(() => {
@@ -351,7 +356,7 @@ export function LiveTimelineHud({
 
       <div
         id={timelineId}
-        className={cn("pr-2", !showAll && "max-h-[28rem] overflow-y-auto")}
+        className={cn("pr-2", !showAll && "max-h-112 overflow-y-auto")}
       >
         <div className="relative space-y-2">
           <div className="absolute bottom-0 left-4.5 top-0 w-0.5 bg-border/40" aria-hidden />

@@ -235,11 +235,17 @@ function DayExperience({ value, dayDate, editing, onSave }: { value: string; day
   const { t } = useI18n();
   const [text, setText] = useState(value);
   const [saved, setSaved] = useState(true);
+  const [saveError, setSaveError] = useState(false);
   if (!editing) {
-    return value.trim() ? (
-      <p className="mt-4 whitespace-pre-wrap rounded-lg bg-muted/40 p-3 text-sm">{value}</p>
-    ) : (
-      <p className="mt-4 text-sm text-muted-foreground">{t("copy.noNotesDay")}</p>
+    return (
+      <>
+        {value.trim() ? (
+          <p className="mt-4 whitespace-pre-wrap rounded-lg bg-muted/40 p-3 text-sm">{value}</p>
+        ) : (
+          <p className="mt-4 text-sm text-muted-foreground">{t("copy.noNotesDay")}</p>
+        )}
+        {saveError && <p role="alert" className="mt-2 text-sm text-destructive">{t("errors.unexpected")}</p>}
+      </>
     );
   }
   return (
@@ -248,7 +254,8 @@ function DayExperience({ value, dayDate, editing, onSave }: { value: string; day
         <label htmlFor={`journal-experience-${dayDate}`} className="text-sm font-semibold">{t("copy.journalPrompt")}</label>
         <span className="text-xs text-muted-foreground" aria-live="polite">{saved ? t("common.offlineSaved") : t("copy.unsaved")}</span>
       </div>
-      <textarea id={`journal-experience-${dayDate}`} value={text} onChange={(event) => { setText(event.target.value); setSaved(false); }} onBlur={() => { if (!saved) void onSave(text).then(() => setSaved(true)); }} rows={4} maxLength={4000} placeholder={t("copy.journalPlaceholder")} className="w-full resize-y rounded-lg border bg-background px-3 py-2 text-sm outline-none transition focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring" />
+      <textarea id={`journal-experience-${dayDate}`} value={text} onChange={(event) => { setText(event.target.value); setSaved(false); setSaveError(false); }} onBlur={() => { if (!saved) void onSave(text).then(() => { setSaved(true); setSaveError(false); }).catch(() => setSaveError(true)); }} rows={4} maxLength={4000} placeholder={t("copy.journalPlaceholder")} className="w-full resize-y rounded-lg border bg-background px-3 py-2 text-sm outline-none transition focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring" />
+      {saveError && <p role="alert" className="text-sm text-destructive">{t("errors.unexpected")}</p>}
     </div>
   );
 }

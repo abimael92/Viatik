@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { LiveTimelineHud, visibleTimelineWindow } from "@/features/trips/components/home/live-timeline-hud";
+import { loadTripWeatherForecast } from "@/features/weather/lib/load-trip-weather-forecast";
 import type { TimelineItem } from "@/features/trips/lib/home-trips";
 import type { Trip } from "@/features/domain/entities";
 
@@ -218,6 +219,20 @@ describe("LiveTimelineHud execution UI", () => {
     await waitFor(() => expect(screen.getByLabelText(/°C|Weather unavailable/i)).toBeTruthy());
   });
 
+  it("ends weather loading and shows the localized unavailable-weather toast after refresh rejects", async () => {
+    vi.mocked(loadTripWeatherForecast).mockRejectedValueOnce(new Error("weather service offline"));
+
+    render(<LiveTimelineHud trip={trip} items={items} active userId="user-1" />);
+
+    await waitFor(() => expect(screen.getByLabelText(/Weather unavailable/i)).toBeTruthy());
+    expect(screen.queryByText("Loading weather…")).toBeNull();
+    expect(notify).toHaveBeenCalledWith({
+      title: "Unable to load weather right now.",
+      variant: "error",
+    });
+    expect(notify).not.toHaveBeenCalledWith(expect.objectContaining({ variant: "success" }));
+  });
+
   it("gives past and current cards distinct theme-aware visual hierarchy", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 8, 23, 12, 0, 0));
@@ -352,7 +367,7 @@ describe("LiveTimelineHud execution UI", () => {
     expect(toggle.className).toContain("hover:bg-transparent");
     const timeline = document.getElementById(toggle.getAttribute("aria-controls")!);
     expect(timeline!.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(timeline!.className).toContain("max-h-[28rem]");
+    expect(timeline!.className).toContain("max-h-112");
     fireEvent.click(toggle);
     expect(screen.getByText("bailar")).toBeTruthy();
     expect(timeline!.className).not.toContain("max-h-[28rem]");
