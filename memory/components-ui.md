@@ -225,15 +225,26 @@ and `lib/i18n/error-copy.ts`. Locale persists in `localStorage["viatik-language"
   `SyncStatusPill compact` renders the icon-only variant with the same
   rect-anchored dropdown. `CommandPaletteHint variant="sidebar"` has no `kbd`.
   At 5rem the aside drops to `0.75rem` inline padding (56px inner — 44px
-  controls fit); the rail user block is chromeless (bordered card chrome
-  clipped it), and `.sidebar-label` hides every label (brand, search, sign-out).
-- **Sidebar chrome placement (2026-10-31):** the collapse toggle is an icon-only
-  44px ghost button in the brand row (right of `ThemeToggle`) — it is *not* in the
-  bottom bar, so `.sidebar-brand-actions` stacks vertically in the rail. Icon is
-  `ChevronsLeft` expanded / `ChevronsRight` collapsed; `hover:bg-side-hover`
-  because ghost's default `bg-muted` hover is a solid fill unlike the nav rows.
-  The theme toggle's amber/magenta hover comes from `.theme-toggle:hover` in
-  `globals.css` and is intentional — do not override it with a utility.
+  controls fit); the collapsed rail centers the avatar in an unframed portrait
+  layout. Only the unread-count badge floats upper-right (no bell glyph); the
+  hollow status-color sync ring encircles the avatar behind its account
+  trigger. Keep the 44px notification target and 52px sync-ring target;
+  `SyncStatusPill compact` uses a status-colored border instead of a filled dot.
+  In collapsed mode the standalone theme toggle and sidebar search are hidden;
+  the avatar's `View options` submenu exposes Theme, EN/ES, and Search. The
+  global command shortcut remains active, and expanded/mobile controls are
+  unchanged. `.sidebar-label` hides every label (brand, search, sign-out).
+- **Sidebar chrome placement (updated 2026-11-04):** the collapse toggle remains
+  in the brand row, never the bottom bar. Expanded: it sits right of
+  `ThemeToggle`. Collapsed: the expand control sits flush at the rail's
+  top-right, with a 14px chevron inside its transparent 44px hit target; the row
+  reserves 16px above the logo and the ThemeToggle moves into View options.
+  Icons are `ChevronsLeft` expanded /
+  `ChevronsRight` collapsed;
+  `hover:bg-side-hover` because ghost's default `bg-muted` hover is a solid fill
+  unlike the nav rows. The theme toggle's amber/magenta hover comes from
+  `.theme-toggle:hover` in `globals.css` and is intentional — do not override it
+  with a utility.
   The
   bottom of the panel holds only the destructive sign-out row (full-width with a
   label when expanded, icon-only in the rail); the mobile account sheet keeps its
