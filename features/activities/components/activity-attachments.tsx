@@ -511,6 +511,16 @@ function EditorGalleryCard({
   const imageMedia = item.kind === "image" ? media.find((entry) => entry.id === item.mediaId) : undefined;
   const pending = item.kind === "image" ? pendingImages.find((entry) => entry.id === item.mediaId) : undefined;
   const preview = useMediaPreviewUrls(imageMedia, pending);
+  const [retryError, setRetryError] = useState<string | null>(null);
+
+  async function retryUpload(mediaId: string) {
+    setRetryError(null);
+    try {
+      await mediaRepository.retry(mediaId);
+    } catch {
+      setRetryError(t("common.activityAttachmentsUploadFailed"));
+    }
+  }
 
   return (
     <div className="relative overflow-hidden rounded-xl border border-border bg-muted">
@@ -549,11 +559,12 @@ function EditorGalleryCard({
           type="button"
           className="absolute inset-x-2 bottom-2 min-h-11 rounded-lg bg-background/90 px-2 text-xs font-medium text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-label={t("common.activityAttachmentsRetry")}
-          onClick={() => void mediaRepository.retry(imageMedia.id)}
+          onClick={() => void retryUpload(imageMedia.id)}
         >
           {t("common.activityAttachmentsRetry")}
         </button>
       )}
+      {retryError && <p role="alert" className="px-2 py-1 text-xs text-destructive">{retryError}</p>}
     </div>
   );
 }
