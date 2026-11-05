@@ -82,4 +82,15 @@ describe("TravelerPanel", () => {
 
     expect(screen.getByRole("dialog").textContent).toContain("Editing Mom");
   });
+
+  it("shows a failure message and keeps the traveler visible when removal rejects", async () => {
+    vi.mocked(tripTravelerRepository.remove).mockRejectedValue(new Error("remove failed"));
+
+    render(<TravelerPanel tripId="trip-1" userId="user-1" canEdit />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove Mom" }));
+
+    expect((await screen.findByRole("alert")).textContent).toContain("remove failed");
+    expect(screen.queryByText("Mom")).not.toBeNull();
+  });
 });
