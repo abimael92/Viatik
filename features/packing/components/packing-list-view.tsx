@@ -86,34 +86,56 @@ export function PackingListView({
       latitude: trip.latitude,
       activities,
     });
-    void packingRepository.applySuggested(tripId, drafts);
-  }, [returning, tripId, signature, activities, trip.startDate, trip.endDate, trip.latitude]);
+    void packingRepository.applySuggested(tripId, drafts).catch((cause: unknown) => {
+      setActionError(localizeThrownError(cause, t, "Unable to update the packing list."));
+    });
+  }, [returning, tripId, signature, activities, trip.startDate, trip.endDate, trip.latitude, t]);
 
   const handleToggle = useCallback(async (item: PackingItem) => {
-    if (returning) {
-      await packingRepository.setPackedForReturn([item.id], item.packedForReturn !== true);
-      return;
+    setActionError(null);
+    try {
+      if (returning) {
+        await packingRepository.setPackedForReturn([item.id], item.packedForReturn !== true);
+        return;
+      }
+      await packingRepository.toggle(item.id, !item.isPacked);
+    } catch (cause) {
+      setActionError(localizeThrownError(cause, t, "Unable to update the packing list."));
     }
-    await packingRepository.toggle(item.id, !item.isPacked);
-  }, [returning]);
+  }, [returning, t]);
 
   const handleRemove = useCallback(async (id: string) => {
-    await packingRepository.remove(id);
-  }, []);
+    setActionError(null);
+    try {
+      await packingRepository.remove(id);
+    } catch (cause) {
+      setActionError(localizeThrownError(cause, t, "Unable to update the packing list."));
+    }
+  }, [t]);
 
   const handleQuantity = useCallback(async (item: PackingItem, delta: number) => {
-    await packingRepository.updateQuantity(item.id, Math.min(99, Math.max(1, item.quantity + delta)));
-  }, []);
+    setActionError(null);
+    try {
+      await packingRepository.updateQuantity(item.id, Math.min(99, Math.max(1, item.quantity + delta)));
+    } catch (cause) {
+      setActionError(localizeThrownError(cause, t, "Unable to update the packing list."));
+    }
+  }, [t]);
 
   const handleCategoryPack = useCallback(async (category: PackingCategory, categoryItems: PackingItem[], packed: boolean) => {
     const ids = categoryItems.map((item) => item.id);
-    if (returning) {
-      await packingRepository.setPackedForReturn(ids, packed);
-      return;
+    setActionError(null);
+    try {
+      if (returning) {
+        await packingRepository.setPackedForReturn(ids, packed);
+        return;
+      }
+      await packingRepository.setPacked(ids, packed);
+      if (category === "toiletries") await tripRepository.update(tripId, { personalCareConfirmed: packed });
+    } catch (cause) {
+      setActionError(localizeThrownError(cause, t, "Unable to update the packing list."));
     }
-    await packingRepository.setPacked(ids, packed);
-    if (category === "toiletries") await tripRepository.update(tripId, { personalCareConfirmed: packed });
-  }, [returning, tripId]);
+  }, [returning, t, tripId]);
 
   const setPackingComplete = useCallback(async (complete: boolean) => {
     setActionError(null);
@@ -137,13 +159,16 @@ export function PackingListView({
     const name = newName.trim();
     if (!name) return;
     setAdding(true);
+    setActionError(null);
     try {
       await packingRepository.addCustom({ tripId, category: newCategory, name });
       setNewName("");
+    } catch (cause) {
+      setActionError(localizeThrownError(cause, t, "Unable to add the packing item."));
     } finally {
       setAdding(false);
     }
-  }, [newName, newCategory, tripId]);
+  }, [newName, newCategory, t, tripId]);
 
   const buildDrafts = useCallback(
     () =>
