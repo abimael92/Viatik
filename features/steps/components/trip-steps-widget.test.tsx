@@ -179,6 +179,71 @@ describe("TripStepsWidget", () => {
     await waitFor(() => expect(mocks.queryDailySteps).toHaveBeenCalledWith("2026-09-22"));
   });
 
+  it("keeps local steps available when native listener registration rejects", async () => {
+    mocks.addListener.mockRejectedValue(new Error());
+
+    render(
+      <TripStepsWidget
+        tripId="trip-1"
+        userId="user-1"
+        startedAt="2026-09-22T10:00:00.000Z"
+        endDate="2026-09-24"
+        compact
+      />
+    );
+
+    expect(screen.getByText("6,420 steps")).toBeTruthy();
+    expect((await screen.findByRole("alert")).textContent).toMatch(/something went wrong/i);
+  });
+
+  it("contains native listener removal rejection during unmount", async () => {
+    const remove = vi.fn().mockRejectedValue(new Error("Native listener removal failed"));
+    mocks.addListener.mockResolvedValue({ remove });
+
+    const { unmount } = render(
+      <TripStepsWidget
+        tripId="trip-1"
+        userId="user-1"
+        startedAt="2026-09-22T10:00:00.000Z"
+        endDate="2026-09-24"
+      />
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    unmount();
+
+    await waitFor(() => expect(remove).toHaveBeenCalledOnce());
+  });
+
+  it("contains listener removal rejection when registration resolves after unmount", async () => {
+    let resolveRegistration!: (listener: { remove: () => Promise<void> }) => void;
+    const remove = vi.fn().mockRejectedValue(new Error("Native listener removal failed"));
+    mocks.addListener.mockReturnValue(
+      new Promise((resolve) => {
+        resolveRegistration = resolve;
+      })
+    );
+
+    const { unmount } = render(
+      <TripStepsWidget
+        tripId="trip-1"
+        userId="user-1"
+        startedAt="2026-09-22T10:00:00.000Z"
+        endDate="2026-09-24"
+      />
+    );
+    unmount();
+    await act(async () => {
+      resolveRegistration({ remove });
+      await Promise.resolve();
+    });
+
+    expect(remove).toHaveBeenCalledOnce();
+  });
+
   it("keeps the history read-only and expandable", () => {
     render(
       <TripStepsWidget

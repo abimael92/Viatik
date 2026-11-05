@@ -54,6 +54,7 @@ const trip: Trip = {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(currencyRateRepository.getRate).mockResolvedValue(undefined);
+  vi.mocked(currencyRateRepository.ensureDefaults).mockResolvedValue(undefined);
 });
 
 afterEach(() => cleanup());
@@ -83,5 +84,39 @@ describe("CurrencyConverter", () => {
     });
 
     expect(currencyRateRepository.saveRate).toHaveBeenCalledWith("USD", "EUR", 0.95);
+  });
+
+  it("continues with the built-in rate when loading the cached rate fails", async () => {
+    vi.mocked(currencyRateRepository.getRate).mockRejectedValue(new Error());
+
+    render(<CurrencyConverter trip={trip} />);
+
+    expect(await screen.findByDisplayValue("0.92")).toBeTruthy();
+    expect(screen.getByRole("alert").textContent).toMatch(/something went wrong/i);
+
+    fireEvent.change(screen.getByLabelText("Amount"), { target: { value: "100" } });
+    expect(await screen.findByDisplayValue("€92.00")).toBeTruthy();
+  });
+
+  it("contains failures while seeding default rates", async () => {
+    vi.mocked(currencyRateRepository.ensureDefaults).mockRejectedValue(new Error());
+
+    render(<CurrencyConverter trip={trip} />);
+
+    expect(await screen.findByDisplayValue("0.92")).toBeTruthy();
+    expect(screen.getByRole("alert").textContent).toMatch(/something went wrong/i);
+  });
+
+  it("reports a failed manual rate save without showing success", async () => {
+    vi.mocked(currencyRateRepository.saveRate).mockRejectedValue(new Error());
+    render(<CurrencyConverter trip={trip} />);
+
+    await screen.findByDisplayValue("0.92");
+    fireEvent.change(screen.getByLabelText(/^Rate/), { target: { value: "0.95" } });
+    fireEvent.click(screen.getByRole("button", { name: /Save rate/ }));
+
+    expect((await screen.findByRole("alert")).textContent).toMatch(/something went wrong/i);
+    expect(screen.getByRole("button", { name: /Save rate/ })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Saved/ })).toBeNull();
   });
 });
