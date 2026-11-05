@@ -77,6 +77,7 @@ export function HomePage({ userId }: { userId: string }) {
     void tripRepository
       .startTrip(tripId)
       .then(() => void notifyTripStarted(tripId).catch(() => undefined))
+      .catch((cause) => toast({ title: t("copy.unableStartTrip"), description: localizeThrownError(cause, t, t("copy.pleaseTryAgain")), variant: "error" }))
       .finally(() => setPending(false));
   }
 
@@ -107,6 +108,7 @@ export function HomePage({ userId }: { userId: string }) {
     void tripRepository
       .cancelTrip(primaryTrip.id)
       .then(() => toast({ title: t("copy.tripCancelled"), description: t("copy.tripMovedPast"), variant: "success" }))
+      .catch((cause) => toast({ title: t("copy.unableCancelTrip"), description: localizeThrownError(cause, t, t("copy.pleaseTryAgain")), variant: "error" }))
       .finally(() => setPending(false));
   }
 
