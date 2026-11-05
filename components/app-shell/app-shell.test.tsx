@@ -1,8 +1,9 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { logout } from "@/app/actions/auth";
 import { AppShell } from "@/components/app-shell/app-shell";
+import { openCommandPalette } from "@/components/pro/command-palette";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/home",
@@ -26,24 +27,47 @@ vi.mock("@/app/actions/auth", () => ({
   logout: vi.fn(async () => ({ success: true })),
 }));
 
+vi.mock("@/components/pro/command-palette", () => ({
+  openCommandPalette: vi.fn(),
+}));
+
 // Radix menus need pointer events jsdom does not provide; render their content
 // inline so the account menu's items are assertable.
 vi.mock("@/components/ui/dropdown-menu", () => ({
   DropdownMenu: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   DropdownMenuTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DropdownMenuSub: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DropdownMenuSubTrigger: ({ children, className }: { children: React.ReactNode; className?: string }) => (
+    <button type="button" role="menuitem" className={className}>{children}</button>
+  ),
+  DropdownMenuSubContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DropdownMenuRadioGroup: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DropdownMenuRadioItem: ({
+    children,
+    className,
+  }: {
+    children: React.ReactNode;
+    className?: string;
+  }) => (
+    <button type="button" role="menuitemradio" aria-checked={false} className={className}>
+      {children}
+    </button>
+  ),
   DropdownMenuLabel: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
   DropdownMenuSeparator: () => <hr />,
   DropdownMenuItem: ({
     children,
     onSelect,
     disabled,
+    className,
   }: {
     children: React.ReactNode;
     onSelect?: () => void;
     disabled?: boolean;
+    className?: string;
   }) => (
-    <button type="button" role="menuitem" disabled={disabled} onClick={onSelect}>
+    <button type="button" role="menuitem" disabled={disabled} onClick={onSelect} className={className}>
       {children}
     </button>
   ),
@@ -120,6 +144,7 @@ afterEach(() => {
   cleanup();
   storage.clear();
   document.documentElement.removeAttribute("data-sidebar");
+  document.documentElement.removeAttribute("data-theme");
 });
 
 describe("AppShell sidebar", () => {
@@ -143,12 +168,39 @@ describe("AppShell sidebar", () => {
     fireEvent.click(toggle);
     expect(document.documentElement.dataset.sidebar).toBe("collapsed");
     expect(storage.getItem("viatik-sidebar")).toBe("collapsed");
-    expect(screen.getByRole("button", { name: "Expand sidebar" }).getAttribute("aria-expanded")).toBe("false");
+    const expandToggle = screen.getByRole("button", { name: "Expand sidebar" });
+    expect(expandToggle.getAttribute("aria-expanded")).toBe("false");
+    expect(expandToggle.closest(".sidebar-brand-row")).toBeTruthy();
+    expect(expandToggle.classList.contains("sidebar-toggle-btn")).toBe(true);
+    expect(expandToggle.classList.contains("size-11")).toBe(true);
 
     fireEvent.click(screen.getByRole("button", { name: "Expand sidebar" }));
     expect(document.documentElement.dataset.sidebar).toBeUndefined();
     expect(storage.getItem("viatik-sidebar")).toBe("expanded");
     expect(screen.getByRole("button", { name: "Collapse sidebar" }).getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("moves collapsed theme, language, and search access into the account menu", () => {
+    renderShell();
+    fireEvent.click(screen.getByRole("button", { name: "Collapse sidebar" }));
+
+    const sidebar = document.getElementById("app-sidebar")!;
+    expect(sidebar.querySelector(".theme-toggle")?.classList.contains("sidebar-expanded-only")).toBe(true);
+    const sidebarSearch = sidebar.querySelector<HTMLButtonElement>('button[aria-label="Search"]');
+    expect(sidebarSearch?.closest(".sidebar-expanded-only")).toBeTruthy();
+
+    expect(screen.getByRole("menuitem", { name: "View options" }).classList.contains("min-h-11")).toBe(true);
+    expect(screen.getByRole("menuitem", { name: "Toggle theme" }).classList.contains("min-h-11")).toBe(true);
+    expect(screen.getByRole("menuitemradio", { name: "EN" }).classList.contains("min-h-11")).toBe(true);
+    expect(screen.getByRole("menuitemradio", { name: "ES" }).classList.contains("min-h-11")).toBe(true);
+    expect(screen.getByRole("menuitem", { name: "Search commands" }).classList.contains("min-h-11")).toBe(true);
+
+    document.documentElement.setAttribute("data-theme", "light");
+    fireEvent.click(screen.getByRole("menuitem", { name: "Toggle theme" }));
+    expect(document.documentElement.dataset.theme).toBe("dark");
+
+    fireEvent.click(screen.getByRole("menuitem", { name: "Search commands" }));
+    expect(vi.mocked(openCommandPalette)).toHaveBeenCalledTimes(1);
   });
 
   it("keeps an accessible name on every nav item for the collapsed rail", () => {
@@ -158,6 +210,34 @@ describe("AppShell sidebar", () => {
       const name = link.getAttribute("aria-label") ?? link.textContent;
       expect(name?.trim().length).toBeGreaterThan(0);
     }
+  });
+
+  it("groups the collapsed account, notifications, and sync controls together", async () => {
+    renderShell();
+    const cluster = screen.getByRole("group", { name: "Account, notifications, and sync" });
+    expect(cluster.classList.contains("relative")).toBe(true);
+    expect(cluster.classList.contains("w-14")).toBe(true);
+    expect(cluster.classList.contains("h-28")).toBe(true);
+    expect(cluster.classList.contains("border")).toBe(false);
+    expect(cluster.classList.contains("bg-side-hover/25")).toBe(false);
+
+    const accountButton = within(cluster).getByRole("button", { name: "Open account menu" });
+    expect(accountButton.classList.contains("justify-center")).toBe(true);
+    expect(accountButton.parentElement?.classList.contains("z-10")).toBe(true);
+    const notificationButton = within(cluster).getByRole("button", { name: "Notifications" });
+    expect(notificationButton.parentElement?.classList.contains("absolute")).toBe(true);
+    expect(notificationButton.parentElement?.classList.contains("top-2")).toBe(true);
+    expect(notificationButton.parentElement?.classList.contains("right-0")).toBe(true);
+    await waitFor(() => {
+      const syncButton = within(cluster).getByRole("button", { name: "Up to date" });
+      expect(syncButton.classList.contains("size-[3.25rem]")).toBe(true);
+      expect(syncButton.classList.contains("border-4")).toBe(true);
+      expect(syncButton.classList.contains("border-success")).toBe(true);
+      expect(syncButton.classList.contains("bg-transparent")).toBe(true);
+      expect(syncButton.parentElement?.classList.contains("absolute")).toBe(true);
+      expect(syncButton.parentElement?.classList.contains("top-1/2")).toBe(true);
+      expect(syncButton.parentElement?.classList.contains("-translate-y-1/2")).toBe(true);
+    });
   });
 });
 
