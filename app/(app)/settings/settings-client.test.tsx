@@ -95,4 +95,26 @@ describe("native passkey registration", () => {
     expect(mocks.updateProfileDetails.mock.calls[0][0].avatarSeed).toBe("adventurer|selected");
     expect(mocks.refresh).toHaveBeenCalled();
   });
+
+  it("shows a localized QR loading error when the payload request rejects", async () => {
+    mocks.getConnectionQrPayload.mockRejectedValue(new Error("Failed to fetch"));
+    render(<SettingsClient fullName="Alice" viatikId="VTK-1234ABCD5678EF90" />);
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Directory" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe("We couldn't reach the server. Check your connection and try again.");
+  });
+
+  it("shows a localized profile-save error and keeps edit mode after rejection", async () => {
+    mocks.updateProfileDetails.mockRejectedValue(new Error("Failed to fetch"));
+    render(<SettingsClient fullName="Alice" />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.change(screen.getByLabelText("Full name"), { target: { value: "Alicia" } });
+    fireEvent.change(screen.getByLabelText("Phone"), { target: { value: "+1 555 0100" } });
+    fireEvent.change(screen.getByLabelText("Date of birth"), { target: { value: "1990-01-01" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe("We couldn't reach the server. Check your connection and try again.");
+    expect(screen.getByRole("button", { name: "Save profile" })).toBeTruthy();
+    expect(mocks.refresh).not.toHaveBeenCalled();
+  });
 });

@@ -53,17 +53,22 @@ export function SettingsClient({
     let cancelled = false;
     if (!viatikId) return () => { cancelled = true; };
 
-    void getConnectionQrPayload().then((payload) => {
-      if (cancelled) return;
-      setQrState(payload.success
-        ? { id: viatikId, value: payload.qrValue, error: null }
-        : { id: viatikId, value: null, error: payload.error });
-    });
+    void getConnectionQrPayload()
+      .then((payload) => {
+        if (cancelled) return;
+        setQrState(payload.success
+          ? { id: viatikId, value: payload.qrValue, error: null }
+          : { id: viatikId, value: null, error: payload.error });
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        setQrState({ id: viatikId, value: null, error: localizeThrownError(error, t, "errors.scanPrepareFailed") });
+      });
 
     return () => {
       cancelled = true;
     };
-  }, [viatikId]);
+  }, [t, viatikId]);
 
   function addPasskey() {
     startTransition(async () => {
@@ -320,29 +325,33 @@ function ProfileEditForm({
     setFieldErrors(next);
     if (Object.keys(next).length > 0) return;
     startTransition(async () => {
-      const result = await updateProfileDetails(
-        {
-          fullName: values.fullName,
-          avatarUrl: avatarUrl ?? undefined,
-          avatarSeed: avatarSeed ?? undefined,
-          phone: values.phone,
-        birthDate: values.birthDate || undefined,
-        preferredCurrency: values.preferredCurrency || undefined,
-        preferredLanguage: values.preferredLanguage || undefined,
-        muteTripNotifications: values.muteTripNotifications,
-        dietaryRestrictions: parseTags(values.dietaryRestrictions),
-        allergies: parseTags(values.allergies),
-        emergencyContactName: values.emergencyContactName,
-        emergencyContactRelationship: values.emergencyContactRelationship,
-        emergencyContactPhone: values.emergencyContactPhone,
-          passportIssuingCountry: values.passportIssuingCountry,
-          passportExpiresOn: values.passportExpiresOn || undefined,
-        },
-        avatarFile
-      );
-      if (!result.success) return setMessage(localizeUserError(result.error, t, "errors.profileSaveFailed"));
-      window.dispatchEvent(new Event(PROFILE_UPDATED_EVENT));
-      onSaved(result.success ? "Profile saved." : "");
+      try {
+        const result = await updateProfileDetails(
+          {
+            fullName: values.fullName,
+            avatarUrl: avatarUrl ?? undefined,
+            avatarSeed: avatarSeed ?? undefined,
+            phone: values.phone,
+            birthDate: values.birthDate || undefined,
+            preferredCurrency: values.preferredCurrency || undefined,
+            preferredLanguage: values.preferredLanguage || undefined,
+            muteTripNotifications: values.muteTripNotifications,
+            dietaryRestrictions: parseTags(values.dietaryRestrictions),
+            allergies: parseTags(values.allergies),
+            emergencyContactName: values.emergencyContactName,
+            emergencyContactRelationship: values.emergencyContactRelationship,
+            emergencyContactPhone: values.emergencyContactPhone,
+            passportIssuingCountry: values.passportIssuingCountry,
+            passportExpiresOn: values.passportExpiresOn || undefined,
+          },
+          avatarFile
+        );
+        if (!result.success) return setMessage(localizeUserError(result.error, t, "errors.profileSaveFailed"));
+        window.dispatchEvent(new Event(PROFILE_UPDATED_EVENT));
+        onSaved(result.success ? "Profile saved." : "");
+      } catch (error) {
+        setMessage(localizeThrownError(error, t, "errors.profileSaveFailed"));
+      }
     });
   }
 

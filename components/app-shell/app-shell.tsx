@@ -36,6 +36,8 @@ import { useSyncRetryCountdown, useSyncStatus } from "@/lib/sync/use-sync-status
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { SUPPORTED_LOCALES, type Locale } from "@/lib/i18n/translations";
 import { cn } from "@/lib/utils";
+import { localizeThrownError, localizeUserError } from "@/lib/i18n/localize-error";
+import { useToast } from "@/components/ui/toast";
 
 type NavigationLink = {
   href: "/home" | "/trips" | "/contacts" | "/community" | "/settings";
@@ -248,13 +250,27 @@ export function AppShell({
   const sync = useSyncStatus();
   const { countdown: syncRetryCountdown, retryNow } = useSyncRetryCountdown(sync);
   const { t } = useI18n();
+  const { toast } = useToast();
 
   function signOut() {
     startTransition(async () => {
-      const result = await logout();
-      if (!result.success) return;
-      await deleteDatabase(userId);
-      router.replace("/login");
+      try {
+        const result = await logout();
+        if (!result.success) {
+          toast({ description: localizeUserError(result.error, t, "errors.signOutFailed"), variant: "error" });
+          return;
+        }
+        try {
+          await deleteDatabase(userId);
+        } catch (error) {
+          const message = localizeThrownError(error, t, "errors.signOutFailed");
+          router.replace(`/login?error=${encodeURIComponent(message)}`);
+          return;
+        }
+        router.replace("/login");
+      } catch (error) {
+        toast({ description: localizeThrownError(error, t, "errors.signOutFailed"), variant: "error" });
+      }
     });
   }
 
