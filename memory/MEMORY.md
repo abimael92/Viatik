@@ -4,6 +4,7 @@
 > before exploring the codebase; update it before ending a task.
 > **Companions:** [`data-models.md`](data-models.md) ·
 > [`components-ui.md`](components-ui.md) · [`roles-abilities.md`](roles-abilities.md)
+> **Last updated:** 2026-11-05 · UI async failure handling and drag-payload validation
 > **Last updated:** 2026-11-04 · avatar sync ring, count badge, and top-corner rail expander
 > **Last updated:** 2026-11-04 · schema v50 · exact transitive CVE overrides; unrelated audit findings remain
 > **Last updated:** 2026-11-03 · schema v50 · AI infrastructure quality layer (validation, drift, security, evaluations)
@@ -207,6 +208,27 @@ Also update the topic file whose subject changed:
 ---
 
 ## 7. Session log (newest first)
+
+### 2026-11-05 — Unhandled UI failures and payload validation
+- **Changed:** Added rejection handling to confirmed async UI paths in auth
+  forms, recovery-link completion, settings, app-shell logout, Vault, native
+  Steps listener setup/cleanup, Currency Converter, trip start/cancel, Home
+  weather refresh, journal saves, packing-list actions, collaborator/member and
+  traveler/document removal, invitation decline/revoke, media retry, and
+  TripWorkspace's personal-budget lookup. Itinerary drag payloads now parse as
+  `unknown`, validate a non-empty string activity ID, and return `null` for
+  malformed or invalid data. Added a localized EN/ES cancellation-failure label.
+- **Schema:** None; no Dexie/Supabase schema, sync, or outbox changes.
+- **Verification:** `bash .agents/skills/test-runner.sh` passed (103 suites /
+  675 tests); `pnpm lint`, `pnpm agent:audit-i18n`, `pnpm agent:schema`, and
+  `git diff --check` passed. `pnpm typecheck` is blocked by the pre-existing
+  `app/layout.tsx:25:50` `LayoutProps` type error; that file is unchanged.
+- **Gotchas:** `.finally()` only cleans pending state; it does not handle a
+  rejection. Error boundaries do not handle async event/effect failures. Other
+  direct JSON parser sites already have local or caller-level handling; keep
+  those fallback paths intact. If remote logout succeeds but local database
+  cleanup fails, navigate to login with the localized failure so the signed-out
+  user is not left viewing the app shell.
 
 ### 2026-11-04 — Collapsed sidebar avatar and expander polish
 - **Changed:** Reworked the collapsed desktop rail into an unframed portrait

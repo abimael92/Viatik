@@ -6,7 +6,7 @@
 > [`.ai/skills/ui-component-generator.md`](../.ai/skills/ui-component-generator.md)
 > (`READ → SCAN → ASSEMBLE → TEST`). If this document and the code disagree, **the code wins**.
 >
-> Last audited: 2026-10-23.
+> Last audited: 2026-11-05.
 
 ## 1. Stack facts
 
@@ -784,3 +784,21 @@ and `lib/i18n/error-copy.ts`. Locale persists in `localStorage["viatik-language"
 - **Estimate note** sits under the sheet title
   (`copy.communityIdeasEstimateNote`) and states the figures cover the whole
   party in the traveler's currency.
+
+## Async UI failure boundaries and external drag data (2026-11-05)
+
+- Server actions, IndexedDB operations, native listeners, and other awaited UI
+  operations can reject despite returning structured results for expected
+  failures. Catch unexpected rejections at the effect/transition/handler
+  boundary and show the existing localized alert, message, toast, or safe
+  fallback. A `.finally()` only cleans up; it does not handle rejection.
+- React/Next error boundaries do not catch async event-handler or effect
+  failures. Do not rely on them instead of an explicit promise handler.
+- Treat `DataTransfer` JSON as `unknown`: parse inside `try/catch`, validate its
+  required shape, and no-op (`null`) on malformed or invalid data before calling
+  feature callbacks.
+- Native listener removal during unmount is cleanup-only; catch its rejection
+  so it cannot become an unhandled promise.
+- If remote logout succeeds but local database deletion fails, still leave the
+  authenticated shell and carry the localized cleanup failure to the login
+  screen; do not strand a signed-out session in the app UI.
