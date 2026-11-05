@@ -1509,11 +1509,23 @@ function ActivityDialog({
         if (cancelled) return;
         setPersonalBudget(budget ?? null);
         setLoadedBudgetForActivityId(activity.id);
+      })
+      .catch((cause: unknown) => {
+        if (cancelled) return;
+        setPersonalBudget(null);
+        setLoadedBudgetForActivityId(activity.id);
+        onError(
+          localizeUserError(
+            cause instanceof Error ? cause.message : null,
+            t,
+            "errors.unexpected",
+          ),
+        );
       });
     return () => {
       cancelled = true;
     };
-  }, [activity, userId]);
+  }, [activity, onError, t, userId]);
   async function submit(values: ActivityFormValues) {
     setSaving(true);
     try {
