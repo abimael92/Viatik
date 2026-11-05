@@ -397,6 +397,20 @@ html[data-sidebar="collapsed"] {
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    padding-top: 1rem;
+  }
+  html[data-sidebar="collapsed"] .sidebar-toggle-btn {
+    position: absolute;
+    top: -1.25rem;
+    right: -0.75rem;
+    z-index: 1;
+  }
+  html[data-sidebar="collapsed"] .sidebar-toggle-btn svg {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+  html[data-sidebar="collapsed"] .sidebar-toggle-btn:hover {
+    background-color: transparent;
   }
   html[data-sidebar="collapsed"] .sidebar-nav-link {
     justify-content: center;
@@ -404,7 +418,7 @@ html[data-sidebar="collapsed"] {
     padding-right: 0;
   }
   html[data-sidebar="collapsed"] .sidebar-brand-actions {
-    /* Two 44px icon buttons cannot sit side by side in the 56px rail. */
+    /* The theme toggle is hidden; keep any future in-flow actions stacked. */
     flex-direction: column;
   }
   html[data-sidebar="collapsed"] .sidebar-label {

@@ -38,7 +38,7 @@ The sidebar is the app's main chrome and is cramped; collapsing it gives dense s
 - **Sizing:** expanded `clamp(20.5rem, 22vw, 22rem)` (fluid: 328px at `lg`, capped 352px from ~1600px), collapsed `5rem`, driven by a CSS variable `--sidebar-w` defined in `app/globals.css` on `:root` and overridden by `html[data-sidebar="collapsed"]` (`5rem`). Only applies at `lg+` (below `lg` the sidebar is hidden and mobile nav is unchanged).
 - **Type (expanded):** brand text `text-2xl`; nav labels `text-[20px]` in `min-h-12` (48px) rows; user name `text-[17px]`; email `text-sm`; search pill `text-base`; sign-out label `text-sm`; "Coming soon" pill at least `text-[10px]` with auto width (`w-auto px-1.5`, no fixed `w-16`); language select `h-9 w-16 text-sm`. Icon tiles `size-10`.
 - **Collapsed rail:** brand logo only; nav icons only, centered, each with `aria-label` and `title`; active indicator bar preserved; user shows avatar only (notification bell stacked under it); search is an icon-only button with `aria-label`; theme toggle visible; sync status shown as an icon-only compact pill (add a `compact` prop to `SyncStatusPill` that hides text but keeps the icon, state color, pulse, and the dropdown trigger, so offline-first sync state stays visible); language switcher hidden; sign-out is icon-only with `aria-label`. "Coming soon" Community item shows only the dimmed icon with `title`.
-- **Toggle:** a 44px icon-only button (`size="icon"`, ghost, `hover:bg-side-hover`) with `ChevronsLeft` (expanded) / `ChevronsRight` (collapsed) — chevrons replaced `PanelLeftClose` / `PanelLeftOpen` on 2026-10-31 because the panel glyph is unreadable at 20px (the arrow is ~6px and both states look alike) — in the **brand row** at the top of the panel, immediately right of the theme toggle (it used to be a full-width labeled row at the bottom, which competed with sign-out). `aria-expanded`, `aria-controls="app-sidebar"` (the `<aside>` has that id), accessible name from i18n (`copy.sidebarCollapse` = "Collapse sidebar" / "Contraer barra lateral", `copy.sidebarExpand` = "Expand sidebar" / "Expandir barra lateral") plus `title`. In the rail the `.sidebar-brand-actions` group stacks (two 44px buttons cannot sit side by side in the 56px rail). The bottom of the panel holds sign-out only.
+- **Toggle:** a 44px icon-only button (`size="icon"`, ghost, `hover:bg-side-hover`) with `ChevronsLeft` (expanded) / `ChevronsRight` (collapsed) — chevrons replaced `PanelLeftClose` / `PanelLeftOpen` on 2026-10-31 because the panel glyph is unreadable at 20px (the arrow is ~6px and both states look alike) — in the **brand row** at the top of the panel. Expanded: immediately right of the theme toggle. Collapsed: anchored flush top-right with a 14px chevron; leave 16px above the logo while the theme toggle remains in the rail stack. `aria-expanded`, `aria-controls="app-sidebar"` (the `<aside>` has that id), accessible name from i18n (`copy.sidebarCollapse` = "Collapse sidebar" / "Contraer barra lateral", `copy.sidebarExpand` = "Expand sidebar" / "Expandir barra lateral") plus `title`. The bottom of the panel holds sign-out only.
 - **Persistence and no flash:** `localStorage["viatik-sidebar"]` = `"collapsed" | "expanded"` (default expanded). Extend `themeInitScript` in `components/theme-initializer.tsx` and `applyStoredPreferences()` to set/remove `data-sidebar` on `<html>` (same try/catch style; the `<html>` already has `suppressHydrationWarning`). Collapse/expand visuals are CSS-driven from the attribute (use Tailwind v4 `in-data-[sidebar=collapsed]:` / `group` variants, or plain CSS in `globals.css` if a variant is not available) so the server HTML never shows the wrong state. React state is only used for the toggle's `aria-expanded` and icon, read from `document.documentElement` after mount (default expanded on the server). Toggling sets the attribute and `localStorage` (guard storage errors).
 - **Motion:** `transition-[width]` on the aside and `transition-[padding]` on the content wrapper, `duration-300 ease-[cubic-bezier(0.23,1,0.32,1)]`. Global reduced-motion CSS already neutralizes it.
 
@@ -86,3 +86,67 @@ The sidebar is the app's main chrome and is cramped; collapsing it gives dense s
 - **Risk:** `SyncStatusPill` dropdown is portaled and positioned from its trigger rect; the compact trigger must keep the same ref/rect logic so the dropdown still anchors correctly.
 - **Risk:** Tailwind `in-data-*` support; fall back to plain CSS in `globals.css` if unavailable.
 - **Interpretation:** "remove the shortcut view on search" was read as the shortcut badge on the sidebar search pill. If the intent was the whole pill, delete `CommandPaletteHint variant="sidebar"`.
+
+## Amendment 2026-11-04 — Avatar-centered collapsed account/status dock
+
+### Requested visual change inventory
+
+- **Requested:** In the collapsed rail only, compose the account avatar,
+  notification bell, and sync-status indicator inside one portrait dock. The
+  avatar is the centered focal point; the unread count overlays its upper-right
+  and the hollow sync-status ring encircles it. Keep all three controls and
+  their existing behavior; only their visual composition changes.
+- **Out of scope:** Expanded account card, mobile header/account sheet, nav,
+  sidebar dimensions, sync/notification behavior, and any other controls.
+
+### Design and acceptance
+
+- Keep the avatar centered in the tall collapsed-rail space, but do not add an
+  enclosing frame, background panel, or decorative border.
+- In compact mode, hide the bell glyph and its purple tile; show only the
+  clickable unread-count circle at the avatar's upper-right. Keep a 44px link
+  target and its accessible notification name.
+- Place the sync status-color outline around the avatar itself, not at a corner.
+  The ring is hollow, with no separate dot or secondary outer ring. Keep the
+  sync trigger, focus, accessible label, and existing status popup behavior;
+  avatar clicks continue to open the account menu, and the exposed ring opens
+  the sync panel when interactive. The ring is 52px to retain an
+  accessible target around the avatar.
+- Give the semantic group a localized accessible name in English and Spanish.
+- No Dexie, Supabase, sync, outbox, or authorization changes.
+- Test that the avatar, notifications control, and sync-status control are all
+  in the same avatar-centered composition, with the count overlaying the avatar
+  and the hollow sync-status ring encircling it; keep accessible names intact.
+- Verify the collapsed composition in light/dark themes at desktop width and
+  check all 44px interactive targets.
+
+## Amendment 2026-11-04 — Collapsed expand control placement
+
+- **Requested:** In the collapsed rail, place the expand control at the
+  sidebar's top-right edge and make its visible chevron/control chrome smaller.
+  Keep a 44px hit target and the existing accessible label/state.
+- **Out of scope:** Expanded toggle placement, theme toggle behavior, mobile
+  controls, and sidebar dimensions.
+- **Design:** Align the 44px hit target flush with the panel's top/right edge,
+  render only a 14px chevron without a filled hover tile, and leave 16px of
+  clearance above the centered logo so the brand doesn't sit too low.
+- **Acceptance:** Only the collapsed layout changes; expanding still restores
+  the toggle beside the theme control. Keyboard behavior and `aria-expanded` /
+  `aria-controls` stay unchanged.
+
+## Amendment 2026-11-04 — Collapsed utility access
+
+- **Requested:** Hide the standalone theme and search controls in the collapsed
+  rail while keeping both capabilities accessible from the avatar menu.
+- **Design:** Add a `View options` submenu to the rail's account menu. It
+  contains a theme action, EN/ES language selection, and Search. The global
+  `Ctrl/⌘K` shortcut remains active. Expanded sidebar and mobile controls stay
+  where they are.
+- **Copy:** Add `copy.viewOptions` in English and Spanish; reuse the existing
+  theme, language, and search labels.
+- **Data/security:** No Dexie, Supabase, sync, or authorization change.
+- **Acceptance:** The collapsed rail shows no separate theme/search controls;
+  the avatar menu exposes all three options with keyboard-operable menu items,
+  accessible names, and 44px targets. Expanded and mobile controls are unchanged.
+- **Tests:** Extend `components/app-shell/app-shell.test.tsx` to cover collapsed
+  utility visibility and all `View options` actions.
