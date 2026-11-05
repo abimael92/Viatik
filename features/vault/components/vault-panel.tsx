@@ -3,7 +3,7 @@
 import { localizeThrownError } from "@/lib/i18n/localize-error";
 
 import { Lock, Plus, Shield, Unlock } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -20,6 +20,7 @@ import { VaultEntryCard } from "./vault-entry-card";
 
 export function VaultPanel({ tripId, userId }: { tripId: string; userId: string }) {
   const { t } = useI18n();
+  const translateRef = useRef(t);
   const [keyset, setKeyset] = useState<VaultKeyset | null | undefined>(undefined);
   const [session, setSession] = useState<VaultSession | null>(() => webCryptoVault.getSession(userId) ?? null);
   const [entries, setEntries] = useState<VaultEntry[]>([]);
@@ -33,10 +34,26 @@ export function VaultPanel({ tripId, userId }: { tripId: string; userId: string 
   const [copyToast, setCopyToast] = useState<string | null>(null);
 
   useEffect(() => {
-    vaultRepository.getKeyset(userId).then((value) => setKeyset(value ?? null));
-    return vaultRepository.watchEntries(tripId, userId, (list) => {
+    translateRef.current = t;
+  }, [t]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const unsubscribe = vaultRepository.watchEntries(tripId, userId, (list) => {
       setEntries(list);
     });
+    void Promise.resolve()
+      .then(() => vaultRepository.getKeyset(userId))
+      .then((value) => {
+        if (!cancelled) setKeyset(value ?? null);
+      })
+      .catch((cause: unknown) => {
+        if (!cancelled) setError(localizeThrownError(cause, translateRef.current, "errors.unexpected"));
+      });
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, [tripId, userId]);
 
   useEffect(() => {

@@ -71,18 +71,33 @@ export function TripStepsWidget({
     let cancelled = false;
     let listener: { remove: () => Promise<void> } | undefined;
 
-    void App.addListener("appStateChange", ({ isActive }) => {
-      if (isActive && !cancelled) void syncToday(false);
-    }).then((handle) => {
-      listener = handle;
-      if (cancelled) void handle.remove();
-    });
+    void Promise.resolve()
+      .then(() =>
+        App.addListener("appStateChange", ({ isActive }) => {
+          if (isActive && !cancelled) void syncToday(false);
+        })
+      )
+      .then((handle) => {
+        listener = handle;
+        if (cancelled) {
+          void Promise.resolve()
+            .then(() => handle.remove())
+            .catch(() => undefined);
+        }
+      })
+      .catch((cause: unknown) => {
+        if (!cancelled) setError(localizeThrownError(cause, t, "errors.unexpected"));
+      });
 
     return () => {
       cancelled = true;
-      if (listener) void listener.remove();
+      if (listener) {
+        void Promise.resolve()
+          .then(() => listener?.remove())
+          .catch(() => undefined);
+      }
     };
-  }, [syncToday]);
+  }, [syncToday, t]);
 
   const connectHealth = useCallback(async () => {
     setConnecting(true);

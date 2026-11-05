@@ -1,7 +1,9 @@
 "use client";
 
+import { localizeThrownError } from "@/lib/i18n/localize-error";
+
 import { ArrowLeftRight, Check, Landmark } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n/i18n-provider";
@@ -26,6 +28,7 @@ import {
  */
 export function CurrencyConverter({ trip }: { trip: Trip }) {
   const { t } = useI18n();
+  const translateRef = useRef(t);
   const baseCurrency = (trip.baseCurrency || "USD").toUpperCase() as CurrencyCode;
   const [from, setFrom] = useState<CurrencyCode>(
     SUPPORTED_CURRENCIES.includes(baseCurrency) ? baseCurrency : "USD",
@@ -34,20 +37,40 @@ export function CurrencyConverter({ trip }: { trip: Trip }) {
   const [amount, setAmount] = useState("");
   const [rate, setRate] = useState("");
   const [rateSaved, setRateSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    translateRef.current = t;
+  }, [t]);
 
   // Seed the offline rate cache once on first open.
   useEffect(() => {
-    void currencyRateRepository.ensureDefaults();
+    let cancelled = false;
+    void Promise.resolve()
+      .then(() => currencyRateRepository.ensureDefaults())
+      .catch((cause: unknown) => {
+        if (!cancelled) setError(localizeThrownError(cause, translateRef.current, "errors.unexpected"));
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Resolve the from→to rate from the cache, falling back to built-in defaults.
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const cached = await currencyRateRepository.getRate(from, to);
-      if (cancelled) return;
-      setRate(String(cached ? cached.rate : lookupRate(from, to)));
-      setRateSaved(false);
+      try {
+        const cached = await currencyRateRepository.getRate(from, to);
+        if (cancelled) return;
+        setRate(String(cached ? cached.rate : lookupRate(from, to)));
+        setRateSaved(false);
+      } catch (cause) {
+        if (cancelled) return;
+        setRate(String(lookupRate(from, to)));
+        setRateSaved(false);
+        setError(localizeThrownError(cause, translateRef.current, "errors.unexpected"));
+      }
     })();
     return () => {
       cancelled = true;
@@ -79,8 +102,14 @@ export function CurrencyConverter({ trip }: { trip: Trip }) {
 
   const handleSaveRate = async () => {
     if (!rateValid) return;
-    await currencyRateRepository.saveRate(from, to, rateNum);
-    setRateSaved(true);
+    setError(null);
+    setRateSaved(false);
+    try {
+      await currencyRateRepository.saveRate(from, to, rateNum);
+      setRateSaved(true);
+    } catch (cause) {
+      setError(localizeThrownError(cause, t, "errors.unexpected"));
+    }
   };
 
   return (
@@ -152,6 +181,12 @@ export function CurrencyConverter({ trip }: { trip: Trip }) {
           {t("common.offlineRate")}
         </p>
       </div>
+
+      {error && (
+        <p role="alert" className="mt-3 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+          {error}
+        </p>
+      )}
 
       <div className="mt-4">
         <Label>{t("common.quickAmounts")} ({from})</Label>
