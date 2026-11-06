@@ -1,7 +1,5 @@
 "use server";
 
-import fs from "node:fs";
-import path from "node:path";
 import { differenceInCalendarDays, parseISO } from "date-fns";
 import { z } from "zod";
 
@@ -230,35 +228,6 @@ const SYSTEM_PROMPT =
 export type ScoutTripIdeasResult =
   | { success: true; suggestions: ReturnType<typeof scoutTripIdeasResponseSchema.parse> }
   | { success: false; error: string };
-
-function resolveServerKey(
-  keyName: "GEMINI_API_KEY" | "OPENAI_API_KEY",
-  cachedValue: string | undefined
-): string | undefined {
-  const fromEnv = cachedValue?.trim() || process.env[keyName]?.trim();
-  if (fromEnv) return fromEnv;
-  if (process.env.NODE_ENV === "test") return undefined;
-
-  try {
-    const envPath = path.join(process.cwd(), ".env.local");
-    if (!fs.existsSync(envPath)) return undefined;
-    for (const rawLine of fs.readFileSync(envPath, "utf8").split(/\r?\n/)) {
-      const line = rawLine.trim();
-      if (!line || line.startsWith("#")) continue;
-      const eqIndex = line.indexOf("=");
-      if (eqIndex === -1) continue;
-      if (line.slice(0, eqIndex).trim() !== keyName) continue;
-      const value = line
-        .slice(eqIndex + 1)
-        .trim()
-        .replace(/^['"]|['"]$/g, "");
-      if (value) return value;
-    }
-  } catch {
-    return undefined;
-  }
-  return undefined;
-}
 
 function derivedDurationDays(input: ScoutTripIdeasInput): number | null {
   if (input.timing === "dates" && input.startDate && input.endDate) {
@@ -1018,8 +987,8 @@ export async function generateScoutTripIdeas(input: unknown): Promise<ScoutTripI
       ? { destination: parsed.data.destination, excludeRoutes: parsed.data.excludeRoutes }
       : undefined;
 
-    const geminiApiKey = resolveServerKey("GEMINI_API_KEY", env.GEMINI_API_KEY);
-    const openAiApiKey = resolveServerKey("OPENAI_API_KEY", env.OPENAI_API_KEY);
+    const geminiApiKey = env.GEMINI_API_KEY;
+    const openAiApiKey = env.OPENAI_API_KEY;
     if (!geminiApiKey && !openAiApiKey) {
       if (routeMode) return { success: false, error: ROUTE_MODE_NEEDS_PROVIDER_ERROR };
       return {

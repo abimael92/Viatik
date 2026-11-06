@@ -27,9 +27,11 @@ import {
   parseArgs,
   readJson,
 } from "./lib.mjs";
+import { parseRuntimeEnv } from "../../../lib/config/runtime-env.mjs";
 
-const STATE = process.env.VIATIK_DELEGATION_FILE
-  ? path.resolve(process.env.VIATIK_DELEGATION_FILE)
+const runtimeEnv = parseRuntimeEnv();
+const STATE = runtimeEnv.VIATIK_DELEGATION_FILE
+  ? path.resolve(runtimeEnv.VIATIK_DELEGATION_FILE)
   : path.join(ROOT, ".ai/infra/delegation/claims.json");
 
 const DEFAULT_TTL_HOURS = 8;

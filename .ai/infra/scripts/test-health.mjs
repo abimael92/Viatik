@@ -19,9 +19,11 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { ROOT, isMain, parseArgs, readJson, readText } from "./lib.mjs";
+import { parseRuntimeEnv } from "../../../lib/config/runtime-env.mjs";
 
-const LEDGER = process.env.VIATIK_TEST_HEALTH_FILE
-  ? path.resolve(process.env.VIATIK_TEST_HEALTH_FILE)
+const runtimeEnv = parseRuntimeEnv();
+const LEDGER = runtimeEnv.VIATIK_TEST_HEALTH_FILE
+  ? path.resolve(runtimeEnv.VIATIK_TEST_HEALTH_FILE)
   : path.join(ROOT, ".ai/infra/test-health.json");
 
 const REPORT = path.join(ROOT, ".ai/infra/.test-report.json");
