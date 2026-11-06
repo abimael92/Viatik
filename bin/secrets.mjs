@@ -17,6 +17,8 @@ import path from 'node:path';
 import readline from 'node:readline';
 import { fileURLToPath } from 'node:url';
 
+import { parseSecretsToolEnv } from '../lib/config/runtime-env.mjs';
+
 const ALGORITHM = 'aes-256-gcm';
 const KEY_LEN = 32; // 256-bit key
 const IV_LEN = 12; // 96-bit IV recommended for GCM
@@ -39,6 +41,7 @@ const ENCRYPTED_FILE = path.join(PROJECT_ROOT, '.env.encrypted');
 // Non-interactive password override for CI / scripting. Passwords are never
 // echoed to the terminal regardless of how they are supplied.
 const ENV_PASSWORD_VAR = 'SECRETS_PASSWORD';
+const secretsToolEnv = parseSecretsToolEnv();
 
 // ──────────────────────────────────────────────────────────────────────────
 // Crypto
@@ -120,8 +123,8 @@ function promptHidden(question) {
 }
 
 async function resolvePassword({ confirm = false } = {}) {
-  if (process.env[ENV_PASSWORD_VAR]) {
-    return process.env[ENV_PASSWORD_VAR];
+  if (secretsToolEnv.SECRETS_PASSWORD) {
+    return secretsToolEnv.SECRETS_PASSWORD;
   }
   if (!process.stdin.isTTY) {
     throw new Error(

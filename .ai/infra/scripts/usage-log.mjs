@@ -21,9 +21,11 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { ROOT, isMain, parseArgs, readText } from "./lib.mjs";
+import { parseRuntimeEnv } from "../../../lib/config/runtime-env.mjs";
 
-const LOG = process.env.VIATIK_USAGE_LOG
-  ? path.resolve(process.env.VIATIK_USAGE_LOG)
+const runtimeEnv = parseRuntimeEnv();
+const LOG = runtimeEnv.VIATIK_USAGE_LOG
+  ? path.resolve(runtimeEnv.VIATIK_USAGE_LOG)
   : path.join(ROOT, ".ai/infra/usage/usage-log.jsonl");
 
 /** Field names that would carry content. Rejected, not truncated. */
