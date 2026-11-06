@@ -4,6 +4,7 @@
 > before exploring the codebase; update it before ending a task.
 > **Companions:** [`data-models.md`](data-models.md) ·
 > [`components-ui.md`](components-ui.md) · [`roles-abilities.md`](roles-abilities.md)
+> **Last updated:** 2026-11-06 · centralized env schemas, validation redaction, and runtime ownership audit
 > **Last updated:** 2026-11-05 · UI async failure handling and drag-payload validation
 > **Last updated:** 2026-11-04 · avatar sync ring, count badge, and top-corner rail expander
 > **Last updated:** 2026-11-04 · schema v50 · exact transitive CVE overrides; unrelated audit findings remain
@@ -208,6 +209,33 @@ Also update the topic file whose subject changed:
 ---
 
 ## 7. Session log (newest first)
+
+### 2026-11-06 — Centralized environment validation and ownership audit
+- **Changed:** Hardened `env.mjs` with optional-empty handling, HTTP(S) URL
+  checks, byte-based QR secret length, strict `SKIP_ENV_VALIDATION` parsing,
+  and key-name-only validation errors. Added `lib/config/runtime-env.mjs` for
+  Viatik-owned Capacitor/origin/tool settings and the secrets CLI passphrase.
+  Infra scripts, Capacitor/Next config, `bin/secrets.mjs`, and Scout provider
+  selection now use parsed values; Scout no longer reparses `.env.local`.
+- **Schema:** None. No Dexie, Supabase domain schema, RLS, migration, or sync
+  changes.
+- **Verification:** `pnpm agent:verify` passed (259 files; 1,765 tests passed,
+  3 skipped); focused environment/infra/Scout suites passed (57 tests);
+  `pnpm agent:schema`, `pnpm agent:audit-i18n`, and `pnpm agent:infra` passed.
+  `pnpm agent:drift` passed with its existing accepted `SYNC_TABLE_DEFINITIONS`
+  documentation-symbol finding. Playwright listed 2 E2E tests and
+  `pnpm exec cap config` resolved the default local URL. A production build
+  passed in an isolated copy with webpack (21 routes) to avoid writing to the
+  protected repository `.next`; a Turbopack attempt in `/tmp` was blocked by
+  its external `node_modules` symlink boundary.
+- **Audit classification:** The task's 61-row export was not present in the
+  tracked main worktree. The tracked-source audit found remaining `NODE_ENV`
+  reads (Node/Next-owned), `CI` and `PLAYWRIGHT_BASE_URL` (CI/Playwright-owned),
+  test fixtures/docs, and injected Supabase Edge/Deno `env()` reads with
+  runtime-local checks. These remain outside the Node application schema.
+  `SMS_PROVIDER_API_KEY` remains an existing reserved optional declaration
+  with no tracked consumer. No `.next`, `.worktrees`, or dependency files were
+  changed.
 
 ### 2026-11-05 — Unhandled UI failures and payload validation
 - **Changed:** Added rejection handling to confirmed async UI paths in auth

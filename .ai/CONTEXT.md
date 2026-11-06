@@ -89,4 +89,5 @@ A change isn't done until `pnpm lint`, `pnpm typecheck`, relevant `pnpm test`, a
 - `app/(app)/settings/settings-client.tsx` — profile settings.
 - `app/(auth)/onboarding/onboarding-form.tsx` — traveler onboarding form.
 - `lib/sync/`, `lib/db/`, `lib/supabase/` — offline sync + persistence boundaries.
+- `env.mjs`, `lib/config/runtime-env.mjs` — application and Viatik tool/config environment validation.
 - `.ai/infra/README.md` — agent-infrastructure validation, drift, security, context and evaluations.

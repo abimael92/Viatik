@@ -407,7 +407,20 @@ The checked-in [`.env.example`](./.env.example) documents the available variable
 | `SMS_PROVIDER_API_KEY` | No | Server only | Reserved and unused. SMS verification is disabled; see `.ai/specs/sms-verification.md` |
 | `GOOGLE_MAPS_API_KEY` | Optional | Server only | Destination autocomplete through Places API |
 
-Environment validation is centralized in `env.mjs`. Public variables are explicitly prefixed with `NEXT_PUBLIC_`; private variables must remain server-only.
+Application environment validation is centralized in `env.mjs`. It validates
+the consumed application settings while keeping provider credentials in the
+server schema; the only client keys in this schema are the existing
+`NEXT_PUBLIC_SUPABASE_*` settings.
+Viatik-owned standalone tool/config overrides are validated in
+`lib/config/runtime-env.mjs`. Node/Next, CI-provider, Playwright, and
+dependency-owned environment values remain with their respective runtimes.
+
+Optional process-level tool overrides include `CAPACITOR_SERVER_URL` (defaults
+to `http://localhost:3000`), the three `VIATIK_*_FILE` paths, and
+`SECRETS_PASSWORD` for non-interactive use of the secrets CLI. These standalone
+tools read the invoking process environment; they do not load `.env.local`
+themselves. Leave `SECRETS_PASSWORD` unset in local env files and use the hidden
+TTY prompt unless a CI/script explicitly supplies it.
 
 ### Shared environment variables
 
